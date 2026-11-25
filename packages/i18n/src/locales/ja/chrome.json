@@ -1,5 +1,6 @@
 {
   "appBar": {
+    "menu": "メニュー",
     "settings": "設定",
     "settingsUpdate": {
       "attention": "設定 — アップデートで対応が必要です",
@@ -19,10 +20,16 @@
   },
   "limits": {
     "barLabel": "AI の利用上限: {{agent}} の{{window}}は {{percent}} 使用",
+    "barReset": "AI の利用上限: {{agent}} の上限はリセット済み（新しい使用量はまだ読んでいません）",
     "barStopped": "AI の利用上限: {{agent}} は{{state}}",
     "barUnknown": "AI の利用上限: {{agent}} の上限は読めていません",
     "barUnlimited": "AI の利用上限: {{agent}} にいまかかっている上限はありません",
     "none": "いまかかっている上限はありません",
+    "place": {
+      "model": "{{role}}（{{model}}）",
+      "note": "ヘッダーの表示は、設定の「{{title}}」の順番と使用量で決まります。",
+      "notListed": "「{{title}}」に含まれません"
+    },
     "readAgo_other": "{{count}}分前に更新",
     "readNow": "たった今更新",
     "refresh": "今すぐ読み直す",
@@ -30,6 +37,7 @@
     "refreshing": "読み直しています…",
     "reset": {
       "at": "{{when}} にリセット",
+      "done": "リセット済み・新しい使用量はまだ読んでいません",
       "inHours": "あと{{hours}}時間{{minutes}}分でリセット",
       "inMinutes_other": "あと{{count}}分でリセット",
       "inWholeHours": "あと{{hours}}時間でリセット"
@@ -37,6 +45,7 @@
     "stopped": "停止中",
     "stoppedUntil": "{{when}} まで停止",
     "stoppedUntilShort": "{{when}} まで",
+    "stoppedUntilTimeShort": "{{when}} まで",
     "title": "AI の利用上限",
     "unavailable": "読めません。サインインを確かめてください",
     "unsupported": "上限の値を取れません",

@@ -5,6 +5,7 @@ import { basename, resolve } from 'node:path';
 import { chromium } from '@playwright/test';
 import { start } from '../server.ts';
 import { seedTimelineScroll } from '../fixture/timeline-scroll.ts';
+import { setStrips } from './bar-entries.ts';
 const output=resolve(process.argv[2]!);mkdirSync(output,{recursive:true});
 const browser=await chromium.launch();let runtime: Awaited<ReturnType<typeof start>> | undefined;
 const expiry=setTimeout(()=>process.exit(3),12*60_000);const results:any[]=[];
@@ -14,7 +15,7 @@ for(const rate of [1,4])for(const phase of ['release','loading','return']){
  let open=()=>{};
  try{
   const page=await context.newPage();await page.goto(runtime.origin+'/?agent=1&zoom=1800000');await page.locator('[data-pull-mark]').waitFor();
-  if(await page.locator('header [data-strips]').getAttribute('aria-pressed')!=='true')await page.locator('header [data-strips]').click();
+  await setStrips(page,true);
   await page.locator('[data-span]').waitFor();await page.waitForTimeout(800);
   const gate=new Promise<void>(done=>{open=done});await page.route('**/api/events',async route=>{await gate;await route.continue();});
   const c=await context.newCDPSession(page);await c.send('Emulation.setCPUThrottlingRate',{rate});await c.send('Page.enable');

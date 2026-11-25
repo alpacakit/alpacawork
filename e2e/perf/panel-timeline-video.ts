@@ -5,6 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { chromium, type Page } from '@playwright/test';
 import { conversation, startPanelFixture, preparePanel, ensureConversation, PANEL_DRAFT, readPanelDraft } from './panel-fixture.ts';
 import { SAMPLE_NOW } from '../fixture/sample.ts';
+import { leaveBarMenu, stripsSwitch } from './bar-entries.ts';
 
 const output = resolve(process.argv[2] ?? '/tmp/panel-videos');
 const helper = process.argv[3];
@@ -75,9 +76,9 @@ try {
     await page.waitForTimeout(1500); await close.click(); await page.waitForTimeout(1200);
     if(width<900) {
       marks.clear(); marks.caption('⑤ Timeを閉じ、開き直す');
-      const toggle=page.locator('header [data-strips]');
+      const toggle=await stripsSwitch(page);
       marks.box(await toggle.boundingBox(),'Time',{seconds:5});
-      await page.waitForTimeout(1500); await toggle.click(); await page.waitForTimeout(1400); await toggle.click(); await page.waitForTimeout(1600);
+      await page.waitForTimeout(1500); await toggle.click(); await page.waitForTimeout(1400); await toggle.click(); await page.waitForTimeout(1600); await leaveBarMenu(page);
     } else {
       marks.clear(); marks.caption('⑤ 時間軸を拡大し、元の範囲へ戻す');
       marks.box({x:360,y:56,width:500,height:180},'時間軸',{seconds:5});

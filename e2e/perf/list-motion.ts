@@ -9,6 +9,7 @@ import { patchTask } from '../fixture/task-state.ts';
 import { seedTimelineScroll } from '../fixture/timeline-scroll.ts';
 import { commandFetch as fetch } from '../../tests/helpers/command-fetch.ts';
 import { installProbe, measurer } from './list-motion-probe.ts';
+import { setStrips } from './bar-entries.ts';
 const { values: args, positionals } = parseArgs({ allowPositionals:true, options: {
  throttle:{type:'string',default:'1'}, rounds:{type:'string',default:'3'}, widths:{type:'string',default:'1440,390'},
  trace:{type:'boolean',default:false}, film:{type:'boolean',default:false}, reduced:{type:'boolean',default:false}, slow:{type:'string',default:''}, video:{type:'boolean',default:false},
@@ -25,7 +26,7 @@ try { for(const width of args.widths.split(',').map(Number)) {
  const post=async(path:string,body:object)=>{const response=await fetch(runtime.origin+'/api/'+path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});assert.equal(response.status,200,await response.clone().text());return response.json();};
  await page.goto(runtime.origin+'/?agent=1&zoom=1800000');
  await page.locator('[data-time-tree]').waitFor();
- const strips=page.locator('header [data-strips]');if(width<700&&await strips.getAttribute('aria-pressed')!=='true')await strips.click();
+ if(width<700)await setStrips(page,true);
  await page.locator('[data-time-clock]').waitFor();
  await page.waitForTimeout(1800);
  // Expose enough inert rows to scroll, and enough notes for the real update path.

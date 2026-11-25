@@ -177,6 +177,27 @@ test("the bar and tab use the project's name from the index", async () => {
 });
 
 
+// One row at every width: a bar under 34rem folds the faces, notifications and settings into the menu ☰ and the name
+// open, and what moves there opens by ☰, the button that is seen (never by a button no longer in the bar).
+test("a folded bar opens one menu from ☰ or the name, and reaches the faces, projects, notifications and settings", async () => {
+  const width = vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockImplementation(function (this: HTMLElement) { return this.matches("header") ? 366 : 0; });
+  try {
+    render(<TestWorkspace data={screenData(tree())}><AppBar /></TestWorkspace>);
+    expect(document.querySelector("[data-presence-trigger]")).toBeNull();
+    const opener = document.querySelector<HTMLElement>("[data-bar-menu-trigger]")!;
+    expect([...document.querySelectorAll('[data-guide-part="settings"]')]).toEqual([opener]);
+    fireEvent.click(document.querySelector("[data-project-trigger]")!);
+    const menu = await screen.findByRole("dialog");
+    expect(menu.querySelector("[data-project-new]")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("analysis:face.analysis") }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(useViewStore.getState().analysis).not.toBeNull();
+    fireEvent.click(opener);
+    fireEvent.click((await screen.findByRole("dialog")).querySelector("[data-bar-menu-presence]")!);
+    await waitFor(() => expect(screen.getByRole("menu", { name: i18n.t("chrome:presence.menuLabel") })).toBeTruthy());
+  } finally { width.mockRestore(); }
+});
+
 // Test visibility is supplied as the container query's input; the real 707/708px boundary and rectangles are not
 // checked in a browser, and appbar.check.ts keeps only native focus of an existing query.
 // The stubbed activeElement checks below cover component state only, never native focus availability.

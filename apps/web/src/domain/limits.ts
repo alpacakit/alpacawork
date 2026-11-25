@@ -14,40 +14,51 @@ const tightestWindow = (windows: readonly LimitWindow[]): LimitWindow | null =>
 const rowWindows = (windows: readonly LimitWindow[], model: string | null): LimitWindow[] =>
   windows.filter(window => window.model === null || model !== null && window.model.toLowerCase() === model.toLowerCase());
 
-/** Whether a window holds its agent back now: spent, and not yet past its reset (the menu then says no reset either). */
-const holds = (window: LimitWindow, now: number): boolean =>
-  limitTone(window.usedPercent) === "spent" && !(window.resetsAt && resetMinute(window.resetsAt) <= now);
+/** A reading applies until its window resets; past it the window has reset, and its new usage is not read yet. */
+export const currentLimitWindow = (window: LimitWindow, now: number): boolean =>
+  window.resetsAt === null || resetMinute(window.resetsAt) > now;
+
+/** When a spent window lets its row work again; one of no reset time, never as far as anyone knows. */
+const backAt = (window: LimitWindow): number => window.resetsAt ? resetMinute(window.resetsAt) : Infinity;
 
 /**
  * What the bar shows, from the stack tasks run on: the first row that can work now.
- * - `limited`: the row's fullest window that holds it.
- * - `unknown`: its limits could not be read; another agent's figure never stands as its own.
+ * - `limited`: the row's fullest current window.
+ * - `reset`: every window that holds the row has reset since it was read: it works, and its new usage is not read yet.
+ * - `unknown`: its limits could not be read.
  * - `unlimited`: nothing holds it (an agent used with an API key, or one that reports no limits): work goes on there.
- * - `stopped`: every row is held; the first row's agent, and its window that holds it longest (when work goes on).
+ * - `stopped`: every row is held; the row that works again first, by when its windows that hold it have all reset (the
+ *   latest of them). A row with a holding window of no reset time has no known return: a known one comes first, and
+ *   with none known the first row stands, its window saying no time.
  * Null, and no bar, until some agent's limits are known.
  */
 export type BarLimit =
   | { kind: "limited" | "stopped"; agent: AgentLimits; window: LimitWindow }
-  | { kind: "unknown" | "unlimited"; agent: AgentLimits };
+  | { kind: "reset" | "unknown" | "unlimited"; agent: AgentLimits };
 export function barLimit({ agents, stack }: AgentLimitsResponse, now: number): BarLimit | null {
   if (!agents.some(entry => entry.state === "ok")) return null;
-  let first: { agent: AgentLimits; windows: LimitWindow[] } | null = null;
+  let first: { agent: AgentLimits; window: LimitWindow; back: number } | null = null;
   for (const row of stack) {
     const agent = agents.find(entry => entry.adapter === row.adapter);
     if (!agent) continue;
     if (agent.state === "unavailable") return { kind: "unknown", agent };
     const windows = rowWindows(agent.windows, row.model);
     if (agent.state === "unsupported" || windows.length === 0) return { kind: "unlimited", agent };
-    const holding = windows.filter(window => holds(window, now));
-    if (holding.length === 0) return { kind: "limited", agent, window: tightestWindow(windows)! };
-    first ??= { agent, windows: holding };
+    const current = windows.filter(window => currentLimitWindow(window, now));
+    const fullest = tightestWindow(current);
+    if (!fullest) return { kind: "reset", agent };
+    if (limitTone(fullest.usedPercent) !== "spent") return { kind: "limited", agent, window: fullest };
+    // It works again once its last holding window resets.
+    const window = current.filter(window => limitTone(window.usedPercent) === "spent")
+      .reduce((latest, next) => backAt(next) > backAt(latest) ? next : latest);
+    if (!first || backAt(window) < first.back) first = { agent, window, back: backAt(window) };
   }
-  if (!first) return null;
-  // It works again once its last holding window resets.
-  const until = (window: LimitWindow) => window.resetsAt ? Date.parse(window.resetsAt) : Infinity;
-  const window = first.windows.reduce((latest, next) => until(next) > until(latest) ? next : latest);
-  return { kind: "stopped", agent: first.agent, window };
+  return first && { kind: "stopped", agent: first.agent, window: first.window };
 }
+
+/** Where an agent stands in the stack tasks run on: each of its rows' place (0 the primary) and model; none when tasks use it only when a request names it. */
+export const stackPlaces = (adapter: AgentLimits["adapter"], stack: AgentLimitsResponse["stack"]): { at: number; model: string | null }[] =>
+  stack.flatMap((row, at) => row.adapter === adapter ? [{ at, model: row.model }] : []);
 
 type T = (key: string, options?: Record<string, unknown>) => string;
 
@@ -81,12 +92,16 @@ export function resetWords(resetsAt: string | null, now: number, locale: string,
   return t("chrome:limits.reset.at", { when });
 }
 
-/** Until when a spent agent stops: "Stopped until Sun 11/29 20:00"; `short` (a phone) the day alone, "Until 11/29". */
-export function stoppedWords(window: LimitWindow, locale: string, t: T, short = false): string {
+/** Until when a spent agent stops: "Stopped until Sun 11/29 20:00"; `short` (a narrow bar) the time alone when it is back
+ *  later today on this device's clock, "Until 17:13", and otherwise the day alone, "Until 11/29". */
+export function stoppedWords(window: LimitWindow, now: number, locale: string, t: T, short = false): string {
   if (!window.resetsAt) return t("chrome:limits.stopped");
-  const when = new Intl.DateTimeFormat(locale, short ? { month: "numeric", day: "numeric" }
-    : { month: "numeric", day: "numeric", weekday: "short", hour: "numeric", minute: "2-digit" }).format(resetMinute(window.resetsAt));
-  return t(short ? "chrome:limits.stoppedUntilShort" : "chrome:limits.stoppedUntil", { when });
+  const at = resetMinute(window.resetsAt);
+  if (!short) return t("chrome:limits.stoppedUntil", { when: new Intl.DateTimeFormat(locale,
+    { month: "numeric", day: "numeric", weekday: "short", hour: "numeric", minute: "2-digit" }).format(at) });
+  const today = new Date(at).toDateString() === new Date(now).toDateString();
+  return today ? t("chrome:limits.stoppedUntilTimeShort", { when: new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit" }).format(at) })
+    : t("chrome:limits.stoppedUntilShort", { when: new Intl.DateTimeFormat(locale, { month: "numeric", day: "numeric" }).format(at) });
 }
 
 /** "Updated 3 min ago", or "Updated just now". */

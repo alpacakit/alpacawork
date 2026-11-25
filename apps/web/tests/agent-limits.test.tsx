@@ -31,26 +31,43 @@ test("the bar shows the first agent in the stack that can work now, and the wind
   // Another model of the same agent standing in keeps that agent in the bar.
   expect(shownOf(barLimit(response([claude], [row("claude", "fable"), row("claude", "opus")]), NOW)))
     .toEqual({ kind: "limited", agent: "claude", percent: 85 });
-  // A spent window past its reset holds nothing: the menu says no reset for it either.
-  expect(shownOf(barLimit(response([agent("claude", "ok", [at("2026-11-24T23:00:00Z", week(100))]), codex], [row("claude"), row("codex")]), NOW)))
-    .toEqual({ kind: "limited", agent: "claude", percent: 100 });
   // The user chose red from 80%.
   expect([79, 80, 100].map(limitTone)).toEqual(["normal", "near", "spent"]);
 });
 
-test("with every agent in the stack spent, the bar says the first and until when its last spent window holds it", () => {
+test("after a reset the bar uses the current window, or says the limit has reset until the agent's new reading", () => {
+  const expired = at("2026-11-24T23:00:00Z", week(100));
+  const codex = agent("codex", "ok", [week(25)]);
+  const stack = [row("claude"), row("codex")];
+  expect(shownOf(barLimit(response([agent("claude", "ok", [expired]), codex], stack), NOW)))
+    .toEqual({ kind: "reset", agent: "claude", percent: null });
+  const session: LimitWindow = { ...week(45), kind: "session", minutes: 300 };
+  expect(shownOf(barLimit(response([agent("claude", "ok", [expired, session]), codex], stack), NOW)))
+    .toEqual({ kind: "limited", agent: "claude", percent: 45 });
+});
+
+test("with every agent in the stack spent, the bar says the one that works again first and until when its last spent window holds it", () => {
   const claude = agent("claude", "ok", [at("2026-11-29T11:00:00Z", week(100)), at("2026-11-26T11:00:00Z", week(100, "Fable")), at("2026-11-30T00:00:00Z", week(100, "Sonnet"))]);
   const codex = agent("codex", "ok", [week(25)]);
   // Only the row's own windows: Sonnet's later reset does not hold Opus.
   expect(barLimit(response([claude, codex], [row("claude", "fable")]), NOW))
     .toMatchObject({ kind: "stopped", agent: { adapter: "claude" }, window: { resetsAt: "2026-11-29T11:00:00Z" } });
-  // A stack whose next row is spent too stops on its first; the window names when.
+  // A fallback back before the primary is where work starts again: the bar's date is when anything works, not the primary's.
   const spentCodex = agent("codex", "ok", [at("2026-11-27T00:00:00Z", week(100))]);
   expect(barLimit(response([claude, spentCodex], [row("claude", "opus"), row("codex")]), NOW))
-    .toMatchObject({ kind: "stopped", agent: { adapter: "claude" } });
+    .toMatchObject({ kind: "stopped", agent: { adapter: "codex" }, window: { resetsAt: "2026-11-27T00:00:00Z" } });
+  // A row whose return has no known time never comes before a known one; with none known the first row stands.
+  const unknownCodex = agent("codex", "ok", [week(100)]);
+  expect(barLimit(response([unknownCodex, claude], [row("codex"), row("claude", "opus")]), NOW))
+    .toMatchObject({ kind: "stopped", agent: { adapter: "claude" }, window: { resetsAt: "2026-11-29T11:00:00Z" } });
+  expect(barLimit(response([unknownCodex, agent("claude", "ok", [week(100)])], [row("codex"), row("claude")]), NOW))
+    .toMatchObject({ kind: "stopped", agent: { adapter: "codex" }, window: { resetsAt: null } });
   const stopped = barLimit(response([claude], [row("claude", "opus")]), NOW);
-  expect(stopped && stopped.kind === "stopped" && stoppedWords(stopped.window, "en", t)).toMatch(/29/);
-  expect(stopped && stopped.kind === "stopped" && stoppedWords(stopped.window, "en", t, true)).not.toMatch(/:/);
+  expect(stopped && stopped.kind === "stopped" && stoppedWords(stopped.window, NOW, "en", t)).toMatch(/29/);
+  // A narrow bar says the time when the agent is back later today on this device's clock, and the day when it is not.
+  const morning = new Date(2026, 10, 25, 9, 0).getTime(), back = (hours: number) => at(new Date(morning + hours * 3_600_000).toISOString(), week(100));
+  expect(stoppedWords(back(8), morning, "en", t, true)).toMatch(/^Until 5:00\sPM$/);
+  expect(stoppedWords(back(16), morning, "en", t, true)).toBe("Until 11/26");
 });
 
 test("an agent nothing holds (an API key, or one that reports no limits) is where work goes, so the bar never says stopped for it", () => {

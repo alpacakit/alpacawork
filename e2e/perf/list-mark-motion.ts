@@ -6,6 +6,7 @@ import { chromium } from '@playwright/test';
 import { start } from '../server.ts';
 import { commandFetch as fetch } from '../../tests/helpers/command-fetch.ts';
 import { installProbe, measurer } from './list-motion-probe.ts';
+import { setStrips } from './bar-entries.ts';
 const output=resolve(process.argv[2]!);const throttle=Number(process.argv[3]??1);mkdirSync(dirname(output),{recursive:true});
 const browser=await chromium.launch(), results:unknown[]=[];const expiry=setTimeout(()=>process.exit(3),10*60_000);
 try{for(const width of [1440,390]){
@@ -15,7 +16,7 @@ try{for(const width of [1440,390]){
   const made=await post('commands/task/new',{parent:'P1',title:'Visible new report '+round,fromUser:true});
   const context=await browser.newContext({viewport:{width,height:900},hasTouch:true,isMobile:width<700,locale:'en-US',timezoneId:'Asia/Tokyo',serviceWorkers:'block'});
   try{const page=await context.newPage();await installProbe(page);await page.goto(runtime.origin+'/?agent=1&zoom=1800000');await page.locator('[data-time-tree]').waitFor();
-   if(width<700&&await page.locator('header [data-strips]').getAttribute('aria-pressed')!=='true')await page.locator('header [data-strips]').click();
+   if(width<700)await setStrips(page,true);
    await page.locator('[data-time-clock]').waitFor();await page.waitForTimeout(1000);
    await page.evaluate(taskId=>{
     (window as any).newMarkSamples=[]; (window as any).newMarkGlyphs=[];

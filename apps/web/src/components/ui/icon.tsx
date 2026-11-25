@@ -99,6 +99,8 @@ const paths = {
       <path d="M12 3v3M9 11h.01M15 11h.01M9 15h6" />
     </>
   ),
+  /* The folded bar's menu. */
+  menu: <path d="M4 6.5h16M4 12h16M4 17.5h16" />,
   plus: <path d="M12 5v14M5 12h14" />,
   /* The image viewer's video row. Play and pause are filled, as `run` is, so whether it plays reads from the shape. */
   play: <path d="M8 5.5v13l10-6.5z" fill="currentColor" />,

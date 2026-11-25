@@ -1,5 +1,6 @@
 import { ApiError } from '@/data/client';
-import { postPresence, usePresenceActivity } from '@/data/presence';
+import { postPresence } from '@/data/presence';
+import type * as React from 'react';
 import { useRef, useState } from 'react';
 import { moveMenuFocus } from './menu-move';
 import { useTranslation } from 'react-i18next';
@@ -29,7 +30,7 @@ const CUT_ON_HOVER = 'hover:[--presence-cut:var(--hover)]';
  * Present a filled green dot, Away an empty ring, Paused a moon, so each tells by its shape as well as its colour.
  * The mark is cut out of what it sits on, so it stays apart from the person drawn under it.
  */
-function PresenceGlyph({ state, className }: { state: PresenceState; className?: string }) {
+export function PresenceGlyph({ state, className }: { state: PresenceState; className?: string }) {
   return <span aria-hidden="true" data-presence-glyph={state} className={cn('relative inline-flex size-4 flex-none', className)}>
     <Icon name="human" className="size-full" />
     {state === 'present' && <span className={cn('absolute -right-px -bottom-px size-[7px] rounded-full bg-done', CUT_RING)} />}
@@ -47,33 +48,65 @@ function formatUntil(until: string | null, zone: string, language: string, now: 
   return { time, tomorrow: day.format(date) !== day.format(now) };
 }
 
-export function PresenceMenu() {
-  const present = usePresenceActivity();
+/**
+ * The person's notification state as the bar and the bar's menu say it: its state, the words that name it in short
+ * (Present, Away, or until when it is paused) and in full (the trigger's label).
+ */
+export function usePresenceWords() {
   useNow();
   const now = Date.now();
   const { t, i18n } = useTranslation('chrome');
   const presence = useFrameSelector(data => data?.info.presence ?? UNKNOWN_PRESENCE);
-  const settings = usePersonalSettings();
-  const [open, setOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const trigger = useRef<HTMLButtonElement>(null);
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const untilParts = formatUntil(presence.until, zone, i18n.language, now);
   const until = untilParts.tomorrow ? t('presence.mutedUntilTomorrow', { time: untilParts.time })
     : t('presence.mutedUntil', { time: untilParts.time });
+  const short = presence.state === 'muted' ? until : t(presence.state === 'present' ? 'presence.present' : 'presence.away');
   const title = presence.state === 'muted' ? t('presence.ariaMuted', { until })
     : t(presence.state === 'present' ? 'presence.ariaPresent' : 'presence.ariaAway');
+  return { presence, until, short, title };
+}
+
+/** The bar's notification button and its menu (PresencePopup). `present` is the page's own (AppBar, usePresenceActivity). */
+export function PresenceMenu({ present }: { present: () => Promise<void> }) {
+  const { presence, title } = usePresenceWords();
+  const [open, setOpen] = useState(false);
+  const trigger = useRef<HTMLButtonElement>(null);
+  return <>
+    <Button ref={trigger} variant="ghost" size="bar" data-presence-trigger
+      aria-label={title} title={title} aria-haspopup="menu" aria-expanded={open}
+      onClick={() => setOpen(value => !value)} className={cn('text-muted narrow:w-9', CUT_ON_HOVER)}>
+      <PresenceGlyph state={presence.state} />
+    </Button>
+    {open && <PresencePopup anchorRef={trigger} present={present} onClose={() => setOpen(false)} />}
+  </>;
+}
+
+/**
+ * The notification state's menu: present or away, a pause, and the notification settings. It stands by what opened it
+ * (`anchorRef`, a button that is seen: the bar's own, or the folded bar's menu button) and closes by `onClose`.
+ * Present is `present`: the page reports its presence from the bar whether or not this button is in it.
+ */
+export function PresencePopup({ anchorRef, align = 'end', present, onClose }: {
+  anchorRef: React.RefObject<HTMLElement | null>; align?: 'start' | 'end'; present: () => Promise<void>; onClose: () => void;
+}) {
+  const now = Date.now();
+  const { t, i18n } = useTranslation('chrome');
+  const { presence, until } = usePresenceWords();
+  const settings = usePersonalSettings();
+  const [busy, setBusy] = useState(false);
+  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const run = async (action: () => Promise<void>) => {
     setBusy(true);
-    try { await action(); setOpen(false); }
+    try { await action(); onClose(); }
     // The menu stays open to try again; what failed is said as the app says any, not in the menu.
-    catch (error) { notify.failure(error, { about: 'presence', ...(error instanceof ApiError && error.code === 'restore_changed' ? {} : { text: t('presence.saveFailed') }), from: trigger.current }); }
+    catch (error) { notify.failure(error, { about: 'presence', ...(error instanceof ApiError && error.code === 'restore_changed' ? {} : { text: t('presence.saveFailed') }), from: anchorRef.current }); }
     finally { setBusy(false); }
   };
   const mute = (choice: PauseChoice) => run(() => postPresence('/pause', { duration: choice, timeZone: zone }, true));
   // Only the open menu names the next morning; the trigger's paused-until text uses the saved instant above.
-  const morningParts = open ? formatUntil(new Date(morningUntil(now, { ...settings.values, 'push.timeZone': zone })).toISOString(),
-    zone, i18n.language, now) : null;
+  const morningParts = formatUntil(new Date(morningUntil(now, { ...settings.values, 'push.timeZone': zone })).toISOString(),
+    zone, i18n.language, now);
   const item = (id: string, label: string, action: () => void, icon = false) =>
     <Button key={id} variant="ghost" role="menuitem" disabled={busy} data-presence-item={id}
       onClick={action} className={cn('w-full justify-start gap-2 text-sm narrow:min-h-11', CUT_ON_HOVER)}>
@@ -88,36 +121,29 @@ export function PresenceMenu() {
       <span className="text-xs text-soft">{hint}</span>
       {presence.state === id ? <Icon name="check" className="size-3.5" /> : <span className="size-3.5" />}
     </Button>;
-  return <>
-    <Button ref={trigger} variant="ghost" size="bar" data-presence-trigger
-      aria-label={title} title={title} aria-haspopup="menu" aria-expanded={open}
-      onClick={() => setOpen(value => !value)} className={cn('text-muted narrow:w-9', CUT_ON_HOVER)}>
-      <PresenceGlyph state={presence.state} />
-    </Button>
-    {open && <Popup open onOpenChange={setOpen} label={t('presence.menuLabel')} align="end"
-      className="w-64 p-1" anchorRef={trigger}>
-      <div role="menu" aria-label={t('presence.menuLabel')} onKeyDown={moveMenuFocus} className="text-sm [--presence-cut:var(--raised)]">
-        {presence.state === 'muted' ? <div role="group">
-          <div className="flex items-center gap-2 px-2 py-2 text-sm">
-            <PresenceGlyph state="muted" className="text-muted" />{t('presence.pausedUntil', { until })}
-          </div>
-          {item('resume', t('presence.resume'), () => void run(() => postPresence('/resume', undefined, true)))}
-        </div> : <div role="group">
-          {radio('present', t('presence.present'), t('presence.notSent'), () => void run(present))}
-          {radio('away', t('presence.away'), t('presence.sentImmediately'), () => void run(() => postPresence('/away')))}
-        </div>}
-        <div role="group" className="mt-1 border-t border-line pt-1">
-          {item('hour', t('presence.pauseHour'), () => void mute('hour'), true)}
-          {item('two-hours', t('presence.pauseTwoHours'), () => void mute('two-hours'))}
-          {morningParts && item('morning', morningParts.tomorrow ? t('presence.pauseMorning', { time: morningParts.time })
-            : t('presence.pauseMorningToday', { time: morningParts.time }), () => void mute('morning'))}
+  return <Popup open onOpenChange={open => { if (!open) onClose(); }} label={t('presence.menuLabel')} align={align}
+    className="w-64 p-1" anchorRef={anchorRef}>
+    <div role="menu" aria-label={t('presence.menuLabel')} onKeyDown={moveMenuFocus} className="text-sm [--presence-cut:var(--raised)]">
+      {presence.state === 'muted' ? <div role="group">
+        <div className="flex items-center gap-2 px-2 py-2 text-sm">
+          <PresenceGlyph state="muted" className="text-muted" />{t('presence.pausedUntil', { until })}
         </div>
-        <div role="group" className="mt-1 border-t border-line pt-1">
-          {item('settings', t('presence.settings'), () => {
-            setOpen(false); useDialogStore.getState().open('settings', { tab: 'notifications', focus: 'notifications' });
-          })}
-        </div>
+        {item('resume', t('presence.resume'), () => void run(() => postPresence('/resume', undefined, true)))}
+      </div> : <div role="group">
+        {radio('present', t('presence.present'), t('presence.notSent'), () => void run(present))}
+        {radio('away', t('presence.away'), t('presence.sentImmediately'), () => void run(() => postPresence('/away')))}
+      </div>}
+      <div role="group" className="mt-1 border-t border-line pt-1">
+        {item('hour', t('presence.pauseHour'), () => void mute('hour'), true)}
+        {item('two-hours', t('presence.pauseTwoHours'), () => void mute('two-hours'))}
+        {item('morning', morningParts.tomorrow ? t('presence.pauseMorning', { time: morningParts.time })
+          : t('presence.pauseMorningToday', { time: morningParts.time }), () => void mute('morning'))}
       </div>
-    </Popup>}
-  </>;
+      <div role="group" className="mt-1 border-t border-line pt-1">
+        {item('settings', t('presence.settings'), () => {
+          onClose(); useDialogStore.getState().open('settings', { tab: 'notifications', focus: 'notifications' });
+        })}
+      </div>
+    </div>
+  </Popup>;
 }
