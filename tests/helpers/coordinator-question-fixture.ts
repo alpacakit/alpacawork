@@ -25,7 +25,7 @@ export function questionFact(root: string, task: string, id: string,
     const entry = taskLogSchema.parse({ id, at: new Date().toISOString(), title: 'Choose', description: 'Canonical question fixture',
       actor, fromState: null, toState: null,
       ...('askedTo' in fact ? { kind: 'asked', askedTo: fact.askedTo,
-        decide: [{ decide_question: 'Proceed?', decide_choices: [{ decide_choice: 'Yes', decide_choice_detail: 'Proceed' }] }] } : 'closes' in fact
+        decide: [{ decide_kind: 'choose', decide_question: 'Proceed?', decide_choices: [{ decide_choice: 'Yes', decide_choice_detail: 'Proceed' }] }] } : 'closes' in fact
         ? { kind: 'question_withdrawn', questionId: fact.closes } : { kind: 'reported', toState: 'stopped' }) });
     db.prepare('INSERT INTO task_log(id,task_id,ordinal,entry) VALUES (?,?,?,?)').run(id, String(row.id), ordinal, JSON.stringify(entry));
     touch(db, { kind: 'log', id });

@@ -364,6 +364,7 @@
       "question_destination_invalid": "Address the question to an active ancestor task in the same project, or to user",
       "question_does_not_exist": "Question not found",
       "question_does_not_exist_on_task": "The specified question is not on this task",
+      "question_kind_missing": "Question {{n}} in the task’s “Question” (decide) value has no kind. Write accept or choose in decide_kind before sending",
       "question_requires_ask_to": "A question requires --ask-to <Task ID>|user",
       "recovery_continuation_credential_mismatch": "The recovery continuation credential does not match the accepted run",
       "referenced_run_does_not_exist": "Referenced run not found",

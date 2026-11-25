@@ -127,13 +127,13 @@ try {
   start(162, 200);
   const ran = work(162, 195, 130, 'succeeded', owner(162), false);
   log(162, { kind: 'asked', at: ago(130), title: 'When should the migration take place', description: 'Choose the migration date.', actor: placed(162), askedTo: null, runId: ran,
-    decide: [{ decide_question: 'Migration date', decide_choices: [{ decide_choice: 'This week', decide_choice_detail: 'This is a fictional option.' }, { decide_choice: 'Next week', decide_choice_detail: 'This is a fictional option.' }] }] });
+    decide: [{ decide_kind: 'choose', decide_question: 'Migration date', decide_choices: [{ decide_choice: 'This week', decide_choice_detail: 'This is a fictional option.' }, { decide_choice: 'Next week', decide_choice_detail: 'This is a fictional option.' }] }] });
 
   // The parent waits for your answer while its child runs.
   start(180, 240); notes(180, 220, 150);
   const asking = work(180, 140, 90, 'succeeded', owner(180), false);
   log(180, { kind: 'asked', at: ago(90), title: 'Which tone should the emails use', description: 'Choose the tone.', actor: placed(180), askedTo: null, runId: asking,
-    decide: [{ decide_question: 'Tone', decide_choices: [{ decide_choice: 'Friendly', decide_choice_detail: 'This is a fictional option.' }, { decide_choice: 'Formal', decide_choice_detail: 'This is a fictional option.' }] }] });
+    decide: [{ decide_kind: 'choose', decide_question: 'Tone', decide_choices: [{ decide_choice: 'Friendly', decide_choice_detail: 'This is a fictional option.' }, { decide_choice: 'Formal', decide_choice_detail: 'This is a fictional option.' }] }] });
   start(181, 70); work(181, 65, null, 'succeeded', owner(181), true, sol);
 
   db.prepare('UPDATE task_sequence SET next_number=?').run(200);

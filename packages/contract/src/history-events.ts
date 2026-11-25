@@ -174,6 +174,8 @@ const LOG_EVENTS: { readonly [Kind in LogKind]: { event: HistoryEventKind | null
   question_expired: { event: 'expired', noticed: true, stateLog: true },
   user_request_changed: { event: 'changed', noticed: false, stateLog: false },
   dependencies_changed: { event: 'changed', noticed: true, stateLog: false },
+  // What an instruction is, kept for analysis: the instruction's own row is the news.
+  request_labeled: { event: null, noticed: false, stateLog: false },
 };
 
 /** Log kinds that are news to a reader: the row's latest noticed entry (taskRowFields) is of these. */

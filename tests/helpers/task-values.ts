@@ -5,8 +5,8 @@ import { readTaskValues, writeTaskValues } from '@alpacawork/backend/test-dist/c
 
 /** A decide value of one question per entry: its text, and its choices as `[name, detail]`. */
 export const decideValues = (...questions: (string | [string, ...[string, string][]])[]): TaskValues => ({
-  decide: questions.map(question => typeof question === 'string' ? { decide_question: question } : {
-    decide_question: question[0],
+  decide: questions.map(question => typeof question === 'string' ? { decide_kind: 'choose', decide_question: question } : {
+    decide_kind: 'choose', decide_question: question[0],
     ...(question.length > 1 ? { decide_choices: question.slice(1).map(choice => {
       const [name, detail] = choice as [string, string];
       return { decide_choice: name, ...(detail ? { decide_choice_detail: detail } : {}) };

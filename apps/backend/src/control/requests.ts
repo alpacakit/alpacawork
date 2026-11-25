@@ -15,7 +15,7 @@ import type { Selection } from '@alpacawork/contract/agent-settings';
 import { RunStore, admittedDelivery, automaticLimitReached, checkRunLimits, isUnfinished,
   type NewRequest, type RunTransaction, type StoredRequest } from '@alpacawork/runs';
 import { ControlStore } from '@alpacawork/db';
-import { speaksForUser, type ChildObservations, type TaskActor } from '@alpacawork/raw';
+import { speaksForUser, type ChildObservations, type InstructionLabel, type TaskActor } from '@alpacawork/raw';
 import { FileWriter } from '../raw/storage.js';
 import { assignedSession, launchSnapshot, readAgentsSettings } from '../agents-settings.js';
 import { TaskRepository, TaskTree, controlSnapshotView } from './task-store.js';
@@ -47,7 +47,9 @@ export type RequestContext = {
   onAdmitted?: (db: DatabaseSync, placementId: string, tx: RunTransaction,
     request: NewRequest, run: RunRecord) => void;
 } & (
-  | { purpose: 'instruction'; actor: TaskActor; actorRunId?: string; answersQuestion?: { id: string; title: string; state: 'answered' | 'withdrawn' } }
+  | { purpose: 'instruction'; actor: TaskActor; actorRunId?: string; answersQuestion?: { id: string; title: string; state: 'answered' | 'withdrawn' };
+    /** What the instruction is, said by its sender: kept beside it in the same write (request_labeled). */
+    label?: Omit<InstructionLabel, 'request'> }
   | { purpose: 'return_continuation'; returnIds: readonly string[] });
 function reject(code: ProblemCode, message: string, reason: ProblemReason,
   taskHash: string | null, revision: number | null, headId: string | null): never {
@@ -355,6 +357,11 @@ export class RequestService {
             launch: launch.launch }, prompt);
           if (compaction) requestCompaction(db, run, compaction.focus, input.compact !== undefined, request.submittedAt);
           new TaskTransition().captureStartGrant({ store: store!, runs: tx }, task.id, request.id, author);
+          // What the instruction is goes beside it, once its Run (which its log reference reads) exists.
+          if (context.purpose === 'instruction' && context.label)
+            new TaskTransition().appendRecord({ store: store!, runs: tx }, task.id, { id: `${request.id}:label`, kind: 'request_labeled',
+              at: request.submittedAt, actor: request.author, title: null, description: null, fromState: null, toState: null,
+              label: { request: request.id, ...context.label } });
           context.onAdmitted?.(db, placement.id, tx, request, run);
           return { request: tx.getRequest(request.id)!, run };
         });

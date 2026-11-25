@@ -7,7 +7,8 @@ import { TASK_POLICY, evaluate } from '@alpacawork/contract/task-policy';
  */
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 import type { RunId } from '@alpacawork/contract/fields';
-import { digest, now, questionsOf, type ControlTask, type FieldItem, type TaskActor, type TaskLog, type ConversationCheckpoint, type TaskValues } from '@alpacawork/raw';
+import { QUESTION_KINDS, readAnswerParts } from '@alpacawork/contract';
+import { digest, now, questionsOf, type AnswerParts, type ControlTask, type FieldItem, type TaskActor, type TaskLog, type ConversationCheckpoint, type TaskValues } from '@alpacawork/raw';
 import { assertQuestionOpen, destinationGone, questionDestination, questionSnapshot, questionApplicable, validQuestionDestination } from './question-rules.js';
 import { validateReportMedia } from './report-media.js';
 import { ReturnLifecycle } from './return-lifecycle.js';
@@ -78,6 +79,9 @@ export function ask(tx: ControlTx, input: { actor: TaskActor; runId: RunId; task
   const decide = (written ?? task.values).decide as FieldItem[] | undefined;
   if (!decide?.length) throw new Problem(PROBLEM_CODE.invalidInput, 'The Task has no question in its decide value; write the full question there before asking', { task: task.id },
     { reason: { kind: 'no_question_in_decide_value_write_full_question_before_asking' } });
+  const unsaid = decide.findIndex(item => !(QUESTION_KINDS as readonly unknown[]).includes(item.decide_kind));
+  if (unsaid !== -1) throw new Problem(PROBLEM_CODE.invalidInput, `Question ${unsaid + 1} in the decide value has no decide_kind; write accept or choose before asking`,
+    { task: task.id }, { reason: { kind: 'question_kind_missing', n: String(unsaid + 1) } });
   const project = tasks.projectFor(task.id), askedTo = questionDestination(input.askTo, task.id, questionSnapshot(tasks.related(task.id).tasks));
   transition.appendRecord(tx, task.id, { id: input.opId, kind: 'asked', at: now(), title: input.title,
     description: input.description, actor: input.actor, fromState: null, toState: null, runId: input.runId, askedTo,
@@ -91,7 +95,7 @@ export function ask(tx: ControlTx, input: { actor: TaskActor; runId: RunId; task
  * Run. TaskRequestService calls it for task request --answers.
  */
 export function answer(tx: ControlTx, input: { actor: TaskActor; taskId: string; questionId: string; body: string;
-  opId: string }): void {
+  opId: string }, userWords: string | null = null): void {
   const tasks = tasksIn(tx), task = tasks.get(input.taskId), fingerprint = operationFingerprint(input);
   if (replayed(tx, task, input.opId, 'answered', fingerprint)) return;
   assertWritable(task);
@@ -99,6 +103,7 @@ export function answer(tx: ControlTx, input: { actor: TaskActor; taskId: string;
   if (!questionApplicable(task.id, asked, questionSnapshot(tasks.related(task.id).tasks))) throw destinationGone(task.id, asked.id);
   new TaskTransition().appendRecord(tx, task.id, { id: input.opId, kind: 'answered', at: now(), title: null,
     description: null, actor: input.actor, fromState: null, toState: null, questionId: input.questionId,
+    answerParts: answerParts(asked.decide!, input.actor.kind === 'human' ? input.body : userWords, input.body),
     operationFingerprint: fingerprint }, input.body);
   notify(tx, tasks.projectFor(task.id), 'answer', task.id, input.opId);
 }
@@ -153,4 +158,12 @@ export function expireInvalidDestinations(tx: ControlTx, taskIds: readonly strin
       notify(tx, tasks.projectFor(id), 'answer', id, opId);
     }
   }
+}
+
+/**
+ * An answer's items as read when it came, from the person's own words where there are some (a person answering, or the
+ * screen's answer to this question alone that a coordinator passes on), else from the words sent as the answer.
+ */
+function answerParts(decide: readonly FieldItem[], userWords: string | null, body: string): AnswerParts {
+  return { source: userWords === null ? 'relay' : 'user', ...readAnswerParts(decide, userWords ?? body) };
 }

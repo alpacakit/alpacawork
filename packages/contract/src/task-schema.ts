@@ -7,6 +7,7 @@
  */
 import { z } from 'zod';
 import type { FieldItem, FieldValue, TaskValues } from '@alpacawork/raw';
+import type { AnswerPart } from './questions.js';
 
 export const FIELD_TYPES = ['text', 'schema'] as const;
 export type FieldType = (typeof FIELD_TYPES)[number];
@@ -47,7 +48,7 @@ export type FieldDef = z.infer<typeof fieldDefSchema>;
 /** The fields the app reads by ID: always in every schema, never deleted, their IDs and types fixed. */
 export const SYSTEM_FIELDS = ['decide', 'user_instructions', 'conclusion', 'notes'] as const;
 /** The question's parts: they live inside the question (decide), never on their own in a schema. */
-const QUESTION_PARTS = ['decide_question', 'decide_choices', 'decide_choice', 'decide_choice_detail', 'decide_choice_recommended',
+const QUESTION_PARTS = ['decide_question', 'decide_kind', 'decide_choices', 'decide_choice', 'decide_choice_detail', 'decide_choice_recommended',
   'decide_note', 'decide_stop'];
 export const isSystemField = (id: string) => (SYSTEM_FIELDS as readonly string[]).includes(id);
 /**
@@ -88,9 +89,10 @@ export const DEFAULT_FIELDS: readonly FieldDef[] = [
   text('artifact', 'Deliverables', 100, 'One per deliverable: `[name](location) — what it is, revision`. The location is a relative path inside the task folder, an absolute path for code, otherwise a URL or a branch and commit. Put the description of the contents in the linked file. Attach a diff as `![diff](changes.patch)` only when the user decides by reading the wording itself.', 8),
   text('pr', 'PR (MR)', 100, 'Only when a PR (MR) was opened: one URL per PR.', 15),
   { id: 'decide', title: 'Questions', type: 'schema', many: true, required: false, maxChars: null, maxItems: 7,
-    members: ['decide_question', 'decide_choices', 'decide_note', 'decide_stop'],
+    members: ['decide_question', 'decide_choices', 'decide_note', 'decide_stop', 'decide_kind'],
     hint: 'Write only when something needs deciding. One question at a time: what to decide, the choices (name and description) and a note. Numbers follow the order. The first word of a choice’s name (up to its first space) becomes its answer button and answer word; do not repeat it within a question, and do not start a name with `stop` or `other`, which the app keeps. The answer arrives as `<number>-<first word of the name>` with any words added; `<number>-other` says none of the choices, with what to do instead. Clear it with null once answered.' },
   text('decide_question', 'What to decide', 60, 'One sentence on what to choose. Background goes in the note.'),
+  text('decide_kind', 'Question kind', 6, '`accept` when it asks whether to take a result this task made as it is (merge it, adopt it); `choose` for every other decision (options, permission to publish or deploy, a question without choices). Required when asking.'),
   { id: 'decide_choices', title: 'Choices', type: 'schema', many: true, required: false, maxChars: null, maxItems: 3,
     members: ['decide_choice', 'decide_choice_detail', 'decide_choice_recommended'], hint: '' },
   text('decide_choice', 'Name', 20),
@@ -215,6 +217,12 @@ export const choiceWord = (name: string) => name.trim().split(/\s+/)[0]!;
  * none of its choices. They identify an answer whatever language the screen shows the two under.
  */
 export const STOP_WORD = 'stop', OTHER_WORD = 'other';
+/**
+ * What a question asks (`decide_kind`), said by whoever asks it: `accept`, whether to take a result the asking task made
+ * as it is (merge it, adopt it); `choose`, every other decision. Counting how often a result is taken as first made rests on it.
+ */
+export const QUESTION_KINDS = ['accept', 'choose'] as const;
+export type QuestionKind = typeof QUESTION_KINDS[number];
 const KEPT_WORDS: Readonly<Record<string, string>> = {
   [STOP_WORD]: 'write the option to stop the task in decide_stop, not as a choice',
   [OTHER_WORD]: 'answering with none of the choices is always offered',
@@ -246,6 +254,7 @@ function valueShape(def: FieldDef, catalog: FieldCatalog): z.ZodType {
       const member = fieldOf(catalog, id), shape = valueShape(member, catalog);
       return [id, described(member, index === 0 ? (shape as z.ZodString).regex(/\S/, 'Required') : shape.optional())];
     }))).strict();
+  if (def.id === 'decide_kind') return z.enum(QUESTION_KINDS);
   if (!def.many) return one;
   const list = z.array(one).max(hardLimit(def.maxItems!), over(def.maxItems!, 'items'));
   return def.id === 'decide_choices' ? list.superRefine(checkChoices) : list;
@@ -403,3 +412,49 @@ export const fieldDeleteResultSchema = z.object({ field: fieldIdSchema, values: 
  */
 export const taskValuesViewSchema = z.object({ values: z.record(fieldIdSchema, z.unknown()), fields: z.array(fieldIdSchema),
   from: z.string().nullable(), context: z.string() }).strict();
+
+/**
+ * The one reading of an answer's words against the question as it was asked (its `decide` items). Items are named by
+ * `<n>-<word>` labels that lead a line (after a task mark `T3（…）` or `T3` there, as the screen writes it), one after
+ * another; the first words after them end the labels of that line. Its word is the first word of one of its choices
+ * (as written, or without its closing punctuation), `other` or `stop`. A label naming no choice, and an item no label
+ * names, are `unmatched`; an item's `words` says whether words follow its labels' line, or the lines after it until the
+ * next labels. Labels inside the words (a quote, a mention) are words.
+ */
+export function readAnswerParts(decide: readonly FieldItem[], text: string): { items: AnswerPart[]; words: boolean } {
+  const labels = new Map<number, { word: string; words: boolean }>();
+  let last: { word: string; words: boolean } | null = null, rest = false;
+  for (const line of text.split(/\r?\n/)) {
+    let at = line.replace(/^\s*(?:T\d+(?:（[^\n]*?）)?\s+)?/, '');
+    const named: { word: string; words: boolean }[] = [];
+    for (let found = /^([1-9]\d{0,2})-(\S+)(?:\s+|$)/.exec(at); found; found = /^([1-9]\d{0,2})-(\S+)(?:\s+|$)/.exec(at)) {
+      at = at.slice(found[0].length);
+      const label = labels.get(Number(found[1])) ?? { word: found[2]!, words: false };
+      labels.set(Number(found[1]), label); named.push(label);
+    }
+    const said = /\S/.test(at);
+    if (named.length) last = named.at(-1)!;
+    if (said && last) last.words = true;
+    if (said) rest = true;
+  }
+  const word = (choices: FieldItem[], said: string) => {
+    const index = choices.findIndex(each => choiceWord(String(each.decide_choice ?? '')) === said);
+    if (index !== -1) return index;
+    const bare = said.replace(/[。．.、,，!！?？)）]+$/, '');
+    return bare === said ? -1 : choices.findIndex(each => choiceWord(String(each.decide_choice ?? '')) === bare);
+  };
+  const items = decide.map((item, index): AnswerPart => {
+    const n = index + 1, label = labels.get(n);
+    if (label === undefined) return { n, kind: 'unmatched', words: false };
+    const said = label.word.replace(/[。．.、,，!！?？)）]+$/, '').toLowerCase(), words = label.words;
+    const choices = Array.isArray(item.decide_choices) ? item.decide_choices as FieldItem[] : [];
+    // A choice's own word (`stop!` is a choice's) comes before the words the app keeps.
+    const exact = choices.findIndex(each => choiceWord(String(each.decide_choice ?? '')) === label.word);
+    if (exact === -1 && said === OTHER_WORD) return { n, kind: 'other', words };
+    if (exact === -1 && said === STOP_WORD) return { n, kind: 'stop', words };
+    const choice = exact !== -1 ? exact : word(choices, label.word);
+    return choice === -1 ? { n, kind: 'unmatched', words }
+      : { n, kind: 'choice', choice: choice + 1, recommended: !!String(choices[choice]!.decide_choice_recommended ?? '').trim(), words };
+  });
+  return { items, words: rest };
+}

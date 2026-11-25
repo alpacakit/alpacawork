@@ -10,7 +10,7 @@ const fields = (id: string, second: number, more: Record<string, unknown>) => ({
 const entry = (id: string, second: number, more: Record<string, unknown>) => taskLogSchema.parse(fields(id, second, more));
 const valid = (more: Record<string, unknown>) => taskLogSchema.safeParse(fields('L1', 1, more)).success;
 const asked = (id: string, second: number, askedTo: string | null = null) =>
-  entry(id, second, { kind: 'asked', title: 'Which layout?', description: 'Pick one of two layouts', askedTo, decide: [{ decide_question: 'Which layout?' }] });
+  entry(id, second, { kind: 'asked', title: 'Which layout?', description: 'Pick one of two layouts', askedTo, decide: [{ decide_kind: 'choose', decide_question: 'Which layout?' }] });
 const answered = (id: string, second: number, questionId: string) =>
   entry(id, second, { kind: 'answered', actor: { kind: 'human' }, questionId });
 const withdrawn = (id: string, second: number, questionId: string) =>
@@ -55,7 +55,7 @@ test('open questions are read now or at a past moment', () => {
 });
 
 test('a question log keeps the state, comes from a placement, carries a summary and fixes its destination and what it asks', () => {
-  const question = { kind: 'asked', description: 'Pick one', askedTo: null, decide: [{ decide_question: 'Which layout?' }] };
+  const question = { kind: 'asked', description: 'Pick one', askedTo: null, decide: [{ decide_kind: 'choose', decide_question: 'Which layout?' }] };
   assert.equal(valid(question), true);
   assert.equal(valid({ ...question, askedTo: 'T2', runId: 'R1' }), true);
   assert.equal(valid({ ...question, askedTo: undefined }), false, 'askedTo is required');
@@ -88,7 +88,7 @@ test('an urgent reason belongs to a placement comment or done report', () => {
   assert.equal(valid({ kind: 'reported', fromState: 'doing', toState: 'waiting', urgentReason: 'Deadline moved' }), false);
   assert.equal(valid({ kind: 'reported', actor: { kind: 'human' }, urgentReason: 'Deadline moved' }), false);
   assert.equal(valid({ kind: 'reported', urgentReason: '' }), false);
-  assert.equal(valid({ kind: 'asked', description: 'Pick one', askedTo: null, decide: [{ decide_question: 'Which layout?' }], urgentReason: 'Now' }), false);
+  assert.equal(valid({ kind: 'asked', description: 'Pick one', askedTo: null, decide: [{ decide_kind: 'choose', decide_question: 'Which layout?' }], urgentReason: 'Now' }), false);
 });
 
 test('a removed log kind or field is refused, not read', () => {

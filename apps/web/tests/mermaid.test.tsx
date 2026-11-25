@@ -110,7 +110,7 @@ test("URL identity validation accepts diagrams and unchanged file ids, rejecting
 });
 
 test("a question choice's description reaches the common renderer as written, language fence and all", () => {
-  const choiceOf = (detail: string) => decideOf([{ decide_question: "Which plan?", decide_choices: [{ decide_choice: "Plan", decide_choice_detail: detail }] }])[0]!.choices[0]!;
+  const choiceOf = (detail: string) => decideOf([{ decide_kind: 'choose', decide_question: "Which plan?", decide_choices: [{ decide_choice: "Plan", decide_choice_detail: detail }] }])[0]!.choices[0]!;
   expect(markdownMedia(choiceOf(diagram.trim()).text)).toEqual([{ kind: "diagram", occurrence: 0, source }]);
   expect(choiceOf("```\nA -> B\n```").text).toBe("```\nA -> B\n```");
 });

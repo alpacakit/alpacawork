@@ -21,3 +21,5 @@ export const questionSchema = z.object({
   /** What it asks, fixed when asked: the asking Task's `decide` items (task-schema DEFAULT_FIELDS). */
   decide: z.array(z.record(z.string(), z.unknown())).min(1),
 }).strict();
+
+export { answerPartSchema, answerPartsSchema, type AnswerPart, type AnswerParts } from '@alpacawork/raw/task-log-schema';

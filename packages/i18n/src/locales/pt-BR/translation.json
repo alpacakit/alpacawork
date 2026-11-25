@@ -364,6 +364,7 @@
       "question_destination_invalid": "Enderece a pergunta a uma tarefa ancestral ativa do mesmo projeto ou a user",
       "question_does_not_exist": "Pergunta não encontrada",
       "question_does_not_exist_on_task": "A pergunta especificada não está nesta tarefa",
+      "question_kind_missing": "A pergunta {{n}} do campo “Perguntas” (decide) da tarefa não tem tipo. Escreva accept ou choose em decide_kind antes de enviar",
       "question_requires_ask_to": "Uma pergunta exige --ask-to <Task ID>|user",
       "recovery_continuation_credential_mismatch": "A credencial de continuação da recuperação não corresponde à execução aceita",
       "referenced_run_does_not_exist": "Execução referenciada não encontrada",

@@ -235,7 +235,7 @@ test("a progress report's line stays in the working colour, and the list does no
 
 test('an old projected user question waits for History to reach its position, then scrolls once from the existing pick', async () => {
   const question = { id: 'Lold-question', taskId: 'T1', taskTitle: 'Task one', destination: { kind: 'user' as const }, applicable: true, state: 'open' as const,
-    title: 'Old question', summary: 'Choose', decide: [{ decide_question: 'Choose', decide_choices: [{ decide_choice: 'A', decide_choice_detail: 'Proceed' }] }], askedAt: '2026-10-01T10:00:00Z' };
+    title: 'Old question', summary: 'Choose', decide: [{ decide_kind: 'choose', decide_question: 'Choose', decide_choices: [{ decide_choice: 'A', decide_choice_detail: 'Proceed' }] }], askedAt: '2026-10-01T10:00:00Z' };
   const data = screenData(tree({ tasks: [dto()], userQuestions: { T1: [question] }, history: { T1: historyFixture([
     { id: 'Llatest', kind: 'comment', at: '2026-10-10T10:00:00Z', title: 'New report' }]) } }));
   const queryKey = resources.history(data.info.root, 'T1').queryKey;

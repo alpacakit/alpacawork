@@ -107,7 +107,7 @@ export async function until<T>(check: () => T | Promise<T>, message: string): Pr
 export async function askUser(root: string, project: string, profile: string) {
   const tasks = new ControlTaskStore(root);
   const task = (await new ControlTaskCommands(root, person).create({ parentId: project, userRequested: true,
-    tasks: [{ title: 'Question', values: { decide: [{ decide_question: 'Choose an option' }] } }] })).tasks[0];
+    tasks: [{ title: 'Question', values: { decide: [{ decide_kind: 'choose', decide_question: 'Choose an option' }] } }] })).tasks[0];
   const owner = await assignResponsible(root, task, profile);
   const { outcome: { request } } = await new TaskRequestService(root).request({ task: task.id, body: 'Work',
     opId: randomUUID(), expectedTaskHash: (await tasks.get(task.id)).hash, expectedPlacementRevision: owner.revision },

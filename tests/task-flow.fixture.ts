@@ -20,7 +20,7 @@ import { TaskRequestService } from '@alpacawork/backend/test-dist/control/task-r
 const human = { kind: 'human' } as const;
 /** A body whose decide section a question asks: a question's full text is there. */
 /** Values with one question, so the Task can ask. */
-export const DECIDE = { decide: [{ decide_question: 'Which way?' }] };
+export const DECIDE = { decide: [{ decide_kind: 'choose', decide_question: 'Which way?' }] };
 /** A Task's responsible, by its placement. */
 export type Responsible = { id: string; placementId: string };
 /** A Run of a Task's responsible: what it reports and asks as. */

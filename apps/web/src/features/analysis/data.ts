@@ -4,7 +4,7 @@ import { commandRoute } from "@alpacawork/contract/command-path";
 import { api, resources } from "@/data/resources";
 import { useWorkspaceInfo } from "@/data/queries";
 import { breakdownViewSchema, tasksViewSchema, unitListSchema, unitValuesSchema, usageViewSchema, type Bucket, type Group, type UnitList } from "./contract";
-import { spanQuery, type ListPlace, type Span } from "./place";
+import { cardDays, spanQuery, type CardSpan, type ListPlace, type Span } from "./place";
 
 /**
  * The analysis reads its numbers from the same commands an AI reads them with (`alpacawork analysis …`), by their GET
@@ -31,6 +31,17 @@ export function useTasksView(project: string | null, span: Span, bucket: Bucket,
 export function useUsageView(project: string | null, span: Span, bucket: Bucket, by: Group | null, enabled = true) {
   const root = useWorkspaceInfo(info => info.root);
   return useQuery({ ...resources.analysisView(root, "usage", { ...scope(project, span), bucket, by }, usageViewSchema), enabled });
+}
+
+/** The card starts these reads as soon as it opens, while its drawing code is still loading. */
+export function useCardReads(project: string | null, span: Span, card: CardSpan, bucket: Bucket) {
+  const face = answerOf(useTasksView(project, span, bucket, null));
+  // An all-time card ending in the past needs the record's first day. For a named period or a fixed-length card,
+  // both reads can start without it. Reuse the face's answer when the query is the same.
+  const days = cardDays(card, face?.current ? face.data.head.firstDay : null);
+  const tasks = useTasksView(project, days ?? span, bucket, null, days !== null);
+  const usage = useUsageView(project, days ?? span, bucket, "model", days !== null);
+  return { face, tasks, usage };
 }
 
 /**

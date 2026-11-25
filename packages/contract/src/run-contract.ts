@@ -13,7 +13,7 @@ export const runNumber = (id: RunId): number => Number(id.slice(1));
 export const compareRunIds = (a: { id: RunId }, b: { id: RunId }): number => runNumber(a.id) - runNumber(b.id);
 /** Raw logs and temporary launch files belonging to one Run. */
 export const RUN_FILES = {
-  promptTemp: 'prompt.tmp', resultTemp: 'result.tmp', stdout: 'stdout.log', stderr: 'stderr.log', activity: 'activity.json', recentWork: 'recent-work.json', tally: 'tally.json', managerLog: 'manager.log', managerLock: 'manager.lock',
+  promptTemp: 'prompt.tmp', resultTemp: 'result.tmp', stdout: 'stdout.log', stderr: 'stderr.log', activity: 'activity.json', steps: 'steps.jsonl', conditions: 'conditions.json', recentWork: 'recent-work.json', tally: 'tally.json', managerLog: 'manager.log', managerLock: 'manager.lock',
 } as const;
 export const RUN_RESULT_LIMIT = 1024 * 1024;
 /** What became of a Run's final reply: `pending` until it ends, `present` with the text, otherwise why there is none. */
@@ -27,6 +27,8 @@ export { runStepSchema, runStepsSchema, runStepKindSchema, RUN_STEP_LIMIT, RUN_S
   RUN_TOOL_NAME_LIMIT, RUN_NOTE_LIMIT, type RunStep, type RunStepKind, type RunStepLine } from './work-contract.js';
 export { runStepsPageSchema, runStepEntrySchema, runStepDetailSchema, runStepTextSchema, RUN_STEPS_PAGE_LIMIT,
   RUN_STEP_FULL_TEXT_LIMIT, type RunStepsPage, type RunStepEntry, type RunStepDetail, type RunStepText } from './work-contract.js';
+export { stepJournalEntrySchema, stepTimeSourceSchema, stepFingerprintSchema, stepOutputSchema,
+  type StepJournalEntry, type StepTimeSource, type StepFingerprint, type StepOutput } from './work-contract.js';
 export { clipRunText, previewRunLine, previewToolInput, toolInputText, toolInputDocument, toolInputParts, inputDocument, fullRunText, toolResultText, toolArgumentText, type InputParts } from './work-preview.js';
 import { runWorkSchema, runStepsSchema, RUN_NOTE_LIMIT, RUN_TOOL_NAME_LIMIT } from './work-contract.js';
 export const runActivitySchema = z.object({
@@ -286,3 +288,31 @@ export const stopResponseSchema = z.object({
   cancelled: z.array(runIdSchema),
   stop_requested: z.array(runIdSchema),
 });
+
+/**
+ * What a Run ran under, beyond its launch (`launch` in its record: the agent, its command and the chosen model and
+ * effort), observed once by its manager just before the agent started: alpacawork's version and the release it ran
+ * from, the commit checked out where the agent worked, and each skill the agent could read (its personal skills folder,
+ * and the work folder's own `.claude/skills` and `.agents/skills`) with a digest of its files, and the person's own
+ * instruction files. Which skills it opened is in its steps (run steps). Two Runs whose conditions differ ran under a
+ * change (a skill or an instruction file updated, alpacawork replaced).
+ */
+export const runConditionsSchema = z.object({
+  v: z.literal(1), observedAt: z.iso.datetime({ offset: true }),
+  version: z.string().min(1), release: z.string().nullable(), source: z.string().nullable(),
+  cwd: z.object({ path: z.string(), commit: z.string().regex(/^[0-9a-f]{40,64}$/).nullable() }).strict(),
+  skills: z.array(z.object({ scope: z.enum(['personal', 'project']), folder: z.string(), items: z.array(z.object({ name: z.string().min(1),
+    digest: z.string().regex(/^[0-9a-f]{16}$/).nullable() }).strict()) }).strict()),
+  /** The person's own instruction files the agent read at its start (CLAUDE.md, AGENTS.md under HOME), with a digest of each. */
+  instructions: z.array(z.object({ path: z.string(), digest: z.string().regex(/^[0-9a-f]{16}$/) }).strict()),
+}).strict();
+export type RunConditions = z.infer<typeof runConditionsSchema>;
+/**
+ * run conditions: how Run `run` was launched (its record's `launch`: the agent and the chosen model and effort, null
+ * where none was chosen) and what it ran under (null for a Run from before conditions were kept). Comparing Runs to
+ * find what changed between them belongs to the analysis.
+ */
+export const runConditionsViewSchema = z.object({ run: runIdSchema,
+  launch: z.object({ agent: z.string(), model: z.string().nullable(), effort: z.string().nullable() }).strict(),
+  conditions: runConditionsSchema.nullable() }).strict();
+export type RunConditionsView = z.infer<typeof runConditionsViewSchema>;

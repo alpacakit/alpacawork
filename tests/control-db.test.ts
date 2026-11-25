@@ -599,8 +599,8 @@ test('the question structure migration moves each old question\'s title and fixe
     db.exec(sql(QUESTION_STRUCTURE));
     const after = entries();
     // An old question keeps all of its words as one item: its title as what to decide, its whole fixed text as the note.
-    assert.deepEqual(after.Lasked, { ...before.Lasked, decide: [{ decide_question: 'Colour', decide_note: fixed }] });
-    assert.deepEqual(after.Lbare, { ...before.Lbare, decide: [{ decide_question: '', decide_note: '' }] });
+    assert.deepEqual(after.Lasked, { ...before.Lasked, decide: [{ decide_kind: 'choose', decide_question: 'Colour', decide_note: fixed }] });
+    assert.deepEqual(after.Lbare, { ...before.Lbare, decide: [{ decide_kind: 'choose', decide_question: '', decide_note: '' }] });
     // No other record changes, and the question's text leaves while the answer's stays.
     assert.deepEqual([after.Lcreated, after.Lanswered], [before.Lcreated, before.Lanswered]);
     assert.deepEqual(db.prepare('SELECT log_id, text FROM log_texts').all().map(row => ({ ...row })), [{ log_id: 'Lanswered', text: '1-Blue' }]);

@@ -57,7 +57,7 @@ describe('Task notices', () => {
   test('the user\'s ball is the notice: its kind from one table of reasons, its key the ball\'s', () => {
     const waiting = task('T2', 'waiting', [record('L1', '2026-10-13T00:00:00Z', 'todo'), record('L2', at, 'waiting', 'Please review'),
       { ...record('LQ', at, null, 'Which one?'), kind: 'asked', actor: { kind: 'placement', placementId: 'P1' },
-        description: 'Pick one', askedTo: null, decide: [{ decide_question: 'Which one?' }] }]);
+        description: 'Pick one', askedTo: null, decide: [{ decide_kind: 'choose', decide_question: 'Which one?' }] }]);
     const cases: [UserBall, string][] = [[userBall('review', 'L2', at), 'Please review: Please review'], [userBall('question', 'LQ', at), 'Please answer: Which one?'],
       [userBall('limit', 'limit:RET1', at), 'Stopped at the wake limit. Decide whether to continue'],
       [userBall('unconfirmed', 'uncertain:RET2', at), 'A request may not have arrived. Please check'],

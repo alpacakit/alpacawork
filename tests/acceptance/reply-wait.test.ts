@@ -106,7 +106,7 @@ test('CLI/HTTP: resumption and doing close the original wait while fixed questio
   assert.equal((await h.get(task.id)).questions.find(q0 => q0.id === q)?.state, 'withdrawn');
   await call(h.server.url, ['task', 'update', '--task', task.id, '--values-file', '-',
     '--expected-task-hash', (await h.get(task.id)).task.hash], {},
-    JSON.stringify({ decide: [{ decide_question: 'A newer question', decide_note: 'New evidence' }] }));
+    JSON.stringify({ decide: [{ decide_kind: 'choose', decide_question: 'A newer question', decide_note: 'New evidence' }] }));
   const fixed = await call(h.server.url, ['task', 'get', '--task', task.id, '--question', q]);
   assert.equal(fixed.question.text, original.question.text);
   const newer = await h.ask(owner, 'user');

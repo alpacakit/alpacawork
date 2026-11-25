@@ -7,6 +7,7 @@ import { dependencyStatus } from './dependencies.js';
 import { ProjectShelf } from './project-shelf.js';
 import { questionSnapshot } from './question-rules.js';
 import { questionView, incomingQuestions, relevantAnswers, decisionsMade } from './question-views.js';
+import { instructionKinds } from './instruction-labels.js';
 /**
  * The only read views of `task get` and `task list`. The CLI and the start text
  * both use them, so an agent can fetch exactly what it was given, in one shape.
@@ -208,9 +209,24 @@ function questionDetail(source: ControlSource, task: SourceTask, questionId: str
   };
   const answer = question.closing?.kind === 'answered' ? fixed(question.closing.id) : null;
   const snapshot = source.questions;
-  return { ...questionView(snapshot.get(task.id)!, question, snapshot), text: questionText(question.asked.decide),
+  return { ...questionView(snapshot.get(task.id)!, question, snapshot), ...questionRecords(task.log, question),
+    text: questionText(question.asked.decide),
     ...(answer === null ? {} : { answer, answerId: question.closing!.id, answeredAt: question.closing!.at }) };
 }
+
+/**
+ * What a question's records say for analysis, on every question task get lists and on its full read: what each item
+ * asks (`decideKinds`, decide_kind; null where the asker did not say), how an answer read item by item (`answerParts`),
+ * and the instruction whose arrival withdrew it in place of an answer (`replacedBy`).
+ */
+function questionRecords(log: readonly TaskLog[], { asked, closing }: ReturnType<typeof questionsOf>[number]) {
+  return { decideKinds: asked.decide!.map(item => typeof item.decide_kind === 'string' ? item.decide_kind : null),
+    ...(closing?.kind === 'answered' ? { answerParts: closing.answerParts ?? null } : {}),
+    ...(closing?.kind === 'question_withdrawn' ? { replacedBy: replacing(log, closing.originCauseId) } : {}) };
+}
+/** The instruction whose arrival withdrew a question (its cause, when that is an instruction of the Task); null otherwise. */
+const replacing = (log: readonly TaskLog[], cause: string | undefined): string | null =>
+  cause !== undefined && log.some(entry => entry.id === cause && (entry.kind === 'request_accepted' || entry.kind === 'review_sent_back')) ? cause : null;
 
 export function taskView(source: ControlSource, id: string, options: TaskViewOptions = {}) {
   const task = source.tasks.find(item => item.id === id);
@@ -242,7 +258,7 @@ export function taskView(source: ControlSource, id: string, options: TaskViewOpt
   });
   const questions = questionsOf(task.log)
     .filter(question => include.has('closedQuestions') || question.closing === null)
-    .map(question => questionView(questionTasks.get(task.id)!, question, questionTasks));
+    .map(question => ({ ...questionView(questionTasks.get(task.id)!, question, questionTasks), ...questionRecords(task.log, question) }));
   return {
     shelf,
     task: { ...(task.kind === 'project' ? { settings: task.settings } : {}), id: task.id, kind: task.kind, projectId: source.tree.owningProject(task.id), parentId: task.parentId,
@@ -262,6 +278,7 @@ export function taskView(source: ControlSource, id: string, options: TaskViewOpt
     ...(options.question === undefined ? {} : { question: questionDetail(source, task, options.question) }),
     agents,
     ...(include.has('openObligations') ? { openObligations: source.openObligations(task.id) } : {}),
+    ...(include.has('instructionKinds') ? { instructionKinds: instructionKinds(task.log) } : {}),
     ...(usage ? { usage } : {}),
     ...(wantsEstimates ? { estimateExamples: estimateCondition
       ? (source.estimates?.(estimateCondition) ?? estimateExamples(source, estimateCondition)) : null } : {}),

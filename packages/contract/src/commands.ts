@@ -13,7 +13,7 @@ import { commandPath, commandPrefix } from './command-path.js';
 import { errorEntrySchema, problemReasonSchema } from './problem.js';
 import { personalSettingsResponseSchema } from './personal-settings.js';
 import { RESOLUTION_REASONS, RETURN_OUTCOMES } from './return-outcomes.js';
-import { agentNameSchema, runReasonSchema, runRoleSchema, runStateSchema, stopResponseSchema } from './run-contract.js';
+import { agentNameSchema, runReasonSchema, runRoleSchema, runStateSchema, stopResponseSchema, runStepsPageSchema, runStepDetailSchema, runConditionsViewSchema } from './run-contract.js';
 import { beforeRestoreOperationSchema, unknownAfterRestoreOperationSchema } from './recovery.js';
 import { attachmentResultSchema, placementSchema, startOrderSchema, taskLifecycleSchema, projectShelfInfoSchema, projectShelfSchema, taskPlanResultSchema, taskWriteResultSchema, taskReportResultSchema,
   taskRequestResultSchema, taskPlacementResultSchema, taskGetRunSchema, controlRunFilesSchema, workspaceUrlSchema } from './control-contract.js';
@@ -22,12 +22,13 @@ import { z } from 'zod';
 import { coordinatorReplyGetInput } from './coordinator-contract.js';
 import { fieldGetResultSchema, fieldListResultSchema, fieldSetResultSchema, fieldDeleteResultSchema, PROJECT_SCHEMA, PROJECT_SUMMARY } from './task-schema.js';
 import { ESTIMATE_MINUTES, MAX_CONTROL_BODY, MAX_DETAIL_LENGTH, MAX_INSTRUCTION_BYTES } from '@alpacawork/raw/values';
+import { FIX_KIND_MEANINGS, INSTRUCTION_KINDS } from '@alpacawork/raw/task-log-schema';
 import { digestSchema, REPORT_TITLE_GUIDE_WIDTH, REPORT_TITLE_MAX_WIDTH, reportStateSchema, runIdSchema, taskIdSchema,
   taskKindSchema, taskStateSchema } from './fields.js';
 import {
   dependencySetInput, dependencyClearInput, taskReturnsInput, taskListInput, taskGetInput, taskCreateInput, taskUpdateInput, taskReportInput,
   taskRequestInput, taskCommentInput, taskMoveInput, taskLifecycleInput, agentAssignInput,
-  agentHandoverInput, agentReleaseInput, runGetInput, runListInput, runStopInput,
+  agentHandoverInput, agentReleaseInput, runGetInput, runListInput, runStepsInput, runConditionsInput, runStopInput,
   fieldSetInput, configSetShape, emptyInput, personSettingsSetShape, fieldGetInput, fieldDeleteInput, fieldUseInput,
   fieldUseRules, taskGetIncludes, type InputRule,
   ruleHelp, taskListRules, taskCreateRules, taskUpdateRules, taskReportRules, taskRequestRules, agentAssignRules,
@@ -348,6 +349,9 @@ const definitions = {
     json('aiStack', 'AI rows to use before the server stack, as JSON: [{"agent":"claude","values":{"model":"opus"}},"stop"]'),
     quote, sourceRequest, expectedTaskHash, placementRevision,
     text('expectedHeadRun', 'The target placement\'s conversation head: agents[].headRunId in task get'),
+    text('instructionKind', `What the instruction is, kept for analysis: ${INSTRUCTION_KINDS.join(', ')} (fix: change what was made or ` +
+      'shown; addition: more work in the same task; new_request: work of its own). An answer goes with --answers instead'),
+    list('fixes', `For a fix, what was wrong with the result (one or more): ${Object.entries(FIX_KIND_MEANINGS).map(([kind, meaning]) => `${kind} (${meaning})`).join(', ')}`),
   ], { rules: taskRequestRules, output: taskRequestResultSchema, help: help(
     'A late answer becomes an ordinary instruction and names the original question in its outcome. Expired questions refuse answers.',
     'An ordinary instruction to the responsible closes the old question or review and resumes work. Member instructions leave the responsible’s work as it is.',
@@ -432,6 +436,18 @@ const definitions = {
       'by agent handover or agent assign --replace.') }),
   'run/get': command('read', 'Read a bounded run prompt or result with explicit file status', runGetInput,
     [text('run', 'Run ID'), text('kind', 'result (default) or prompt, the delivered start text')], { output: controlRunFilesSchema }),
+  'run/steps': command('read', 'Read a Run\'s steps (tool calls) in order: what each ran on one line, how it ended, when it started and ' +
+    'ended and where those times came from (reported: the agent\'s output said it; observed: the time the line was read, within about a second), a ' +
+    'fingerprint of what it ran (paths, IDs and numbers replaced) and the size of what came back', runStepsInput,
+    [text('run', 'Run ID'), number('from', 'First step number (from 0); without it, the latest steps'),
+      number('limit', 'Most steps to read (up to 200)'), number('step', 'One step\'s number: what it ran and got back, in full')],
+    { output: z.union([runStepsPageSchema, runStepDetailSchema]), help: help(
+      'A Run from before step times were kept, or an end not yet seen, has null times.') }),
+  'run/conditions': command('read', 'Read how a Run was launched (agent, model, effort) and what it ran under: alpacawork\'s version and ' +
+    'release, the commit where the agent worked, each skill it could read and the person\'s own instruction files, each with a digest',
+    runConditionsInput, [text('run', 'Run ID')],
+    { output: runConditionsViewSchema, help: help('A Run from before conditions were kept has null conditions. Two Runs whose digests differ ran under a change.',
+      'A project policy change is a body_updated record of the project (task get --task <project> --log <count>).') }),
   'run/list': command('read', 'List the unfinished Runs (queued, running, needs_review), whatever state their Task is in',
     runListInput, [
       text('under', 'Only the Runs of this Task and the Tasks below it'),

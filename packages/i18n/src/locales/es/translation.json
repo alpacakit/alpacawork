@@ -364,6 +364,7 @@
       "question_destination_invalid": "Dirige la pregunta a una tarea superior activa del mismo proyecto, o a user",
       "question_does_not_exist": "No se encontró la pregunta",
       "question_does_not_exist_on_task": "La pregunta indicada no está en esta tarea",
+      "question_kind_missing": "La pregunta {{n}} del valor “Preguntas” (decide) de la tarea no tiene tipo. Escribe accept o choose en decide_kind antes de enviar",
       "question_requires_ask_to": "Una pregunta requiere --ask-to <Task ID>|user",
       "recovery_continuation_credential_mismatch": "La credencial de continuación de la recuperación no coincide con la ejecución aceptada",
       "referenced_run_does_not_exist": "No se encontró la ejecución a la que se hace referencia",

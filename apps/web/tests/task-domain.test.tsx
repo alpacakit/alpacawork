@@ -129,11 +129,11 @@ test("a state's look takes the question icon and your turn's colour from the bal
 
 test("a question's choices are its fixed items as written: numbered in order, answered by the first word of the name, with the recommendation, the note and what stopping means", () => {
   const decide = decideOf([
-    { decide_question: "Presentation", decide_choices: [
+    { decide_kind: 'choose', decide_question: "Presentation", decide_choices: [
       { decide_choice: "Option1 Keep", decide_choice_detail: "Description", decide_choice_recommended: "Reason" },
       { decide_choice: "Option2 Finish → Done" }],
     decide_note: "Shared conditions\nFinal guidance", decide_stop: "Nothing is kept" },
-    { decide_question: "Anything else" }]);
+    { decide_kind: 'choose', decide_question: "Anything else" }]);
   expect(decide).toEqual([
     { n: "1", ask: "Presentation", stop: "Nothing is kept", note: "Shared conditions\nFinal guidance", choices: [
       { name: "Option1 Keep", answer: "1-Option1", text: "Description", recommended: "Reason" },
@@ -144,8 +144,8 @@ test("a question's choices are its fixed items as written: numbered in order, an
 
 test("a question offers its choices, Stop only when it says what stopping means, and always Other, each answered by the app's own word", () => {
   const [first, second] = decideOf([
-    { decide_question: "Presentation", decide_choices: [{ decide_choice: "Option1 Keep" }], decide_stop: "Nothing is kept" },
-    { decide_question: "Anything else" }]);
+    { decide_kind: 'choose', decide_question: "Presentation", decide_choices: [{ decide_choice: "Option1 Keep" }], decide_stop: "Nothing is kept" },
+    { decide_kind: 'choose', decide_question: "Anything else" }]);
   const names = { stop: "中止", other: "それ以外" };
   const offered = offeredChoices(first!, names);
   // The screen's names are the reader's language; the answers are the same in every language.

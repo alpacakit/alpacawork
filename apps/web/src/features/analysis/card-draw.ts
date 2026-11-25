@@ -1,11 +1,11 @@
 import type { CardInput, Figure } from "./card";
+import { CARD_H, CARD_W } from "./card-size";
 
 /**
  * The card's drawing: a pure function from what the card says (`CardInput`) and how it looks (`CardLook`) to plain
  * SVG, so the picture on the page is the picture that is saved, and it needs nothing from the page (its colours sRGB,
  * its mark inline).
  */
-export const CARD_W = 1200, CARD_H = 675;
 const PAD = 64;
 /** The baselines: the head line, the lead number, and the rule under it. */
 const HEAD_Y = 94, HERO_Y = 410, RULE_Y = 462;
