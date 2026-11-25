@@ -90,6 +90,12 @@
       "timeout": "Tempo esgotado",
       "unknown": "Motivo desconhecido"
     },
+    "facts": {
+      "heading": "Tempo desta tarefa",
+      "own": "Trabalho, sozinha",
+      "since": "Neste estado",
+      "subtree": "Trabalho, com subtarefas"
+    },
     "length": {
       "days_one": "{{count}}d",
       "days_many": "{{count}}d",
@@ -149,7 +155,6 @@
     "work": {
       "heading": "Tempo total de trabalho dos agentes",
       "hours": "{{hours}}h {{minutes}}min",
-      "label": "Tempo de execução",
       "minutes_one": "{{count}} min",
       "minutes_many": "{{count}} min",
       "minutes_other": "{{count}} min",

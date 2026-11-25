@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { RegionSkeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/data/client";
@@ -11,7 +11,9 @@ import type { UnitValues } from "./contract";
 const OUTCOME = { passed: "bg-done", reworked: "bg-reworked", stopped: "bg-stopped" } as const;
 
 /** One task: its time drawn as the list draws time (the AI at work, your turn, paused), what you sent as marks, then its values, only those that are not zero. */
-export function TaskAnalysis({ taskId, title = false }: { taskId: string; title?: boolean }) {
+export function TaskAnalysis({ taskId, title = false, work }: { taskId: string; title?: boolean;
+  /** The times the task's row says (how long agents worked, how long in its state), over the AI's use. */
+  work?: ReactNode }) {
   const { t } = useTranslation("analysis");
   const [root, setRoot] = useState<HTMLDivElement | null>(null);
   const query = useUnitValues(taskId);
@@ -21,9 +23,9 @@ export function TaskAnalysis({ taskId, title = false }: { taskId: string; title?
   const heading = (title || row && row.id !== taskId) && row && <h3 dir="auto" className="mb-1 text-heading font-semibold">
     {row.id !== taskId && <span className="me-2 text-muted">{row.id}</span>}{row.title}
   </h3>;
-  if (query.error instanceof ApiError && query.error.code === "not_found") return <>{heading}<p className="text-muted">{t("values.empty")}</p></>;
+  if (query.error instanceof ApiError && query.error.code === "not_found") return <>{heading}<p className="text-muted">{t("values.empty")}</p>{work}</>;
   if (!values || !row) return <>{heading}<ReadPart set={{ data: null, current: false, reads: [query] }}
-    skeleton={<RegionSkeleton shape="analysisTask" />}>{() => null}</ReadPart></>;
+    skeleton={<RegionSkeleton shape="analysisTask" />}>{() => null}</ReadPart>{work}</>;
   const you = values.time.review + values.time.answer;
   const lead = row.outcome && row.outcome !== "stopped" && row.finishedAt ? Date.parse(row.finishedAt) - Date.parse(row.requestedAt) : null;
   const usage = values.usage;
@@ -59,6 +61,7 @@ export function TaskAnalysis({ taskId, title = false }: { taskId: string; title?
       ...values.time.ai > 0 ? [{ color: "bg-working", name: t("time.ai"), value: duration(values.time.ai) }] : [],
       ...values.time.other >= 60_000 ? [{ color: "bg-rest", name: t("time.other"), value: duration(values.time.other) }] : [],
       ...facts]} />
+    {work}
     {used.length > 0 && <>
       <h4 className="mt-8 mb-3 text-xs font-normal text-soft">{t("values.usage")}</h4>
       <Facts items={used.map(([name, value]) => ({ name, value }))} />

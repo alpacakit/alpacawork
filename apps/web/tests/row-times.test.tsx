@@ -384,21 +384,22 @@ test.each([false, true])('stopped rows state the cause before progress and elaps
   }finally{phone.restore();}
 });
 
-test("the detail names the agents' run time under the title for a finished task, and says nothing before any Run", async () => {
+test("the task's Analysis tab says how long agents worked on it, with and without the tasks under it, and nothing before any Run", async () => {
   await i18n.changeLanguage("ja");
   try {
     const hour = 60 * minute;
     const tasks = [dto({ id: "T1", state: "done", userRequested: true }), dto({ id: "T2", state: "todo" })];
     const runs = [run("R1", { taskId: "T1", placementId: "P1", state: "succeeded", startedAt: iso(now - 3 * hour), endedAt: iso(now - hour) })];
-    render(<TestWorkspace data={served(tree({ tasks, runs, usage: { T1: { usage: { runs: 1, runMs: 2 * hour + 5 * minute, tokens: null, tokensUnknown: 1 }, usageBelow: null } } }))}>
+    const own = { runs: 1, runMs: 2 * hour + 5 * minute, tokens: null, tokensUnknown: 1 };
+    render(<TestWorkspace data={served(tree({ tasks, runs, usage: { T1: { usage: own, usageBelow: { ...own, runMs: 30 * minute } } } }))}>
       <Reader mode="docked" /></TestWorkspace>);
-    act(() => useViewStore.getState().openTask("T1", { reader: true }));
-    const time = await vi.waitFor(() => document.querySelector<HTMLElement>("[data-reader-work-time]")!);
-    expect(time.textContent).toBe("2時間05分");
-    expect(time.parentElement?.textContent).toBe("実行時間2時間05分");
-    expect(time.classList.contains("text-working")).toBe(false);
-    act(() => useViewStore.getState().openTask("T2", { reader: true }));
+    act(() => useViewStore.getState().openTask("T1", { reader: true, pane: "analysis" }));
+    const work = await vi.waitFor(() => document.querySelector<HTMLElement>("[data-task-work]")!);
+    expect(work.querySelector('[data-work-time="subtree"]')?.textContent).toBe("作業（配下込み）2時間35分");
+    expect(work.querySelector('[data-work-time="own"]')?.textContent).toBe("作業（単体）2時間05分");
+    expect(document.querySelector("[data-head-title] [data-task-work]")).toBeNull();
+    act(() => useViewStore.getState().openTask("T2", { reader: true, pane: "analysis" }));
     await vi.waitFor(() => expect(document.querySelector("[data-reader-title]")?.getAttribute("data-reader-title")).toBe("T2"));
-    expect(document.querySelector("[data-reader-times]")).toBeNull();
+    expect(document.querySelector("[data-task-work]")).toBeNull();
   } finally { await i18n.changeLanguage("en"); }
 });

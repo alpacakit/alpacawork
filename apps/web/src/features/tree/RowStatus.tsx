@@ -114,33 +114,32 @@ function WorkTime({ task, at }: { task: Task; at?: number | null }) {
 }
 
 /**
- * The reader's line under the title, the row's times named, since nothing around them says what they are: how long
- * agents have worked on the task and the tasks under it, whatever its state (while it runs, ticking in the working
- * colour, as on its row), and, as its row says when it does not run, how long it has been in its state. Each press says
- * what the row's does (the work time's two parts and its tokens). Beside them while it runs, the Runs running and the
- * expected report. A task no agent has worked on, in no state the row times, says nothing.
+ * The times the task's row says, in its Analysis tab: how long agents have worked on it, in its two parts (with the
+ * tasks under it, and its own), whatever its state, ticking in the working colour while Runs go; and, as its row says
+ * when it does not run, how long it has been in its state. Drawn as the tab's other values are, each its name over its
+ * value. A task no agent has worked on, in no state the row times, has none of it.
  */
-export function ReaderTimes({ task, people, className }: { task: Task; people: PeopleIndex; className?: string }) {
+export function TaskWorkFacts({ task, className }: { task: Task; className?: string }) {
   const { t } = useTranslation("tree");
   const offline = useOfflineShown();
   const receivedAt = useConnection((state) => offline ? state.lastReceivedAt : null);
   const work = useWorkTime(task, offline ? receivedAt ?? null : undefined);
   const since = useSince(task);
   if (!work.any && !since) return null;
-  const live = work.running && !work.still;
-  return <p data-reader-times className={cn("flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-xs", className)}>
-    {work.any && <span className="flex items-baseline gap-1.5">
-      <span className="text-muted">{t("status.work.label")}</span>
-      <TimeTip data={{ "data-reader-work-time": "" }} align="start" shown={workWords(work.subtree, t)} heading={t("status.work.heading")}
-        long={work.long} body={<WorkParts task={task} work={work} />} className={live ? "text-working" : work.still ? "text-muted" : "text-ink"} />
-    </span>}
-    {since && <span className="flex items-baseline gap-1.5">
-      <span className="text-muted">{t("status.tip.elapsed")}</span>
-      <TimeTip data={{ "data-reader-since": "" }} align="start" shown={since.shown} heading={t("status.tip.elapsed")} long={since.long} className="text-ink" />
-    </span>}
-    <RunningRuns task={task} />
-    <ReportTime task={task} people={people} />
-  </p>;
+  const tone = work.running && !work.still ? "text-working" : work.still ? "text-muted" : undefined;
+  const items = [
+    ...work.any ? work.parts.map(part => ({ key: part.key, name: t(`status.facts.${part.key}`), value: part.value, tone })) : [],
+    ...since ? [{ key: "since", name: t("status.facts.since"), value: since.shown, tone: undefined }] : [],
+  ];
+  return <section data-task-work className={className}>
+    <h4 className="mb-3 text-xs font-normal text-soft">{t("status.facts.heading")}</h4>
+    <dl className="grid grid-cols-4 gap-x-4 gap-y-4 narrow:grid-cols-3">
+      {items.map(item => <div key={item.key} data-work-time={item.key} className="min-w-0">
+        <dt className="text-xs text-muted">{item.name}</dt>
+        <dd className={cn("text-base font-semibold tabular-nums", item.tone)}>{item.value}</dd>
+      </div>)}
+    </dl>
+  </section>;
 }
 
 /** How long the task has been in its state, as its row says it when it does not run (`StatusTime`): null when it does not. */
@@ -225,7 +224,7 @@ function workWords(ms: number, t: T) {
  * the title, even at its top edge, opens the task (e2e/row-time-tip.check.ts). While it is open a press anywhere else only closes it (modal), as do Esc, Back
  * (Popover, with the page's step, as every surface open for a moment), a turn of the wheel and a swipe.
  */
-function TimeTip({ shown, mark, heading, long, body, className, data, align = "end" }: {
+function TimeTip({ shown, mark, heading, long, body, className, data }: {
   shown: string;
   /** What the open tip shows under its heading when it is more than its long words (the work time's two lines); `long` still names the press. */
   body?: ReactNode | ((close: () => void) => ReactNode);
@@ -234,8 +233,6 @@ function TimeTip({ shown, mark, heading, long, body, className, data, align = "e
   /** What the time is ("Elapsed", "Expected report"), over its words; none for a word that says itself. */
   heading: string | null;
   long: string; className?: string; data: Record<`data-${string}`, string>;
-  /** Which edge of the time its press lines up with: the row's end, or the start where the time leads its line. */
-  align?: "start" | "end";
 }) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
@@ -254,7 +251,7 @@ function TimeTip({ shown, mark, heading, long, body, className, data, align = "e
         className)}>
       {mark}{shown}
     </PopoverTrigger>
-    <PopoverContent data-time-tip align={align} side="bottom" className="w-auto max-w-72 px-3 py-2 text-sm">
+    <PopoverContent data-time-tip align="end" side="bottom" className="w-auto max-w-72 px-3 py-2 text-sm">
       {heading && <p className="text-xs font-medium text-muted">{heading}</p>}
       {typeof body === "function" ? body(() => setOpen(false)) : body ?? <p>{long}</p>}
     </PopoverContent>

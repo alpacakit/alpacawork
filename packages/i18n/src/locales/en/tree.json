@@ -88,6 +88,12 @@
       "timeout": "Timed out",
       "unknown": "Reason unknown"
     },
+    "facts": {
+      "heading": "This task's time",
+      "own": "Work, alone",
+      "since": "In this state",
+      "subtree": "Work, with subtasks"
+    },
     "length": {
       "days_one": "{{count}}d",
       "days_other": "{{count}}d",
@@ -142,7 +148,6 @@
     "work": {
       "heading": "Total agent working time",
       "hours": "{{hours}}h {{minutes}}m",
-      "label": "Run time",
       "minutes_one": "{{count}} min",
       "minutes_other": "{{count}} min",
       "own": "This task only",

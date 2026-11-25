@@ -86,6 +86,12 @@
       "timeout": "已超时",
       "unknown": "原因不明"
     },
+    "facts": {
+      "heading": "此任务的时间",
+      "own": "工作（单独）",
+      "since": "处于当前状态",
+      "subtree": "工作（含子任务）"
+    },
     "length": {
       "days_other": "{{count}}天",
       "hours_other": "{{count}}小时",
@@ -136,7 +142,6 @@
     "work": {
       "heading": "智能体工作总时长",
       "hours": "{{hours}}小时{{minutes}}分",
-      "label": "运行时间",
       "minutes_other": "{{count}} 分钟",
       "own": "仅此任务",
       "separator": "，",

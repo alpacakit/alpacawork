@@ -86,6 +86,12 @@
       "timeout": "時間切れ",
       "unknown": "理由不明"
     },
+    "facts": {
+      "heading": "このタスクの時間",
+      "own": "作業（単体）",
+      "since": "今の状態になって",
+      "subtree": "作業（配下込み）"
+    },
     "length": {
       "days_other": "{{count}}日",
       "hours_other": "{{count}}時間",
@@ -136,7 +142,6 @@
     "work": {
       "heading": "エージェントが動いた時間の合計",
       "hours": "{{hours}}時間{{minutes}}分",
-      "label": "実行時間",
       "minutes_other": "{{count}}分",
       "own": "このタスクだけ",
       "separator": "、",
