@@ -269,7 +269,7 @@
     "placeholderFolded": "有什么需求都写在这里",
     "placeholderProject": "关于此项目的指示或问题",
     "placeholderTask": "关于 {{id}} 的指示或问题",
-    "placeholderTasks": "关于 {{id}} 等的指示或问题",
+    "placeholderTasks": "关于 {{id}} 等任务的指示或问题",
     "project": "项目",
     "projects": "项目",
     "questionsChanged": "提问已更改，请重新选择回答。",
