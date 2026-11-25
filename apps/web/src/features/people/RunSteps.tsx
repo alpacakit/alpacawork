@@ -30,7 +30,9 @@ const TOOL = "max-w-[40%] flex-none truncate font-medium";
  * goes. Drawn the same each time, it is not drawn again with what it stands beside.
  */
 export const WorkMark = memo(function WorkMark({ className }: { className?: string }) {
-  return <span aria-hidden data-work-mark className={cn("relative inline-block size-3.5 flex-none self-center text-working", className)}>
+  // Clipped to its own box (overflow: clip): its turned boxes' corners would otherwise count toward what it stands in
+  // and change a disclosure's measured height; the dots stay well inside the box, so nothing seen is clipped.
+  return <span aria-hidden data-work-mark className={cn("relative inline-block size-3.5 flex-none self-center overflow-clip text-working", className)}>
     <span className="absolute inset-0 motion-safe:animate-mark-weave-turn">
       {[0, 1, 2].map(arm => <span key={arm} className="absolute inset-0" style={{ rotate: `${arm * 120}deg` }}>
         <span className="absolute top-[37.5%] left-[37.5%] size-1/4 rounded-full bg-current [translate:0_-133.333%] motion-safe:animate-mark-weave-dot" />
