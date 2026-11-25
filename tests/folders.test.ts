@@ -6,7 +6,7 @@ import fs from 'node:fs/promises';
 import { syncBuiltinESMExports } from 'node:module';
 import { join } from 'node:path';
 import { Problem, errorBody } from '@alpacawork/core';
-import { makeFolder } from '@alpacawork/backend/test-dist/control/folders.js';
+import { chooseFolder, makeFolder } from '@alpacawork/backend/test-dist/control/folders.js';
 
 function fixture(t: TestContext) {
   const base = realpathSync(mkdtempSync(join(tmpdir(), 'alpacawork-folders-')));
@@ -94,3 +94,24 @@ for (const code of ['ENOSPC', 'EDQUOT', 'ELOOP']) {
     } finally { mocked.mock.restore(); syncBuiltinESMExports(); }
   });
 }
+
+test('this PC\'s chooser: only for a screen on this PC, opened at the folder written, answering the folder or a cancel', async t => {
+  const h = fixture(t), title = 'Choose the working folder';
+  // A chooser that answers the folder it opened at (as the OS's do, with a trailing slash), or cancels with status 1.
+  const answers = (start: string) => ({ command: 'sh', args: ['-c', 'printf "%s/\\n" "$0"', start] });
+  const cancels = () => ({ command: 'sh', args: ['-c', 'exit 1'] });
+  await assert.rejects(chooseFolder(h.root, { path: h.code, title }, { local: false }, answers),
+    (error: unknown) => error instanceof Problem && error.reason?.kind === 'folder_chooser_only_on_this_pc');
+  await assert.rejects(chooseFolder(h.root, { path: h.code, title }, { local: true }, () => null),
+    (error: unknown) => error instanceof Problem && error.reason?.kind === 'folder_chooser_unavailable');
+  assert.deepEqual(await chooseFolder(h.root, { path: `${h.code}/`, title }, { local: true }, answers), { path: h.code });
+  // A folder not there yet opens where listing starts.
+  const opened = await chooseFolder(h.root, { path: join(h.code, 'missing'), title }, { local: true }, answers);
+  assert.notEqual(opened.path, join(h.code, 'missing'));
+  assert.deepEqual(await chooseFolder(h.root, { title }, { local: true }, cancels), { path: null });
+  // The screen gone closes the chooser.
+  const gone = new AbortController();
+  const waiting = chooseFolder(h.root, { title }, { local: true, signal: gone.signal }, () => ({ command: 'sleep', args: ['30'] }));
+  setTimeout(() => gone.abort(), 50);
+  assert.deepEqual(await waiting, { path: null });
+});

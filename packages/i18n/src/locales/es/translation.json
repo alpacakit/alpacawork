@@ -227,6 +227,8 @@
       "host_episode_not_recorded": "No se encontró el registro {{id}} del equipo",
       "host_not_local_service": "El host no es este servicio local",
       "host_status_not_running": "La comprobación del estado del equipo no está en marcha",
+      "folder_chooser_only_on_this_pc": "El selector de carpetas de este equipo solo se abre desde una pantalla abierta en este equipo",
+      "folder_chooser_unavailable": "Este equipo no tiene un selector de carpetas que mostrar",
       "illegal_run_state_transition": "Transición de estado de la ejecución no permitida",
       "index_not_running": "La proyección del índice no está en marcha",
       "init_only_available_from_local_cli": "init solo se puede ejecutar desde la CLI local",

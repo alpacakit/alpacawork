@@ -23,6 +23,9 @@
   "folderInput": {
     "cancel": "やめる",
     "choose": "選ぶ",
+    "chooseHere": "この画面で選ぶ",
+    "chooserTitle": "作業フォルダを選ぶ",
+    "choosing": "この PC に開いたフォルダ選択の画面で選んでください。",
     "close": "閉じる",
     "create": "作成する",
     "creating": "作っています…",

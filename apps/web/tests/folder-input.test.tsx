@@ -108,3 +108,38 @@ describe("making a folder in the list", () => {
     expect(document.querySelector("[data-folder-list]")).toBeTruthy();
   });
 });
+
+describe("choosing on this PC", () => {
+  it("takes the folder chosen in this PC's own chooser, opened at the folder written", async () => {
+    const request = vi.fn((url: string) => Promise.resolve(Response.json(url.startsWith("/api/workspace/folders/choose?")
+      ? { path: "/home/me/picked" } : listing)));
+    vi.stubGlobal("fetch", request);
+    render(<TestWorkspace><Field /></TestWorkspace>);
+    fireEvent.click(screen.getByRole("button", { name: "Choose" }));
+    await waitFor(() => expect(screen.getByRole("combobox").getAttribute("value")).toBe("/home/me/picked"));
+    const asked = new URL(request.mock.calls.find(([url]) => url.startsWith("/api/workspace/folders/choose?"))![0], "http://localhost");
+    expect(asked.searchParams.get("path")).toBe("/code");
+    expect(document.querySelector("[data-folder-list]")).toBeNull();
+  });
+
+  it("closes the chooser for the list on request, and opens the list where the chooser cannot be shown", async () => {
+    let closed: AbortSignal | undefined;
+    vi.stubGlobal("fetch", vi.fn((url: string, init?: RequestInit) => {
+      if (!url.startsWith("/api/workspace/folders/choose?")) return Promise.resolve(Response.json(listing));
+      closed = init?.signal ?? undefined;
+      return new Promise((_, reject) => init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError"))));
+    }));
+    render(<TestWorkspace><Field /></TestWorkspace>);
+    fireEvent.click(screen.getByRole("button", { name: "Choose" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Choose here instead" }));
+    expect(closed?.aborted).toBe(true);
+    await waitFor(() => expect(document.querySelector("[data-folder-list]")).toBeTruthy());
+    cleanup();
+
+    vi.stubGlobal("fetch", vi.fn((url: string) => Promise.resolve(url.startsWith("/api/workspace/folders/choose?")
+      ? Response.json({ code: "unavailable", message: "none" }, { status: 503 }) : Response.json(listing))));
+    render(<TestWorkspace><Field /></TestWorkspace>);
+    fireEvent.click(screen.getByRole("button", { name: "Choose" }));
+    await waitFor(() => expect(document.querySelector("[data-folder-list]")).toBeTruthy());
+  });
+});

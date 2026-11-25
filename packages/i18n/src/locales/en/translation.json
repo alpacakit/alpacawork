@@ -227,6 +227,8 @@
       "host_episode_not_recorded": "Host record {{id}} not found",
       "host_not_local_service": "The host is not this local service",
       "host_status_not_running": "The host status check is not running",
+      "folder_chooser_only_on_this_pc": "This PC's folder chooser opens only for a screen opened on this PC",
+      "folder_chooser_unavailable": "This PC has no folder chooser to show",
       "illegal_run_state_transition": "Run state transition not allowed",
       "index_not_running": "The index projection is not running",
       "init_only_available_from_local_cli": "init can only run from the local CLI",

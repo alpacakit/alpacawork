@@ -10,11 +10,20 @@ type PosixAbi = {
 /** One live process incarnation; age is measured by the host, never by wall-clock subtraction in the manager. */
 export type RunProcess = { pid: number; parent: number; session: number; started: string; ageMs: number };
 
+/** A process to run, as `execFile` takes it. */
+export type FolderDialog = { command: string; args: string[] };
+
 export type HostAdapter = {
   posix: PosixAbi;
   isSandboxed(libc: LibraryHandle): boolean;
   /** Native decode only; the caller owns format and container validation. */
   canDecodeImage(absolute: string): boolean;
+  /**
+   * The command that shows this OS's own window for choosing a folder, opened at `start` and titled `title`: it prints
+   * the chosen folder's path and exits 0, or exits 1 when the person cancels. Null when `env` has no desktop to show it
+   * on or the host has no such command.
+   */
+  folderDialog(start: string, title: string, env: Readonly<Record<string, string | undefined>>): FolderDialog | null;
   run: {
     /**
      * Start a process that leads its own group. With `unit`, the process also leaves serve's service, so stopping

@@ -26,6 +26,12 @@ export const darwinAdapter: HostAdapter = {
     } catch { return false; }
     finally { rmSync(scratch, { recursive: true, force: true }); }
   },
+  folderDialog(start, title) {
+    // Finder's chooser; a cancel is AppleScript error -128, which osascript ends with status 1.
+    return { command: '/usr/bin/osascript', args: ['-e', 'on run argv',
+      '-e', 'POSIX path of (choose folder with prompt (item 2 of argv) default location (POSIX file (item 1 of argv)))',
+      '-e', 'end run', start, title] };
+  },
   run: posixRun,
   service: launchdService,
 };

@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { accessSync, constants, readFileSync } from 'node:fs';
+import { delimiter, join } from 'node:path';
 import type { HostAdapter } from './types.js';
 import { linuxRun } from './linux-process.js';
 import { systemdService } from './systemd-service.js';
@@ -32,6 +33,18 @@ export const linuxAdapter: HostAdapter = {
         { timeout: 5000, stdio: 'ignore' });
       return true;
     } catch { return false; }
+  },
+  folderDialog(start, title, env) {
+    if (!env.DISPLAY && !env.WAYLAND_DISPLAY) return null;
+    // GNOME's and KDE's own choosers; the first found on PATH is the one shown.
+    const found = (name: string) => (env.PATH ?? '').split(delimiter).filter(Boolean).map(folder => join(folder, name)).find(path => {
+      try { accessSync(path, constants.X_OK); return true; } catch { return false; }
+    });
+    const zenity = found('zenity');
+    if (zenity) return { command: zenity, args: ['--file-selection', '--directory', `--title=${title}`, `--filename=${start.replace(/\/*$/, '/')}`] };
+    const kdialog = found('kdialog');
+    if (kdialog) return { command: kdialog, args: ['--title', title, '--getexistingdirectory', start] };
+    return null;
   },
   run: linuxRun,
   service: systemdService,

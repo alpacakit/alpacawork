@@ -1,7 +1,7 @@
 import { useDeferredValue, useEffect, useId, useRef, useState, type ComponentProps, type KeyboardEvent, type Ref } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { folderNameProblem, madeFolderSchema, type Folders } from "@alpacawork/contract";
+import { chosenFolderSchema, folderNameProblem, madeFolderSchema, type Folders } from "@alpacawork/contract";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Message } from "@/components/ui/message";
@@ -17,6 +17,10 @@ import { ReadFailure } from "@/components/ui/loadable";
 
 /** The most folders offered under the field while a path is typed. */
 const OFFERED = 6;
+/** How long Choose waits for this PC's own chooser: past the server's own bound (10 minutes), so the server ends it. */
+const CHOOSER_MS = 11 * 60_000;
+/** A screen opened at a loopback name is on the server's own PC, which can show its own folder chooser. */
+const onThisPc = () => ["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname);
 
 /** A typed path as the folder it is in and the start of the next name: `/a/b/we` is `/a/b/` and `we`. */
 export function typedFolder(value: string): { folder: string; start: string } | null {
@@ -38,8 +42,10 @@ export function newNameProblem(name: string, taken: readonly string[]) {
 /**
  * A field for a folder of this PC (where a project's code is), always filled with an absolute path. Typed, the folders
  * starting with the last part written are offered under it, and one taken goes on to its own (↑↓ to move, Enter or Tab
- * to take). Choose opens a list to walk the folders instead: in, up, or back along the path, then use the one shown. Both
- * read the server's one list of a folder's folders; hidden ones are offered once a name starting with "." is typed.
+ * to take). Choose, on a screen opened on this PC, shows this PC's own folder chooser; elsewhere, or where it cannot be
+ * shown, it opens a list to walk the folders instead: in, up, or back along the path, then use the one shown. The offers
+ * and the list read the server's one list of a folder's folders; hidden ones are offered once a name starting with "."
+ * is typed.
  */
 export function FolderInput({ value, onChange, onBlur, ref, className, placeholder, ...props }: Omit<ComponentProps<"input">, "value" | "onChange" | "onBlur"> & {
   value: string; onChange: (value: string) => void; ref?: Ref<HTMLInputElement>;
@@ -60,6 +66,9 @@ export function FolderInput({ value, onChange, onBlur, ref, className, placehold
   const [making, setMaking] = useState(false);
   const [makeFailure, setMakeFailure] = useState<string | null>(null);
   const [made, setMade] = useState<string | null>(null);
+  // This PC's chooser being shown: aborting it closes the chooser (also when the field goes away).
+  const [asking, setAsking] = useState<AbortController | null>(null);
+  useEffect(() => () => asking?.abort(), [asking]);
 
   // Where looking starts (the server's rule), shown as the example.
   const start = useQuery({ ...resources.folders(root, null), enabled: placeholder === undefined });
@@ -158,6 +167,22 @@ export function FolderInput({ value, onChange, onBlur, ref, className, placehold
       requestAnimationFrame(() => nameInput.current?.focus());
     } finally { makingNow.current = false; setMaking(false); }
   };
+  // The list starts at the folder the field names (as does this PC's chooser).
+  const written = typed ? value.replace(/\/+$/, "") || "/" : null;
+  const choose = async () => {
+    if (!onThisPc()) return go(written);
+    const ask = new AbortController();
+    setAsking(ask);
+    try {
+      const query = new URLSearchParams({ title: t("folderInput.chooserTitle"), ...written ? { path: written } : {} });
+      const { path } = await api.readWithin(`workspace/folders/choose?${query}`, chosenFolderSchema, CHOOSER_MS, ask.signal);
+      if (path !== null) { onChange(path); setMade(null); setDismissed(path); }
+      requestAnimationFrame(() => input.current?.focus());
+    } catch {
+      // Not shown (no desktop here, or it failed): the list instead.
+      if (!ask.signal.aborted) go(written);
+    } finally { setAsking(current => current === ask ? null : current); }
+  };
   // Choose starts at the folder the field names; one that is not there yet (half typed) starts at the nearest above it.
   // A folder that cannot be read is not entered: the list stays where it was and says why.
   useEffect(() => {
@@ -236,8 +261,9 @@ export function FolderInput({ value, onChange, onBlur, ref, className, placehold
         onChange={(event) => { onChange(event.target.value); setActive(-1); setDismissed(null); setMade(null); }}
         onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
         onKeyDown={onKeyDown} />
-      <Button type="button" variant="outline" aria-expanded={walking !== false} data-folder-walk className="aria-expanded:border-muted aria-expanded:bg-hover narrow:min-h-control-lg"
-        onClick={() => walking === false ? go(typed ? value.replace(/\/+$/, "") || "/" : null) : close()}>
+      <Button type="button" variant="outline" aria-expanded={walking !== false} data-folder-walk disabled={asking !== null}
+        className="aria-expanded:border-muted aria-expanded:bg-hover narrow:min-h-control-lg"
+        onClick={() => walking === false ? void choose() : close()}>
         <Icon name="folder" className="size-4" />{t("folderInput.choose")}
       </Button>
       {/* Hidden, not removed, when the field is left: a node removed while the focus is between two elements makes
@@ -252,6 +278,12 @@ export function FolderInput({ value, onChange, onBlur, ref, className, placehold
       </li>)}
       </ul>}
     </div>
+    {/* The chooser may open behind this window, or on a display this person does not see: the list stays one press away. */}
+    {asking && <p data-folder-asking role="status" className="m-0 flex flex-wrap items-center gap-x-2 text-xs text-muted">
+      {t("folderInput.choosing")}
+      <button type="button" className="text-ink underline underline-offset-2" onClick={() => { asking.abort(); go(written); }}>
+        {t("folderInput.chooseHere")}</button>
+    </p>}
     {walking === false && made !== null && made === value && <p data-folder-made className="m-0 flex items-center gap-1 text-xs text-muted">
       <Icon name="check" className="size-3.5 text-done" />{t("folderInput.made")}</p>}
     {walking !== false && <div ref={list} data-folder-list className="flex flex-col rounded-sm border border-line bg-lit">

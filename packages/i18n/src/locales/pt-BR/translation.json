@@ -227,6 +227,8 @@
       "host_episode_not_recorded": "Registro do host {{id}} não encontrado",
       "host_not_local_service": "O host não é este serviço local",
       "host_status_not_running": "A verificação de status do host não está em execução",
+      "folder_chooser_only_on_this_pc": "O seletor de pastas deste computador só abre para uma tela aberta neste computador",
+      "folder_chooser_unavailable": "Este computador não tem um seletor de pastas para mostrar",
       "illegal_run_state_transition": "Transição de estado da execução não permitida",
       "index_not_running": "A projeção do índice não está em execução",
       "init_only_available_from_local_cli": "init só pode ser executado pela CLI local",

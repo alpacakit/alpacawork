@@ -23,6 +23,9 @@
   "folderInput": {
     "cancel": "Cancel new folder",
     "choose": "Choose",
+    "chooseHere": "Choose here instead",
+    "chooserTitle": "Choose the working folder",
+    "choosing": "Choose the folder in the window that opened on this PC.",
     "close": "Close",
     "create": "Create",
     "creating": "Creating…",

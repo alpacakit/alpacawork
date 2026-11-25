@@ -23,6 +23,9 @@
   "folderInput": {
     "cancel": "Cancelar nova pasta",
     "choose": "Escolher",
+    "chooseHere": "Escolher aqui",
+    "chooserTitle": "Escolher a pasta de trabalho",
+    "choosing": "Escolha a pasta na janela que abriu neste computador.",
     "close": "Fechar",
     "create": "Criar",
     "creating": "Criando…",
