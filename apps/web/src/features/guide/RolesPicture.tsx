@@ -25,7 +25,7 @@ export function RolesPicture({ lit }: { lit: GuideRole }) {
 }
 
 function Box({ title, under, lit = false }: { title: string; under?: string; lit?: boolean }) {
-  return <span className={cn("flex flex-none flex-col items-center rounded-md border px-2 py-1 text-center leading-tight",
+  return <span className={cn("flex flex-none flex-col items-center rounded-md border px-2 py-1 text-center",
     lit ? "border-bg bg-bg text-ink" : "border-bg/40 text-bg/85")}>
     <span className="text-sm font-semibold whitespace-nowrap">{title}</span>
     {under && <span className={cn("whitespace-nowrap", lit ? "text-muted" : "text-bg/60")}>{under}</span>}
