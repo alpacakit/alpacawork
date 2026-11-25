@@ -6,10 +6,11 @@
  * Accounts are per kind of agent (profiles share the server's sign-in), so the first profile of each kind is asked.
  */
 import { AGENT_ADAPTERS, type BuiltinAdapterId } from '@alpacawork/contract/agent-adapters';
-import { limitsReportSchema, type AgentLimits, type AgentLimitsResponse, type LimitsReport } from '@alpacawork/contract/agent-limits';
+import { limitsReportSchema, type AgentLimits, type AgentLimitsResponse, type LimitsReport, type LimitsStackRow } from '@alpacawork/contract/agent-limits';
 import { AGENT_CHECK_MS } from '@alpacawork/contract';
+import { defaultAiStack } from '../ai-stack.js';
 import { enabledAgents, settingAdapter, type AgentSetting } from '@alpacawork/contract/agent-settings';
-import type { AiRow } from '@alpacawork/contract';
+import type { AgentsSettings } from '../agents-settings.js';
 import { runtimeAdapter } from './registry.js';
 import type { LimitsProbe } from './adapters/types.js';
 import { commandPrefix, launchCommand } from './availability.js';
@@ -19,7 +20,7 @@ export const LIMITS_FRESH_MS = 5 * 60_000;
 /** Claude's first stream lines list its tools and skills before the answer. */
 const LIMITS_OUTPUT = 1024 * 1024;
 
-export type LimitsConfig = { agents: Record<string, AgentSetting>; aiStack?: readonly Pick<AiRow, 'agent'>[] };
+export type LimitsConfig = Pick<AgentsSettings, 'agents' | 'aiStack'>;
 type Known = { limits: AgentLimits; at: number };
 
 /** Kinds of agent in the order the screen lists them: the task stack's, then the other enabled profiles'. */
@@ -32,6 +33,16 @@ export function limitsAgents(config: LimitsConfig): [BuiltinAdapterId, AgentSett
     if (kind && !kinds.has(kind)) kinds.set(kind, setting);
   }
   return [...kinds];
+}
+
+/** The rows tasks run on (`defaultAiStack`), enabled agents only, as the kind of agent and the model each launches. */
+export function limitsStack(config: LimitsConfig): LimitsStackRow[] {
+  const enabled = new Map(enabledAgents(config.agents));
+  return defaultAiStack(config).flatMap(row => {
+    const setting = enabled.get(row.agent), adapter = setting && settingAdapter(row.agent, setting);
+    const model = row.values.model;
+    return adapter ? [{ adapter, model: typeof model === 'string' && model ? model : null }] : [];
+  });
 }
 
 /** Every agent's answer passes the same contract; an account name the contract refuses is dropped, not the limits. */
@@ -53,8 +64,8 @@ export class AgentLimitsMonitor {
   /** `fresh`: asked from the screen's refresh: every agent is asked again now and the answer waits for them. */
   async read({ fresh = false }: { fresh?: boolean } = {}): Promise<AgentLimitsResponse> {
     const config = await this.options.config();
-    if (!config) return { agents: [] };
-    return { agents: await Promise.all(limitsAgents(config).map(([id, setting]) => this.agent(id, setting, fresh))) };
+    if (!config) return { agents: [], stack: [] };
+    return { agents: await Promise.all(limitsAgents(config).map(([id, setting]) => this.agent(id, setting, fresh))), stack: limitsStack(config) };
   }
 
   private async agent(id: BuiltinAdapterId, setting: AgentSetting, fresh: boolean): Promise<AgentLimits> {

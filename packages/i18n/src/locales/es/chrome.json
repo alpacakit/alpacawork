@@ -21,7 +21,13 @@
   },
   "limits": {
     "barLabel": "Límites de uso de la IA: {{agent}}, {{window}}: {{percent}} usado",
+    "barStopped": "Límites de uso de la IA: {{agent}}: {{state}}",
+    "barSwitched_one": "Límites de uso de la IA: {{spent}} alcanzó su límite; {{state}}",
+    "barSwitched_many": "Límites de uso de la IA: {{spent}} alcanzaron sus límites; {{state}}",
+    "barSwitched_other": "Límites de uso de la IA: {{spent}} alcanzaron sus límites; {{state}}",
     "barUnknown": "Límites de uso de la IA: no se pudieron leer los límites de {{agent}}",
+    "barUnlimited": "Límites de uso de la IA: ningún límite afecta ahora a {{agent}}",
+    "instead": "En uso en su lugar",
     "none": "Ahora no hay límites",
     "readAgo_one": "Actualizado hace {{count}} min",
     "readAgo_many": "Actualizado hace {{count}} min",
@@ -37,6 +43,14 @@
       "inMinutes_many": "Se restablece en {{count}} min",
       "inMinutes_other": "Se restablece en {{count}} min",
       "inWholeHours": "Se restablece en {{hours}} h"
+    },
+    "stopped": "Detenido",
+    "stoppedUntil": "Detenido hasta el {{when}}",
+    "stoppedUntilShort": "Hasta el {{when}}",
+    "switched": {
+      "limited": "se usa {{agent}} en su lugar, {{window}}: {{percent}} usado",
+      "unknown": "no se pudieron leer los límites de {{agent}}",
+      "unlimited": "se usa {{agent}} en su lugar, sin límite"
     },
     "title": "Límites de uso de la IA",
     "unavailable": "No se pudo leer. Comprueba el inicio de sesión",
