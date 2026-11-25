@@ -23,10 +23,10 @@ function open(limits: AgentLimitsResponse) {
   return { bar, trigger };
 }
 
-test("the bar has no percent but says it aloud; the menu marks the window the bar shows, and the agent standing in", () => {
+test("the bar names only the agent, without the window or the percent, but says them aloud; the menu marks the window the bar shows, and the agent standing in", () => {
   const { bar, trigger } = open({ agents: [agent("claude", [week(85), week(100, "Fable")]), agent("codex", [week(25)])],
     stack: [{ adapter: "claude", model: "opus" }, { adapter: "codex", model: null }] });
-  expect(bar).not.toMatch(/%/);
+  expect(bar?.trim()).toBe("Claude");
   expect(trigger.getAttribute("aria-label")).toMatch(/85%/);
   expect(screen.getByRole("dialog").querySelector("[data-limit-shown]")?.closest("[data-limit-agent]")?.getAttribute("data-limit-agent")).toBe("claude");
   expect(document.querySelectorAll("[data-limit-shown]")).toHaveLength(1);

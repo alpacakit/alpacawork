@@ -112,14 +112,13 @@ export function LimitsMenu() {
       </span>)}
       {/* An agent nothing holds has the ring of no limit (four arcs), and no window or figure. */}
       <UsageRing percent={percent} tone={tone} open={shown.kind === "unlimited"} />
-      {/* Which agent and which of its windows: a computer has the room, a phone keeps the ring. The window's name goes
-          first, where the buttons' side of the bar (AppBar BUTTONS) no longer holds it and it would take the search box's room. */}
+      {/* Which agent: a computer has the room, a phone keeps the ring. Which window and how full are in the label and the
+          menu; the ring's colour says how near it is. */}
       <span className="text-sm narrow:hidden">{name}</span>
       {shown.kind === "stopped" ? <>
         <span className="text-sm text-error narrow:hidden">{stoppedWords(shown.window, i18n.language, t)}</span>
         <span className="hidden text-sm text-error narrow:inline">{stoppedWords(shown.window, i18n.language, t, true)}</span>
-      </> : shown.kind === "limited" ? <span className="text-sm text-muted narrow:hidden @max-[64rem]:hidden">{windowLabel(shown.window, t)}</span>
-        : shown.kind === "unknown" && <span className="text-sm text-muted">—</span>}
+      </> : shown.kind === "unknown" && <span className="text-sm text-muted">—</span>}
     </Button>
     {/* The heading's line is as high as its button, so the box is shorter over it: the title stands as far from the top
         edge as from the side. The button's box is wider than its mark, so it is pulled out to end the mark where the
