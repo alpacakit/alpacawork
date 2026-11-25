@@ -234,6 +234,8 @@ test("the last thing done says the day: a day the pointer left waiting gives way
   fireEvent.click(view.getByRole("button", { name: /出力/ }));
   expect(legend()).toBeNull();
   act(() => { useViewStore.setState({ analysis: { look: "usage", span: { period: "7d" }, list: null, unit: null } }); });
+  // Closing is a step of the history, which lets go of a day: the day comes back after it.
+  act(() => { dispatchEvent(new PopStateEvent("popstate")); vi.advanceTimersByTime(50); });
   expect(legend()?.textContent).toContain("11/10");
   expect(document.activeElement?.textContent).toContain("出力");
   // From the chart (Enter): closed, the focus is on the chart.

@@ -193,8 +193,9 @@ export function ChartGroup({ bins, span, today, bucket, rows, open, children }: 
     if (layerOpen || !back) return;
     opener.current = null;
     if (back.part === null) { chartOf(back.row)?.focus({ preventScroll: true }); return; }
-    refocus.current = { row: back.row, part: back.part };
-    point(back.at, back.row);
+    // The step that closed the list lets go of the day as every step does; the day comes back after it.
+    const frame = requestAnimationFrame(() => { refocus.current = { row: back.row, part: back.part! }; point(back.at, back.row); });
+    return () => cancelAnimationFrame(frame);
   }, [layerOpen]);
   useLayoutEffect(() => {
     const back = refocus.current;
