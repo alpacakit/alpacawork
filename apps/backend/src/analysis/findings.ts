@@ -6,9 +6,8 @@
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 import type { AnalysisEvidence, AnalysisFindingRule } from '@alpacawork/contract/analysis';
 import { analysisFindingRules } from '@alpacawork/contract/analysis';
-import { speaksForUser } from '@alpacawork/raw';
 import { questionsOf } from '@alpacawork/raw/questions';
-import { prLinks, userQuestions } from './rules.js';
+import { prLinks, taskOutcome, userQuestions } from './rules.js';
 import { iso, segments, unionMs, type Interval, type TraceRecords, type TraceRun, type TraceStep } from './timeline.js';
 
 export type Threshold = { value: number; unit: 'minutes' | 'count' };
@@ -19,13 +18,17 @@ export const DEFAULT_THRESHOLDS: Readonly<Record<AnalysisFindingRule, Threshold 
   'long-step': { value: 5, unit: 'minutes' },
   'limit-hit': null,
   'repeated-command': { value: 3, unit: 'count' },
+  'same-result': { value: 2, unit: 'count' },
+  'fan-out': { value: 20, unit: 'count' },
   'queue-wait': { value: 5, unit: 'minutes' },
   'failed-run': null,
   rework: null,
   idle: { value: 15, unit: 'minutes' },
 };
 /** Rules that read step times: with no Run of the scope holding them, they cannot find anything and say so. */
-export const STEP_RULES: ReadonlySet<AnalysisFindingRule> = new Set(['long-step', 'repeated-command']);
+export const STEP_RULES: ReadonlySet<AnalysisFindingRule> = new Set(['long-step', 'repeated-command', 'same-result', 'fan-out']);
+/** A finding of many steps names the first few; `count` says how many there were. */
+const EVIDENCE_STEPS = 10;
 
 /** A long step is also one this many times its fingerprint's median, and at least LONG_STEP_FLOOR_MS. */
 const LONG_STEP_FACTOR = 3, LONG_STEP_FLOOR_MS = 30_000;
@@ -51,26 +54,27 @@ export function thresholdsOf(options: readonly string[] = []): Record<AnalysisFi
 }
 
 /**
- * What a question asks about, so asking it again reads as the same question whatever its wording: the pull requests it
- * names, or (naming none) the first word of each choice, its label.
+ * What a question asks about, so asking it again reads as the same question whatever its wording (design: the same pull
+ * request, or the same set of choices): the pull requests it names, with their repository when a link gives one, else
+ * the first word (label) of each choice. A question naming no pull request and offering no choices has no topic.
  */
-export function questionTopic(decide: readonly Record<string, unknown>[]): { prs: string[]; choices: string } {
+export function questionTopic(decide: readonly Record<string, unknown>[]): string[] {
   const text = JSON.stringify(decide);
-  const prs = new Set([...prLinks([text])].map(link => link.replace(/^.*\/pull\//, '#')));
+  const prs = new Set([...prLinks([text])].map(link => link.replace(/^https:\/\/github\.com\/([^/]+)\/([^/]+)\/pull\//, '$1/$2#')));
   for (const match of text.matchAll(/\bPR\s*#(\d+)/gi)) prs.add(`#${match[1]}`);
+  if (prs.size) return [...prs].sort().map(pr => `pr:${pr}`);
   const choices = decide.flatMap(item => Array.isArray(item.decide_choices) ? item.decide_choices : [])
-    .map(choice => String((choice as Record<string, unknown>).decide_choice ?? '').trim().split(/\s+/)[0] ?? '');
-  return { prs: [...prs].sort(), choices: JSON.stringify(choices.sort()) };
+    .map(choice => String((choice as Record<string, unknown>).decide_choice ?? '').trim().split(/\s+/)[0] ?? '').filter(Boolean);
+  return choices.length ? [`choices:${JSON.stringify(choices.sort())}`] : [];
 }
 
-/** Questions on one topic: those naming a pull request in common (directly or through another), else the same choices. */
-export function sameTopics<T>(items: readonly T[], topic: (item: T) => ReturnType<typeof questionTopic>): T[][] {
+/** Questions on one topic: those sharing a topic key (directly or through another); one without a topic stands alone. */
+export function sameTopics<T>(items: readonly T[], topic: (item: T) => string[]): T[][] {
   const owner = items.map((_, index) => index);
   const find = (index: number): number => owner[index] === index ? index : owner[index] = find(owner[index]!);
   const first = new Map<string, number>();
   items.forEach((item, index) => {
-    const { prs, choices } = topic(item);
-    for (const key of prs.length ? prs.map(pr => `pr:${pr}`) : [`choices:${choices}`]) {
+    for (const key of topic(item)) {
       const seen = first.get(key);
       if (seen === undefined) first.set(key, index); else owner[find(index)] = find(seen);
     }
@@ -79,6 +83,13 @@ export function sameTopics<T>(items: readonly T[], topic: (item: T) => ReturnTyp
   items.forEach((item, index) => { const root = find(index); groups.set(root, [...groups.get(root) ?? [], item]); });
   return [...groups.values()];
 }
+
+/** A log record as evidence, with its first line: an instruction's words, or the record's title. */
+function logEvidence(records: TraceRecords, task: string, id: string): AnalysisEvidence {
+  const entry = records.tasks.find(item => item.id === task)?.log.find(record => record.id === id);
+  return { log: id, task, firstLine: records.requests.get(id)?.firstLine ?? entry?.title ?? null };
+}
+const stepEvidence = (run: TraceRun, steps: readonly TraceStep[]) => steps.slice(0, EVIDENCE_STEPS).map(step => ({ run: run.id, step: step.n }));
 
 function median(values: number[]) {
   const sorted = [...values].sort((a, b) => a - b), middle = Math.floor(sorted.length / 2);
@@ -133,33 +144,67 @@ const rules: Record<AnalysisFindingRule, Rule> = {
       evidence: [step ? { run: run.id, step: step.n } : { run: run.id }] };
   })),
   /**
-   * The same command run again with nothing changed: one fingerprint at least the threshold times in a row (other
-   * reads between allowed, an edit breaks the row) with the same output each time, or failing the same way each time
-   * (edits between allowed). Commands repeated with work between and a new result (tests after a fix) are not findings.
+   * The same command run again with the same result: one fingerprint at least the threshold times in a row, each with
+   * the output of the one before, and no edit between; or failing each time with the same output (edits between
+   * allowed). Commands whose output changes (status checks, tests after a fix) are not findings.
    */
   'repeated-command': (records, window, threshold) => records.runs.flatMap(run => {
-    const found: Found[] = [];
-    const flush = (row: TraceStep[]) => {
-      if (row.length < limitOf(threshold) || found.some(item => item.anchor === `${run.id}.${row[0]!.n}`)) return;
+    const found: Found[] = [], rows = new Map<string, TraceStep[]>(), failing = new Map<string, TraceStep[]>();
+    const flush = (row: TraceStep[] | undefined) => {
+      if (!row || row.length < limitOf(threshold) || found.some(item => item.anchor === `${run.id}.${row[0]!.n}`)) return;
       found.push({ rule: 'repeated-command', anchor: `${run.id}.${row[0]!.n}`, at: row[0]!.from!,
         durationMs: row.reduce((sum, step) => sum + stepMs(step, run, window.to), 0), lane: agentLane(run), count: row.length,
-        source: 'recorded', evidence: row.map(step => ({ run: run.id, step: step.n })) });
+        source: 'recorded', evidence: stepEvidence(run, row) });
     };
-    const steps = timedTopSteps(run);
-    const unchanged = new Map<string, TraceStep[]>(), failing = new Map<string, TraceStep[]>();
-    for (const step of steps) {
-      if (step.kind === 'edit') { for (const row of unchanged.values()) flush(row); unchanged.clear(); }
+    const extend = (kept: Map<string, TraceStep[]>, step: TraceStep) => {
+      const row = kept.get(step.fingerprint!);
+      if (row && step.output !== null && row.at(-1)!.output === step.output) row.push(step);
+      else { flush(row); kept.set(step.fingerprint!, [step]); }
+    };
+    for (const step of timedTopSteps(run)) {
+      if (step.kind === 'edit') { for (const row of rows.values()) flush(row); rows.clear(); }
       if (step.kind !== 'command' || !step.fingerprint) continue;
-      const row = unchanged.get(step.fingerprint);
-      if (row && row.at(-1)!.output !== null && row.at(-1)!.output === step.output) row.push(step);
-      else { if (row) flush(row); unchanged.set(step.fingerprint, [step]); }
-      const failed = failing.get(step.fingerprint);
-      if (step.state === 'failed') failing.set(step.fingerprint, [...failed ?? [], step]);
-      else if (failed) { flush(failed); failing.delete(step.fingerprint); }
+      extend(rows, step);
+      if (step.state === 'failed') extend(failing, step);
+      else { flush(failing.get(step.fingerprint)); failing.delete(step.fingerprint); }
     }
-    for (const row of unchanged.values()) flush(row);
-    for (const row of failing.values()) flush(row);
+    for (const row of [...rows.values(), ...failing.values()]) flush(row);
     return found;
+  }),
+  /**
+   * The same read again with the same answer: a step other than a command or an edit, with one fingerprint and the same
+   * output, at least the threshold times in one Run with no edit between (the second and later reads learned nothing).
+   */
+  'same-result': (records, window, threshold) => records.runs.flatMap(run => {
+    const groups = new Map<string, TraceStep[]>(), found: Found[] = [];
+    const flush = () => {
+      for (const group of groups.values()) if (group.length >= limitOf(threshold))
+        found.push({ rule: 'same-result', anchor: `${run.id}.${group[0]!.n}`, at: group[0]!.from!,
+          durationMs: group.reduce((sum, step) => sum + stepMs(step, run, window.to), 0), lane: agentLane(run), count: group.length,
+          source: 'recorded', evidence: stepEvidence(run, group) });
+      groups.clear();
+    };
+    for (const step of timedTopSteps(run)) {
+      if (step.kind === 'edit') { flush(); continue; }
+      if (step.kind === 'command' || !step.fingerprint || step.output === null) continue;
+      const key = `${step.fingerprint}\u0000${step.output}`;
+      groups.set(key, [...groups.get(key) ?? [], step]);
+    }
+    flush();
+    return found;
+  }),
+  /**
+   * One by one where one read could do: steps of one fingerprint (the same command or read with its paths, IDs and
+   * numbers replaced) with differing arguments, at least the threshold times in one Run. A sign the reader lacks a filter.
+   */
+  'fan-out': (records, window, threshold) => records.runs.flatMap(run => {
+    const groups = new Map<string, TraceStep[]>();
+    for (const step of timedTopSteps(run))
+      if (step.kind !== 'edit' && step.fingerprint) groups.set(step.fingerprint, [...groups.get(step.fingerprint) ?? [], step]);
+    return [...groups.values()].filter(group => group.length >= limitOf(threshold) && new Set(group.map(step => step.line)).size > 1)
+      .map(group => ({ rule: 'fan-out' as const, anchor: `${run.id}.${group[0]!.n}`, at: group[0]!.from!,
+        durationMs: group.reduce((sum, step) => sum + stepMs(step, run, window.to), 0), lane: agentLane(run), count: group.length,
+        source: 'recorded' as const, evidence: stepEvidence(run, group) }));
   }),
   /** A Run that waited in the queue at least the threshold before it started. */
   'queue-wait': (records, window, threshold) => records.runs.flatMap(run => {
@@ -173,47 +218,49 @@ const rules: Record<AnalysisFindingRule, Rule> = {
     durationMs: (run.ended ?? window.to) - (run.started ?? run.created), lane: agentLane(run), count: null, source: 'recorded' as const,
     evidence: [{ run: run.id }, ...run.supersededBy ? [{ run: run.supersededBy }] : []] })),
   /**
-   * Work done again: a result sent back, an instruction from the user while the result waited for review or after it
-   * was done, or an instruction that came in place of answering a question asking to take a result (as the counts read
-   * rework, rules.ts taskOutcome). Its time runs until the task next waits for review or is done.
+   * Work done again, by the counts' rule (rules.ts taskOutcome, as `analysis task` counts sendBacks,
+   * instructionsAtReview and instructionsAfterAccept): a result sent back, an instruction at review or after acceptance,
+   * and an instruction given in place of answering a question asking to take a result. Its time runs until the task the
+   * record is on next waits for review or is done.
    */
-  rework: (records, window) => records.tasks.flatMap(task => {
-    const replaced = new Map(userQuestions(task.log).filter(question => question.accept && question.replacedBy !== null)
-      .map(question => [question.replacedBy!, question.id]));
-    return task.log.flatMap((entry, index) => {
-      const sentBack = entry.kind === 'review_sent_back' && speaksForUser(entry.actor);
-      const instruction = entry.kind === 'request_accepted' && speaksForUser(entry.actor) &&
-        (replaced.has(entry.id) || !entry.answers && (entry.fromState === 'waiting' || entry.fromState === 'done'));
-      if (!sentBack && !instruction) return [];
-      const at = Date.parse(entry.at), question = replaced.get(entry.id);
+  rework: (records, window) => {
+    const [root, ...below] = records.tasks, own = userQuestions(root!.log);
+    const questions = [...own, ...below.flatMap(task => userQuestions(task.log))];
+    const outcome = taskOutcome(root!.log, records.rootState, iso(root!.created), questions);
+    const replaced = new Map(records.tasks.flatMap(task => userQuestions(task.log)
+      .filter(question => question.accept && question.replacedBy !== null).map(question => [question.replacedBy!, { question: question.id, task: task.id }])));
+    return outcome.rework.flatMap(({ id }) => {
+      const task = records.tasks.find(item => item.log.some(entry => entry.id === id));
+      if (!task) return [];
+      const index = task.log.findIndex(entry => entry.id === id), at = Date.parse(task.log[index]!.at), question = replaced.get(id);
       const next = task.log.slice(index + 1).find(later => later.toState === 'waiting' || later.toState === 'done' ||
         later.stage?.baseState === 'waiting' || later.stage?.baseState === 'done');
-      return [{ rule: 'rework' as const, anchor: entry.id, at, durationMs: Math.max(0, (next ? Date.parse(next.at) : window.to) - at),
+      return [{ rule: 'rework' as const, anchor: id, at, durationMs: Math.max(0, (next ? Date.parse(next.at) : window.to) - at),
         lane: taskLane(task.id), count: null, source: 'recorded' as const,
-        evidence: [{ log: entry.id, task: task.id }, ...question ? [{ question, task: task.id }] : []] }];
+        evidence: [logEvidence(records, task.id, id), ...question ? [question] : []] }];
     });
-  }),
+  },
   /** A stretch at least the threshold long when nothing ran, nothing waited in the queue and no question or review was open. */
   idle: (records, window, threshold) => segments(records, window).filter(part => part.key === 'idle' && part.to - part.from >= limitOf(threshold))
     .map(part => ({ rule: 'idle' as const, anchor: iso(part.from), at: part.from, durationMs: part.to - part.from,
-      lane: taskLane(records.root), count: null, source: 'recorded' as const, evidence: [{ log: idleEvidence(records, part.from), task: records.root }] })),
+      lane: taskLane(records.root), count: null, source: 'recorded' as const, evidence: [idleEvidence(records, part.from)] })),
 };
 
-/** The last record before an idle stretch: what the scope did just before nothing went on. */
-function idleEvidence(records: TraceRecords, at: number) {
-  let last = records.tasks[0]!.log[0]?.id ?? `created:${records.root}`, time = -Infinity;
+/** The last record before an idle stretch: what the task or those under it did just before nothing went on. */
+function idleEvidence(records: TraceRecords, at: number): AnalysisEvidence {
+  let last: { task: string; id: string } | null = null, time = -Infinity;
   for (const task of records.tasks) for (const entry of task.log) {
     const when = Date.parse(entry.at);
-    if (when <= at && when >= time) { time = when; last = entry.id; }
+    if (when <= at && when >= time) { time = when; last = { task: task.id, id: entry.id }; }
   }
-  return last;
+  return last ? logEvidence(records, last.task, last.id) : { log: `created:${records.root}`, task: records.root, firstLine: null };
 }
 
 /** The findings of the chosen rules inside the window (those that started there), the longest first. */
 export function findFindings(records: TraceRecords, window: Interval, chosen: readonly AnalysisFindingRule[],
   thresholds: Record<AnalysisFindingRule, Threshold | null>): Found[] {
   return chosen.flatMap(rule => rules[rule](records, window, thresholds[rule]))
-    .filter(found => found.at >= window.from && found.at < window.to)
+    .filter(found => found.at >= window.from && found.at <= window.to)
     .sort((a, b) => b.durationMs - a.durationMs || a.at - b.at || a.anchor.localeCompare(b.anchor));
 }
 

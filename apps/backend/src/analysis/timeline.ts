@@ -4,7 +4,7 @@
  * journal and conditions, and its protocol events (commands stopped at the limit). Nothing here reads storage; the
  * records are loaded once (timeline-reads.ts) and every number of an answer is counted from that one load.
  */
-import { analysisBreakdownKeys, type AnalysisAtView, type AnalysisLane, type AnalysisMark, type AnalysisSpan, type AnalysisTraceScope,
+import { analysisBreakdownKeys, type AnalysisStepsMissing, type AnalysisAtView, type AnalysisLane, type AnalysisMark, type AnalysisSpan, type AnalysisTraceScope,
   type AnalysisTraceView } from '@alpacawork/contract/analysis';
 import { clocks, iso, questionKind, taskOutcome, userQuestions, type Interval } from './rules.js';
 import { changeEvents } from './changes.js';
@@ -16,22 +16,22 @@ import { questionsOf, type Question } from '@alpacawork/raw/questions';
 
 export { iso, type Interval };
 
-export type InstructionFrom = 'user' | 'parent' | 'owner';
+export type InstructionBy = 'user' | 'parent' | 'owner';
 export type InstructionPurpose = 'instruction' | 'send-back' | 'return';
 /** An instruction as its request holds it: who sent it, why, and its first line. */
-export type TraceRequest = { id: string; task: string; at: number; from: InstructionFrom; purpose: InstructionPurpose;
+export type TraceRequest = { id: string; task: string; at: number; by: InstructionBy; purpose: InstructionPurpose;
   firstLine: string; answers: string | null };
 /** A step of a Run as its step journal timed it and its output named it. `inside`: the sub-agent step it ran in. */
 export type TraceStep = { n: number; tool: string; kind: string; line: string; fingerprint: string | null;
   from: number | null; to: number | null; state: string; source: string | null; inside: string | null; id: string;
   subagentSteps: number; output: string | null };
-export type StepsMissing = 'before-journal' | 'provider-unsupported';
+export type StepsMissing = AnalysisStepsMissing;
 export type TraceRun = {
   id: string; task: string; placement: string; role: 'owner' | 'member'; agent: string; model: string | null;
   effort: string | null; state: string; reason: string | null; request: string; supersededBy: string | null;
   created: number; started: number | null; ended: number | null;
   compactions: readonly { at: number; beforeTokens: number | null; afterTokens: number | null }[];
-  /** Null when the Run has no step times, for `stepsMissing`. */
+  /** Null when the Run has no step times (any step without its start), for `stepsMissing`. */
   steps: readonly TraceStep[] | null; stepsMissing: StepsMissing | null;
   conditions: RunConditions | null;
   stopped: readonly { at: number; seconds: number; signal: string }[];
@@ -39,19 +39,21 @@ export type TraceRun = {
 export type TraceTask = { id: string; parent: string | null; title: string; created: number; log: readonly TaskLog[] };
 export type TraceRecords = {
   root: string; project: string; scope: AnalysisTraceScope;
-  /** The root first, then the tasks under it (subtree scope only). */
+  /** The root first, then every task under it: the breakdown, the waits and the findings read them all whatever the scope. */
   tasks: readonly TraceTask[]; runs: readonly TraceRun[]; requests: ReadonlyMap<string, TraceRequest>;
   /** Instruction labels by request (request_labeled): fix, addition or new_request. */
   labels: ReadonlyMap<string, string>;
-  /** The root and every task under it, whatever the scope: the user acting on any of them acts on this task. */
-  family: ReadonlySet<string>;
-  /** Every family task's log, whatever the scope (the waits read the user's questions of the whole subtree), and the root's state. */
-  familyLogs: ReadonlyMap<string, readonly TaskLog[]>;
   rootState: TaskBaseState;
   /** The user's actions on every task, in time order (AnalysisFacts.activity), to split the waits by where the user was. */
   activity: readonly Activity[];
+  /** The version of the records read (timeline-reads.ts). */
+  version: string;
   now: number;
 };
+
+/** The tasks a trace lists (its scope): the root alone, or with every task under it. */
+export const shownTasks = (records: TraceRecords): ReadonlySet<string> =>
+  new Set(records.scope === 'self' ? [records.root] : records.tasks.map(task => task.id));
 
 const taskLane = (task: string) => `task:${task}`;
 const agentLane = (placement: string) => `agent:${placement}`;
@@ -185,19 +187,21 @@ const stepIntervals = (run: TraceRun, end: number): Interval[] => (run.steps ?? 
  * The time the user was waited on, by the counts' rule (rules.ts clocks, as `analysis task` reads it): over the task's
  * own period (its request to its acceptance, stop or done, else now) within the window, an open question to the user
  * from the task or any task under it is a wait even while an AI works, and so is review. It is not the breakdown's
- * partition, where AI work comes first, so it can exceed waiting-answer plus waiting-review.
+ * partition, where AI work comes first. `settled`: the split no longer moves with the time of the read.
  */
-export function waitIntervals(records: TraceRecords, window: Interval): Interval[] {
-  const log = records.familyLogs.get(records.root) ?? [], own = userQuestions(log);
-  const descendants = [...records.familyLogs].flatMap(([task, history]) => task === records.root ? [] : userQuestions(history));
-  const outcome = taskOutcome(log, records.rootState, iso(records.tasks[0]!.created), [...own, ...descendants]);
+export function waited(records: TraceRecords, window: Interval) {
+  const [root, ...below] = records.tasks, own = userQuestions(root!.log), descendants = below.flatMap(task => userQuestions(task.log));
+  const outcome = taskOutcome(root!.log, records.rootState, iso(root!.created), [...own, ...descendants]);
   const end = outcome.finishedAt ?? outcome.doneAt;
   const from = Math.max(window.from, Date.parse(outcome.requestedAt)), to = Math.min(window.to, end ? Date.parse(end) : records.now);
-  return clocks(log, own, descendants, [], from, to, records.now).waits;
+  const clock = clocks(root!.log, own, descendants, [], from, to, records.now);
+  const family = new Set(records.tasks.map(task => task.id));
+  const { split, settled } = splitWaits(clock.waits, records.activity, task => family.has(task), records.now);
+  return { time: { review: clock.time.review, answer: clock.time.answer }, waits: split, settled };
 }
 
-/** The window's breakdown, and whether it still changes with the time of the read (`settled` false: the wait split runs to now). */
-export function breakdown(records: TraceRecords, window: Interval, parts: readonly Segment[]): AnalysisTraceView['breakdown'] & { settled: boolean } {
+/** The window's breakdown: the wall time split into parts that do not overlap, AI use, and step-level time when known. */
+export function breakdown(records: TraceRecords, window: Interval, parts: readonly Segment[]): AnalysisTraceView['breakdown'] {
   const ms = new Map<string, number>();
   for (const part of parts) {
     const key = part.key === 'answer-user' || part.key === 'answer-task' ? 'waiting-answer' : part.key;
@@ -216,43 +220,69 @@ export function breakdown(records: TraceRecords, window: Interval, parts: readon
     for (const step of steps) { const inside = clip(step, part); if (inside) stepWorkMs += inside.to - inside.from; }
   }
   const aiWorkMs = counted.reduce((sum, { part }) => sum + part.to - part.from, 0);
-  const waits = splitWaits(waitIntervals(records, window), records.activity, task => records.family.has(task), records.now);
   return {
     wall: window.to - window.from, categories: analysisBreakdownKeys.map(key => ({ key, ms: ms.get(key) ?? 0 })),
     answerTo: { user: answer('answer-user'), task: answer('answer-task') },
-    waits: waits.split, settled: waits.settled,
     aiBusyMs: unionMs(counted.map(({ part }) => part), window), aiWorkMs,
     toolMs: known ? toolMs : null, thinkingMs: known ? aiWorkMs - toolMs : null, stepWorkMs: known ? stepWorkMs : null,
   };
 }
 
-/** One lane per task, and one per agent seat (placement) that ran: a seat's Runs follow one another on it. */
+/**
+ * One lane per task the trace lists, and one per placement that ran there: a placement's Runs follow one another on it.
+ * Placements of one task, role and agent are numbered in the order they first ran, so their labels differ.
+ */
 export function lanes(records: TraceRecords): AnalysisLane[] {
-  const inScope = new Set(records.tasks.map(task => task.id));
-  const result: AnalysisLane[] = records.tasks.map(task => ({ id: taskLane(task.id), kind: 'task', task: task.id,
-    parent: task.parent && inScope.has(task.parent) ? taskLane(task.parent) : null, role: null, agent: null,
+  const shown = shownTasks(records);
+  const result: AnalysisLane[] = records.tasks.filter(task => shown.has(task.id)).map(task => ({ id: taskLane(task.id), kind: 'task',
+    task: task.id, parent: task.parent && shown.has(task.parent) ? taskLane(task.parent) : null, placement: null, role: null, agent: null,
     label: `${task.id} ${task.title}` }));
-  const seats = new Map<string, TraceRun>();
-  for (const run of records.runs) if (!seats.has(run.placement)) seats.set(run.placement, run);
-  for (const [placement, run] of seats)
-    result.push({ id: agentLane(placement), kind: 'agent', task: run.task, parent: taskLane(run.task), role: run.role,
-      agent: run.agent, label: `${run.task} ${run.role} ${run.agent}` });
+  const seats = new Map<string, TraceRun>(), numbers = new Map<string, number>();
+  for (const run of [...records.runs].sort((a, b) => a.created - b.created))
+    if (shown.has(run.task) && !seats.has(run.placement)) seats.set(run.placement, run);
+  for (const [placement, run] of seats) {
+    const kind = `${run.task} ${run.role} ${run.agent}`, number = (numbers.get(kind) ?? 0) + 1;
+    numbers.set(kind, number);
+    const label = number > 1 || [...seats.values()].filter(other => `${other.task} ${other.role} ${other.agent}` === kind).length > 1
+      ? `${kind} ${number}` : kind;
+    result.push({ id: agentLane(placement), kind: 'agent', task: run.task, parent: taskLane(run.task), placement, role: run.role,
+      agent: run.agent, label });
+  }
   return result;
 }
 
+/** A Run's steps as its step times stand: null when any step the output names lacks its start (its time is unknown, not zero). */
+export const timedSteps = (steps: readonly TraceStep[]): readonly TraceStep[] | null => steps.some(step => step.from === null) ? null : steps;
+
+/** The time inside a Run with no step running, when its step times are known: what it thought, wrote or waited on. */
+export function thinkingIntervals(run: TraceRun, now: number): Interval[] {
+  if (!run.steps || run.started === null || run.state === 'joined') return [];
+  const end = run.ended ?? now, gaps: Interval[] = [];
+  let cursor = run.started;
+  for (const step of stepIntervals(run, end).sort((a, b) => a.from - b.from)) {
+    if (step.from > cursor) gaps.push({ from: cursor, to: Math.min(step.from, end) });
+    cursor = Math.max(cursor, step.to);
+  }
+  if (cursor < end) gaps.push({ from: cursor, to: end });
+  return gaps.filter(gap => gap.to > gap.from);
+}
+
 export function spans(records: TraceRecords): AnalysisSpan[] {
-  const result: AnalysisSpan[] = [];
+  const result: AnalysisSpan[] = [], shown = shownTasks(records);
   const end = (time: number | null) => time === null ? null : iso(time);
   for (const task of records.tasks) {
+    if (!shown.has(task.id)) continue;
     for (const span of stateSpans(task))
       result.push({ id: `state:${task.id}:${span.log}`, lane: taskLane(task.id), kind: 'task-state', from: iso(span.from),
         to: end(span.to), task: task.id, state: span.state });
     for (const { asked, closing } of questionsOf(task.log))
-      result.push({ id: `question:${asked.id}`, lane: taskLane(task.id), kind: 'waiting-answer', from: iso(Date.parse(asked.at)),
+      result.push({ id: `question:${asked.id}`, lane: taskLane(task.id), kind: 'question', from: iso(Date.parse(asked.at)),
         to: closing ? iso(Date.parse(closing.at)) : null, task: task.id, question: asked.id, askedTo: asked.askedTo ?? 'user',
+        ...questionKind(asked.decide),
         closed: closing === null ? null : closing.kind === 'answered' ? 'answered' : closing.kind === 'question_withdrawn' ? 'withdrawn' : 'expired' });
   }
   for (const run of records.runs) {
+    if (!shown.has(run.task)) continue;
     const lane = agentLane(run.placement), queued = queueInterval(run, Infinity);
     if (run.started === null || run.started > run.created)
       result.push({ id: `queued:${run.id}`, lane, kind: 'queued', from: iso(run.created),
@@ -260,6 +290,8 @@ export function spans(records: TraceRecords): AnalysisSpan[] {
     if (run.started === null || run.state === 'joined') continue;
     result.push({ id: `run:${run.id}`, lane, kind: 'run', from: iso(run.started), to: end(run.ended), run: run.id,
       state: run.state, reason: run.reason, model: run.model, effort: run.effort, steps: run.steps ? 'recorded' : 'not-recorded' });
+    thinkingIntervals(run, records.now).forEach((gap, index) => result.push({ id: `thinking:${run.id}.${index}`, lane, kind: 'thinking',
+      from: iso(gap.from), to: run.ended === null && gap.to === records.now ? null : iso(gap.to), run: run.id }));
     for (const step of run.steps ?? []) if (step.from !== null)
       result.push({ id: `step:${run.id}.${step.n}`, lane, kind: 'step', from: iso(step.from), to: end(step.to), run: run.id,
         step: step.n, tool: step.tool, line: step.line, state: step.state, source: step.source, inside: step.inside,
@@ -288,17 +320,18 @@ export function changeMarks(records: TraceRecords): AnalysisMark[] {
 }
 
 export function marks(records: TraceRecords): AnalysisMark[] {
-  const result: AnalysisMark[] = [];
+  const result: AnalysisMark[] = [], shown = shownTasks(records);
   for (const task of records.tasks) {
+    if (!shown.has(task.id)) continue;
     const lane = taskLane(task.id), asked = new Map(questionsOf(task.log).map(question => [question.asked.id, question.asked]));
     for (const entry of task.log) {
       const at = iso(Date.parse(entry.at)), base = { id: entry.id, lane, at, task: task.id };
       if (entry.kind === 'request_accepted' || entry.kind === 'review_sent_back') {
         const request = records.requests.get(entry.id);
         result.push({ ...base, kind: 'instruction', request: entry.id,
-          from: request?.from ?? (speaksForUser(entry.actor) ? 'user' : 'parent'),
+          by: request?.by ?? (speaksForUser(entry.actor) ? 'user' : 'parent'),
           purpose: entry.kind === 'review_sent_back' ? 'send-back' : request?.purpose ?? 'instruction',
-          label: records.labels.get(entry.id) ?? null, answers: entry.answers ?? null });
+          label: records.labels.get(entry.id) ?? null, answers: entry.answers ?? null, firstLine: request?.firstLine ?? null });
       } else if (entry.kind === 'answered' && entry.questionId) {
         const question = asked.get(entry.questionId);
         result.push({ ...base, kind: 'answer', question: entry.questionId,
@@ -315,13 +348,14 @@ export function marks(records: TraceRecords): AnalysisMark[] {
     }
   }
   for (const run of records.runs) {
+    if (!shown.has(run.task)) continue;
     const lane = agentLane(run.placement);
     run.compactions.forEach((compaction, index) => result.push({ id: `compacted:${run.id}.${index}`, lane, kind: 'compacted',
       at: iso(compaction.at), run: run.id, beforeTokens: compaction.beforeTokens, afterTokens: compaction.afterTokens }));
     run.stopped.forEach((stop, index) => result.push({ id: `command-stopped:${run.id}.${index}`, lane, kind: 'command-stopped',
       at: iso(stop.at), run: run.id, seconds: stop.seconds, signal: stop.signal }));
   }
-  return [...result, ...changeMarks(records)];
+  return [...result, ...changeMarks(records).filter(mark => mark.kind !== 'change' || shown.has(records.runs.find(run => run.id === mark.run)!.task))];
 }
 
 /** The screen's address of a scene: the task's timeline, at an instant or on a finding. */
@@ -340,16 +374,20 @@ const stepAt = (step: TraceStep): NonNullable<StepAt> => ({ step: step.n, tool: 
 
 /** The situation at `at`: each task's state, the Runs running and their steps, the queue, the open questions, the last history lines. */
 export function situationAt(records: TraceRecords, at: number): Omit<AnalysisAtView, 'head' | 'url'> {
+  const shown = shownTasks(records);
+  records = { ...records, tasks: records.tasks.filter(task => shown.has(task.id)), runs: records.runs.filter(run => shown.has(run.task)) };
   const tasks = records.tasks.flatMap(task => { const state = stateAt(task, at); return state === null ? [] : [{ task: task.id, title: task.title, state }]; });
   const runs = records.runs.filter(run => run.started !== null && run.state !== 'joined' && run.started <= at && (run.ended === null || at < run.ended))
     .map(run => {
       const request = records.requests.get(run.request) ?? null, steps = run.steps ?? [];
       const top = steps.filter(step => step.inside === null && step.from !== null);
       const current = steps.filter(step => step.from !== null && step.from <= at && at < (step.to ?? run.ended ?? Infinity));
-      const before = top.filter(step => step.to !== null && step.to <= at).at(-1) ?? null;
+      // The step that ended last before the instant (steps run in parallel end out of their order).
+      const before = top.filter(step => step.to !== null && step.to <= at).reduce<TraceStep | null>((last, step) =>
+        !last || step.to! > last.to! || step.to === last.to && step.n > last.n ? step : last, null);
       const after = top.find(step => step.from! > at) ?? null;
       return { run: run.id, task: run.task, role: run.role, agent: run.agent, model: run.model, effort: run.effort, since: iso(run.started!),
-        request: request && { id: request.id, from: request.from, purpose: request.purpose, at: iso(request.at), firstLine: request.firstLine },
+        request: request && { id: request.id, by: request.by, purpose: request.purpose, at: iso(request.at), firstLine: request.firstLine },
         steps: run.steps ? 'recorded' as const : 'not-recorded' as const, current: current.map(stepAt),
         before: before && stepAt(before), after: after && stepAt(after) };
     });

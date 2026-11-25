@@ -13,7 +13,7 @@ import { Kept, Slices } from './slices.js';
 import type { Tally } from '../agents/adapters/tally.js';
 import { FactsCache, type AnalysisFacts, type FactLaunch, type Unit } from './facts.js';
 import { addDays, bucketStart, buckets, calendar, inDays, makeHead, monday, serverZone } from './calendar.js';
-import { clocks, emptyClock, shareOf, unitMarks, type ModelRun } from './rules.js';
+import { clocks, emptyClock, lastEndedAt, shareOf, unitMarks, type ModelRun } from './rules.js';
 import { CluesSum, waitsOf } from './clues.js';
 import { addSplit, emptySplit, splitWaits, type WaitSplit } from './presence.js';
 import { readChanges } from './timeline-reads.js';
@@ -477,9 +477,10 @@ class ScopedAnalysis {
     if (this.openClocksMade) return this.openClocksMade;
     const made = new Map<Unit, ReturnType<typeof clocks> & { split: WaitSplit }>(), activity = this.facts.activity();
     for (const unit of this.openUnits) {
-      const ended = unit.outcome.finishedAt ?? unit.outcome.doneAt, id = unit.node.id;
+      // A unit reopened after it ended waits again from its latest end, not its first.
+      const ended = lastEndedAt(unit.log, this.now), id = unit.node.id;
       const clock = clocks(unit.log, unit.ownQuestions, unit.childQuestions, unit.launches,
-        Date.parse(ended ?? unit.outcome.requestedAt), this.now, this.now);
+        ended ?? Date.parse(unit.outcome.requestedAt), this.now, this.now);
       made.set(unit, { ...clock, split: splitWaits(clock.waits, activity, task => task === id || this.facts.rootOf.get(task) === id, this.now).split });
     }
     return this.openClocksMade = made;

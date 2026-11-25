@@ -144,21 +144,47 @@ on the earliest acceptance day of any Task that references it in the project sco
 use that same day. The Task model and agent breakdowns use the earliest owner Run on the top-level Task.
 If there is no owner Run, the breakdown row has `noOwnerRun: true` and a separate key for its drill-down list.
 
-`analysis trace`, `analysis findings` and `analysis at` read one Task (`--scope subtree` adds every Task under it) from
-its creation to now, or to its last record once it is done or stopped. The trace's `breakdown` gives each instant of the
-wall time to the first part that holds: `owner-working`, `member-working`, `child-working`, `held`, `waiting-answer`,
-`waiting-review`, `queued`, `idle`; the parts sum to `wall`. As in the counts, a question asking to take a result is
-`waiting-review`. `waits` is the same rule and time as `time.review` + `time.answer` of `analysis task`, split the same
-way by where the user was: an open question counts even while an AI works, over the Task's own period and the questions
-of its whole subtree whatever `--scope` is, so it can exceed `waiting-answer` + `waiting-review`. For a top-level Task the
-two give the same numbers. A Run gives step times
-only from when they were kept: `coverage.steps.unknown` names the Runs without them by reason, and the step-level values
-(`toolMs`, `thinkingMs`, `stepWorkMs`) are `null`, not 0, while any Run in the period lacks them. Spans and marks come in
-time order, `--limit` at a time, with `nextCursor`. Findings come from an experimental rule set (rule IDs stay;
-thresholds may change); `--threshold rule=value` takes minutes for a time and a count for a repeat. Every answer carries
-`url`, the screen's address of the same scene. `analysis changes` takes the scope and days of `analysis tasks`; versions,
-skills and instruction files compare each agent's Runs in the order they started, and agent, model and effort compare
-the Runs of one agent seat.
+`analysis trace`, `analysis findings` and `analysis at` read one Task from its creation to now, or to its last record
+once it and the Tasks under it are done or stopped. `--from` and `--to` are instants (ISO, such as
+`2026-11-24T09:00:00Z`); a period that does not end after it starts is refused, and a record at either end is kept. The
+breakdown, `time`, `waits` and the findings always read the Task and every Task under it; `--scope subtree` lists the
+lanes, spans and marks of the Tasks under it too, and `--lanes` lists only the lanes named. The trace's `breakdown` gives
+each instant of the wall time to the first part that holds: `owner-working`, `member-working`, `child-working`, `held`,
+`waiting-answer`, `waiting-review`, `queued`, `idle`; the parts sum to `wall`. A child's work and its questions show as
+`child-working` and as `question` spans on its lane, so the trace has no separate span for waiting on a child, and a
+question's span starts where it was asked. As in the counts, a question asking to take a result is `waiting-review`.
+`time` (`review`, `answer`) and `waits` follow the same rule as `analysis task`: an open question to the user counts even
+while an AI works, so they can exceed `waiting-answer` + `waiting-review`; for a top-level Task they are the same numbers.
+A Run has step times only from when they were kept. `coverage.steps.unknown` names the Runs without them by reason:
+`before-step-times` (the Run started before they were kept), `provider-unsupported` (its agent's output names no steps
+alpacawork reads) and `missing-step-times` (its output has steps whose times were not kept). While any Run in the period
+lacks them, the step-level values (`toolMs`, `thinkingMs`, `stepWorkMs`) are `null`, not 0, and that Run has no
+`thinking` spans (the time inside a Run with no step running). Spans and marks come in time order, `--limit` at a time;
+`cursor` reads the next page of the same `head.version` of the records and is refused once they change. `head.settled`
+says the numbers no longer change with the time of the read.
+
+Findings come from an experimental rule set (rule IDs stay; thresholds may change). `--threshold rule=value` takes
+minutes for a time and a count for a repeat. A finding's evidence names the Run, step, question or record it stands on;
+a record carries its first line. The rules:
+
+- `long-wait`: a question (to anyone) open while no AI of the task or under it ran; at: when it was asked, durationMs: that time.
+- `repeated-question`: one task asking about the same pull request (with its repository when a link names one), or with the same choices, again and again; at: the first, durationMs: the time they were open, count: how many.
+- `long-step`: a step this long, or 3 times the median of its fingerprint and at least 30 seconds (a sub-agent judged by its own steps); at: its start, durationMs: its length.
+- `limit-hit`: a command the Run's manager stopped at the command time limit; at: when it started, durationMs: the limit.
+- `repeated-command`: one command again and again in a row with the same output and no edit between, or failing with the same output each time; at: the first, durationMs: their time together, count: how many.
+- `same-result`: one read (not a command or an edit) again with the same output and no edit between; at: the first, durationMs: their time, count: how many.
+- `fan-out`: one fingerprint with differing arguments many times in one Run (one by one where one read could do); at: the first, durationMs: their time, count: how many.
+- `queue-wait`: a Run that waited this long before it started; at: when it was made, durationMs: the wait.
+- `failed-run`: a Run that failed or was stopped, with the Run that took its place; at: its start, durationMs: its length.
+- `rework`: work done again by the counts' rule (a send-back, an instruction at review or after acceptance, one in place of answering a question asking to take a result); at: the record, durationMs: until that task next waits for review or is done.
+- `idle`: a stretch this long with nothing running, queued, asked or in review in the task or under it; at: its start, durationMs: its length.
+
+`url` in the answers of `analysis trace`, `analysis findings` (and each finding) and `analysis at` is the screen's address
+of the same scene, a path relative to the screen. `analysis changes` takes the scope and days of `analysis tasks`. A
+placement's agent, model and effort come from the launch records and compare the Runs of that placement. Version,
+skill and instruction-file changes need the Runs' condition records and compare each agent's Runs in the order they
+started; `runs.recorded` counts the period's Runs that have them. An item added to or gone from a set already recorded
+is a change; the first conditions recorded are not.
 
 Model breakdowns and `analysis task` group by model name and launch effort. They use the model recorded in the
 Run's tally when available, then the launch model, then the agent name. A Run can move to a different row when

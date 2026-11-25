@@ -1,6 +1,6 @@
 import { analysisTasksInput, analysisUsageInput, analysisListInput, analysisTaskInput, analysisBreakdownInput, analysisBreakdownViewSchema,
   analysisTraceInput, analysisTraceViewSchema, analysisFindingsInput, analysisFindingsViewSchema, analysisAtInput, analysisAtViewSchema,
-  analysisSpanKinds, analysisMarkKinds, analysisFindingRules, analysisChangesInput, analysisChangesViewSchema,
+  analysisSpanKinds, analysisMarkKinds, analysisFindingRules, ANALYSIS_FINDING_RULE_MEANINGS, ANALYSIS_STEPS_MISSING_MEANINGS, analysisChangesInput, analysisChangesViewSchema,
   analysisTasksViewSchema, analysisUsageViewSchema, analysisUnitListSchema, analysisUnitValuesSchema,
   analysisTaskBySchema, analysisTaskValues, analysisUsageBySchema, analysisUsageValues } from './analysis.js';
 import { uiLocales } from '@alpacawork/core/ui-language';
@@ -242,7 +242,7 @@ const analysisScope = [text('project', 'Project ID (nested projects included for
 const analysisPeriodOptions = [text('period', 'Calendar preset (today, 7d, 28d, all)'), text('end', 'Last day of the preset (YYYY-MM-DD)'),
   text('from', 'First local day of a custom range (YYYY-MM-DD)'), text('to', 'Last local day of a custom range (YYYY-MM-DD)')];
 const analysisBucket = text('bucket', 'Trend bucket (day, week, month)');
-const analysisTimelineScope = [text('task', 'Task ID (T<number>)'), text('scope', 'self: the task\'s own records (default); subtree: with every task under it'),
+const analysisTimelineScope = [text('task', 'Task ID (T<number>)'), text('scope', 'What a trace or an instant lists: self, the task\'s own (default); subtree, with every task under it'),
   text('timeZone', 'IANA zone for display (default: server zone)')];
 const analysisTaskGroups = analysisTaskBySchema.options.join(', ');
 const analysisUsageGroups = analysisUsageBySchema.options.join(', ');
@@ -277,32 +277,39 @@ const definitions = {
   'analysis/task': command('read', 'Read the analysis values behind one task', analysisTaskInput, [
     ...analysisScope, taskId,
   ], { output: analysisUnitValuesSchema }),
-  'analysis/changes': command('read', 'List when what Runs ran under changed (alpacawork\'s version, a skill, an instruction file, an ' +
-    'agent seat\'s agent, model or effort), each with the first Run under the new condition, over the days analysis tasks reads', analysisChangesInput, [
+  'analysis/changes': command('read', 'List when what Runs ran under changed (alpacawork\'s version, a skill, an instruction file, a ' +
+    'placement\'s agent, model or effort), each with the first Run under the new condition, over the days analysis tasks reads', analysisChangesInput, [
     ...analysisScope, ...analysisPeriodOptions, text('cursor', 'cursor from the previous page'), number('limit', 'Most changes per page (up to 100, default 100)'),
   ], { output: analysisChangesViewSchema, help: help(
-    'Versions, skills and instruction files compare each agent\'s Runs in the order they started; agent, model and effort compare the Runs of one agent seat.',
-    'runs.recorded counts the period\'s Runs that kept their conditions: a Run from before they were kept shows no change.') }),
-  'analysis/trace': command('read', 'Read one task\'s timeline: lanes (the task, its subtasks and each agent seat), spans and marks in time ' +
-    'order, the wall time split into parts that do not overlap, and which Runs have step times', analysisTraceInput, [
-    ...analysisTimelineScope, text('from', 'Start instant (ISO; default: the task\'s creation)'),
-    text('to', 'End instant (ISO; default: now while the task can change, else its last record)'),
+    'Agent, model and effort come from the launch records and compare the Runs of one placement. Version, skill and instruction-file changes ' +
+    'need the Runs\' condition records and compare each agent\'s Runs in the order they started; runs.recorded counts the period\'s Runs that have them.',
+    'An item added to or gone from a set already recorded is a change; the first conditions recorded are not.') }),
+  'analysis/trace': command('read', 'Read one task\'s timeline: lanes (the task, the tasks under it and each placement that ran), spans and ' +
+    'marks in time order, the wall time split into parts that do not overlap, the time the user was waited on, and which Runs have step times',
+    analysisTraceInput, [
+    ...analysisTimelineScope, text('from', 'Start instant, ISO (e.g. 2026-11-24T09:00:00Z; default: the task\'s creation)'),
+    text('to', 'End instant, ISO (e.g. 2026-11-24T18:00:00+09:00; default: now while the task can change, else its last record)'),
     list('kinds', `Span and mark kinds to read (${[...analysisSpanKinds, ...analysisMarkKinds].join(', ')})`),
-    text('cursor', 'nextCursor from the previous page'), number('limit', 'Most spans and marks per page (up to 500, default 200)'),
+    list('lanes', 'Lane IDs to read (lanes[].id, e.g. task:T12 or agent:<placement>)'),
+    text('cursor', 'cursor from the previous page'), number('limit', 'Most spans and marks per page (up to 500, default 200)'),
   ], { output: analysisTraceViewSchema, help: help(
     'Breakdown parts, each instant to the first that holds: owner-working, member-working, child-working, held, waiting-answer, waiting-review, queued, idle.',
-    'Step-level values (toolMs, thinkingMs, stepWorkMs) are null, not 0, when a Run in the period has no step times; coverage names those Runs and why.',
-    'url opens the same scene on the screen. Read a span\'s records with run get, run steps --step, task get --question.') }),
+    'The breakdown, time and waits always read the task and every task under it; --scope chooses only the lanes, spans and marks listed.',
+    'time and waits follow the rule of analysis task (an open question to the user counts even while an AI works); for a top-level task they are the same numbers.',
+    'Step-level values (toolMs, thinkingMs, stepWorkMs) and thinking spans need every Run\'s step times; coverage.steps.unknown names the Runs without them: ' +
+    Object.entries(ANALYSIS_STEPS_MISSING_MEANINGS).map(([reason, meaning]) => `${reason}, ${meaning}`).join('; ') + '.',
+    'url is the screen\'s address of the same scene, relative to the screen. Read a span\'s records with run get, run steps --step, task get --question.') }),
   'analysis/findings': command('read', 'Find places in one task\'s timeline worth a look, each by a fixed rule with its threshold and the ' +
-    'records it stands on, the longest first', analysisFindingsInput, [
+    'records it stands on, the longest first; always over the task and every task under it', analysisFindingsInput, [
     ...analysisTimelineScope, list('rules', `Rules to apply (${analysisFindingRules.join(', ')}; default: all)`),
     list('threshold', 'Threshold as rule=value: minutes for a time, a count for a repeat (e.g. long-wait=60)'),
     number('limit', 'Most findings (up to 100, default 20)'),
   ], { output: analysisFindingsViewSchema, help: help(
-    'The rule set is experimental: rule IDs stay, thresholds may change. Rules that read step times say so under unread when no Run has them.') }),
+    ...analysisFindingRules.map(rule => `${rule}: ${ANALYSIS_FINDING_RULE_MEANINGS[rule]}.`),
+    'The rule set is experimental: rule IDs stay, thresholds may change. Rules that read step times are under skipped when no Run has them.') }),
   'analysis/at': command('read', 'Read the situation of one task at one instant: each task\'s state, the Runs running with their current, ' +
     'previous and next steps and the instruction that started them, the queue, open questions and the last history lines', analysisAtInput, [
-    ...analysisTimelineScope, text('at', 'The instant (ISO)'),
+    ...analysisTimelineScope, text('at', 'The instant, ISO (e.g. 2026-11-24T09:00:00Z)'),
   ], { output: analysisAtViewSchema, help: help('Task values at that time are not recorded yet: values is null with valuesReason not-recorded.') }),
   'project/shelf': command('read', 'Read archived projects and their restore targets', emptyInput, [], { output: projectShelfSchema }),
   'task/list': command('read', 'Read the Task tree, or search Tasks with a matching excerpt', taskListInput, [

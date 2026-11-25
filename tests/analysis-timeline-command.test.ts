@@ -91,10 +91,20 @@ test('analysis trace, findings and at answer one task\'s timeline over HTTP in t
       do {
         const page = analysisTraceViewSchema.parse(await read('trace', { task, limit: '2', ...cursor ? { cursor } : {} }));
         ids.push(...page.spans.map(span => span.id), ...page.marks.map(mark => mark.id));
-        cursor = page.nextCursor; pages++;
+        cursor = page.cursor; pages++;
       } while (cursor && pages < 100);
       assert.equal(new Set(ids).size, trace.total);
-      await read('trace', { task, cursor: 'xxxxxxxxxxxx.2' }, 400);
+      await read('trace', { task, cursor: 'xxxxxxxxxxxx.yyyyyyyyyyyy.2' }, 400);
+      // A cursor holds to one version of the records, and a page past the end is refused.
+      const first = analysisTraceViewSchema.parse(await read('trace', { task, limit: '1' }));
+      const [selector, , offset] = first.cursor!.split('.');
+      await read('trace', { task, limit: '1', cursor: `${selector}.zzzzzzzzzzzz.${offset}` }, 400);
+      await read('trace', { task, limit: '1', cursor: `${selector}.${first.head.version}.${first.total + 1}` }, 400);
+      // A period is resolved, then checked; a record at its start is kept.
+      await read('trace', { task, from: '2100-01-01T00:00:00Z' }, 400);
+      const mark = trace.marks[0]!;
+      const atStart = analysisTraceViewSchema.parse(await read('trace', { task, from: mark.at, kinds: mark.kind }));
+      assert.ok(atStart.marks.some(item => item.id === mark.id));
 
       const findings = analysisFindingsViewSchema.parse(await read('findings', { task, threshold: 'queue-wait=0.001' }));
       assert.equal(findings.rules.set, 'experimental');
@@ -109,8 +119,10 @@ test('analysis trace, findings and at answer one task\'s timeline over HTTP in t
       // The trace's waits are the counts' waits: for a top-level task, the same numbers whatever the scope.
       const counted = analysisUnitValuesSchema.parse(await read('task', { task: top, timeZone: 'UTC' }));
       assert.ok(counted.time.review > 0 && counted.waits.away + counted.waits.otherTasks + counted.waits.thisTask > 0);
-      for (const scope of ['self', 'subtree'])
-        assert.deepEqual(analysisTraceViewSchema.parse(await read('trace', { task: top, scope, limit: '1' })).breakdown.waits, counted.waits, scope);
+      for (const scope of ['self', 'subtree']) {
+        const traced = analysisTraceViewSchema.parse(await read('trace', { task: top, scope, limit: '1' }));
+        assert.deepEqual([traced.time, traced.waits], [{ review: counted.time.review, answer: counted.time.answer }, counted.waits], scope);
+      }
 
       const changes = analysisChangesViewSchema.parse(await read('changes', { period: 'all', timeZone: 'UTC', limit: '1' }));
       assert.ok(changes.runs.recorded >= 1 && changes.runs.launched >= changes.runs.recorded);

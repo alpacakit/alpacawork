@@ -2,8 +2,9 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { TaskLog } from '@alpacawork/raw/task-log-schema';
 import type { RunConditions } from '@alpacawork/contract/run';
-import { breakdown, changeMarks, segments, situationAt, type TraceRecords, type TraceRun, type TraceStep,
-  type TraceTask } from '@alpacawork/backend/test-dist/analysis/timeline.js';
+import { breakdown, changeMarks, segments, situationAt, thinkingIntervals, timedSteps, waited, type TraceRecords, type TraceRun,
+  type TraceStep, type TraceTask } from '@alpacawork/backend/test-dist/analysis/timeline.js';
+import { lastEndedAt, taskOutcome, userQuestions } from '@alpacawork/backend/test-dist/analysis/rules.js';
 import { DEFAULT_THRESHOLDS, findFindings, thresholdsOf } from '@alpacawork/backend/test-dist/analysis/findings.js';
 import { changeEvents } from '@alpacawork/backend/test-dist/analysis/changes.js';
 
@@ -34,8 +35,7 @@ function step(n: number, from: number, to: number | null, fields: Partial<TraceS
 }
 function records(tasks: TraceTask[], runs: TraceRun[], now = at(200)): TraceRecords {
   return { root: tasks[0]!.id, project: 'P1', scope: tasks.length > 1 ? 'subtree' : 'self', tasks, runs, requests: new Map(),
-    labels: new Map(), family: new Set(tasks.map(item => item.id)), familyLogs: new Map(tasks.map(item => [item.id, item.log])),
-    rootState: 'doing', activity: [], now };
+    labels: new Map(), rootState: 'doing', activity: [], version: 'test', now };
 }
 const window = (from: number, to: number) => ({ from: at(from), to: at(to) });
 const find = (data: TraceRecords, rule: Parameters<typeof findFindings>[2][number], to = 200, thresholds = DEFAULT_THRESHOLDS) =>
@@ -81,13 +81,16 @@ test('long-wait counts only the time a question waited with no AI running', () =
   assert.deepEqual(found.map(item => [item.anchor, item.durationMs / MIN]), [['q1', 40]]);
 });
 
-test('repeated-question joins questions naming the same pull request, whatever their wording', () => {
-  const pr = (text: string, choices: string[]) => [{ decide_question: text, decide_choices: choices.map(choice => ({ decide_choice: choice })) }];
+test('repeated-question joins questions on the same pull request or the same choices, and nothing else', () => {
+  const ask = (text: string, choices: string[] = []) => [{ decide_question: text, decide_choices: choices.map(choice => ({ decide_choice: choice })) }];
   const root = task('T1', [state('s1', 0, 'doing'),
-    asked('q1', 10, pr('Merge PR #7?', ['Merge now', 'Fix first'])), answered('a1', 20, 'q1'),
-    asked('q2', 30, pr('Merge the fixed PR #7 and PR #8?', ['Merge', 'Hold'])), answered('a2', 40, 'q2'),
-    asked('q3', 50, pr('Merge https://github.com/example/app/pull/8 now?', ['Yes', 'No'])), answered('a3', 55, 'q3'),
-    asked('q4', 60, pr('Which layout?', ['A', 'B'])), answered('a4', 65, 'q4')]);
+    asked('q1', 10, ask('Merge PR #7?', ['Merge now', 'Fix first'])), answered('a1', 20, 'q1'),
+    asked('q2', 30, ask('Merge the fixed PR #7 and PR #8?', ['Merge', 'Hold'])), answered('a2', 40, 'q2'),
+    asked('q3', 50, ask('Merge PR #8 now?', ['Yes', 'No'])), answered('a3', 55, 'q3'),
+    // The same number in two repositories, and questions offering no choices, are separate questions.
+    ...['one', 'two', 'three'].flatMap((repo, n) => [asked(`r${n}`, 60 + n, ask(`Merge https://github.com/example/${repo}/pull/5?`)),
+      answered(`ra${n}`, 61 + n, `r${n}`)]),
+    ...[0, 1, 2].flatMap(n => [asked(`free${n}`, 70 + n, ask(`Anything else ${n}?`)), answered(`fa${n}`, 71 + n, `free${n}`)])]);
   const found = find(records([root], []), 'repeated-question');
   assert.deepEqual(found.map(item => [item.count, item.evidence.length, item.durationMs / MIN]), [[3, 3, 25]]);
   assert.equal(find(records([root], []), 'repeated-question', 200, thresholdsOf(['repeated-question=4'])).length, 0);
@@ -109,15 +112,29 @@ test('limit-hit names each command stopped at the limit and the step it stopped'
   assert.deepEqual([found!.durationMs, found!.evidence], [600_000, [{ run: 'R1', step: 0 }]]);
 });
 
-test('repeated-command finds the same command with the same result, not one repeated after an edit', () => {
+test('repeated-command finds the same command with the same result or the same failure, not normal repeats', () => {
   const same = (n: number) => step(n, n, n + 0.5, { output: 'same' });
-  const unchanged = run('R1', { steps: [same(0), same(1), step(2, 1.6, 1.7, { kind: 'file', fingerprint: 'cat x' }), same(3)] });
-  assert.deepEqual(find(records([task('T1', [])], [unchanged]), 'repeated-command').map(item => item.count), [3]);
-  const edited = run('R1', { steps: [same(0), same(1), step(2, 1.6, 1.7, { kind: 'edit', fingerprint: 'edit x' }), same(3)] });
-  assert.equal(find(records([task('T1', [])], [edited]), 'repeated-command').length, 0);
-  const failing = run('R1', { steps: [0, 1, 2].flatMap(n => [step(n * 2, n, n + 0.5, { state: 'failed', output: `fail-${n}` }),
-    step(n * 2 + 1, n + 0.6, n + 0.7, { kind: 'edit', fingerprint: 'edit x' })]) });
-  assert.deepEqual(find(records([task('T1', [])], [failing]), 'repeated-command').map(item => item.count), [3]);
+  const commands = (steps: TraceStep[]) => find(records([task('T1', [])], [run('R1', { steps })]), 'repeated-command').map(item => item.count);
+  assert.deepEqual(commands([same(0), same(1), step(2, 1.6, 1.7, { kind: 'file', fingerprint: 'cat x' }), same(3)]), [3]);
+  assert.deepEqual(commands([same(0), same(1), step(2, 1.6, 1.7, { kind: 'edit', fingerprint: 'edit x' }), same(3)]), []);
+  // A status check whose output changes each time is a normal repeat.
+  assert.deepEqual(commands([0, 1, 2, 3].map(n => step(n, n, n + 0.5))), []);
+  const failing = (output: (n: number) => string) => [0, 1, 2].flatMap(n => [step(n * 2, n, n + 0.5, { state: 'failed', output: output(n) }),
+    step(n * 2 + 1, n + 0.6, n + 0.7, { kind: 'edit', fingerprint: 'edit x' })]);
+  assert.deepEqual(commands(failing(() => 'fail')), [3]);
+  assert.deepEqual(commands(failing(n => `fail-${n}`)), []);
+});
+
+test('same-result finds a read repeated with the same answer, and fan-out one fingerprint read one by one', () => {
+  const read = (n: number, line: string, output: string, kind = 'file') => step(n, n, n + 0.1, { kind, fingerprint: 'task get <id>', line, output });
+  const sameResult = find(records([task('T1', [])], [run('R1', { steps: [read(0, 'a', 'x'), read(1, 'a', 'x'), read(2, 'b', 'y')] })]), 'same-result');
+  assert.deepEqual(sameResult.map(item => [item.count, item.evidence]), [[2, [{ run: 'R1', step: 0 }, { run: 'R1', step: 1 }]]]);
+  const edited = [read(0, 'a', 'x'), step(1, 1, 1.1, { kind: 'edit', fingerprint: 'edit' }), read(2, 'a', 'x')];
+  assert.equal(find(records([task('T1', [])], [run('R1', { steps: edited })]), 'same-result').length, 0);
+  const many = Array.from({ length: 25 }, (_, n) => read(n, `task get T${n}`, `out-${n}`, 'command'));
+  const fanOut = find(records([task('T1', [])], [run('R1', { steps: many })]), 'fan-out');
+  assert.deepEqual(fanOut.map(item => [item.count, item.evidence.length]), [[25, 10]]);
+  assert.equal(find(records([task('T1', [])], [run('R1', { steps: many.slice(0, 19) })]), 'fan-out').length, 0);
 });
 
 test('queue-wait finds a Run that waited long in the queue', () => {
@@ -131,12 +148,34 @@ test('failed-run names a failed or stopped Run and the Run that took its place',
   assert.deepEqual(find(data, 'failed-run').map(item => item.evidence), [[{ run: 'R1' }, { run: 'R2' }], [{ run: 'R3' }]]);
 });
 
-test('rework finds a send-back and an instruction at review or after done, timed to the next result', () => {
-  const root = task('T1', [state('s1', 0, 'doing'), entry('i0', 'request_accepted', 5, { fromState: 'doing' }),
+test('rework is what the counts count: send-backs, instructions at review and after acceptance, also after a reopen', () => {
+  const accepted = (id: string, minutes: number) => entry(id, 'review_approved', minutes, { fromState: 'waiting', toState: 'done' });
+  const root = task('T1', [entry('i0', 'request_accepted', 0, { fromState: 'todo' }), state('s1', 1, 'doing'),
     state('s2', 10, 'waiting'), entry('back', 'review_sent_back', 20, { fromState: 'waiting' }), state('s3', 21, 'doing'),
-    state('s4', 40, 'waiting'), state('s5', 50, 'done'), entry('again', 'request_accepted', 60, { fromState: 'done' }),
-    entry('answer', 'request_accepted', 61, { fromState: 'done', answers: 'q' }), state('s6', 61, 'doing'), state('s7', 90, 'done')]);
-  assert.deepEqual(find(records([root], []), 'rework').map(item => [item.anchor, item.durationMs / MIN]), [['again', 30], ['back', 20]]);
+    entry('during', 'request_accepted', 25, { fromState: 'doing' }), state('s4', 40, 'waiting'), accepted('ok', 50),
+    // Reopened after acceptance: an instruction while working again is rework after acceptance.
+    state('s5', 60, 'doing'), entry('again', 'request_accepted', 70, { fromState: 'doing' }), state('s6', 90, 'waiting')]);
+  const outcome = taskOutcome(root.log, 'waiting', stamp(0), userQuestions(root.log));
+  const counted = outcome.instructions.sendBacks + outcome.instructions.instructionsAtReview + outcome.instructions.instructionsAfterAccept;
+  const found = find({ ...records([root], []), rootState: 'waiting' }, 'rework');
+  assert.equal(found.length, counted);
+  assert.deepEqual(found.map(item => [item.anchor, item.durationMs / MIN]), [['back', 20], ['again', 20]]);
+});
+
+test('a task reopened after it ended waits again from its latest end', () => {
+  const accepted = (id: string, minutes: number) => entry(id, 'review_approved', minutes, { fromState: 'waiting', toState: 'done' });
+  const log = [state('s1', 0, 'doing'), state('s2', 5, 'waiting'), accepted('first', 10), state('s3', 20, 'doing'),
+    state('s4', 25, 'waiting'), accepted('second', 30), state('s5', 40, 'doing'), state('s6', 45, 'waiting')];
+  assert.equal(lastEndedAt(log, at(50)), at(30));
+  assert.equal(lastEndedAt(log, at(15)), at(10));
+  assert.equal(lastEndedAt([state('s1', 0, 'doing')], at(50)), null);
+});
+
+test('a Run whose output has steps without times has unknown step time, and thinking is the time no step ran', () => {
+  assert.equal(timedSteps([step(0, 1, 2), step(1, 3, 4, { from: null })]), null);
+  const timed = run('R1', { started: at(0), ended: at(20), steps: [step(0, 2, 8), step(1, 4, 10), step(2, 12, 15)] });
+  assert.deepEqual(thinkingIntervals(timed, at(30)).map(gap => [(gap.from - epoch) / MIN, (gap.to - epoch) / MIN]), [[0, 2], [10, 12], [15, 20]]);
+  assert.deepEqual(thinkingIntervals({ ...timed, steps: null }, at(30)), []);
 });
 
 test('idle finds a long stretch with nothing running, queued, asked or in review', () => {
@@ -174,6 +213,9 @@ test('at an instant: states, the Run running with its steps around that time, th
   assert.deepEqual(situation.queued.map(item => item.run), ['R2']);
   assert.deepEqual(situation.questions.map(item => [item.question, item.askedTo, item.accept, item.estimated]), [['q1', 'user', false, true]]);
   assert.equal(situation.values, null);
+  // Steps run in parallel: the one before is the one that ended last, not the one that started last.
+  const parallel = records([root], [run('R1', { started: at(0), ended: at(30), steps: [step(0, 1, 6), step(1, 2, 5)] })]);
+  assert.equal(situationAt(parallel, at(7)).runs[0]!.before?.step, 0);
 });
 
 test('a question asking to take a result is review time, and the waits split by where the user was', () => {
@@ -182,20 +224,21 @@ test('a question asking to take a result is review time, and the waits split by 
   // The user acts on another task at 5 and 20, then nothing until 80 (away), then on this task at 90 and 110; it is now 125.
   const data = { ...records([root], [], at(125)), activity: [{ at: at(5), task: 'T9' }, { at: at(20), task: 'T9' }, { at: at(80), task: 'T1' },
     { at: at(90), task: 'T1' }, { at: at(110), task: 'T1' }] };
-  const { settled, ...result } = breakdown(data, window(0, 120), segments(data, window(0, 120)));
-  // The last part follows the last action by less than 30 minutes: it still depends on when it is read.
-  assert.equal(settled, false);
+  const result = breakdown(data, window(0, 120), segments(data, window(0, 120)));
   const part = (key: string) => result.categories.find(item => item.key === key)!.ms / MIN;
   assert.deepEqual([part('waiting-review'), part('waiting-answer')], [90, 20]);
-  assert.deepEqual({ away: result.waits.away / MIN, otherTasks: result.waits.otherTasks / MIN, thisTask: result.waits.thisTask / MIN },
-    { away: 60, otherTasks: 10, thisTask: 40 });
-  assert.equal(result.waits.away + result.waits.otherTasks + result.waits.thisTask, (part('waiting-review') + part('waiting-answer')) * MIN);
+  const { time, waits, settled } = waited(data, window(0, 120));
+  assert.deepEqual([time.review / MIN, time.answer / MIN], [90, 20]);
+  assert.deepEqual({ away: waits.away / MIN, otherTasks: waits.otherTasks / MIN, thisTask: waits.thisTask / MIN }, { away: 60, otherTasks: 10, thisTask: 40 });
+  // The last part follows the last action by less than 30 minutes: it still depends on when it is read.
+  assert.equal(settled, false);
 });
 
 test('rework includes an instruction given in place of answering a question asking to take a result', () => {
   const accept = [{ decide_question: 'Merge it?', decide_kind: 'accept' }];
   const choose = [{ decide_question: 'Which layout?', decide_kind: 'choose' }];
-  const root = task('T1', [state('s1', 0, 'doing'), asked('q1', 10, accept), entry('fix', 'request_accepted', 20, { fromState: 'doing' }),
+  const root = task('T1', [entry('i0', 'request_accepted', 0, { fromState: 'todo' }), state('s1', 0, 'doing'), asked('q1', 10, accept),
+    entry('fix', 'request_accepted', 20, { fromState: 'doing' }),
     entry('w1', 'question_withdrawn', 20, { questionId: 'q1', originCauseId: 'fix' }), asked('q2', 30, choose),
     entry('more', 'request_accepted', 40, { fromState: 'doing' }), entry('w2', 'question_withdrawn', 40, { questionId: 'q2', originCauseId: 'more' }),
     state('s2', 50, 'waiting')]);
@@ -217,4 +260,17 @@ test('scope-wide changes compare an agent\'s conditions across its seats, and la
     ['R3', [['version', null, '1.1.0'], ['skill', 'personal:plan', null], ['skill', 'personal:review', '2222222222222222']]],
     ['R4', [['model', null, 'sonnet']]],
   ]);
+});
+
+test('an item added to a recorded set is a change, as a removal is; the first conditions recorded are not', () => {
+  const conditions = (files: string[]): RunConditions => ({ v: 1, observedAt: stamp(0), version: '1.0.0', release: null, source: null,
+    cwd: { path: '/work', commit: null }, skills: [], instructions: files.map(path => ({ path, digest: 'aaaaaaaaaaaaaaaa' })) });
+  const runs = [run('R1', { started: at(0), conditions: conditions([]) }), run('R2', { started: at(10), conditions: conditions(['/home/AGENTS.md']) }),
+    run('R3', { started: at(20), conditions: conditions([]) }), run('R4', { started: at(30), conditions: conditions(['/home/AGENTS.md']) })];
+  const events = changeEvents(runs, item => item.placement);
+  assert.deepEqual(events.map(event => [event.run.id, event.changes.map(change => [change.what, change.from, change.to])]), [
+    ['R2', [['instruction-file', null, 'aaaaaaaaaaaaaaaa']]], ['R3', [['instruction-file', 'aaaaaaaaaaaaaaaa', null]]],
+    ['R4', [['instruction-file', null, 'aaaaaaaaaaaaaaaa']]]]);
+  assert.deepEqual(changeEvents([run('R1', { started: at(0) }), run('R2', { started: at(10), conditions: conditions(['/home/AGENTS.md']) })],
+    item => item.placement), []);
 });

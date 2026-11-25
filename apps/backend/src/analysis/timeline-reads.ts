@@ -1,5 +1,5 @@
 /**
- * analysis trace | findings | at: one load of a task's records (its subtree's, for that scope) at one read point, then the
+ * analysis trace | findings | at | changes: one load of a task's records (its whole subtree) at one read point, then the
  * answer counted from that load alone (timeline.ts, findings.ts). The caller has authorized reading the task.
  */
 import { createHash } from 'node:crypto';
@@ -9,6 +9,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 import { ControlStore } from '@alpacawork/db';
 import { RUN_FILES, RUN_STEPS_PAGE_LIMIT, runFolder, type RunRecord } from '@alpacawork/contract/run';
+import { analysisStepsMissingSchema } from '@alpacawork/contract/analysis';
 import type { AnalysisAtInput, AnalysisAtView, AnalysisChangesInput, AnalysisChangesView, AnalysisHead, AnalysisFindingsInput, AnalysisFindingsView, AnalysisTraceInput,
   AnalysisTraceScope, AnalysisTraceView } from '@alpacawork/contract/analysis';
 import type { TaskLog } from '@alpacawork/raw/task-log-schema';
@@ -23,7 +24,7 @@ import { inDays } from './calendar.js';
 import { changeEvents, type ChangeRun } from './changes.js';
 import type { FactLaunch } from './facts.js';
 import { allRules, findFindings, STEP_RULES, thresholdsOf } from './findings.js';
-import { breakdown, iso, isOpen, lanes, marks, sceneUrl, segments, situationAt, spans, wholePeriod,
+import { breakdown, iso, isOpen, timedSteps, lanes, marks, sceneUrl, segments, situationAt, spans, waited, wholePeriod,
   type Interval, type TraceRecords, type TraceRequest, type TraceRun, type TraceStep, type TraceTask } from './timeline.js';
 
 const FIRST_LINE = 200;
@@ -53,9 +54,9 @@ function requestsOf(db: DatabaseSync, tasks: readonly string[]): Map<string, Tra
     WHERE q.task_id IN (SELECT value FROM json_each(?))`).all(JSON.stringify(tasks));
   return new Map(rows.map(row => {
     const author = JSON.parse(String(row.author)) as { kind: string };
-    const from = author.kind !== 'placement' ? 'user' : row.author_task === row.task ? 'owner' : 'parent';
+    const by = author.kind !== 'placement' ? 'user' : row.author_task === row.task ? 'owner' : 'parent';
     const purpose = row.purpose === 'review_send_back' ? 'send-back' : row.purpose === 'return_continuation' ? 'return' : 'instruction';
-    return [String(row.id), { id: String(row.id), task: String(row.task), at: Date.parse(String(row.at)), from, purpose,
+    return [String(row.id), { id: String(row.id), task: String(row.task), at: Date.parse(String(row.at)), by, purpose,
       firstLine: firstLine(String(row.body)), answers: row.answers === null ? null : String(row.answers) }];
   }));
 }
@@ -88,9 +89,9 @@ const endedSteps = new Kept<string, TraceStep[]>(512);
 async function stepsOf(root: string, run: RunRecord): Promise<{ steps: TraceStep[] | null; missing: TraceRun['stepsMissing'] }> {
   const folder = runFolder(root, run.id), key = `${root}\0${run.id}`, kept = run.ended_at === null ? undefined : endedSteps.get(key);
   if (kept) return { steps: kept, missing: null };
-  if (!existsSync(join(folder, RUN_FILES.steps)))
-    // The journal and the conditions came in together: a Run that kept its conditions and has no journal took no steps.
-    return existsSync(join(folder, RUN_FILES.conditions)) ? { steps: [], missing: null } : { steps: null, missing: 'before-journal' };
+  // Step times and conditions came in together: a Run with neither started before step times were kept.
+  if (!existsSync(join(folder, RUN_FILES.steps)) && !existsSync(join(folder, RUN_FILES.conditions)))
+    return { steps: null, missing: 'before-step-times' };
   const index = await readRunStepIndex(root, run.id);
   if (!index) return { steps: null, missing: 'provider-unsupported' };
   const steps: TraceStep[] = [];
@@ -103,6 +104,8 @@ async function stepsOf(root: string, run: RunRecord): Promise<{ steps: TraceStep
       state: step.state, source: step.startSource, inside: step.parentId, subagentSteps: step.subagentSteps,
       output: step.output?.digest ?? null });
   }
+  const timed = timedSteps(steps);
+  if (!timed) return { steps: null, missing: 'missing-step-times' };
   if (run.ended_at !== null) endedSteps.set(key, steps);
   return { steps, missing: null };
 }
@@ -119,77 +122,100 @@ async function traceRun(root: string, record: RunRecord): Promise<TraceRun> {
     steps, stepsMissing: missing, conditions: readConditions(runFolder(root, record.id)), stopped: stoppedCommands(runFolder(root, record.id)) };
 }
 
-/** Every record of the task (and its subtree) the timeline reads, at one read point of the control database. */
+/**
+ * The version of the records read: what the task's history, its Runs and their steps hold now. Two reads of one version
+ * with the same inputs give the same answer; a page cursor holds to one version.
+ */
+function versionOf(tasks: readonly TraceTask[], runs: readonly TraceRun[]) {
+  const hash = createHash('sha256');
+  for (const task of tasks) hash.update(`${task.id}:${task.log.length}:${task.log.at(-1)?.id ?? ''}\n`);
+  for (const run of runs) hash.update(`${run.id}:${run.state}:${run.ended ?? ''}:${run.steps?.length ?? '-'}:${run.steps?.at(-1)?.to ?? ''}:` +
+    `${run.compactions.length}:${run.stopped.length}:${run.conditions ? 1 : 0}\n`);
+  return hash.digest('base64url').slice(0, 12);
+}
+
+/**
+ * Every record of the task and every task under it, at one read point of the control database: the breakdown, the
+ * waits and the findings read them all; `scope` only chooses what a trace or an instant lists.
+ */
 export async function readTimelineRecords(root: string, task: string, scope: AnalysisTraceScope, activity: readonly Activity[] = [],
   now = Date.now()): Promise<TraceRecords> {
   const store = new ControlStore(root, { busyTimeoutMs: 10_000 }, true);
-  let family: TaskRow[], rows: TaskRow[], logs: Map<string, TaskLog[]>, runs: RunRecord[], requests: Map<string, TraceRequest>;
+  let family: TaskRow[], logs: Map<string, TaskLog[]>, runs: RunRecord[], requests: Map<string, TraceRequest>;
   try {
-    ({ family, rows, logs, runs, requests } = store.read(db => {
-      const family = familyOf(db, task), rows = scope === 'self' ? family.slice(0, 1) : family, ids = rows.map(row => row.id);
-      return { family, rows, logs: taskLogsOf(db, family.map(row => row.internal)), requests: requestsOf(db, ids),
+    ({ family, logs, runs, requests } = store.read(db => {
+      const family = familyOf(db, task), ids = family.map(row => row.id);
+      return { family, logs: taskLogsOf(db, family.map(row => row.internal)), requests: requestsOf(db, ids),
         runs: db.prepare('SELECT record FROM runs WHERE task_id IN (SELECT value FROM json_each(?)) ORDER BY id')
           .all(JSON.stringify(ids)).map(row => JSON.parse(String(row.record)) as RunRecord) };
     }));
   } finally { store.close(); }
-  const tasks: TraceTask[] = rows.map(row => ({ id: row.id, parent: row.parent, title: row.title, created: Date.parse(row.created),
+  const tasks: TraceTask[] = family.map(row => ({ id: row.id, parent: row.parent, title: row.title, created: Date.parse(row.created),
     log: logs.get(row.internal) ?? [] }));
   const labels = new Map<string, string>();
   for (const item of tasks) for (const entry of item.log) if (entry.kind === 'request_labeled' && entry.label) labels.set(entry.label.request, entry.label.kind);
   const traced: TraceRun[] = [];
   for (const record of runs) traced.push(await traceRun(root, record));
-  return { root: task, project: rows[0]!.project, scope, tasks, runs: traced, requests, labels,
-    family: new Set(family.map(row => row.id)), familyLogs: new Map(family.map(row => [row.id, logs.get(row.internal) ?? []])),
-    rootState: family[0]!.state, activity, now };
+  return { root: task, project: family[0]!.project, scope, tasks, runs: traced, requests, labels, rootState: family[0]!.state,
+    activity, version: versionOf(tasks, traced), now };
 }
 
+/** The period read: as asked, else the task's whole period; resolved first, then checked. */
 function windowOf(records: TraceRecords, input: { from?: string; to?: string }): Interval {
   const whole = wholePeriod(records);
-  return { from: input.from ? Date.parse(input.from) : whole.from, to: input.to ? Date.parse(input.to) : whole.to };
+  const window = { from: input.from ? Date.parse(input.from) : whole.from, to: input.to ? Date.parse(input.to) : whole.to };
+  if (window.from >= window.to) throw new Problem(PROBLEM_CODE.invalidInput,
+    `The period must end after it starts: it runs from ${iso(window.from)} to ${iso(window.to)}`);
+  return window;
 }
 const headOf = (records: TraceRecords, timeZone: string | undefined) => ({ task: records.root, project: records.project,
-  scope: records.scope, timeZone: timeZone ?? serverZone(), generatedAt: iso(records.now) });
+  scope: records.scope, timeZone: timeZone ?? serverZone(), generatedAt: iso(records.now), version: records.version });
+
+/** A page cursor: which reading (`selector`), of which version of the records, from where. */
+function readCursor(cursor: string | undefined, selector: string, version: string, total: number, name: string) {
+  if (!cursor) return 0;
+  const match = /^([\w-]{12})\.([\w-]{12})\.(\d+)$/.exec(cursor);
+  if (!match || match[1] !== selector || Number(match[3]) > total) throw new Problem(PROBLEM_CODE.invalidInput, `Use a cursor from the same ${name}`);
+  if (match[2] !== version) throw new Problem(PROBLEM_CODE.invalidInput, `The records changed since that page: read ${name} again from its start`);
+  return Number(match[3]);
+}
 
 const PAGE = 200;
 /** `activity`: the user's actions on every task (AnalysisFacts.activity), which split the waits as the counts split them. */
 export async function readTrace(root: string, input: AnalysisTraceInput, activity: readonly Activity[]): Promise<AnalysisTraceView> {
   const scope = input.scope ?? 'self', records = await readTimelineRecords(root, input.task, scope, activity), window = windowOf(records, input);
-  const kinds = input.kinds && new Set<string>(input.kinds);
-  const overlaps = (from: string, to: string | null) => Date.parse(from) < window.to && (to === null || Date.parse(to) > window.from);
-  const allSpans = spans(records).filter(span => (!kinds || kinds.has(span.kind)) && overlaps(span.from, span.to));
-  const allMarks = marks(records).filter(mark => (!kinds || kinds.has(mark.kind)) && overlaps(mark.at, mark.at) &&
-    Date.parse(mark.at) <= window.to);
+  const kinds = input.kinds && new Set<string>(input.kinds), only = input.lanes && new Set(input.lanes);
+  const listed = (item: { kind: string; lane: string }) => (!kinds || kinds.has(item.kind)) && (!only || only.has(item.lane));
+  // A span is listed when it overlaps the period; an instant (a mark) when it falls in it, either end included.
+  const allSpans = spans(records).filter(span => listed(span) && Date.parse(span.from) < window.to &&
+    (span.to === null || Date.parse(span.to) > window.from || Date.parse(span.from) === window.from));
+  const allMarks = marks(records).filter(mark => listed(mark) && Date.parse(mark.at) >= window.from && Date.parse(mark.at) <= window.to);
   const items = [...allSpans.map(span => ({ at: span.from, id: span.id, span })), ...allMarks.map(mark => ({ at: mark.at, id: mark.id, mark }))]
     .sort((a, b) => a.at.localeCompare(b.at) || a.id.localeCompare(b.id));
-  const selector = createHash('sha256').update(JSON.stringify([input.task, scope, input.from ?? null, input.to ?? null, input.kinds ?? null]))
-    .digest('base64url').slice(0, 12);
   // The period as asked, not as resolved: an open task's period ends now, and the next page is read later.
-  let offset = 0;
-  if (input.cursor) {
-    const match = /^([\w-]{12})\.(\d+)$/.exec(input.cursor);
-    if (!match || match[1] !== selector) throw new Problem(PROBLEM_CODE.invalidInput, 'Use a cursor from the same analysis trace');
-    offset = Number(match[2]);
-  }
+  const selector = createHash('sha256').update(JSON.stringify([input.task, scope, input.from ?? null, input.to ?? null, input.kinds ?? null,
+    input.lanes ?? null])).digest('base64url').slice(0, 12);
+  const offset = readCursor(input.cursor, selector, records.version, items.length, 'analysis trace');
   const end = offset + (input.limit ?? PAGE), page = items.slice(offset, end);
-  const { settled, ...counts } = breakdown(records, window, segments(records, window));
+  const { time, waits, settled } = waited(records, window);
   const runs = records.runs.filter(run => run.started !== null && run.state !== 'joined');
-  const recordedFrom = null;
+  const lanesListed = lanes(records).filter(lane => !only || only.has(lane.id));
   return {
     head: { ...headOf(records, input.timeZone), from: iso(window.from), to: iso(window.to),
-      complete: (!isOpen(records) || window.to < records.now) && settled },
+      settled: (!isOpen(records) || window.to < records.now) && settled },
     coverage: {
       steps: { known: runs.filter(run => run.steps !== null).map(run => run.id),
-        unknown: (['before-journal', 'provider-unsupported'] as const).flatMap(reason => {
+        unknown: analysisStepsMissingSchema.options.flatMap(reason => {
           const missing = runs.filter(run => run.stepsMissing === reason).map(run => run.id);
           return missing.length ? [{ reason, runs: missing }] : [];
         }) },
       conditions: { known: runs.filter(run => run.conditions).map(run => run.id), unknown: runs.filter(run => !run.conditions).map(run => run.id) },
-      values: { recordedFrom },
+      values: { recordedFrom: null },
     },
-    lanes: lanes(records),
+    lanes: lanesListed,
     spans: page.flatMap(item => 'span' in item ? [item.span] : []), marks: page.flatMap(item => 'mark' in item ? [item.mark] : []),
-    breakdown: counts,
-    total: items.length, nextCursor: end < items.length ? `${selector}.${end}` : null,
+    breakdown: breakdown(records, window, segments(records, window)), time, waits,
+    total: items.length, cursor: end < items.length ? `${selector}.${records.version}.${end}` : null,
     url: sceneUrl(records.root, scope, input.from ? { at: input.from } : {}),
   };
 }
@@ -208,7 +234,7 @@ export async function readFindings(root: string, input: AnalysisFindingsInput): 
   return {
     head: { ...headOf(records, input.timeZone), from: iso(window.from), to: iso(window.to) },
     rules: { set: 'experimental', used: chosen.map(rule => ({ rule, threshold: thresholds[rule] })),
-      unread: stepless ? chosen.filter(rule => STEP_RULES.has(rule)).map(rule => ({ rule, reason: 'no-step-times' as const })) : [] },
+      skipped: stepless ? chosen.filter(rule => STEP_RULES.has(rule)).map(rule => ({ rule, reason: 'no-step-times' as const })) : [] },
     findings, total: found.length, url: sceneUrl(records.root, scope),
   };
 }
@@ -221,15 +247,14 @@ export async function readAt(root: string, input: AnalysisAtInput): Promise<Anal
 
 /** Ended Runs that kept no conditions (from before they were kept): they never will, so their folders are not read again. */
 const noConditions = new Set<string>();
-const CHANGES = 100;
+type DatedRun = ChangeRun & { day: string };
+type ChangesMade = { runs: DatedRun[]; events: ReturnType<typeof changeEvents<DatedRun>> };
 /**
- * analysis changes: each Run, over the scope's Runs, that ran under a condition its agent had not run under before (a
- * version, a skill, an instruction file) or whose seat changed its launch choices (agent, model, effort), dated on the
- * period's days. Every earlier Run of the scope is read too, so the first Run of the period compares with the last
- * before it.
+ * The change events of one scope's launches, made once per reading of the facts (the launches given are kept with
+ * those facts, `ScopedAnalysis.datedLaunches`): later pages and other periods of the same facts read them again.
  */
-export async function readChanges(root: string, head: AnalysisHead, launches: readonly { day: string; run: FactLaunch }[],
-  input: AnalysisChangesInput, slices: Slices): Promise<AnalysisChangesView> {
+const made = new WeakMap<object, Promise<ChangesMade>>();
+async function makeChanges(root: string, launches: readonly { day: string; run: FactLaunch }[], slices: Slices): Promise<ChangesMade> {
   const store = new ControlStore(root, { busyTimeoutMs: 10_000 }, true), seats = new Map<string, string>();
   try {
     store.read(db => {
@@ -237,7 +262,7 @@ export async function readChanges(root: string, head: AnalysisHead, launches: re
         .iterate(JSON.stringify(launches.map(({ run }) => Number(run.id.slice(1)))))) seats.set(String(row.id), String(row.placement));
     });
   } finally { store.close(); }
-  const runs: (ChangeRun & { day: string })[] = [];
+  const runs: DatedRun[] = [];
   for (const { day, run } of launches) {
     const key = `${root}\0${run.id}`;
     const conditions = noConditions.has(key) ? null : readConditions(runFolder(root, run.id));
@@ -246,14 +271,32 @@ export async function readChanges(root: string, head: AnalysisHead, launches: re
       started: run.started, conditions, day });
     if (slices.due) await slices.pause();
   }
-  const inPeriod = (day: string) => inDays(day, head.period);
-  const events = changeEvents(runs, (run, what) => what === 'agent' || what === 'model' || what === 'effort' ? `seat:${run.placement}` : `agent:${run.agent}`)
-    .filter(({ run }) => inPeriod(run.day));
+  // Launch choices compare within a placement; versions, skills and instruction files within an agent.
+  const events = changeEvents(runs, (run, what) => what === 'agent' || what === 'model' || what === 'effort' ? `placement:${run.placement}` : `agent:${run.agent}`);
+  return { runs, events };
+}
+
+const CHANGES = 100;
+/**
+ * analysis changes: each Run of the scope that ran under a condition its agent had not run under before (a version, a
+ * skill, an instruction file; these need the Runs' condition records) or whose placement changed its launch choices
+ * (agent, model, effort; from the launch records), dated on the period's days. Every earlier Run of the scope is read
+ * too, so the first Run of the period compares with the last before it.
+ */
+export async function readChanges(root: string, head: AnalysisHead, launches: readonly { day: string; run: FactLaunch }[],
+  input: AnalysisChangesInput, slices: Slices): Promise<AnalysisChangesView> {
+  let making = made.get(launches);
+  if (!making) {
+    made.set(launches, making = makeChanges(root, launches, slices));
+    making.catch(() => made.delete(launches));
+  }
+  const { runs, events: all } = await making;
+  const inPeriod = (day: string) => inDays(day, head.period), events = all.filter(({ run }) => inPeriod(run.day));
   const selector = createHash('sha256').update(JSON.stringify([head.project, head.timeZone, head.period])).digest('base64url').slice(0, 12);
   let offset = 0;
   if (input.cursor) {
     const match = /^([\w-]{12})\.(\d+)$/.exec(input.cursor);
-    if (!match || match[1] !== selector) throw new Problem(PROBLEM_CODE.invalidInput, 'Use a cursor from the same analysis changes');
+    if (!match || match[1] !== selector || Number(match[2]) > events.length) throw new Problem(PROBLEM_CODE.invalidInput, 'Use a cursor from the same analysis changes');
     offset = Number(match[2]);
   }
   const end = offset + (input.limit ?? CHANGES), period = runs.filter(run => inPeriod(run.day));

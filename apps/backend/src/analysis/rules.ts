@@ -153,30 +153,49 @@ export function taskOutcome(log: readonly TaskLog[], state: TaskBaseState, creat
   const replacing = new Map(replaced.map(question => [question.replacedBy!, question.replacedAt! > acceptTime]));
   let nextTransition: TaskLog | undefined;
   const instructions = { sendBacks: 0, instructionsAtReview: 0, instructionsAfterAccept: 0, instructionsDuringWork: 0 };
+  /** The records counted as rework, each once: the counts above are their numbers by kind. */
+  const rework: { id: string; kind: 'sendBack' | 'atReview' | 'afterAccept' }[] = [];
   // Walk backward so each instruction sees its first subsequent state transition.
   for (let index = log.length - 1; index >= 0; index--) {
     const entry = log[index]!;
-    if (sendBack(entry)) instructions.sendBacks++;
+    if (sendBack(entry)) { instructions.sendBacks++; rework.push({ id: entry.id, kind: 'sendBack' }); }
     if (instruction(entry) && !replacing.has(entry.id)) {
       const seen = nextTransition?.kind === 'linked' && nextTransition.originCauseId === entry.id
         ? nextTransition.fromState : entry.fromState;
-      if (acceptedIndex >= 0 && index > acceptedIndex) instructions.instructionsAfterAccept++;
-      else if (seen === 'waiting') instructions.instructionsAtReview++;
+      if (acceptedIndex >= 0 && index > acceptedIndex) { instructions.instructionsAfterAccept++; rework.push({ id: entry.id, kind: 'afterAccept' }); }
+      else if (seen === 'waiting') { instructions.instructionsAtReview++; rework.push({ id: entry.id, kind: 'atReview' }); }
       else if (entry !== initial && (seen === 'doing' || seen === 'todo' || seen === 'held')) instructions.instructionsDuringWork++;
     }
     if (entry.toState !== null) nextTransition = entry;
   }
-  for (const after of replacing.values())
+  for (const [id, after] of replacing) {
     if (after) instructions.instructionsAfterAccept++; else instructions.instructionsAtReview++;
+    rework.push({ id, kind: after ? 'afterAccept' : 'atReview' });
+  }
   const passed = acceptedAt !== null && reviews <= 1 &&
     !instructions.sendBacks && !instructions.instructionsAtReview && !instructions.instructionsAfterAccept;
   return { requestedAt, acceptedAt, stoppedAt, doneAt, finishedAt: acceptedAt ?? stoppedAt, passed, submits: reviews + rounds.length,
-    estimated: open.some(question => question.estimated), instructions,
+    estimated: open.some(question => question.estimated), instructions, rework,
     leadMs: acceptedAt === null ? null : Math.max(0, Date.parse(acceptedAt) - Date.parse(requestedAt)),
     outcome: acceptedAt ? passed ? 'passed' as const : 'reworked' as const : stoppedAt ? 'stopped' as const
       : doneAt ? 'doneUnaccepted' as const : null };
 }
 export type Outcome = ReturnType<typeof taskOutcome>;
+
+/**
+ * The last time a task ended (became done or stopped, its acceptance included) at or before `now`, or null when it never
+ * did: a task reopened after it ended waits again from there, not from its first end.
+ */
+export function lastEndedAt(log: readonly TaskLog[], now: number): number | null {
+  let base: TaskBaseState = 'todo', last: number | null = null;
+  for (const entry of log) {
+    const next: TaskBaseState = entry.stage?.baseState ?? (entry.toState === 'held' || !entry.toState ? base : entry.toState);
+    const at = Date.parse(entry.causeAt ?? entry.at);
+    if ((next === 'done' || next === 'stopped') && next !== base && at <= now) last = at;
+    base = next;
+  }
+  return last;
+}
 
 /**
  * The user's instructions and send-backs to a unit (its own log, `log`) or any Task under it (`logs`, the unit's
