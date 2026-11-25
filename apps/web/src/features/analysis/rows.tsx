@@ -583,7 +583,7 @@ function Bins({ row, uncounted, partial, children }: { row: number; uncounted?: 
       const off = uncounted?.(at) ?? false;
       const edge = off && !(uncounted?.(at + 1) ?? true);
       const look = cn("relative flex h-full flex-col-reverse gap-0.5 opacity-40 transition-opacity duration-(--motion-base) ease-out",
-        wide ? "px-[max(3px,calc(50%-26px))]" : "px-[clamp(1px,12%,6px)]",
+        wide ? "px-[max(min(3px,20%),calc(50%-26px))]" : "px-[clamp(1px,12%,6px)]",
         lit(bin, group.span) && "opacity-100", group.hovered === at && "opacity-100",
         // Under a finger the band and the pressed day are drawn in each chart (a phone's rows stack their names between).
         group.narrow && (group.hovered === at ? "bg-day-band" : lit(bin, group.span) && "bg-span-band"),

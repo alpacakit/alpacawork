@@ -29,15 +29,14 @@ export function useUsageSeries(project: string | null, span: Span, bucket: Bucke
 }
 
 /**
- * The launches chart's three answers, read with the use's own so the look is drawn once: the whole record under the
- * filter (the chart: the use's charts stand on the whole record's bins), the whole record without one (its colours,
- * the same read when nothing is filtered), and the span under the filter (its numbers on the left). The whole record's
- * do not change with the span, so another span reads only the last.
+ * The launches' answers read with the use's own, so the look is drawn once and nothing comes in above it later: each
+ * axis (model, effort) over the whole record (the charts' bins, and the colours and choices, which no filter moves) and
+ * over the span (the numbers on the left), none filtered. Coloured by either, without a filter, the look has them all.
  */
-export function useLaunchReads(project: string | null, span: Span, bucket: Bucket, by: SeriesBy, filter: LaunchFilter, enabled: boolean) {
+export function useLaunchReads(project: string | null, span: Span, bucket: Bucket, enabled: boolean) {
   const all: Span = { period: "all" };
-  return [useUsageSeries(project, all, bucket, by, filter, enabled), useUsageSeries(project, all, bucket, by, null, enabled),
-    useUsageSeries(project, span, bucket, by, filter, enabled)] as const;
+  return [useUsageSeries(project, all, bucket, "model", null, enabled), useUsageSeries(project, all, bucket, "effort", null, enabled),
+    useUsageSeries(project, span, bucket, "model", null, enabled), useUsageSeries(project, span, bucket, "effort", null, enabled)] as const;
 }
 
 /**

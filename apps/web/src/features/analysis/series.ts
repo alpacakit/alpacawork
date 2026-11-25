@@ -14,56 +14,54 @@ export const filterQuery = (filter: LaunchFilter | null | undefined) => ({
   effortMissing: filter?.effort === EFFORT_NONE ? "true" : null,
 });
 
-/**
- * One colour of the chart: the groups it stands for (one, or the rest folded into "other"), its colour class, and its
- * name (`label`; null: the other models, named by their count; for an effort, null: none recorded).
- */
-export type Slot = { keys: string[]; color: string; label: string | null; value: string | null; other?: number };
+/** One model or effort of the chart: its key (which opens its launches), its value as a filter takes it, its name and colour. */
+export type SeriesPart = { key: string; value: string | null; label: string; color: string };
 
 const MODEL_COLORS = ["bg-series-1", "bg-series-2", "bg-series-3", "bg-series-4", "bg-series-5"];
-/** Efforts in their order, each a step of one hue from light to deep; one not listed takes the grey of the rest. */
-const EFFORT_STEPS: Record<string, string> = {
-  minimal: "bg-effort-1", low: "bg-effort-1", medium: "bg-effort-2", high: "bg-effort-3", xhigh: "bg-effort-4", max: "bg-effort-5",
-};
-const EFFORT_ORDER = Object.keys(EFFORT_STEPS);
+/** Efforts in their order, each a step of one hue from light to deep. */
+const EFFORT_ORDER = ["minimal", "low", "medium", "high", "xhigh", "max"];
+const EFFORT_COLORS = ["bg-effort-1", "bg-effort-2", "bg-effort-3", "bg-effort-4", "bg-effort-5", "bg-effort-6"];
+/** An effort the order does not know takes a hue apart from the blues, in the order they come. */
+const OTHER_EFFORT_COLORS = ["bg-series-2", "bg-series-4", "bg-series-5", "bg-series-3"];
+const REST = "bg-series-other", NONE = "bg-effort-none";
 
-/**
- * The chart's colours, from the groups of the whole record without a filter (`groups`), so a colour stays with its
- * model or effort whatever is filtered. Models by their launches, the five most each in a colour of its own and the
- * rest as one grey; efforts in their order, none recorded last.
- */
-export function slotsOf(by: SeriesBy, groups: UsageSeriesView["groups"]): Slot[] {
-  if (by === "effort") {
-    const rank = (value: string | null) => value === null ? EFFORT_ORDER.length + 1 : EFFORT_ORDER.includes(value) ? EFFORT_ORDER.indexOf(value) : EFFORT_ORDER.length;
-    return [...groups].sort((a, b) => rank(a.value) - rank(b.value) || a.key.localeCompare(b.key)).map(group => ({
-      keys: [group.key], value: group.value, label: group.value === null ? null : group.label,
-      color: group.value === null ? "bg-effort-none" : EFFORT_STEPS[group.value] ?? "bg-series-other",
-    }));
-  }
-  const most = [...groups].sort((a, b) => b.total - a.total || a.label.localeCompare(b.label));
-  const named = most.length > MODEL_COLORS.length ? most.slice(0, MODEL_COLORS.length) : most;
-  const rest = most.slice(named.length);
-  return [
-    ...named.map((group, at) => ({ keys: [group.key], value: group.value, label: group.label, color: MODEL_COLORS[at]! })),
-    ...rest.length ? [{ keys: rest.map(group => group.key), value: null, label: null, color: "bg-series-other", other: rest.length }] : [],
-  ];
+/** The order the parts stand in, the chart's foot first: models by their launches; efforts in their order, others after, none recorded last. */
+function ordered(by: SeriesBy, groups: UsageSeriesView["groups"]) {
+  if (by === "model") return [...groups].sort((a, b) => b.total - a.total || a.label.localeCompare(b.label));
+  const rank = (value: string | null) => value === null ? EFFORT_ORDER.length + 1 : EFFORT_ORDER.includes(value) ? EFFORT_ORDER.indexOf(value) : EFFORT_ORDER.length;
+  return [...groups].sort((a, b) => rank(a.value) - rank(b.value) || a.label.localeCompare(b.label));
 }
 
 /**
- * An answer's launches by slot: each point's, and the whole answer's. A group the slots do not know (one that came
- * after the colours were read) counts with the rest.
+ * The colours, from the whole record without a filter (`groups`), so a colour stays with its model or effort whatever
+ * is filtered: the five models with the most launches each a colour of its own and the rest grey; each effort of the
+ * order its step, others a hue apart, none recorded grey. A group the book does not hold (one that came after it was
+ * read) is grey, and still a part of its own.
  */
-export function bySlot(slots: Slot[], view: UsageSeriesView) {
-  const at = new Map<string, number>();
-  slots.forEach((slot, index) => slot.keys.forEach(key => at.set(key, index)));
-  const fallback = slots.findIndex(slot => slot.other !== undefined);
-  const slotOf = (group: number) => at.get(view.groups[group]!.key) ?? fallback;
+export function colourBook(by: SeriesBy, groups: UsageSeriesView["groups"]) {
+  const book = new Map<string, string>();
+  let other = 0;
+  ordered(by, groups).forEach((group, at) => book.set(group.key, by === "model" ? MODEL_COLORS[at] ?? REST
+    : group.value === null ? NONE : EFFORT_ORDER.includes(group.value) ? EFFORT_COLORS[EFFORT_ORDER.indexOf(group.value)]!
+      : OTHER_EFFORT_COLORS[other++] ?? REST));
+  return { by, colorOf: (key: string, value: string | null) => book.get(key) ?? (by === "effort" && value === null ? NONE : REST), order: new Map([...book.keys()].map((key, at) => [key, at])) };
+}
+export type ColourBook = ReturnType<typeof colourBook>;
+
+/**
+ * An answer's launches by part, every group a part of its own, in the book's order (one it does not hold after): each
+ * point's counts and the whole answer's, as the server counted them. `label`: null for no effort recorded.
+ */
+export function partsOf(book: ColourBook, view: UsageSeriesView) {
+  const known = (key: string) => book.order.get(key) ?? Number.MAX_SAFE_INTEGER;
+  const order = view.groups.map((_, index) => index).sort((a, b) => known(view.groups[a]!.key) - known(view.groups[b]!.key));
+  const at = new Map(order.map((group, place) => [group, place]));
+  const parts: SeriesPart[] = order.map(index => { const group = view.groups[index]!;
+    return { key: group.key, value: group.value, label: group.label, color: book.colorOf(group.key, group.value) }; });
   const points = view.points.map(point => {
-    const counts = slots.map(() => 0);
-    for (const [group, count] of point.counts) { const slot = slotOf(group); if (slot >= 0) counts[slot]! += count; }
+    const counts = parts.map(() => 0);
+    for (const [group, count] of point.counts) counts[at.get(group)!]! += count;
     return counts;
   });
-  const totals = slots.map(() => 0);
-  view.groups.forEach((group, index) => { const slot = slotOf(index); if (slot >= 0) totals[slot]! += group.total; });
-  return { points, totals };
+  return { parts, points, totals: order.map(index => view.groups[index]!.total) };
 }

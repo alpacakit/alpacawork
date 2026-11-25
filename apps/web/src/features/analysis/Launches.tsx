@@ -1,46 +1,58 @@
 import { useTranslation } from "react-i18next";
+import { ReadFailure } from "@/components/ui/loadable";
 import { useViewStore } from "@/state/view-store";
 import { cn } from "@/lib/utils";
 import { format } from "./format";
 import { useUsageSeries } from "./data";
 import { Seg, useChoices } from "./parts";
-import { bySlot, EFFORT_NONE, filtered, slotsOf, type LaunchFilter, type SeriesBy, type Slot } from "./series";
+import { colourBook, EFFORT_NONE, filtered, partsOf, type LaunchFilter, type SeriesBy, type SeriesPart } from "./series";
 import type { Bin, DayList, PartItem, RowSay } from "./rows";
 import type { Bucket, UsageSeriesView } from "./contract";
+import type { Span } from "./place";
 import type { Open } from "./TasksLook";
 
-type Days = { from: string; to: string };
-
-/** The launches chart's answers (data.ts `useLaunchReads`): the whole record under the filter, without it, and the span under it. */
-export type LaunchAnswers = [UsageSeriesView, UsageSeriesView, UsageSeriesView];
+/** The launches' answers read with the face (data.ts `useLaunchReads`): each axis over the whole record and over the span, none filtered. */
+export type LaunchAnswers = { models: UsageSeriesView; efforts: UsageSeriesView; spanModels: UsageSeriesView; spanEfforts: UsageSeriesView };
 
 /**
  * The launches by model (its name with the version) or by effort, the two apart: each bin's launches stacked in the
  * colour of their model or effort, and the span's on the left, under one filter of a model and an effort. The numbers
- * are the server's (`analysis usage-series`): the screen only folds the models past the fifth into one grey. The
- * colours are the whole record's without a filter, so none moves as a filter is chosen. `ready`: the chart's answer
- * stands on the same bins as the other charts; until it does, the row draws the launches in one colour as the use's
- * answer gives them.
+ * are the server's (`analysis usage-series`), each model or effort a part of its own. Without a filter they are the
+ * face's own answers. A filter's are read here, for this row alone: while they come the row shows what it showed,
+ * faint, and a filter that cannot be read says so in the row, with a way to ask again; the choices stay in reach, so
+ * any filter can be left. `live`: false in the face's stand-in, which reads nothing.
  */
-export function useLaunches(bins: Bin[], [chart, colours, span]: LaunchAnswers) {
+export function useLaunches(bins: Bin[], answers: LaunchAnswers, span: Span, bucket: Bucket, live = true) {
   const { t } = useTranslation("analysis");
+  const project = useViewStore(state => state.project);
   const { launchBy: by, launchFilter: filter } = useChoices();
-  const slots = colours.by === by ? slotsOf(by, colours.groups) : [];
-  const ready = chart.by === by && span.by === by && slots.length > 0
-    && chart.points.length === bins.length && chart.points[0]?.from === bins[0]?.from;
-  const counts = ready ? bySlot(slots, chart) : null, spanCounts = ready ? bySlot(slots, span) : null;
-  const nameOf = (slot: Slot) => slot.other !== undefined ? t("usage.otherModels", { count: slot.other })
-    : slot.label ?? t("usage.effortNone");
-  // A part opens its own launches (one model or one effort), under the filter; the rest folded into one opens none.
-  const member = (slot: Slot) => slot.keys.length === 1 ? { group: by, member: slot.keys[0]! } : null;
+  const isFiltered = filtered(filter);
+  const whole = by === "model" ? answers.models : answers.efforts, wholeSpan = by === "model" ? answers.spanModels : answers.spanEfforts;
+  const chartRead = useUsageSeries(project, { period: "all" }, bucket, by, filter, live && isFiltered);
+  const spanRead = useUsageSeries(project, span, bucket, by, filter, live && isFiltered);
+  const fits = (view: UsageSeriesView | undefined): view is UsageSeriesView => !!view && view.by === by
+    && view.points.length === bins.length && view.points[0]?.from === bins[0]?.from;
+  // A filter's answer, or (until it has come) the last one this row drew for this axis, or the unfiltered.
+  const chart = isFiltered && fits(chartRead.data) ? chartRead.data : whole;
+  const inSpan = isFiltered && spanRead.data?.by === by ? spanRead.data : wholeSpan;
+  const current = !isFiltered || (chart === chartRead.data && inSpan === spanRead.data && !chartRead.isPlaceholderData && !spanRead.isPlaceholderData);
+  const failed = isFiltered ? [chartRead, spanRead].find(read => read.isError) : undefined;
+  const book = colourBook(by, whole.groups);
+  const ready = fits(chart);
+  const counts = ready ? partsOf(book, chart) : null, spanCounts = partsOf(book, inSpan);
+  const nameOf = (part: SeriesPart) => by === "effort" && part.value === null ? t("usage.effortNone") : part.label;
+  // A part opens its own launches (one model or one effort), under the filter.
+  const member = (part: SeriesPart) => ({ group: by, member: part.key });
+  const choicesOf = (axis: SeriesBy) => partsOf(colourBook(axis, (axis === "model" ? answers.models : answers.efforts).groups),
+    axis === "model" ? answers.models : answers.efforts).parts.map(part => [part.value ?? EFFORT_NONE, axis === "effort" && part.value === null ? t("usage.effortNone") : part.label] as const);
   return {
-    by, filter, ready, slots, colours, isFiltered: filtered(filter),
+    by, filter, ready, isFiltered, current, failure: failed ? { error: failed.error, retry: () => { void chartRead.refetch(); void spanRead.refetch(); } } : null,
     total: (at: number) => chart.points[at]?.total ?? 0,
-    spanTotal: span.total,
+    spanTotal: inSpan.total,
     /** A bin's parts, those with launches, in the order they stack. */
-    parts: (at: number) => counts ? slots.flatMap((slot, index) => counts.points[at]![index]! > 0 ? [{ slot, value: counts.points[at]![index]! }] : []) : [],
-    spanParts: () => spanCounts ? slots.flatMap((slot, index) => spanCounts.totals[index]! > 0 ? [{ slot, value: spanCounts.totals[index]! }] : []) : [],
-    nameOf, member,
+    parts: (at: number) => counts ? counts.parts.flatMap((part, index) => counts.points[at]![index]! > 0 ? [{ part, value: counts.points[at]![index]! }] : []) : [],
+    spanParts: () => spanCounts.parts.flatMap((part, index) => spanCounts.totals[index]! > 0 ? [{ part, value: spanCounts.totals[index]! }] : []),
+    nameOf, member, choices: { model: choicesOf("model"), effort: choicesOf("effort") },
   };
 }
 export type Launches = ReturnType<typeof useLaunches>;
@@ -51,49 +63,36 @@ export function launchesSay(launches: Launches, name: string, line: RowSay["line
   const list = (more: Partial<DayList>) => (bin: Bin): DayList => ({ set: "used", value: "launches", from: bin.from, to: bin.to, filter: launches.filter, ...more });
   return {
     name, total: at => format("times", launches.total(at)), line, list: bin => list({})(bin),
-    parts: at => [...launches.parts(at).map(({ slot, value }) => ({
-      color: slot.color, name: launches.nameOf(slot), value: format("times", value), share: share(value, launches.total(at)),
-      list: launches.member(slot) ? list(launches.member(slot)!) : undefined,
+    parts: at => [...launches.parts(at).map(({ part, value }) => ({
+      color: part.color, name: launches.nameOf(part), value: format("times", value), share: share(value, launches.total(at)),
+      list: list(launches.member(part)),
     })), ...extra?.(at) ?? []],
   };
 }
 
 /** The span's launches by colour on the left, each opening its own launches of the span. */
 export function launchesParts(launches: Launches, open: Open): PartItem[] {
-  const all = launches.spanTotal ?? 0;
-  return launches.spanParts().map(({ slot, value }) => ({
-    color: slot.color, name: launches.nameOf(slot),
+  const all = launches.spanTotal;
+  return launches.spanParts().map(({ part, value }) => ({
+    color: part.color, name: launches.nameOf(part),
     value: <b className="font-semibold tabular-nums">{format("times", value)}</b>,
     share: all ? `${Math.round(value / all * 100)}%` : "",
-    onOpen: launches.member(slot) ? () => open({ set: "used", value: "launches", ...launches.member(slot)!, filter: launches.filter }) : undefined,
+    onOpen: () => open({ set: "used", value: "launches", ...launches.member(part), filter: launches.filter }),
   }));
-}
-
-/** A filter's choices from one answer: models by their launches, efforts in their order, none recorded last. */
-function choicesOf(by: SeriesBy, view: UsageSeriesView | undefined, nameOf: (slot: Slot) => string): (readonly [string, string])[] {
-  if (!view) return [];
-  if (by === "effort") return slotsOf("effort", view.groups).map(slot => [slot.value ?? EFFORT_NONE, nameOf(slot)] as const);
-  return [...view.groups].sort((a, b) => b.total - a.total || a.label.localeCompare(b.label))
-    .flatMap(group => group.value === null ? [] : [[group.value, group.label] as const]);
 }
 
 /**
  * What the launches are coloured by and filtered to: the model or the effort, then one model and one effort (each "all"
- * at first). A filter keeps what it is coloured by. The choices are the whole record's: those of what the chart is
- * coloured by are its colours' answer; the other's are read once the face is drawn, not with it (a phone opens its
- * choices at the touch, too soon to read them then).
+ * at first). A filter keeps what it is coloured by; the choices are the whole record's, read with the face. A filter
+ * that could not be read is said here, with a way to ask again.
  */
-export function LaunchControls({ launches, bucket }: { launches: Launches; bucket: Bucket }) {
+export function LaunchControls({ launches }: { launches: Launches }) {
   const { t } = useTranslation("analysis");
   const choose = useChoices(state => state.choose);
-  const project = useViewStore(state => state.project);
-  const other: SeriesBy = launches.by === "model" ? "effort" : "model";
-  const otherRead = useUsageSeries(project, { period: "all" }, bucket, other, null);
-  const choices = { [launches.by]: choicesOf(launches.by, launches.colours, launches.nameOf), [other]: choicesOf(other, otherRead.data, launches.nameOf) } as Record<SeriesBy, (readonly [string, string])[]>;
   const set = (next: Partial<LaunchFilter>) => choose({ launchFilter: { ...launches.filter, ...next } });
   const select = "h-7 max-w-full min-w-0 truncate rounded-md border border-line bg-lit ps-2 pe-6 text-sm text-ink hover:bg-hover focus-visible:outline-2 focus-visible:outline-ink";
-  // A chosen value the choices do not hold yet (its list still on its way) is still named, so the filter reads true.
-  const options = (by: SeriesBy) => { const list = choices[by], value = launches.filter[by];
+  // A chosen value the record no longer holds is still named, so the filter reads true and can be left.
+  const options = (by: SeriesBy) => { const list = launches.choices[by], value = launches.filter[by];
     return value !== null && !list.some(([key]) => key === value) ? [...list, [value, value === EFFORT_NONE ? t("usage.effortNone") : value] as const] : list; };
   return <div className="mt-3 flex flex-col gap-2">
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -109,5 +108,6 @@ export function LaunchControls({ launches, bucket }: { launches: Launches; bucke
         {options(by).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
       </select>)}
     </div>
+    {launches.failure && <ReadFailure error={launches.failure.error} retry={launches.failure.retry} />}
   </div>;
 }

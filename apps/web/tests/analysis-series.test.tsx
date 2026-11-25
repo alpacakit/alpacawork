@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { bySlot, slotsOf } from "../src/features/analysis/series";
+import { colourBook, partsOf } from "../src/features/analysis/series";
 import { analysisValues, readAnalysis } from "../src/features/analysis/place";
 import type { UsageSeriesView } from "../src/features/analysis/contract";
 
@@ -12,22 +12,27 @@ const view = (groups: UsageSeriesView["groups"], points: [number, number][][]): 
     total: counts.reduce((sum, [, count]) => sum + count, 0), counts })),
 });
 
-test("models past the fifth fold into one grey, and every launch is still counted", () => {
+test("every model is a part of its own, a colour staying with it whatever is filtered or comes later", () => {
   const groups = ["a", "b", "c", "d", "e", "f", "g"].map((key, at) => group(key, key, 70 - at * 10));
-  const slots = slotsOf("model", groups);
-  expect(slots.map(slot => slot.color)).toEqual(["bg-series-1", "bg-series-2", "bg-series-3", "bg-series-4", "bg-series-5", "bg-series-other"]);
-  expect(slots[5]).toMatchObject({ keys: ["f", "g"], other: 2 });
-  // A filtered answer lists only some groups, in its own order: each keeps the colour of its model.
-  const answer = view([group("g", "g", 3), group("b", "b", 5)], [[[0, 1], [1, 2]], [[0, 2], [1, 3]]]);
-  const counts = bySlot(slots, answer);
-  expect(counts.points).toEqual([[0, 2, 0, 0, 0, 1], [0, 3, 0, 0, 0, 2]]);
-  expect(counts.totals.reduce((sum, each) => sum + each, 0)).toBe(answer.total);
+  const book = colourBook("model", groups);
+  // A filtered answer lists some groups in its own order, and one the colours were read before (h).
+  const answer = view([group("h", "h", 4), group("g", "g", 3), group("b", "b", 5)], [[[0, 4], [1, 1], [2, 2]], [[1, 2], [2, 3]]]);
+  const { parts, points, totals } = partsOf(book, answer);
+  expect(parts.map(part => [part.key, part.color])).toEqual([["b", "bg-series-2"], ["g", "bg-series-other"], ["h", "bg-series-other"]]);
+  expect(points).toEqual([[2, 1, 4], [3, 2, 0]]);
+  // Each point's parts add up to its total, and the answer's to its own.
+  answer.points.forEach((point, at) => expect(points[at]!.reduce((sum, each) => sum + each, 0)).toBe(point.total));
+  expect(totals.reduce((sum, each) => sum + each, 0)).toBe(answer.total);
 });
 
-test("efforts stand in their order, none recorded last", () => {
-  const slots = slotsOf("effort", [group("n", null, 9), group("h", "high", 5), group("l", "low", 1), group("m", "medium", 4)]);
-  expect(slots.map(slot => [slot.value, slot.color])).toEqual([
-    ["low", "bg-effort-1"], ["medium", "bg-effort-2"], ["high", "bg-effort-3"], [null, "bg-effort-none"]]);
+test("efforts stand in their order with a colour each, none recorded last", () => {
+  const groups = [group("n", null, 9), group("h", "high", 5), group("l", "low", 1), group("m", "medium", 4),
+    group("i", "minimal", 1), group("o", "off", 2), group("u", "ultra", 2), group("c", "constructor", 1)];
+  const { parts } = partsOf(colourBook("effort", groups), view(groups, []));
+  expect(parts.map(part => part.value)).toEqual(["minimal", "low", "medium", "high", "constructor", "off", "ultra", null]);
+  const colours = parts.map(part => part.color);
+  expect(new Set(colours).size).toBe(colours.length);
+  expect(colours.at(-1)).toBe("bg-effort-none");
 });
 
 test("a list opened under a filter keeps it in the URL", () => {

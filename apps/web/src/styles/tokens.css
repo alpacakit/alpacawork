@@ -116,10 +116,11 @@
   /* The column of the day pointed at, through every chart of the analysis: plain to find again at a glance. */
   --day-band: color-mix(in oklab, var(--ink) 10%, transparent);
   /* The analysis's series (features/analysis): models in a fixed order of five hues and a grey for the rest, told apart
-     for colour-blind readers too (each neighbour pair checked); efforts as one hue from light to deep, in their order. */
+     for colour-blind readers too (each neighbour pair checked); efforts as one hue from light to deep, in their order,
+     medium and high two steps apart (the two most used). */
   --series-1: #2a78d6; --series-2: #eb6834; --series-3: #1baf7a; --series-4: #eda100; --series-5: #e87ba4;
   --series-other: oklch(72% 0.01 260);
-  --effort-1: #9ec5f4; --effort-2: #6da7ec; --effort-3: #3987e5; --effort-4: #1c5cab; --effort-5: #0d366b;
+  --effort-1: #b7d3f6; --effort-2: #86b6ef; --effort-3: #5598e7; --effort-4: #256abf; --effort-5: #184f95; --effort-6: #0d366b;
   --effort-none: oklch(84% 0.008 260);
   /* A per-task line over the analysis's bars: a hue no bar takes, so it is read as the line and not as one more bar. */
   --trend: oklch(52% 0.14 295);
@@ -186,7 +187,7 @@
   --day-band: color-mix(in oklab, var(--ink) 14%, transparent);
   --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-4: #c98500; --series-5: #d55181;
   --series-other: oklch(52% 0.01 260);
-  --effort-1: #184f95; --effort-2: #256abf; --effort-3: #3987e5; --effort-4: #6da7ec; --effort-5: #b7d3f6;
+  --effort-1: #184f95; --effort-2: #256abf; --effort-3: #3987e5; --effort-4: #86b6ef; --effort-5: #b7d3f6; --effort-6: #e6f0fc;
   --effort-none: oklch(40% 0.008 260);
   --trend: oklch(76% 0.11 295);
   --diff-add: oklch(25% 0.045 150);
@@ -268,7 +269,8 @@
   --color-series-1: var(--series-1); --color-series-2: var(--series-2); --color-series-3: var(--series-3);
   --color-series-4: var(--series-4); --color-series-5: var(--series-5); --color-series-other: var(--series-other);
   --color-effort-1: var(--effort-1); --color-effort-2: var(--effort-2); --color-effort-3: var(--effort-3);
-  --color-effort-4: var(--effort-4); --color-effort-5: var(--effort-5); --color-effort-none: var(--effort-none);
+  --color-effort-4: var(--effort-4); --color-effort-5: var(--effort-5); --color-effort-6: var(--effort-6);
+  --color-effort-none: var(--effort-none);
   --color-trend: var(--trend);
   --color-grass-0: color-mix(in oklab, var(--ink) 6%, var(--bg));
   --color-grass-1: color-mix(in oklab, var(--done) 30%, var(--bg));

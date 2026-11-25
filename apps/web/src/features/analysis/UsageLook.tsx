@@ -1,4 +1,5 @@
 import { memo } from "react";
+import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { RegionSkeleton } from "@/components/ui/skeleton";
 import { daysBetween, delta, format, tokenColumn, unitOf as unitWord, type Kind } from "./format";
@@ -33,10 +34,12 @@ type ValueKey = keyof typeof VALUES;
  * value as a row on the same days, then the same broken down. Skills, tools and MCP are counted from the day counting
  * began: the days before it lie hatched.
  */
-export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days, open, zone, series }: {
+export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days, open, zone, series, live = true }: {
   view: UsageView; span: Span; root: HTMLElement | null; tasks: TasksView | null; days: Days; open: Open; zone: string;
   /** The launches by model or effort: the whole record under the filter, without it, and the span under it. */
   series: LaunchAnswers;
+  /** False in the face's stand-in (FaceSkeleton): nothing more is read. */
+  live?: boolean;
 }) {
   const { t } = useTranslation("analysis");
   const { bucket, usageGroup, grow } = useChoices();
@@ -64,10 +67,10 @@ export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days
   </Leads>;
 
   const points = view.series.points, today = view.head.today;
-  const launches = useLaunches(points, series);
+  const launches = useLaunches(points, series, span, bucket, live);
   const taskPoints = tasks?.series.points.length === points.length ? tasks.series.points : null;
   // Amounts a bin: the token total (output, input and cache), run time and launches; and the finished tasks they went to.
-  // The launches are the series' once it has come (under its filter), the use's until then.
+  // The launches are the series' (under its filter) where they stand on the same bins, the use's otherwise.
   const amount = { tokens: (i: number) => tokens(points[i]!.counts), runMs: (i: number) => points[i]!.counts.runMs,
     launches: (i: number) => launches.ready ? launches.total(i) : points[i]!.counts.launches };
   type Amount = keyof typeof amount;
@@ -160,16 +163,22 @@ export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days
         <BarChart row={first + 1} height="h-20 narrow:h-16" scale={scales.runMs} tone="working" grow overlay={overlays?.runMs} values={i => [["", amount.runMs(i)]]} />
       </Row>
       <Row row={first + 2} left={<>
-        <Num className="" label={t("usage.launches")} kind="times" value={launches.isFiltered ? launches.spanTotal ?? 0 : now.launches} previous={null} length={length}
-          onOpen={() => open({ set: "used", value: "launches", filter: launches.filter })} />
-        <LaunchControls launches={launches} bucket={bucket} />
-        <Parts items={[...launchesParts(launches, open), ...launches.isFiltered ? [] : [{ color: "", name: t("usage.newConversations"),
+        {/* While a filter's numbers come, those it replaces stand faint; the choices above them stay in reach. */}
+        <div className={cn("transition-opacity duration-(--motion-base)", !launches.current && "opacity-50")}>
+          <Num className="" label={t("usage.launches")} kind="times" value={launches.isFiltered ? launches.spanTotal : now.launches} previous={null} length={length}
+            onOpen={() => open({ set: "used", value: "launches", filter: launches.filter })} />
+        </div>
+        <LaunchControls launches={launches} />
+        <div className={cn("transition-opacity duration-(--motion-base)", !launches.current && "opacity-50")}><Parts items={[...launchesParts(launches, open), ...launches.isFiltered ? [] : [{ color: "", name: t("usage.newConversations"),
           ...part("conversations", now.newConversations, { set: "used", value: "newConversations" }) }]]}
-          line={launches.isFiltered ? undefined : perEntry("launches")} />
+          line={launches.isFiltered ? undefined : perEntry("launches")} /></div>
       </>}>
-        {/* Each bin's launches stacked by model or effort, the largest at the foot; in one colour until the series has come. */}
-        <BarChart row={first + 2} height="h-30 narrow:h-24" scale={scales.launches} tone={launches.ready ? undefined : "working"} grow overlay={overlays?.launches}
-          values={i => launches.ready ? launches.parts(i).map(({ slot, value }, at) => [slot.color, value, at] as [string, number, number]) : [["", amount.launches(i)]]} />
+        {/* Each bin's launches stacked by model or effort, the most used at the foot; in one colour where the series does
+            not stand on the same bins. */}
+        <div className={cn("transition-opacity duration-(--motion-base)", !launches.current && "opacity-50")}>
+          <BarChart row={first + 2} height="h-30 narrow:h-24" scale={scales.launches} tone={launches.ready ? undefined : "working"} grow overlay={overlays?.launches}
+            values={i => launches.ready ? launches.parts(i).map(({ part, value }, at) => [part.color, value, at] as [string, number, number]) : [["", amount.launches(i)]]} />
+        </div>
         <DayAxis />
       </Row>
     </div>

@@ -15,7 +15,7 @@ import { analysisSurfaces, cardSpanOf, listOnAnswer, PERIOD_BACK, stepChosen, ty
 import { TasksLook } from "./TasksLook";
 import { FaceSkeleton } from "./FaceSkeleton";
 import { UsageLook } from "./UsageLook";
-import type { Head, Period, TasksView, UsageView } from "./contract";
+import type { Head, Period, TasksView, UsageSeriesView, UsageView } from "./contract";
 import type { LaunchAnswers } from "./Launches";
 
 const PRESETS = PERIOD_BACK;
@@ -36,7 +36,7 @@ export function AnalysisView({ place }: { place: AnalysisPlace }) {
   const { t } = useTranslation("analysis");
   useAnalysisFreshness();
   const project = useViewStore(state => state.project);
-  const { bucket, launchBy, launchFilter } = useChoices();
+  const { bucket } = useChoices();
   // What is seen first is read first: the look shown (the AI's use draws the tasks' finished too); its breakdown reads
   // on its own when it comes near the screen (TasksBreakdown, Breakdown).
   const [root, setRoot] = useState<HTMLElement | null>(null);
@@ -44,13 +44,13 @@ export function AnalysisView({ place }: { place: AnalysisPlace }) {
   const usage = useUsageView(project, place.span, bucket, null, place.look === "usage");
   // The look's answers are one set (the AI's use draws its finished tasks too): the days said above and the numbers
   // under them are always the same set's, the last whole one until the new choice's has wholly come.
-  const launches = useLaunchReads(project, place.span, bucket, launchBy, launchFilter, place.look === "usage");
+  const launches = useLaunchReads(project, place.span, bucket, place.look === "usage");
   const set = useReadSet(place.look, place.look === "tasks" ? [tasks] : [usage, tasks, ...launches]);
   const head: Head | undefined = (set.data?.[0] as { head: Head } | undefined)?.head;
   // The launches' three answers as one value that stays the same while they do, so the usage look (memo) is not drawn
   // again as each other read of the set comes in.
-  const [chart, colours, inSpan] = set.data?.slice(2) ?? [];
-  const series = useMemo(() => [chart, colours, inSpan] as LaunchAnswers, [chart, colours, inSpan]);
+  const [models, efforts, spanModels, spanEfforts] = (set.data?.slice(2) ?? []) as (UsageSeriesView | undefined)[];
+  const series = useMemo(() => ({ models, efforts, spanModels, spanEfforts }) as LaunchAnswers, [models, efforts, spanModels, spanEfforts]);
   const show = (next: Partial<AnalysisPlace>) => useViewStore.getState().showAnalysis({ ...place, ...next });
   // A number opens the tasks it was counted from: in the span of the answer it stands in, whatever was chosen since. The
   // same function whatever is open over the face, so opening a list does not draw the face again (its looks are memo).
