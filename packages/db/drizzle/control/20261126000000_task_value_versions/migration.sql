@@ -11,6 +11,11 @@ CREATE TABLE task_value_versions (
 --> statement-breakpoint
 CREATE INDEX task_value_versions_task ON task_value_versions(task_id, replaced_at);
 --> statement-breakpoint
+-- INSERT OR REPLACE would delete a row without its delete trigger, so an insert may not reuse a row's id.
+CREATE TRIGGER task_value_versions_replace BEFORE INSERT ON task_value_versions
+WHEN EXISTS (SELECT 1 FROM task_value_versions WHERE id = NEW.id)
+BEGIN SELECT RAISE(ABORT,'a value version is fixed as written'); END;
+--> statement-breakpoint
 CREATE TRIGGER task_value_versions_update BEFORE UPDATE ON task_value_versions
 BEGIN SELECT RAISE(ABORT,'a value version is fixed as written'); END;
 --> statement-breakpoint

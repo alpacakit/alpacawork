@@ -50,13 +50,18 @@ test('a value a write replaces or removes stays as a version, and the values rea
   assert.deepEqual(valuesAt('2026-11-11T12:00:00Z'), { goal: 'h', notes: 'n', risk: ['r'] }, 'a deleted field\'s value stays in the past');
   assert.deepEqual(valuesAt('2099-01-01T00:00:00Z'), readTaskValues(db).get('T2'));
   assert.throws(() => db.prepare('DELETE FROM task_value_versions').run(), /fixed as written/);
+  assert.throws(() => db.prepare("INSERT OR REPLACE INTO task_value_versions(id,task_id,field_id,replaced_at,value) VALUES (1,'t','goal',?,'\"x\"')").run(at), /fixed as written/);
 });
 
 test('values before the Task existed or before versions were kept are not known, and say why', () => {
   const db = database();
+  // The Task begins at its created record, whatever the text order of its log times.
+  db.prepare(`INSERT INTO task_log(id,task_id,ordinal,entry) VALUES ('Lc','t',0,json_object('id','Lc','kind','created','at','2026-11-08T09:00:00+09:00','userRequested',json('false'))),
+    ('Lu','t',1,json_object('id','Lu','kind','body_updated','at','2026-11-08T01:00:00Z'))`).run();
   db.prepare('UPDATE task_value_versions_since SET at=?').run('2026-11-07T00:00:00Z');
   assert.deepEqual(readValuesAt(db, 'T2', '2026-11-07T12:00:00Z'),
-    { task: 'T2', at: '2026-11-07T12:00:00Z', values: null, reason: 'not-created', recordedSince: at });
+    { task: 'T2', at: '2026-11-07T12:00:00Z', values: null, reason: 'not-created', recordedSince: '2026-11-08T09:00:00+09:00' });
+  assert.deepEqual(readValuesAt(db, 'T2', '2026-11-08T00:30:00Z').values, {});
   db.prepare('UPDATE task_value_versions_since SET at=?').run('2026-11-09T00:00:00Z');
   assert.deepEqual(readValuesAt(db, 'T2', '2026-11-08T12:00:00Z'),
     { task: 'T2', at: '2026-11-08T12:00:00Z', values: null, reason: 'not-recorded', recordedSince: '2026-11-09T00:00:00Z' });

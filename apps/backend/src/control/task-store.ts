@@ -484,9 +484,12 @@ function saveTask(db: DatabaseSync, id: string, expectedHash: string | null, met
   if (values !== undefined) writeTaskValues(db, id, values, writeTime(meta.log, previousLength));
   return taskHash(String(row.id), revision + 1);
 }
-/** When a save's values change: the time of the latest log record it appends after `previousLength`, else now. */
+/**
+ * When a save's values change: the time of the first log record it appends after `previousLength` (the save's changes
+ * hold from its first record on, so each of its records reads the new values), else now.
+ */
 function writeTime(log: readonly TaskLog[], previousLength: number): string {
-  return log.length > previousLength ? log[log.length - 1]!.at : now();
+  return log.length > previousLength ? log[previousLength]!.at : now();
 }
 /** SQLite's extended result code for a UNIQUE constraint. */
 const SQLITE_CONSTRAINT_UNIQUE = 2067;

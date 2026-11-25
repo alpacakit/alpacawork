@@ -212,8 +212,8 @@ function replaceValue(db: DatabaseSync, taskUuid: string, field: string, previou
  * be kept for a Task created earlier (`not-recorded`). `recordedSince` is when the Task's values are known from.
  */
 export function readValuesAt(db: DatabaseSync, taskId: string, at: string): ValuesAt {
-  // A Task begins with its first log record; its row's created_at is taken a moment later in the same write.
-  const task = db.prepare(`SELECT t.id,coalesce((SELECT min(l.at) FROM task_log l WHERE l.task_id=t.id),t.created_at) AS created_at
+  // A Task begins at its created record; its row's created_at is taken a moment later in the same write.
+  const task = db.prepare(`SELECT t.id,coalesce((SELECT l.at FROM task_log l WHERE l.task_id=t.id AND l.kind='created'),t.created_at) AS created_at
     FROM tasks t WHERE t.external_id=?`).get(taskId);
   if (!task) throw new Problem(PROBLEM_CODE.notFound, 'Task does not exist', { task: taskId }, { reason: { kind: 'task_does_not_exist' } });
   const since = db.prepare('SELECT at FROM task_value_versions_since').get();
