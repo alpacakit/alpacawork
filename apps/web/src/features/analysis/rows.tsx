@@ -80,8 +80,9 @@ export function Row({ row, left, children, className }: { row?: number; left: Re
   const self = useRef<HTMLDivElement>(null);
   return <div ref={self} data-row={row} className={cn(GRID, "border-t border-rule py-4 narrow:py-3.5", className)}
     onMouseLeave={event => leave(event.relatedTarget)} onBlur={event => leave(event.relatedTarget)}>
-    <div className={cn(LEFT, "min-w-0", day !== null && "invisible")}>{left}</div>
-    {children && <div className={cn(RIGHT, "narrow:mt-3")}>{children}</div>}
+    {/* Each in its own place on the grid, so the day's legend (placed over the left) moves neither. */}
+    <div className={cn(LEFT, "col-start-1 row-start-1 min-w-0", day !== null && "invisible")}>{left}</div>
+    {children && <div className={cn(RIGHT, "col-start-4 row-start-1 narrow:mt-3")}>{children}</div>}
     {/* After the chart, so the keys go from the chart to its day's parts; drawn over the left's room. */}
     {day !== null && <div className="relative col-span-3 col-start-1 row-start-1 min-w-0">
       <DayLegend say={group!.rows[row!]!} at={day} day={group!.dayName(day)} onList={list => group!.openDay(list)} />
@@ -274,27 +275,34 @@ function DayWindow({ day, say, at, box, onList, onPart, onStep, first, last }: {
  */
 function DayLegend({ say, at, day, onList }: { say: RowSay; at: number; day: string; onList: (list: (bin: Bin) => DayList) => void }) {
   const parts = say.parts?.(at) ?? [];
-  const cells = "grid w-full grid-cols-[minmax(0,1fr)_auto_auto] items-baseline gap-x-3";
+  // A part a line: its name (wrapping between words), then its value and share at the end, below the name when the
+  // column is too narrow.
+  const line = "flex w-full flex-wrap items-baseline justify-between gap-x-3";
+  const figures = "ms-auto flex items-baseline gap-2 whitespace-nowrap";
   return <div data-day-legend="" className="absolute inset-x-0 top-0 text-sm">
-    <div className="text-xs text-muted"><b className="me-2 font-semibold text-ink">{day}</b>{say.name}</div>
-    <b className="block text-xl font-semibold tabular-nums">{say.total(at)}</b>
-    {parts.length > 0 && <div className="mt-1.5 -mx-1.5">
+    {/* One line, so the legend keeps to the row's room at a narrow width (the row's name is read out in full). */}
+    <div title={`${day} ${say.name}`} className="truncate text-xs text-muted"><b className="me-2 font-semibold text-ink">{day}</b>{say.name}</div>
+    <b className="block text-lg font-semibold tabular-nums">{say.total(at)}</b>
+    {parts.length > 0 && <div className="mt-1 -mx-1.5">
       {parts.map(part => {
         const inner = <>
-          <span className="flex min-w-0 items-baseline text-muted">{part.color && <i aria-hidden className={cn("me-2 inline-block size-2 flex-none self-center rounded-xs", part.color)} />}{part.name}</span>
-          <b className={cn("font-semibold whitespace-nowrap tabular-nums", part.list && "underline decoration-lit-line underline-offset-4 group-hover/part:decoration-ink")}>{part.value}</b>
-          <span className="flex items-center gap-0.5 text-xs whitespace-nowrap text-soft tabular-nums">{part.share ?? ""}{part.list && <Icon name="right" className="size-3" />}</span>
+          <span className="flex min-w-0 items-baseline text-muted [word-break:auto-phrase]">{part.color && <i aria-hidden className={cn("me-2 inline-block size-2 flex-none self-center rounded-xs", part.color)} />}{part.name}</span>
+          <span className={figures}>
+            <b className={cn("font-semibold tabular-nums", part.list && "underline decoration-lit-line underline-offset-4 group-hover/part:decoration-ink")}>{part.value}</b>
+            {part.share && <span className="text-xs text-soft tabular-nums">{part.share}</span>}
+            {part.list && <Icon name="right" className="size-3 self-center text-soft" />}
+          </span>
         </>;
-        const row = cn(cells, "group/part rounded-sm px-1.5 py-0.5 text-start");
+        const row = cn(line, "group/part rounded-sm px-1.5 text-start");
         return part.list ? <button key={part.name} type="button" onClick={() => onList(part.list!)} className={cn(row, "hover:bg-hover")}>{inner}</button>
           : <div key={part.name} className={row}>{inner}</div>;
       })}
     </div>}
-    {say.line && <div className={cn(cells, "mt-1.5")}>
-      <span className="flex min-w-0 items-baseline text-muted"><LineMark />{say.line.name}</span>
-      <b className="font-semibold whitespace-nowrap tabular-nums">{say.line.value(at)}</b><span />
+    {say.line && <div className="mt-1">
+      <div className={line}><span className="flex min-w-0 items-baseline text-muted [word-break:auto-phrase]"><LineMark />{say.line.name}</span>
+        <b className={cn(figures, "font-semibold tabular-nums")}>{say.line.value(at)}</b></div>
       {/* The line's base under it, within the column (it may be long: "fewer than ten accepted"). */}
-      <span className="col-span-3 ps-6 text-xs text-soft">{say.line.base(at)}</span>
+      <div className="ps-6 text-xs text-soft">{say.line.base(at)}</div>
     </div>}
   </div>;
 }
