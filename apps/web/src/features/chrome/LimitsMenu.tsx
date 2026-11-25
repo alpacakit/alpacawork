@@ -9,7 +9,7 @@ import { notify } from "@/lib/notify";
 import { Popup } from "@/components/ui/popup";
 import { useFrameSelector } from "@/data/workspace-store";
 import { resources } from "@/data/resources";
-import { barLimit, type BarLimit, besideModelWindow, limitTone, readWords, resetWords, stoppedWords, windowLabel } from "@/domain/limits";
+import { barLimit, type BarLimit, besideModelWindow, currentLimitWindow, limitTone, readWords, resetWords, stoppedWords, windowLabel } from "@/domain/limits";
 import { AGENT_NAMES } from "@/domain/agent-names";
 import { useNow } from "@/state/clock";
 import { cn } from "@/lib/utils";
@@ -24,7 +24,8 @@ import { TONE_FILL, TONE_TEXT, UsageRing, percentText } from "@/components/ui/us
  */
 function WindowRow({ window, now, scoped, shown }: { window: LimitWindow; now: number; scoped: boolean; shown: boolean }) {
   const { t, i18n } = useTranslation("chrome");
-  const tone = limitTone(window.usedPercent);
+  const current = currentLimitWindow(window, now);
+  const tone = current ? limitTone(window.usedPercent) : "normal";
   const reset = resetWords(window.resetsAt, now, i18n.language, t);
   // The label's and the percent's boxes are trimmed to their letters (capitals over the baseline), so centring the line
   // centres what is drawn: the bar stands level with the words, not with their line boxes (which sit about 1px lower).
@@ -34,9 +35,10 @@ function WindowRow({ window, now, scoped, shown }: { window: LimitWindow; now: n
       {shown && <span aria-hidden className={cn("absolute -inset-y-1 -left-2.5 w-[3px] rounded-full", TONE_FILL[tone])} />}
       {windowLabel(window, t, scoped)}</span>
     <span aria-hidden className="h-1.5 overflow-hidden rounded-full bg-line">
-      <span className={cn("block h-full rounded-full", TONE_FILL[tone])} style={{ width: `${Math.min(100, window.usedPercent)}%` }} />
+      {current && <span className={cn("block h-full rounded-full", TONE_FILL[tone])} style={{ width: `${Math.min(100, window.usedPercent)}%` }} />}
     </span>
-    <span className={cn("text-right font-medium tabular-nums [text-box:trim-both_cap_alphabetic]", TONE_TEXT[tone])}>{percentText(window.usedPercent)}</span>
+    <span className={cn("text-right font-medium tabular-nums [text-box:trim-both_cap_alphabetic]", current ? TONE_TEXT[tone] : "text-muted")}>
+      {current ? percentText(window.usedPercent) : "—"}</span>
     {reset && <span className="col-span-full text-xs text-muted">{reset}</span>}
   </li>;
 }
@@ -68,8 +70,8 @@ function barWords(shown: BarLimit, name: string, locale: string, t: (key: string
 
 /**
  * The bar's plan limits: the agent work goes on with now (the first in the task stack whose limit is not spent) as a
- * ring and its name; a phone keeps the ring. With every one spent, the first and until when it stops. The window and the
- * percent are the label's and the menu's.
+ * ring and its name when the bar has room. The reset fits in the wide or split bar. The window, percent and reset
+ * time are available in the label and the menu.
  * A press opens every agent's windows with when each resets and the account each is signed in as. Nothing shows until
  * some agent's limits are known.
  */
@@ -96,16 +98,15 @@ export function LimitsMenu() {
   const read = readWords(agents.map(agent => agent.observedAt).filter(at => at !== null).sort()[0] ?? null, now, t);
   return <>
     <Button ref={trigger} variant="ghost" size="bar" data-limits-trigger data-tone={tone} aria-haspopup="dialog" aria-expanded={open}
-      aria-label={label} title={label} onClick={() => setOpen(value => !value)} className="w-auto gap-1.5 px-2 narrow:w-auto narrow:px-2.5">
+      aria-label={label} title={label} onClick={() => setOpen(value => !value)}
+      className="w-auto min-w-0 gap-1.5 px-2 narrow:w-auto narrow:min-w-9">
       {/* An agent nothing holds has the ring of no limit (four arcs), and no window or figure. */}
       <UsageRing percent={percent} tone={tone} open={shown.kind === "unlimited"} />
-      {/* Which agent: a computer has the room, a phone keeps the ring. Which window and how full are in the label and the
-          menu; the ring's colour says how near it is. */}
-      <span className="text-sm narrow:hidden">{name}</span>
+      <span className="min-w-0 truncate text-sm narrow:@min-[27rem]:@max-[35rem]:hidden">{name}</span>
       {shown.kind === "stopped" ? <>
-        <span className="text-sm text-error narrow:hidden">{stoppedWords(shown.window, i18n.language, t)}</span>
-        <span className="hidden text-sm text-error narrow:inline">{stoppedWords(shown.window, i18n.language, t, true)}</span>
-      </> : shown.kind === "unknown" && <span className="text-sm text-muted">—</span>}
+        <span className="hidden text-sm text-error @min-[60rem]:inline">{stoppedWords(shown.window, i18n.language, t)}</span>
+        <span className="hidden text-sm text-error narrow:@min-[22rem]:@max-[27rem]:inline">{stoppedWords(shown.window, i18n.language, t, true)}</span>
+      </> : shown.kind === "unknown" && <span className="text-sm text-muted narrow:@min-[27rem]:@max-[35rem]:hidden">—</span>}
     </Button>
     {/* The heading's line is as high as its button, so the box is shorter over it: the title stands as far from the top
         edge as from the side. The button's box is wider than its mark, so it is pulled out to end the mark where the

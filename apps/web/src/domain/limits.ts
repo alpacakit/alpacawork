@@ -14,14 +14,14 @@ const tightestWindow = (windows: readonly LimitWindow[]): LimitWindow | null =>
 const rowWindows = (windows: readonly LimitWindow[], model: string | null): LimitWindow[] =>
   windows.filter(window => window.model === null || model !== null && window.model.toLowerCase() === model.toLowerCase());
 
-/** Whether a window holds its agent back now: spent, and not yet past its reset (the menu then says no reset either). */
-const holds = (window: LimitWindow, now: number): boolean =>
-  limitTone(window.usedPercent) === "spent" && !(window.resetsAt && resetMinute(window.resetsAt) <= now);
+/** A reading applies until its window resets. The next window's usage is unknown until it is read. */
+export const currentLimitWindow = (window: LimitWindow, now: number): boolean =>
+  window.resetsAt === null || resetMinute(window.resetsAt) > now;
 
 /**
  * What the bar shows, from the stack tasks run on: the first row that can work now.
- * - `limited`: the row's fullest window that holds it.
- * - `unknown`: its limits could not be read; another agent's figure never stands as its own.
+ * - `limited`: the row's fullest current window.
+ * - `unknown`: its limits could not be read, or the readings have expired.
  * - `unlimited`: nothing holds it (an agent used with an API key, or one that reports no limits): work goes on there.
  * - `stopped`: every row is held; the first row's agent, and its window that holds it longest (when work goes on).
  * Null, and no bar, until some agent's limits are known.
@@ -38,8 +38,11 @@ export function barLimit({ agents, stack }: AgentLimitsResponse, now: number): B
     if (agent.state === "unavailable") return { kind: "unknown", agent };
     const windows = rowWindows(agent.windows, row.model);
     if (agent.state === "unsupported" || windows.length === 0) return { kind: "unlimited", agent };
-    const holding = windows.filter(window => holds(window, now));
-    if (holding.length === 0) return { kind: "limited", agent, window: tightestWindow(windows)! };
+    const current = windows.filter(window => currentLimitWindow(window, now));
+    const fullest = tightestWindow(current);
+    if (!fullest) return { kind: "unknown", agent };
+    if (limitTone(fullest.usedPercent) !== "spent") return { kind: "limited", agent, window: fullest };
+    const holding = current.filter(window => limitTone(window.usedPercent) === "spent");
     first ??= { agent, windows: holding };
   }
   if (!first) return null;

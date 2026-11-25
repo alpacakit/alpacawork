@@ -31,11 +31,19 @@ test("the bar shows the first agent in the stack that can work now, and the wind
   // Another model of the same agent standing in keeps that agent in the bar.
   expect(shownOf(barLimit(response([claude], [row("claude", "fable"), row("claude", "opus")]), NOW)))
     .toEqual({ kind: "limited", agent: "claude", percent: 85 });
-  // A spent window past its reset holds nothing: the menu says no reset for it either.
-  expect(shownOf(barLimit(response([agent("claude", "ok", [at("2026-11-24T23:00:00Z", week(100))]), codex], [row("claude"), row("codex")]), NOW)))
-    .toEqual({ kind: "limited", agent: "claude", percent: 100 });
   // The user chose red from 80%.
   expect([79, 80, 100].map(limitTone)).toEqual(["normal", "near", "spent"]);
+});
+
+test("after a reset the bar uses the current window, or waits for the agent's new reading", () => {
+  const expired = at("2026-11-24T23:00:00Z", week(100));
+  const codex = agent("codex", "ok", [week(25)]);
+  const stack = [row("claude"), row("codex")];
+  expect(shownOf(barLimit(response([agent("claude", "ok", [expired]), codex], stack), NOW)))
+    .toEqual({ kind: "unknown", agent: "claude", percent: null });
+  const session: LimitWindow = { ...week(45), kind: "session", minutes: 300 };
+  expect(shownOf(barLimit(response([agent("claude", "ok", [expired, session]), codex], stack), NOW)))
+    .toEqual({ kind: "limited", agent: "claude", percent: 45 });
 });
 
 test("with every agent in the stack spent, the bar says the first and until when its last spent window holds it", () => {
