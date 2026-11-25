@@ -81,12 +81,21 @@ function ConversationList({ conversations }: { conversations: TaskConversations 
           className="relative inline-flex size-5 cursor-pointer before:absolute before:-inset-3 before:content-[''] items-center justify-center rounded-full text-muted outline-none pointer-fine:hover:bg-hover pointer-fine:hover:text-ink focus-visible:ring-2 focus-visible:ring-ink/40">
           <Icon name="help" className="size-4" /></PopoverTrigger>
         <PopoverContent side="top" className="w-64 p-3 text-xs leading-relaxed" onClick={event => event.stopPropagation()}>
-          <p className="m-0">{t("context.helpCompacted")}</p><p className="m-0 mt-2">{t("context.helpNew")}</p>
-          <p className="m-0 mt-2 text-muted">{t("context.helpFigures")}</p></PopoverContent>
+          {/* Each term with the mark it has in the list and History, then what the list's figures are. */}
+          <dl data-conversation-help className="m-0 grid gap-2">
+            <div><dt className="flex items-center gap-1 font-medium"><Icon name="reload" className="size-3.5 text-conversation" />{t("context.change.compacted")}</dt>
+              <dd className="m-0 mt-0.5">{t("context.helpCompacted")}</dd></div>
+            <div><dt className="flex items-center gap-1 font-medium"><Icon name="chat" className="size-3.5 text-conversation" />{t("context.change.new")}</dt>
+              <dd className="m-0 mt-0.5">{t("context.helpNew")}</dd></div>
+          </dl>
+          <p className="m-0 mt-2 border-t border-rule pt-2 text-muted">{t("context.helpFigures")}</p></PopoverContent>
       </Popover>
     </div>
-    {total !== null && <p data-conversation-cut className="m-0 mt-1.5">{t("context.cut", { tokens: compact(total) })}</p>}
-    <ol className="m-0 mt-1.5 max-h-48 list-none overflow-y-auto p-0">
+    {/* What the compactions took out, the one figure that says what they were worth, read first. */}
+    {total !== null && <div data-conversation-cut className="mt-2">
+      <p className="m-0 text-muted">{t("context.cutLabel")}</p>
+      <p className="m-0 text-lg font-semibold tabular-nums">{t("context.cutTokens", { tokens: compact(total) })}</p></div>}
+    <ol className="m-0 mt-2 max-h-48 list-none overflow-y-auto p-0">
       {[...conversations.changes].reverse().map((change, index) => {
         const cut = compactionCut(change);
         return <li key={index} data-conversation-change={change.change} className="grid grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center gap-x-1.5 py-1 tabular-nums">

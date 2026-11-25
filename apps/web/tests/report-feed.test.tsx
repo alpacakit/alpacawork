@@ -1325,7 +1325,7 @@ test("the context meter lists the task's conversation changes newest first, with
   fireEvent.click(document.querySelector<HTMLElement>("[data-context-meter]")!);
   const list = await waitFor(() => document.querySelector<HTMLElement>("[data-conversation-list]")!);
   // The total is the task's whole, from the server, and what the list leaves out is said.
-  expect(list.querySelector("[data-conversation-cut]")!.textContent).toBe("Compactions cut 9.9M tokens in all");
+  expect(list.querySelector("[data-conversation-cut]")!.textContent).toBe("Tokens cut by compaction (total)9.9M tokens");
   expect(list.querySelector("[data-conversation-more]")!.textContent).toBe("21 more in History");
   const rows = [...list.querySelectorAll<HTMLElement>("[data-conversation-change]")];
   expect(rows.map(row => row.dataset.conversationChange)).toEqual(["compacted", "compacted", "new"]);
@@ -1335,7 +1335,7 @@ test("the context meter lists the task's conversation changes newest first, with
   expect(rows[2]!.textContent).toContain("owner's break");
   // What a compaction and a new conversation are is a press on the ? away.
   fireEvent.click(list.querySelector<HTMLElement>('[aria-label="About compactions and new conversations"]')!);
-  await waitFor(() => expect(document.body.textContent).toContain("the conversation starts over with the task's details"));
+  await waitFor(() => expect(document.querySelector("[data-conversation-help]")!.textContent).toContain("the conversation starts over with the task's details"));
 });
 
 test("a stop the AI stack carried on goes to the AI that took over, closed and open alike", async () => {
