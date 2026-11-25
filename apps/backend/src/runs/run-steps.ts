@@ -21,7 +21,7 @@ import type { AgentAdapter } from '../agents/adapters/types.js';
 import type { ActivityEvent } from './activity-events.js';
 import { runStepKind } from './recent-work.js';
 import { STEP_LINE_LIMIT } from './readers/jsonl.js';
-import { callOmitted, joinStepCalls, stepInputDocument } from '../agents/adapters/activity.js';
+import { callOmitted, callOmittedFiles, joinStepCalls, stepInputDocument } from '../agents/adapters/activity.js';
 
 /**
  * The longest output line read as one row: the live activity's (STEP_LINE_LIMIT), so the steps listed are the steps it
@@ -193,7 +193,8 @@ export class RunStepIndex {
         ?? ({ text: said.map(event => event.detail?.text).find(Boolean) ?? '', omitted: 0 } satisfies RunStepText);
       const outcome = ended.map(event => event.outcome).find(Boolean);
       const output = outcome?.output ?? (outcome?.result.text ? lineText(outcome.result) : null);
-      return { input: fullRunText(input.text, input.omitted), output: output && (output.text || output.omitted) ? fullRunText(output.text, output.omitted) : null,
+      const files = call ? callOmittedFiles(call) : 0;
+      return { input: { ...fullRunText(input.text, input.omitted), ...files ? { omittedFiles: files } : {} }, output: output && (output.text || output.omitted) ? fullRunText(output.text, output.omitted) : null,
         changed: step.changed, generation: this.generation };
     } finally { await handle.close(); }
   }

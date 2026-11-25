@@ -44,7 +44,7 @@ const toolCall = (tool: unknown, raw: unknown): Pick<ActivityEvent, 'detail' | '
   ({ ...previewToolInput(tool, raw), call: { tool: typeof tool === 'string' ? tool : '', input: raw } });
 /** The fields of a Codex item that say what it asked, by its type (what it got back and its state are not its input). */
 const ITEM_INPUT: Record<string, readonly string[]> = {
-  command_execution: ['command', 'cwd'], web_search: ['query', 'action'], file_change: ['changes', 'changesText'],
+  command_execution: ['command', 'cwd'], web_search: ['query', 'action'], file_change: ['changes', 'changesText', 'changesOmitted'],
   collab_agent_tool_call: ['prompt', 'tool', 'model', 'receiverThreadIds'], image_view: ['path'],
 };
 const changedPaths = (changes: unknown) => (Array.isArray(changes) ? changes : []).map(object).filter(change => typeof change.path === 'string');
@@ -112,6 +112,11 @@ export function joinStepCalls(start: StepCall | undefined, end: StepCall | undef
   }
   return { tool: end.tool || start.tool, input, clipped };
 }
+/** How many files of a change list the bridge left out after those its input says (none when it kept them all). */
+export const callOmittedFiles = (call: StepCall): number => {
+  const count = object(call.input).changesOmitted;
+  return typeof count === 'number' && count > 0 ? count : 0;
+};
 /** How many characters the bridge cut from a call's input as it stands. */
 export const callOmitted = (call: StepCall): number => Object.values(call.clipped ?? {}).reduce((sum, count) => sum + count, 0);
 

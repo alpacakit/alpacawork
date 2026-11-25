@@ -363,3 +363,25 @@ test('a result nested 2,800 arrays deep leaves the Run succeeded with its reply,
   assert.ok(detail!.output!.text.startsWith('[\n  [\n'));
   assert.ok(detail!.output!.omitted > 0);
 });
+
+test('an edit of sixty thousand files leaves the Run succeeded, and opens to its first files and how many more there are', async t => {
+  const h = setup(t);
+  const result = join(h.area, 'result.txt');
+  const b = h.start(['--json', '-o', result]);
+  b.send('huge', JSON.stringify({ hugeEdit: true }));
+  await b.until(events => events.some(event => event.type === 'turn.completed'), 'turn completed');
+  b.child.stdin.end();
+  assert.equal(await b.exited, 0, b.stderr());
+  const lines = b.events().map(event => JSON.stringify(event));
+  assert.ok(lines.every(line => Buffer.byteLength(line) <= BRIDGE_LINE_BYTES));
+  writeFileSync(join(h.area, RUN_FILES.stdout), lines.join('\n') + '\n');
+  writeFileSync(join(h.area, RUN_FILES.resultTemp), readFileSync(result));
+  assert.equal(AGENT_RUNTIME_ADAPTERS.codex.read({ mode: 'start', session: null }, h.area, { code: 0, signal: null }).outcome.state, 'succeeded');
+  const index = new RunStepIndex(h.area, AGENT_RUNTIME_ADAPTERS.codex);
+  await index.update();
+  const step = index.range(undefined, 12).steps.find(each => each.kind === 'edit')!;
+  assert.equal(step.state, 'done');
+  const detail = await index.detail(step.n);
+  assert.ok(detail!.input.text.startsWith('add: /src/packages/module-0/file-0.ts\n+export const v0 = 0;'));
+  assert.ok(detail!.input.omittedFiles! > 0);
+});

@@ -354,3 +354,19 @@ test('a long step ID, a failure told by isError alone, and a short error beside 
   assert.deepEqual(detail!.output, { text: 'short failure', omitted: 0 });
   assert.ok(detail!.input.omitted > 0);
 });
+
+test('an edit whose file list alone passes the line keeps the files that fit from its start and tells how many more', async t => {
+  const path = folder(t);
+  const changes = Array.from({ length: 60_000 }, (_, n) => ({ path: `/src/packages/module-${n}/components/generated/file-${n}.ts`,
+    kind: { type: 'add' }, diff: `+export const value${n} = ${n};` }));
+  const event = boundBridgeEvent({ type: 'item.completed', item: boundaryItem('file_change', { id: 'f1', changes, status: 'completed' }) }) as
+    { item: Record<string, unknown> };
+  assert.ok(Buffer.byteLength(JSON.stringify(event)) <= BRIDGE_LINE_BYTES);
+  const kept = (event.item.changes as unknown[]).length;
+  assert.deepEqual([event.item.id, event.item.status, event.item.changeCount, event.item.changesOmitted], ['f1', 'completed', 60_000, 60_000 - kept]);
+  writeFileSync(join(path, 'stdout.log'), JSON.stringify(event) + '\n');
+  const index = await read(path, 'codex'), detail = await index.detail(0);
+  assert.equal(index.range(undefined, 12).steps[0]?.state, 'done');
+  assert.ok(detail!.input.text.startsWith('add: /src/packages/module-0/components/generated/file-0.ts\n+export const value0 = 0;'));
+  assert.equal(detail!.input.omittedFiles, 60_000 - kept);
+});

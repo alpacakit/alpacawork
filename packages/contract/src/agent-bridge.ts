@@ -117,6 +117,8 @@ export const ITEM_READABLE: Record<string, (value: unknown) => string> = {
 const utf8 = new TextEncoder();
 /** Room kept for the counts of what was cut, one per readable field at most. */
 const CLIPPED_ROOM = 1024;
+/** Room a change list leaves for the texts beside it when it is too long to keep whole. */
+const CHANGE_LIST_TEXT_ROOM = 256 * 1024;
 /** The bytes `text` takes once written as a JSON string. */
 const writtenBytes = (text: string) => utf8.encode(JSON.stringify(text)).length;
 /** `text` cut from its end to at most `bytes` as written (and the step text limit), and the code points it lost. */
@@ -149,7 +151,8 @@ export function boundBridgeEvent(event: BridgeEvent): BridgeEvent {
   if (line !== null && utf8.encode(line).length <= BRIDGE_LINE_BYTES) return event;
   const said = { ...event } as Record<string, unknown>;
   // Each text to cut: where it is put back, how much room it needs, and where its loss is told.
-  const parts: { text: string; put: (text: string, lost: number) => void }[] = [];
+  // A text is said once the change list is known, so the change list's text says the files the line keeps.
+  const parts: { text: () => string; put: (text: string, lost: number) => void }[] = [];
   const item = record(said.item), clipped: Record<string, number> = {};
   let kept: Record<string, unknown> | null = null;
   if (said.item !== undefined) {
@@ -162,23 +165,40 @@ export function boundBridgeEvent(event: BridgeEvent): BridgeEvent {
       else delete kept[field];
       if (field === 'result' && record(item.result).isError === true) kept.resultIsError = true;
       const into = kept;
-      parts.push({ text: readable(item[field]), put: (text, lost) => { into[name] = text; if (lost) clipped[name] = lost; else delete clipped[name]; } });
+      const value = item[field];
+      parts.push({ text: field === 'changes' && Array.isArray(value) ? () => readable(value.slice(0, (kept!.changes as unknown[]).length)) : () => readable(value), put: (text, lost) => { into[name] = text; if (lost) clipped[name] = lost; else delete clipped[name]; } });
     }
     said.item = kept;
   }
   for (const key of ['input', 'output']) {
     const value = said[key] as { text: string; omitted: number } | undefined;
     if (value && typeof value.text === 'string')
-      parts.push({ text: value.text, put: (text, lost) => { said[key] = { text, omitted: value.omitted + lost }; } });
+      parts.push({ text: () => value.text, put: (text, lost) => { said[key] = { text, omitted: value.omitted + lost }; } });
   }
   // The room the texts may share: the line with every text empty is what is never cut (the clipped counts' room kept).
   for (const part of parts) part.put('', 0);
+  // A change list too long for the line is read as text too: the files that fit are kept from its start, the rest are
+  // told by their count (changesOmitted), and how many it holds (changeCount) is kept whole.
+  if (kept && Array.isArray(kept.changes)) {
+    const changes = kept.changes as unknown[], over = () => utf8.encode(JSON.stringify(said)).length + CLIPPED_ROOM > BRIDGE_LINE_BYTES - CHANGE_LIST_TEXT_ROOM;
+    kept.changeCount = changes.length;
+    if (over()) {
+      let low = 0, high = changes.length;
+      while (low < high) {
+        const mid = Math.ceil((low + high) / 2);
+        kept.changes = changes.slice(0, mid);
+        if (over()) high = mid - 1; else low = mid;
+      }
+      kept.changes = changes.slice(0, low);
+      kept.changesOmitted = changes.length - low;
+    }
+  }
   const fixed = utf8.encode(JSON.stringify(said)).length + CLIPPED_ROOM;
   let room = Math.max(0, BRIDGE_LINE_BYTES - fixed);
-  const order = parts.map((part, at) => ({ part, at, bytes: writtenBytes(part.text) })).sort((a, b) => a.bytes - b.bytes);
-  order.forEach(({ part, bytes }, at) => {
+  const order = parts.map(part => { const text = part.text(); return { part, text, bytes: writtenBytes(text) }; }).sort((a, b) => a.bytes - b.bytes);
+  order.forEach(({ part, text: whole, bytes }, at) => {
     const share = Math.floor(room / (order.length - at));
-    const { text, lost } = cutText(part.text, Math.min(bytes, share));
+    const { text, lost } = cutText(whole, Math.min(bytes, share));
     part.put(text, lost);
     room -= writtenBytes(text);
   });

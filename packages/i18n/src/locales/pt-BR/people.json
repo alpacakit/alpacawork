@@ -123,6 +123,9 @@
       "omitted_one": "{{count}} caractere a mais omitido por ser longo demais",
       "omitted_many": "{{count}} caracteres a mais omitidos por serem longos demais",
       "omitted_other": "{{count}} caracteres a mais omitidos por serem longos demais",
+      "omittedFiles_one": "e mais {{count}} arquivo",
+      "omittedFiles_many": "e mais {{count}} arquivos",
+      "omittedFiles_other": "e mais {{count}} arquivos",
       "reading": "Lendo…",
       "state": {
         "done": "Concluído",

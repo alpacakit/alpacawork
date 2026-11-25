@@ -170,6 +170,15 @@ test('two steps of one Run under one tool call ID open apart', async () => {
   expect(screen.getByRole('button', { name: /echo second/ }).getAttribute('aria-expanded')).toBe('false');
 });
 
+test('an edit too large to carry whole says how many more files it changed', async () => {
+  server.put(entry(0, '/a.ts', { kind: 'edit', tool: 'file_change' }));
+  server.details.set(0, { input: { text: 'add: /a.ts\n+x', omitted: 0, omittedFiles: 59_000 }, output: null });
+  render(<AnswerSteps run="R7" />);
+  fireEvent.click(screen.getByRole('button', { name: 'Steps behind this answer' }));
+  fireEvent.click(await screen.findByRole('button', { name: /a\.ts/ }));
+  await waitFor(() => expect(document.querySelector('[data-run-step-more-files]')?.textContent).toBe('and 59000 more files'));
+});
+
 test('a step whose outcome could not be read is not shown done, and opened says why', async () => {
   server.put(entry(0, 'pnpm test', { state: 'unknown' }));
   render(<AnswerSteps run="R7" />);

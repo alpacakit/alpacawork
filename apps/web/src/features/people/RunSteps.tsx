@@ -181,7 +181,8 @@ const BLOCK = "m-0 max-h-64 overflow-auto rounded-sm border border-line bg-bg p-
 function StepText({ text, tone, ...data }: { text: RunStepText; tone: string; "data-run-step-input"?: true; "data-run-step-output"?: true }) {
   const { t } = useTranslation("people");
   return <pre dir="auto" {...data} className={cn(BLOCK, tone)}>{text.text}
-    {text.omitted > 0 && <span className="block font-sans text-muted">{t("now.step.omitted", { count: text.omitted })}</span>}</pre>;
+    {text.omitted > 0 && <span className="block font-sans text-muted">{t("now.step.omitted", { count: text.omitted })}</span>}
+    {!!text.omittedFiles && <span data-run-step-more-files className="block font-sans text-muted">{t("now.step.omittedFiles", { count: text.omittedFiles })}</span>}</pre>;
 }
 /**
  * What one step ran and got back, read when it is opened and again when it changes. It is shown only when it is of

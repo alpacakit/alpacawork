@@ -42,8 +42,10 @@ export const runStepsSchema = z.array(runStepSchema).max(RUN_STEP_LIMIT);
  * of the characters left out is said. A bridge writes no more than this into its output either.
  */
 export const RUN_STEP_FULL_TEXT_LIMIT = 256 * 1024;
-/** What a step ran or got back, as written: `omitted` counts the characters left out after `text`. */
-export const runStepTextSchema = z.object({ text: z.string().max(RUN_STEP_FULL_TEXT_LIMIT), omitted: z.number().int().nonnegative() }).strict();
+/** What a step ran or got back, as written: `omitted` counts the characters left out after `text`, `omittedFiles` the files. */
+export const runStepTextSchema = z.object({ text: z.string().max(RUN_STEP_FULL_TEXT_LIMIT), omitted: z.number().int().nonnegative(),
+  /** Files of a change list left out after those `text` says (a list too long to carry whole). */
+  omittedFiles: z.number().int().positive().optional() }).strict();
 export type RunStepText = z.infer<typeof runStepTextSchema>;
 /** How many steps one read of a Run's steps gives at most. */
 export const RUN_STEPS_PAGE_LIMIT = 200;

@@ -33,6 +33,9 @@ async function run(id, plan) {
   // `bigResult`: a tool's structured result whose line, whole, would pass the outcome reader's 2 MiB.
   if (plan.bigResult) notify('item/completed', { item: { type: 'mcpToolCall', id: `t-${id}`, server: 'db', tool: 'rows', status: 'completed',
     arguments: { table: 'invoices' }, error: null, result: { content: [], structuredContent: Array.from({ length: 2300 }, (_, n) => ({ id: n, text: 'x'.repeat(1024) })) } } });
+  // `hugeEdit`: an edit of so many files that their paths and kinds alone pass the line limit.
+  if (plan.hugeEdit) notify('item/completed', { item: { type: 'fileChange', id: `e-${id}`, status: 'completed',
+    changes: Array.from({ length: 60_000 }, (_, n) => ({ path: `/src/packages/module-${n}/file-${n}.ts`, kind: { type: 'add' }, diff: `+export const v${n} = ${n};` })) } });
   // `deepResult`: a valid result about 1.1 MB long, nested 2,800 arrays deep.
   if (plan.deepResult) {
     let deep = 'x'.repeat(1_100_000);

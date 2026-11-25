@@ -111,6 +111,8 @@
       "older_other": "Show {{count}} earlier ({{rest}} left)",
       "omitted_one": "{{count}} more character left out as too long",
       "omitted_other": "{{count}} more characters left out as too long",
+      "omittedFiles_one": "and {{count}} more file",
+      "omittedFiles_other": "and {{count}} more files",
       "reading": "Reading…",
       "state": {
         "done": "Done",
