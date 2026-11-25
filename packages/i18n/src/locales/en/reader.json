@@ -263,7 +263,8 @@
     "inserted": "Added {{id}} to the input box",
     "next": "Next task",
     "path": "Task path",
-    "previous": "Previous task"
+    "previous": "Previous task",
+    "view": "Task view"
   },
   "recovery": {
     "cancelled": "Sending to “<title>{{title}}</title>” was cancelled. You can send it again.",

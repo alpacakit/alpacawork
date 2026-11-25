@@ -137,6 +137,7 @@
     "empty": "没有任务",
     "more_other": "显示其余 {{count}} 个",
     "outcome": "结果",
+    "resize": "分析列表高度（使用上下箭头键调节）",
     "task": "任务",
     "usedTitle": "{{name}}的任务"
   },

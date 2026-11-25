@@ -14,7 +14,7 @@ import type { Task } from "@/data/types";
 import { pathTo } from "@/domain/tasks";
 import { listNeighbours, useListNavigation } from "@/features/tree/list-navigation";
 import { closeReaderStep } from "@/state/history-step";
-import { readerBack, turnReader, useReaderBehind } from "@/state/reader-position";
+import { readerBack, turnReader, useAnalysisListBack, useReaderBehind } from "@/state/reader-position";
 import { useViewStore, type ReaderPane } from "@/state/view-store";
 import type { ReaderMode } from "./Reader";
 import { navigate, readerNow } from "@/lib/history";
@@ -54,7 +54,7 @@ export function ReaderHeader({ task, mode, canDock, onFollow, walking, pane, rul
   const behind = useReaderBehind();
   // A walk through the waiting questions goes on by itself: going back to the question before is not this Back.
   const analysisList = useViewStore(state => !!state.analysis?.list);
-  const backToList = !behind && analysisList;
+  const backToList = useAnalysisListBack(task.id, pane, behind);
   const back = !!behind && !(walking && behind.task !== task.id) || backToList || pane === "files" || pane === "about";
   return (
     // On a phone's sheet the header moves the sheet as its grip does.
@@ -83,7 +83,7 @@ export function ReaderHeader({ task, mode, canDock, onFollow, walking, pane, rul
           </nav>
         </div>
         {!analysisList && <span data-reader-actions className={`flex flex-none items-center ${HEAD_ROW}`}><ListPager id={task.id} /></span>}
-        <FrameButtons canDock={canDock} turn={task.kind === "task" ? pane : undefined} />
+        <FrameButtons canDock={canDock} turn={mode !== "sheet" && task.kind === "task" ? pane : undefined} />
       </div>
     </header>
   );
@@ -183,8 +183,8 @@ export const readerHeadBox = (mode: ReaderMode) => `reader-header flex-none bord
 export function ReaderBack({ toList }: { toList: boolean }) {
   const { t } = useTranslation("reader");
   return <span className={`flex flex-none items-center ${HEAD_ROW}`}><BackButton data-reader-back label={toList ? t("analysis:list.back") : t("readerHeader.back")}
-    className="@max-[24rem]/reader:w-8 @max-[24rem]/reader:p-0 narrow:@max-[24rem]/reader:-ml-1 narrow:@max-[24rem]/reader:w-9 narrow:@max-[24rem]/reader:pl-0"
-    labelClassName="@max-[24rem]/reader:hidden" onClick={() => { countUse('reader.back'); readerBack(); }} /></span>;
+    className={toList ? undefined : "@max-[24rem]/reader:w-8 @max-[24rem]/reader:p-0 narrow:@max-[24rem]/reader:-ml-1 narrow:@max-[24rem]/reader:w-9 narrow:@max-[24rem]/reader:pl-0"}
+    labelClassName={toList ? undefined : "@max-[24rem]/reader:hidden"} onClick={() => { countUse('reader.back'); readerBack(toList); }} /></span>;
 }
 
 /**
@@ -203,20 +203,9 @@ export function FrameButtons({ canDock, turn }: { canDock: boolean; turn?: Reade
   </span>;
 }
 
-/** On the sheet, show both faces in one touch target and keep the current face marked. */
 function ReaderFaceControl({ analysis }: { analysis: boolean }) {
   const { t } = useTranslation("reader");
-  const sheet = useSheetControl();
-  const analysisLabel = t("analysis:face.analysis");
-  const destination = analysis ? t("readerHeader.details") : analysisLabel;
-  if (sheet) return <Button type="button" data-reader-turn variant="ghost" aria-label={analysisLabel}
-    aria-pressed={analysis} title={destination} onClick={turnReader}
-    className="h-11 min-h-11 flex-none rounded-full px-0 py-0">
-    <span aria-hidden="true" className="flex items-center rounded-full border border-line bg-bg p-0.5">
-      <FaceMark icon="file" current={!analysis} />
-      <FaceMark icon="chart" current={analysis} />
-    </span>
-  </Button>;
+  const destination = analysis ? t("readerHeader.details") : t("analysis:face.analysis");
   return <Button type="button" data-reader-turn variant="quiet" aria-label={destination} title={destination} onClick={turnReader}
     className={cn(HEAD_MARK, "w-auto min-w-8 px-1.5 text-xs")}>
     <Icon name={analysis ? "file" : "activity"} className="size-4 @min-[22rem]/reader:hidden" />
@@ -224,9 +213,20 @@ function ReaderFaceControl({ analysis }: { analysis: boolean }) {
   </Button>;
 }
 
-function FaceMark({ icon, current }: { icon: IconName; current: boolean }) {
-  return <span className={cn("grid size-6 place-items-center rounded-full",
-    current ? "bg-press text-ink ring-1 ring-inset ring-press-line" : "text-muted")}><Icon name={icon} className="size-4" /></span>;
+/** Text labels distinguish the two faces. Each button picks its own face, so pressing the current one leaves it in place. */
+export function ReaderFaceSwitch({ analysis }: { analysis: boolean }) {
+  const { t } = useTranslation("reader");
+  const faces = [
+    { key: "details", label: t("readerHeader.details"), icon: "file", current: !analysis },
+    { key: "analysis", label: t("analysis:face.analysis"), icon: "chart", current: analysis },
+  ] as const;
+  return <div role="group" aria-label={t("readerHeader.view")} className="flex shrink-0 items-center rounded-lg border border-line bg-bg">
+    {faces.map(({ key, label, icon, current }) => <Button key={key} type="button" variant="quiet" data-reader-face={key}
+      className="min-h-11 min-w-11 gap-1 rounded-md px-2 py-0 text-xs narrow:min-h-11 aria-pressed:bg-press aria-pressed:font-semibold aria-pressed:text-ink"
+      aria-pressed={current} onClick={() => { if (!current) turnReader(); }}>
+      <Icon name={icon} className="size-3.5 shrink-0" />{label}
+    </Button>)}
+  </div>;
 }
 
 /** What Expand grows, if this frame can: a phone's sheet to the whole screen and back, a docked window to the full width and back. */

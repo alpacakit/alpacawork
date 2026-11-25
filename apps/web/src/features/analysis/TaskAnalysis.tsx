@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { RegionSkeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/data/client";
@@ -11,13 +11,21 @@ import type { UnitValues } from "./contract";
 const OUTCOME = { passed: "bg-done", reworked: "bg-reworked", stopped: "bg-stopped" } as const;
 
 /** One task: its time drawn as the list draws time (the AI at work, your turn, paused), what you sent as marks, then its values, only those that are not zero. */
-export function TaskAnalysis({ taskId, hasTitle }: { taskId: string; hasTitle: boolean }) {
+export function TaskAnalysis({ taskId, hasTitle, titleAction }: { taskId: string; hasTitle: boolean; titleAction?: ReactNode }) {
   const { t } = useTranslation("analysis");
   const [root, setRoot] = useState<HTMLDivElement | null>(null);
   const query = useUnitValues(taskId);
-  if (query.error instanceof ApiError && query.error.code === "not_found") return <p className="text-muted">{t("values.empty")}</p>;
-  if (!query.data) return <ReadPart set={{ data: null, current: false, reads: [query] }} skeleton={<RegionSkeleton shape="analysisTask" />}>{() => null}</ReadPart>;
-  const values = query.data, row = values.unit;
+  const values = query.data;
+  const row = values?.unit;
+  const heading = (!hasTitle || row && row.id !== taskId) && (row || titleAction) && <div className="mb-1 flex items-center gap-2">
+    <h3 dir="auto" className="min-w-0 flex-1 text-heading font-semibold">
+      {row && row.id !== taskId && <span className="me-2 text-muted">{row.id}</span>}{row?.title ?? taskId}
+    </h3>
+    {titleAction}
+  </div>;
+  if (query.error instanceof ApiError && query.error.code === "not_found") return <>{heading}<p className="text-muted">{t("values.empty")}</p></>;
+  if (!values || !row) return <>{heading}<ReadPart set={{ data: null, current: false, reads: [query] }}
+    skeleton={<RegionSkeleton shape="analysisTask" />}>{() => null}</ReadPart></>;
   const you = values.time.review + values.time.answer;
   const lead = row.outcome && row.outcome !== "stopped" && row.finishedAt ? Date.parse(row.finishedAt) - Date.parse(row.requestedAt) : null;
   const usage = values.usage;
@@ -42,9 +50,7 @@ export function TaskAnalysis({ taskId, hasTitle }: { taskId: string; hasTitle: b
   ] as [string, string | 0][]).filter(([, text]) => text) as [string, string][];
   return <div ref={setRoot} data-task-analysis className="pb-6">
     <PointerTip root={root} />
-    {(!hasTitle || row.id !== taskId) && <h3 dir="auto" className="text-heading font-semibold">
-      {row.id !== taskId && <span className="me-2 text-muted">{row.id}</span>}{row.title}
-    </h3>}
+    {heading}
     <p className="mt-2 inline-flex items-center text-muted">
       <Square className={row.outcome ? OUTCOME[row.outcome] : "bg-rule"} />{t(`outcome.${row.outcome ?? "none"}`)}{lead !== null && <span className="ms-3">{duration(lead)}</span>}
     </p>

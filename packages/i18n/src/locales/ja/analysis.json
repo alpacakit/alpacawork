@@ -137,6 +137,7 @@
     "empty": "タスクはありません",
     "more_other": "残り {{count}}件を表示",
     "outcome": "結果",
+    "resize": "分析一覧の高さ（上下の矢印キーで調整）",
     "task": "タスク",
     "usedTitle": "{{name}}のタスク"
   },

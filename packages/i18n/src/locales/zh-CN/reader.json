@@ -249,7 +249,8 @@
     "inserted": "已将 {{id}} 添加到输入框",
     "next": "下一个任务",
     "path": "任务路径",
-    "previous": "上一个任务"
+    "previous": "上一个任务",
+    "view": "任务视图"
   },
   "recovery": {
     "cancelled": "已取消发给“<title>{{title}}</title>”的内容。可以重新发送。",

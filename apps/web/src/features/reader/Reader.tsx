@@ -7,7 +7,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { useTranslation } from "react-i18next";
 import { ResizeEdge } from "@/components/ui/resize-edge";
 import { closeReaderStep, isTurnSequenceNavigation } from "@/state/history-step";
-import { useReaderBehind } from "@/state/reader-position";
+import { useAnalysisListBack, useReaderBehind } from "@/state/reader-position";
 import { ReaderPeopleContext, useHomeList, useReaderPeople, useReadState, useTaskDetail, useReaderTask, useWorkspaceInfo } from "@/data/queries";
 import type { Task, TaskDetail } from "@/data/types";
 import { historyWindowRefused, moveHistoryToLatest } from "@/data/history-resource";
@@ -23,7 +23,7 @@ import { ResponsibleSection } from "@/features/forms/ResponsibleInputs";
 import { MoveSection } from "@/features/forms/MoveInputs";
 import { HoldKey } from "./HoldKey";
 import { ReaderSheetClose, TaskActions } from "./TaskActions";
-import { FrameButtons, ReaderBack, ReaderHeader, readerHeadBox, ReaderTitle } from "./ReaderHeader";
+import { FrameButtons, ReaderBack, ReaderFaceSwitch, ReaderHeader, readerHeadBox, ReaderTitle } from "./ReaderHeader";
 import { ContextPage, ReportFeed } from "./ReportFeed";
 import { TaskAnalysis } from "@/features/analysis/TaskAnalysis";
 import { COLUMN, looksWide } from "./reading-column";
@@ -229,7 +229,10 @@ export function Reader({ mode, overlapping = false, canDock = mode === "docked" 
       <div ref={content} data-reader-content style={{ touchAction: swipeable ? "pan-y pinch-zoom" : undefined }} onScroll={(event) => { setScrolled(event.currentTarget.scrollTop > 0); noteScroll(event.currentTarget.scrollTop); }} className={`reader-content min-h-0 flex-1 overflow-auto px-4 py-2 text-base [overflow-wrap:anywhere] [overflow-anchor:none] narrow:px-3`}>
         {/* Every pane stands under the task's title and its tabs (ReaderEntries), which scroll with it. */}
         <div data-head-title className={`relative -mx-4 -mt-2 mb-2 border-b border-rule pb-1 narrow:-mx-3 narrow:px-3 ${COLUMN.title}`}>
-          <ReaderTitle task={task} titleRef={titleRef} />
+          <div className="flex items-center gap-2 [&>*:first-child]:flex-1">
+            <ReaderTitle task={task} titleRef={titleRef} />
+            {sheet && task.kind === "task" && <ReaderFaceSwitch analysis={analysis} />}
+          </div>
           {!analysis && <><ReaderEntries task={task} detail={detail} pane={pane} /><ReaderPanelSlot />{notes}{reading}</>}</div>
         {analysis ? <div data-reading-column className={COLUMN.body}><TaskAnalysis key={task.id} taskId={task.id} hasTitle /></div>
         : <div data-reading-column={wide ? "wide" : ""} data-held-hidden={hidden || undefined} inert={hidden} aria-hidden={hidden || undefined}
@@ -300,8 +303,10 @@ function AwaitedContent({ address, mode, canDock, analysis }: { address: string;
   const { t } = useTranslation("reader");
   const sheet = useSheetControl();
   const offline = useConnection((state) => state.offline);
-  const analysisList = useViewStore(state => !!state.analysis?.list);
   const behind = useReaderBehind();
+  const backToList = useAnalysisListBack(address, analysis ? "analysis" : "task", behind);
+  const isTask = address.startsWith("T");
+  const faces = mode === "sheet" && isTask && <ReaderFaceSwitch analysis={analysis} />;
   const head = useRef<HTMLElement>(null);
   useLayoutEffect(() => {
     if (analysis && readerOpenedByPress())
@@ -312,13 +317,14 @@ function AwaitedContent({ address, mode, canDock, analysis }: { address: string;
     <StandingGrip />
     <header ref={head} {...sheet?.grip} className={`${readerHeadBox(mode)} @container/reader border-rule`}>
       <div data-reader-head-row className="flex min-w-0 items-center text-xs text-muted">
-        {(behind || analysisList) && <ReaderBack toList={!behind} />}
+        {(behind || backToList) && <ReaderBack toList={backToList} />}
         <span className="me-auto">{analysis && address}</span>
-        <FrameButtons canDock={canDock} turn={address.startsWith("T") ? (analysis ? "analysis" : "task") : undefined} />
+        <FrameButtons canDock={canDock} turn={mode !== "sheet" && isTask ? (analysis ? "analysis" : "task") : undefined} />
       </div>
     </header>
     <div data-reader-content className="min-h-0 flex-1 overflow-auto px-4 py-2 narrow:px-3">
-      <div data-reading-column className={COLUMN.body}>{analysis ? <TaskAnalysis taskId={address} hasTitle={false} /> : <><ReaderPanelSlot />{!offline ? <AwaitedLookup address={address} reason={{ kind: "task_lookup_unavailable" }} skeleton={<RegionSkeleton shape="reports" />} />
+      <div data-reading-column className={COLUMN.body}>{analysis ? <TaskAnalysis taskId={address} hasTitle={false} titleAction={faces} /> : <>
+        {faces && <div className="mb-2 flex justify-end">{faces}</div>}<ReaderPanelSlot />{!offline ? <AwaitedLookup address={address} reason={{ kind: "task_lookup_unavailable" }} skeleton={<RegionSkeleton shape="reports" />} />
         : <ReadNote kind="absent" />}</>}</div>
     </div>
   </>;

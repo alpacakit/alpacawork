@@ -277,7 +277,8 @@
     "inserted": "Se añadió {{id}} al cuadro de texto",
     "next": "Tarea siguiente",
     "path": "Ruta de la tarea",
-    "previous": "Tarea anterior"
+    "previous": "Tarea anterior",
+    "view": "Vista de la tarea"
   },
   "recovery": {
     "cancelled": "Se canceló el envío a “<title>{{title}}</title>”. Puedes enviarlo de nuevo.",

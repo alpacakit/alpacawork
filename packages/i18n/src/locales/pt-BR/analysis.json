@@ -155,6 +155,7 @@
     "more_many": "Mostrar mais {{count}}",
     "more_other": "Mostrar mais {{count}}",
     "outcome": "Resultado",
+    "resize": "Altura da lista de análise (setas para cima e para baixo)",
     "task": "Tarefa",
     "usedTitle": "{{name}}"
   },

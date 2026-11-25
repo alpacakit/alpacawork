@@ -249,7 +249,8 @@
     "inserted": "{{id}} を入力欄に入れました",
     "next": "次のタスク",
     "path": "このタスクの場所",
-    "previous": "前のタスク"
+    "previous": "前のタスク",
+    "view": "タスクの表示"
   },
   "recovery": {
     "cancelled": "「<title>{{title}}</title>」への送信を取り消したので、もう一度送れます",

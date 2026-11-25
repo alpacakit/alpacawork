@@ -277,7 +277,8 @@
     "inserted": "{{id}} foi para o campo de mensagem",
     "next": "Próxima tarefa",
     "path": "Caminho da tarefa",
-    "previous": "Tarefa anterior"
+    "previous": "Tarefa anterior",
+    "view": "Visualização da tarefa"
   },
   "recovery": {
     "cancelled": "O envio para “<title>{{title}}</title>” foi cancelado. Você pode enviar de novo.",

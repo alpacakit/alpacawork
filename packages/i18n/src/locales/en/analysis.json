@@ -146,6 +146,7 @@
     "more_one": "Show {{count}} more",
     "more_other": "Show {{count}} more",
     "outcome": "Outcome",
+    "resize": "Analysis list height (up and down arrows)",
     "task": "Task",
     "usedTitle": "{{name}}"
   },

@@ -154,12 +154,19 @@ export function browserBack() {
   keepReaderPosition();
   navigate(goBack);
 }
-export function readerBack() {
+export function readerBack(toList = false) {
   keepReaderPosition();
-  if (readerBehind()) navigate(goBack, { bound: true });
+  if (!toList && readerBehind()) navigate(goBack, { bound: true });
   else if (useViewStore.getState().analysis?.list) closeTopReader();
   // A direct link to a details tab has no previous reader step.
   else navigate(() => useViewStore.getState().setReaderPane("task"), { bound: true, write: "over" });
+}
+
+/** Whether Back in the header returns to the list, including after a switch between the two faces of its row. */
+export function useAnalysisListBack(task: string, pane: ReaderPane, behind: ReaderPlace | null) {
+  const inList = useViewStore(state => !!state.analysis?.list);
+  return inList && (!behind || behind.task === task &&
+    (pane === "task" && behind.pane === "analysis" || pane === "analysis" && behind.pane === "task"));
 }
 
 /** Return to the other face if it is the previous place, including its reading position. */
