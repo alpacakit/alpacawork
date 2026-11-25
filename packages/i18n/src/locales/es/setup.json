@@ -91,8 +91,8 @@
     "installing": "Instalando…",
     "items": {
       "alpacawork-betterquality": {
-        "title": "Revisado por otra IA antes de que lo veas",
-        "what": "Salvo en trabajos ligeros, antes de pedirte que revises un resultado, una IA distinta de la que lo hizo lo comprueba, y se corrige lo que encuentre. Esto consume más tiempo y más tokens."
+        "title": "Mejores resultados, del plan al acabado",
+        "what": "Antes de construir, la IA fija el propósito y qué cuenta como terminado, y compara direcciones en borrador antes de pulir. Después otra IA, que solo recibe tus palabras, revisa el resultado y se corrige lo que encuentre. Esto lleva más tiempo y más tokens."
       },
       "alpacawork-modelpickoptimization": {
         "title": "Elección de modelo optimizada",

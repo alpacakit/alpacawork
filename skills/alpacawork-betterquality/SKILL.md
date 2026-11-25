@@ -1,6 +1,6 @@
 ---
 name: alpacawork-betterquality
-description: An alpacawork add-on. Owners and coordinators working in alpacawork use it when planning a result, while building it, when showing it to other AIs and handling what they find, and when fixes stop converging; an agent asked to review a result uses it to review. Use it for any result, including ones that must work for people with no one there to explain (error text, a guide, a screen, a promo, a name). It is not a skill about writing tests.
+description: An alpacawork add-on that raises the quality of a result from planning to finish. Owners and coordinators working in alpacawork use it when planning a result, while building it, when showing it to other AIs and handling what they find, and when fixes stop converging; an agent asked to review a result uses it to review. Use it for any result, including ones that must work for people with no one there to explain (error text, a guide, a screen, a promo, a name). It is not a skill about writing tests.
 ---
 
 # alpacawork-betterquality (frame first, build rough, show a fresh AI, fix until the gate)

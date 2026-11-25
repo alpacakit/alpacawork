@@ -87,8 +87,8 @@
     "installing": "正在安装…",
     "items": {
       "alpacawork-betterquality": {
-        "title": "先由另一个 AI 检查，再给你看",
-        "what": "除轻量的工作外，在请你确认结果之前，先由另一个 AI（不是做出结果的那个）检查，并按指出的问题修改。因此会多花时间和 token。"
+        "title": "从计划到完成，提升成果质量",
+        "what": "动手前先定下目的和完成标准，先用草稿比较方向再打磨。之后由另一个只拿到你原话的 AI 检查结果，并修正它发现的问题。这会多花时间和 token。"
       },
       "alpacawork-modelpickoptimization": {
         "title": "优化模型选择",

@@ -89,8 +89,8 @@
     "installing": "Installing…",
     "items": {
       "alpacawork-betterquality": {
-        "title": "Checked by another AI before you see it",
-        "what": "Except for light work, before you are asked to review a result, an AI other than the one that built it checks it, and what it finds is fixed. This takes more time and tokens."
+        "title": "Better results, from plan to finish",
+        "what": "Before building, the AI sets the purpose and what counts as done, and compares rough directions before polishing. Another AI, given only your words, then checks the result, and what it finds is fixed. This takes more time and tokens."
       },
       "alpacawork-modelpickoptimization": {
         "title": "Optimized model choice",
