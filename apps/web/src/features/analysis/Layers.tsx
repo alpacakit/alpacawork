@@ -58,7 +58,7 @@ export function Layers({ place, project, days }: { place: AnalysisPlace; project
       className={cn("fixed z-(--layer-reader) flex flex-col border-hairline border-lit-line bg-lit shadow-float",
         narrow ? "inset-x-0 top-[18%] bottom-0 animate-sheet rounded-t-pane before:absolute before:top-1.5 before:left-1/2 before:-ms-4.5 before:h-1 before:w-9 before:rounded-xs before:bg-lit-line"
           : "top-window right-window bottom-window w-[min(548px,calc(100%-24px))] animate-side rounded-pane")}>
-      <div className={cn("flex min-h-12 items-center gap-2 pt-3.5 pe-3 pb-1.5 ps-5", narrow && "pt-4.5 pe-2 ps-4")}>
+      <div className={cn("flex min-h-12 items-center gap-2 pt-3.5 pe-3 pb-1.5 ps-6", narrow && "pt-4.5 pe-2 ps-4")}>
         {back && <button type="button" data-layer-focus onClick={() => closeAnalysisLayer(1)}
           className="-ms-2 inline-flex h-7 items-center gap-0.5 rounded-md ps-1 pe-2.5 text-muted hover:bg-hover hover:text-ink">
           <Icon name="left" className="size-3.5" />{t("list.back")}</button>}
@@ -67,7 +67,7 @@ export function Layers({ place, project, days }: { place: AnalysisPlace; project
         <Button variant="ghost" size="icon" aria-label={t("list.close")} title={t("list.close")} data-layer-focus={back ? undefined : ""}
           onClick={() => closeAnalysisLayer(0)}><Icon name="close" /></Button>
       </div>
-      <div data-analysis-layer className="min-h-0 flex-1 overflow-auto px-5 narrow:px-4">
+      <div data-analysis-layer className="min-h-0 flex-1 overflow-auto px-6 narrow:px-4">
         {place.card ? <CardPane place={place} project={project} />
           : place.unit ? <UnitPane key={place.unit} unit={place.unit} />
           : place.list && <ListPane key={JSON.stringify(place.list)} place={place} project={project} days={days} />}
@@ -98,7 +98,7 @@ function ListPane({ place, project, days }: { place: AnalysisPlace; project: str
   const noDays = !showsDays(list, list.days ?? span);
   const columns = noDays ? "grid-cols-[44px_minmax(0,1fr)_minmax(64px,auto)]" : "grid-cols-[44px_minmax(0,1fr)_48px_minmax(64px,auto)]";
   return <div className="animate-rise">
-    <h3 className="text-md font-semibold">{list.days ? `${spanLabel(list.days.from, list.days.to)}${t("sep")}${title}` : title}</h3>
+    <h3 className="text-xl font-semibold">{list.days ? `${spanLabel(list.days.from, list.days.to)}${t("sep")}${title}` : title}</h3>
     <p className="mt-0.5 text-xs text-soft">{member}{member && spanWords && t("sep")}{spanWords}</p>
     {rows.length ? <>
       {/* A heading that wraps (a narrow window, a long language) makes the line taller, never runs into the first row. */}
@@ -108,7 +108,7 @@ function ListPane({ place, project, days }: { place: AnalysisPlace; project: str
       </div>
       <ul>{rows.map(row => <li key={row.id} className="border-b border-rule">
         <button type="button" onClick={() => useViewStore.getState().showAnalysis({ ...place, unit: row.id })}
-          className={cn("grid h-8.75 w-full items-center gap-x-3 rounded-sm text-start text-sm hover:bg-hover", columns)}>
+          className={cn("grid h-9.75 w-full items-center gap-x-3 rounded-sm text-start text-base hover:bg-hover", columns)}>
           <span className="text-muted">{row.id}</span>
           <span dir="auto" className="truncate">{row.title}</span>
           {!noDays && <span className="text-end text-soft">{dayOf(row) ?? ""}</span>}
@@ -119,7 +119,7 @@ function ListPane({ place, project, days }: { place: AnalysisPlace; project: str
         </button>
       </li>)}</ul>
       {left > 0 && query.hasNextPage && <button type="button" disabled={query.isFetchingNextPage} onClick={() => void query.fetchNextPage()}
-        className="-mx-1 mt-2.5 rounded-sm px-1 text-sm text-muted decoration-ink underline-offset-4 hover:bg-hover hover:text-ink hover:underline">{t("list.more", { count: left })}</button>}
+        className="-mx-1 mt-2.5 rounded-sm px-1 text-base text-muted decoration-ink underline-offset-4 hover:bg-hover hover:text-ink hover:underline">{t("list.more", { count: left })}</button>}
     </> : <p className="mt-4 text-soft">{t("list.empty")}</p>}
   </div>;
 }
@@ -168,33 +168,33 @@ function UnitPane({ unit }: { unit: string }) {
       <Square className={row.outcome ? OUTCOME[row.outcome] : "bg-rule"} />{outcomeWord(row, t)}{lead !== null && <span className="ms-3">{duration(lead)}</span>}
     </p>
     <Band values={values} />
-    <Facts className="mt-3" items={[
+    <Facts className="mt-4" items={[
       ...you > 0 ? [{ color: "bg-turn", name: t("time.you"), value: duration(you) }] : [],
       ...values.time.ai > 0 ? [{ color: "bg-working", name: t("time.ai"), value: duration(values.time.ai) }] : [],
       ...values.time.other >= 60_000 ? [{ color: "bg-rest", name: t("time.other"), value: duration(values.time.other) }] : [],
       ...facts]} />
     {used.length > 0 && <>
-      <h4 className="mt-6 mb-2 text-xs font-normal text-soft">{t("values.usage")}</h4>
+      <h4 className="mt-8 mb-3 text-xs font-normal text-soft">{t("values.usage")}</h4>
       <Facts items={used.map(([name, value]) => ({ name, value }))} />
     </>}
     {values.models.length > 0 && <table className="mt-2.5 w-full border-collapse">
-      <thead><tr className="h-7.5 border-b border-rule text-xs text-soft">
+      <thead><tr className="h-9 border-b border-rule text-xs text-soft">
         <th className="text-start font-normal">{t("values.models")}</th><th className="ps-3 text-end font-normal">{t("usage.launches")}</th>
         <th className="ps-3 text-end font-normal">{t("usage.runMs")}</th><th className="ps-3 text-end font-normal">{output.unit ? t("table.head", { name: t("usage.output"), unit: output.unit }) : t("usage.output")}</th></tr></thead>
-      <tbody>{values.models.map(model => <tr key={model.key} className="h-7.5 border-b border-rule">
+      <tbody>{values.models.map(model => <tr key={model.key} className="h-10 border-b border-rule">
         <td><ModelName model={model.model} /></td><td className="ps-3 text-end">{format("times", model.launches)}</td>
         <td className="ps-3 text-end">{duration(model.runMs)}</td><td className="ps-3 text-end tabular-nums">{output.write(model.output)}</td></tr>)}</tbody>
     </table>}
     {values.prs.length > 0 && <>
-      <h4 className="mt-6 mb-2 text-xs font-normal text-soft">{t("until.prs")}</h4>
+      <h4 className="mt-8 mb-3 text-xs font-normal text-soft">{t("until.prs")}</h4>
       <p className="flex flex-wrap gap-x-4.5 gap-y-1">{values.prs.map(url => <a key={url} href={url} target="_blank" rel="noreferrer">#{url.split("/").pop()}</a>)}</p>
     </>}
     {values.skills.length > 0 && <>
-      <h4 className="mt-6 mb-2 text-xs font-normal text-soft">{t("values.skills")}</h4>
+      <h4 className="mt-8 mb-3 text-xs font-normal text-soft">{t("values.skills")}</h4>
       <p className="flex flex-wrap gap-x-4.5 gap-y-1 text-muted">{values.skills.map(skill => <span key={skill}>{skill}</span>)}</p>
     </>}
     {values.tools.length > 0 && <>
-      <h4 className="mt-6 mb-2 text-xs font-normal text-soft">{t("values.tools")}</h4>
+      <h4 className="mt-8 mb-3 text-xs font-normal text-soft">{t("values.tools")}</h4>
       <p className="flex flex-wrap gap-x-4.5 gap-y-1 text-muted">{values.tools.slice(0, 8).map(tool =>
         <span key={tool.name}>{tool.name}<b className="ms-1.5 font-semibold text-ink">{format("times", tool.calls)}</b></span>)}</p>
     </>}
@@ -208,10 +208,10 @@ function UnitPane({ unit }: { unit: string }) {
  */
 function Facts({ items, className }: { items: { name: string; value: string; color?: string; why?: boolean }[]; className?: string }) {
   if (!items.length) return null;
-  return <dl className={cn("grid grid-cols-4 gap-x-4 gap-y-3 narrow:grid-cols-3", className)}>
+  return <dl className={cn("grid grid-cols-4 gap-x-4 gap-y-4 narrow:grid-cols-3", className)}>
     {items.map(item => <div key={item.name} className="min-w-0">
       <dt className="flex items-center text-xs text-muted">{item.color && <Square className={item.color} />}{item.name}</dt>
-      <dd className={cn("text-sm font-semibold tabular-nums", item.why && "text-turn")}>{item.value}</dd>
+      <dd className={cn("text-base font-semibold tabular-nums", item.why && "text-turn")}>{item.value}</dd>
     </div>)}
   </dl>;
 }

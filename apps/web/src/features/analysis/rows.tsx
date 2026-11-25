@@ -38,12 +38,12 @@ export function Leads({ children }: { children: ReactNode }) {
 export function Lead({ name, value, beside, note, compare, ever }: { name: ReactNode; value: ReactNode; beside?: ReactNode; note?: ReactNode; compare: ReactNode; ever?: string | null }) {
   const { t } = useTranslation("analysis");
   return <div className="row-span-5 grid min-w-0 grid-rows-subgrid">
-    <div className="flex min-w-0 flex-wrap items-center text-sm text-muted">{name}</div>
+    <div className="flex min-w-0 flex-wrap items-center text-base text-muted">{name}</div>
     {/* What stands beside the value (the share) goes under it where the column has no room for both: never into the next number. */}
-    <div className="flex min-h-[45px] min-w-0 flex-wrap content-start items-center gap-x-5 gap-y-1 narrow:min-h-[33px] narrow:gap-x-3">{value}{beside}</div>
-    <div className="min-w-0 text-xs text-soft">{note}</div>
-    <div className="min-w-0">{compare}</div>
-    <div className="text-xs text-soft">{ever && t("lead.ever", { value: ever })}</div>
+    <div className="mt-1 flex min-w-0 flex-wrap content-start items-center gap-x-5 gap-y-1 narrow:gap-x-3">{value}{beside}</div>
+    <div className="mt-2 min-w-0 text-xs text-soft">{note}</div>
+    <div className="mt-0.5 min-w-0">{compare}</div>
+    <div className="mt-0.5 text-xs text-soft">{ever && t("lead.ever", { value: ever })}</div>
   </div>;
 }
 
@@ -66,8 +66,8 @@ export function Parts({ items = [], line }: { items?: PartItem[]; line?: { name:
   const name = "flex min-w-0 items-baseline text-muted [overflow-wrap:anywhere] [word-break:auto-phrase] @max-[13rem]:col-span-3";
   const value = "justify-self-end inline-flex items-baseline gap-0.5 text-end whitespace-nowrap @max-[13rem]:col-start-2";
   const share = "justify-self-end text-end text-xs whitespace-nowrap";
-  return <div className="@container mt-2 text-sm">
-    <div className="grid w-full grid-cols-[minmax(0,1fr)_var(--part-value,auto)_var(--part-share,auto)] gap-x-2 gap-y-0.5">
+  return <div className="@container mt-3 text-base">
+    <div className="grid w-full grid-cols-[minmax(0,1fr)_var(--part-value,auto)_var(--part-share,auto)] gap-x-2 gap-y-1">
       {items.map(item => {
         const cells = <>
           <span className={name}>{item.color && <i aria-hidden className={cn("me-2 inline-block size-2 flex-none self-center rounded-xs", item.color)} />}{item.name}</span>
@@ -114,7 +114,7 @@ export function Row({ row, left, children, className }: { row?: number; left: Re
     group!.point(null);
   };
   const self = useRef<HTMLDivElement>(null);
-  return <div ref={self} data-row={row} className={cn(GRID, "border-t border-rule py-4 narrow:py-3.5", className)}
+  return <div ref={self} data-row={row} className={cn(GRID, "border-t border-rule py-6 narrow:py-5", className)}
     onMouseLeave={event => leave(event.relatedTarget)} onBlur={event => leave(event.relatedTarget)}>
     {/* Each in its own place on the grid, so the day's legend (placed over the left) moves neither. The left holds,
         from the first, the room of the tallest of the span's numbers and every day's legend (each unseen but the one
@@ -358,7 +358,7 @@ function Columns({ layer }: { layer: "back" | "front" }) {
     if (same && dayIntent(from, trace) === "wait") group.pointSoon(at, row);
     else group.point(at, row);
   };
-  return <div aria-hidden={layer === "back"} className={cn(GRID, "pointer-events-none absolute inset-0", layer === "front" && "z-1")}>
+  return <div aria-hidden={layer === "back"} className={cn(GRID, "pointer-events-none absolute inset-x-0 top-6 bottom-6", layer === "front" && "z-1")}>
     {/* Leaving the day columns lets go of the day, unless for the same row (its legend, on the left). */}
     <div className="col-span-9 col-start-4 grid auto-cols-[minmax(0,1fr)] grid-flow-col" onMouseLeave={layer === "front" ? event => {
       group.cancel();
@@ -427,7 +427,7 @@ function DayWindow({ day, say, room, at, box, onList, onPart, onStep, first, las
     className="-my-1 flex size-7 items-center justify-center rounded-sm text-muted hover:bg-hover disabled:opacity-30">
     <Icon name={to < 0 ? "left" : "right"} className="size-3.5" /></button>;
   return <div ref={self} role="presentation" data-day-window=""
-    className="fixed z-(--layer-popover) w-max max-w-[calc(100vw-8px)] overflow-y-auto rounded-md border border-line bg-raised px-3 py-2.5 text-sm shadow-float">
+    className="fixed z-(--layer-popover) w-max max-w-[calc(100vw-8px)] overflow-y-auto rounded-md border border-line bg-raised px-3 py-2.5 text-base shadow-float">
     <div className="-mx-1.5 flex items-center justify-between gap-2 text-soft">{step(-1, first)}<span>{day}</span>{step(1, last)}</div>
     <div className="mt-1 flex items-baseline justify-between gap-6"><span className="text-muted">{say.name}</span><b className="text-xl font-semibold text-ink tabular-nums">{say.total(at)}</b></div>
     {/* As wide, and its columns as wide, as the widest any of the row's days takes (legendRoom): stepping to another day
@@ -477,7 +477,7 @@ function DayLegend({ say, at, day, onList, still }: { say: RowSay; at: number; d
   const figure = (value: string) => <b className="font-semibold tabular-nums decoration-ink underline-offset-4 group-hover/open:underline group-focus-visible/open:underline">{value}</b>;
   return <div data-day-legend={still ? undefined : ""} className={cn(!still && "absolute inset-x-0 top-0")}>
     {/* One line, so the legend keeps to the row's room at a narrow width (the row's name is read out in full). */}
-    <div title={`${day} ${say.name}`} className="mb-1 truncate text-sm text-muted"><b className="me-2 font-semibold text-ink">{day}</b>{say.name}</div>
+    <div title={`${day} ${say.name}`} className="mb-1 truncate text-base text-muted"><b className="me-2 font-semibold text-ink">{day}</b>{say.name}</div>
     <b className="block text-xl font-semibold tabular-nums">{say.total(at)}</b>
     <Parts items={(say.parts?.(at) ?? []).map((part, index) => ({ color: part.color, name: part.name, share: part.share, index,
       value: figure(part.value), onOpen: part.list ? () => onList(part.list!) : undefined }))}

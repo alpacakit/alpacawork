@@ -68,13 +68,13 @@ export function BreakdownTable({ id, head, columns, rows, limit = 10, tone = "mu
             : name}
         </th>)}
       </tr></thead>
-      <tbody className="border-t border-rule">{visible.map(row => <tr key={row.key} className="h-9 border-b border-rule text-sm">
+      <tbody className="border-t border-rule">{visible.map(row => <tr key={row.key} className="h-10 border-b border-rule text-base">
         <td dir="auto" className="py-1.5 pe-3 [overflow-wrap:anywhere]">{row.name}{row.tag && <small className="ms-1.5 text-soft">{row.tag}</small>}</td>
         {row.cells.map((cell, at) => {
           if (!shows(at)) return null;
           const body = <>{cell.split && <Split parts={cell.split} />}<span className="tabular-nums">{cell.text}</span></>;
           return <td key={at} className="text-end">
-            <span className="flex h-8.75 items-center justify-end gap-2 px-2">
+            <span className="flex h-9.75 items-center justify-end gap-2 px-2">
               {/* The first number's column draws how many before it: the rows compared at a glance. */}
               {at === 0 && !one && <i style={{ width: `${row.bar / most * 100}%`, background: `color-mix(in oklab, var(--${tone}) ${Math.round(45 + 55 * row.bar / most)}%, var(--bg))` }}
                 className="me-auto block h-1.5 max-w-[60%] min-w-0.5 rounded-full" />}
@@ -87,7 +87,7 @@ export function BreakdownTable({ id, head, columns, rows, limit = 10, tone = "mu
       </tr>)}</tbody>
     </table>
     {rows.length > limit && <button type="button" onClick={() => useChoices.getState().choose({ all: !all })}
-      className="-mx-1 mt-2.5 rounded-sm px-1 text-sm text-muted decoration-ink underline-offset-4 hover:bg-hover hover:text-ink hover:underline">
+      className="-mx-1 mt-2.5 rounded-sm px-1 text-base text-muted decoration-ink underline-offset-4 hover:bg-hover hover:text-ink hover:underline">
       {all ? t("breakdown.top") : t("breakdown.all", { count: rows.length })}</button>}
   </div>;
 }

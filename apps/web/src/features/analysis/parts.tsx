@@ -78,8 +78,8 @@ export const OpenMark = ({ big }: { big?: boolean }) =>
 export function Value({ kind, value, big, small, onOpen }: { kind: Kind; value: number | null; big?: boolean; small?: boolean; onOpen?: () => void }) {
   const written = value === null ? { value: "—", unit: "" } : parts(kind, value);
   const body = <>
-    <b className={cn("font-semibold tabular-nums decoration-ink underline-offset-4 group-hover/open:underline group-focus-visible/open:underline", big ? "text-display" : small ? "text-sm" : "text-xl")}>{written.value}</b>
-    {written.unit && <span className={cn("text-muted", small ? "text-xs" : "text-sm")}>{written.unit}</span>}
+    <b className={cn("font-semibold tabular-nums decoration-ink underline-offset-4 group-hover/open:underline group-focus-visible/open:underline", big ? "text-figure narrow:text-figure-compact" : small ? "text-base" : "text-xl")}>{written.value}</b>
+    {written.unit && <span className={cn("text-muted", small ? "text-xs" : "text-base")}>{written.unit}</span>}
   </>;
   // One that could open tasks but has none (0) keeps the room of the mark, so a column of numbers stays one column.
   if (!onOpen || !value) return <span className="inline-flex items-baseline gap-0.5 whitespace-nowrap">{body}{onOpen && <i aria-hidden className={cn("inline-block flex-none", big ? "size-4" : "size-3")} />}</span>;
@@ -107,7 +107,7 @@ export function Num({ label, square, kind, value, previous, length, onOpen, afte
   label: string; square?: string; kind: Kind; value: number | null; previous: number | null; length: number; onOpen?: () => void; after?: ReactNode; className?: string;
 }) {
   return <div className={cn("min-w-0", className)}>
-    <div className="mb-1 flex items-center text-sm whitespace-nowrap text-muted">{square && <Square className={square} />}{label}</div>
+    <div className="mb-1 flex items-center text-base whitespace-nowrap text-muted">{square && <Square className={square} />}{label}</div>
     <Value kind={kind} value={value} onOpen={value ? onOpen : undefined} />
     {value !== null && <Compare kind={kind} value={value} previous={previous} length={length} />}
     {after}
@@ -121,10 +121,10 @@ export function Num({ label, square, kind, value, previous, length, onOpen, afte
 export function ChartHead() {
   const { t } = useTranslation("analysis");
   const { bucket, grow, rules } = useChoices();
-  return <div className="mt-8 flex items-center justify-between gap-4 border-t border-rule pt-4">
+  return <div className="mt-14 flex items-center justify-between gap-4 narrow:mt-10">
     {/* It opens the rules under it, as the app's other disclosures do: a chevron that turns as it opens. */}
     <button type="button" aria-expanded={rules} onClick={() => useChoices.getState().choose({ rules: !rules })}
-      className="group -ms-2 inline-flex h-7 items-center gap-1 rounded-md ps-2 pe-1.5 text-sm whitespace-nowrap text-muted hover:bg-hover hover:text-ink aria-expanded:text-ink">
+      className="group -ms-2 inline-flex h-7 items-center gap-1 rounded-md ps-2 pe-1.5 text-base whitespace-nowrap text-muted hover:bg-hover hover:text-ink aria-expanded:text-ink">
       {t("tasks.howCounted")}
       <Icon name="down" aria-hidden className="size-3.5 transition-transform duration-(--motion-base) group-aria-expanded:rotate-180" />
     </button>
@@ -135,15 +135,15 @@ export function ChartHead() {
 /** The counting rules: a name and what it counts, one to a line, the names in a column of their own. */
 export function RulesBox({ children }: { children: ReactNode }) {
   // Japanese breaks between phrases, not inside a word (auto-phrase reads the page's language).
-  return <dl className="mt-3 mb-1 grid max-w-[52em] animate-rise grid-cols-[max-content_minmax(0,1fr)] gap-x-5 gap-y-1.5 rounded-lg border border-line px-4 py-3.5 text-sm text-muted [word-break:auto-phrase] narrow:grid-cols-1 narrow:gap-y-0.5 [&_dd+dt]:narrow:mt-2 [&_dt]:font-semibold [&_dt]:text-ink [&_ul]:mt-1 [&_ul]:list-disc [&_ul]:ps-[1.4em]">{children}</dl>;
+  return <dl className="mt-3 mb-1 grid max-w-[52em] animate-rise grid-cols-[max-content_minmax(0,1fr)] gap-x-5 gap-y-1.5 rounded-lg border border-line px-4 py-3.5 text-base text-muted [word-break:auto-phrase] narrow:grid-cols-1 narrow:gap-y-0.5 [&_dd+dt]:narrow:mt-2 [&_dt]:font-semibold [&_dt]:text-ink [&_ul]:mt-1 [&_ul]:list-disc [&_ul]:ps-[1.4em]">{children}</dl>;
 }
 /** One counting rule: its name, then what it counts. */
 export const Rule = ({ name, children }: { name: string; children: ReactNode }) => <><dt>{name}</dt><dd>{children}</dd></>;
 
 /** A section under a rule, its name on the left and its switch on the right. */
 export function Section({ title, aside, children }: { title: string; aside?: ReactNode; children: ReactNode }) {
-  return <section className="mt-12 border-t border-rule pt-6">
-    <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2"><h2 className="me-auto text-md font-semibold">{title}</h2>{aside}</div>
+  return <section className="mt-16 narrow:mt-12">
+    <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2"><h2 className="me-auto text-xl font-semibold">{title}</h2>{aside}</div>
     {children}
   </section>;
 }

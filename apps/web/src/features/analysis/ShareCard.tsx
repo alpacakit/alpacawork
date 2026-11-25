@@ -207,7 +207,7 @@ export function CardPane({ place, project }: { place: AnalysisPlace; project: st
     </div>
     {/* What posting will do with the picture, said before it is pressed. */}
     <p className="mt-2 text-xs text-soft">{copying ? t("card.postHintCopy") : t("card.postHintSave")}</p>
-    <div className="mt-7 grid gap-4 border-t border-rule pt-5">
+    <div className="mt-8 grid gap-6">
       {row(t("period.label"), <Seg label={t("period.label")} value={card.length} className={fold}
         onChange={length => useViewStore.getState().showAnalysis({ ...place, card: { ...card, length } })}
         items={CARD_PERIODS.map(each => [each, t(`period.${each}`)] as const)} />)}

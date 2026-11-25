@@ -56,7 +56,7 @@ export function AnalysisView({ place }: { place: AnalysisPlace }) {
   return <><div ref={setRoot} data-list-scroll {...UNDER_BAR}
     className="relative min-h-75 flex-1 basis-0 overflow-auto overscroll-contain scroll-pb-(--list-foot) pb-(--list-foot) narrow:min-h-67.5">
     <div className="pb-12"><BarRoom />
-    <div className="flex flex-wrap items-center gap-x-6 gap-y-2 pt-1 pb-6 narrow:pb-5">
+    <div className="flex flex-wrap items-center gap-x-6 gap-y-2 pt-1 pb-8 narrow:pb-6">
       <Seg label={t("look.label")} value={place.look} onChange={look => { useChoices.getState().choose({ all: false, rules: false, grow: useChoices.getState().grow + 1 }); show({ look }); }}
         items={[["tasks", t("look.tasks")], ["usage", t("look.usage")]]} />
       {/* The card's way in stands at the row's end: beside the span on a computer, beside the looks on a phone, where
