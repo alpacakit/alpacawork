@@ -5,8 +5,8 @@
  */
 import { randomUUID } from 'node:crypto';
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
-import { enabledAgents, type AiStackPrefix } from '@alpacawork/contract';
-import { aiRows } from '../ai-stack.js';
+import type { AiStackPrefix } from '@alpacawork/contract';
+import { aiRows, defaultAiStack } from '../ai-stack.js';
 import type { TaskActor } from '@alpacawork/raw';
 import type { Selection } from '@alpacawork/contract/agent-settings';
 import { TaskRepository } from './task-store.js';
@@ -36,7 +36,7 @@ export class PlacementCommands {
     if (!settings.ok) throw settings.error;
     const rows = prefix ? aiRows(settings.config, prefix) : settings.config.aiStack;
     const key = (prefix?.[0] && prefix[0] !== 'stop' ? rows?.[0]?.agent : requested) ??
-      rows?.[0]?.agent ?? settings.config.aiStack?.[0]?.agent ?? enabledAgents(settings.config.agents)[0]?.[0];
+      rows?.[0]?.agent ?? defaultAiStack(settings.config)[0]?.agent;
     if (key === undefined || !Object.hasOwn(settings.config.agents, key))
       throw new Problem(PROBLEM_CODE.invalidInput, 'Responsible placement requires a configured launch profile', undefined,
         { reason: { kind: 'responsible_placement_requires_configured_launch_profile' }, issues: [{ path: 'profile', code: 'unknown_profile', message: 'A configured launch profile is required' }] });

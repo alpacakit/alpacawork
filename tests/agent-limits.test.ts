@@ -65,7 +65,7 @@ const account = existsSync(${JSON.stringify(join(root, 'long'))}) ? 'x'.repeat(3
 console.log(JSON.stringify({ windows: [{ kind: 'weekly', minutes: 10080, model: null, usedPercent: used, resetsAt: null }], account }));\n`);
   let now = 0;
   const config = { agents: { grok: { enabled: true }, codex: { enabled: true }, claude: { enabled: true }, 'claude-chrome': { adapter: 'claude', enabled: true },
-    off: { adapter: 'copilot', enabled: false } }, aiStack: [{ agent: 'claude' }] };
+    off: { adapter: 'copilot', enabled: false } }, aiStack: [{ agent: 'claude', values: {} }] };
   const monitor = new AgentLimitsMonitor({ config: async () => config as never, now: () => now, freshMs: 1000,
     environment: { cwd: root, env: { PATH: bin, HOME: root }, bridge: [process.execPath, bridge] } });
   return { root, monitor, calls: () => readFileSync(calls, 'utf8').trim().split('\n').filter(Boolean), advance: (ms: number) => { now += ms; } };
@@ -113,5 +113,6 @@ test('the stack the screen gets is the rows tasks run on: enabled agents in orde
   assert.deepEqual(limitsStack({ agents: agents as never, aiStack: [{ agent: 'claude', values: { model: 'opus' } }, { agent: 'off', values: {} },
     { agent: 'claude-chrome', values: { model: 'fable' } }, { agent: 'codex', values: {} }] }),
   [{ adapter: 'claude', model: 'opus' }, { adapter: 'claude', model: 'fable' }, { adapter: 'codex', model: null }]);
-  assert.deepEqual(limitsStack({ agents: agents as never }).map(row => row.adapter), ['codex']);
+  // With no stack, the first enabled agent at the values a launch gives it by default.
+  assert.deepEqual(limitsStack({ agents: { claude: { enabled: true }, codex: { enabled: true } } as never }), [{ adapter: 'claude', model: 'opus' }]);
 });

@@ -22,9 +22,12 @@
   "limits": {
     "barLabel": "Limites de uso da IA: {{agent}}, {{window}}: {{percent}} usado",
     "barStopped": "Limites de uso da IA: {{agent}}: {{state}}",
-    "barSwitched": "Limites de uso da IA: {{spent}} atingiu o limite, {{agent}} é usado no lugar; {{window}}: {{percent}} usado",
+    "barSwitched_one": "Limites de uso da IA: {{spent}} atingiu o limite; {{state}}",
+    "barSwitched_many": "Limites de uso da IA: {{spent}} atingiram os limites; {{state}}",
+    "barSwitched_other": "Limites de uso da IA: {{spent}} atingiram os limites; {{state}}",
     "barUnknown": "Limites de uso da IA: não foi possível ler os limites de {{agent}}",
-    "instead": "Em uso no lugar",
+    "barUnlimited": "Limites de uso da IA: nenhum limite se aplica a {{agent}} agora",
+    "instead": "Em uso como substituto",
     "none": "Nenhum limite agora",
     "readAgo_one": "Atualizado há {{count}} min",
     "readAgo_many": "Atualizado há {{count}} min",
@@ -44,6 +47,11 @@
     "stopped": "Parado",
     "stoppedUntil": "Parado até {{when}}",
     "stoppedUntilShort": "Até {{when}}",
+    "switched": {
+      "limited": "{{agent}} é usado no lugar, {{window}}: {{percent}} usado",
+      "unknown": "não foi possível ler os limites de {{agent}}",
+      "unlimited": "{{agent}} é usado no lugar, sem limite"
+    },
     "title": "Limites de uso da IA",
     "unavailable": "Não foi possível ler. Verifique o login",
     "unsupported": "Não informa os limites",

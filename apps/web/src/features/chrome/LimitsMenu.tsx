@@ -9,7 +9,7 @@ import { notify } from "@/lib/notify";
 import { Popup } from "@/components/ui/popup";
 import { useFrameSelector } from "@/data/workspace-store";
 import { resources } from "@/data/resources";
-import { barLimit, besideModelWindow, limitTone, readWords, resetWords, stoppedWords, windowLabel } from "@/domain/limits";
+import { barLimit, type BarLimit, besideModelWindow, limitTone, readWords, resetWords, stoppedWords, windowLabel } from "@/domain/limits";
 import { AGENT_NAMES } from "@/domain/agent-names";
 import { useNow } from "@/state/clock";
 import { cn } from "@/lib/utils";
@@ -61,10 +61,22 @@ function AgentBlock({ agent, now, shown, instead }: { agent: AgentLimits; now: n
   </section>;
 }
 
+/** The bar's words for a screen reader (and its tooltip): what the ring and the names say, with the percent. */
+function barWords(shown: BarLimit, name: string, locale: string, t: (key: string, options?: Record<string, unknown>) => string): string {
+  if (shown.kind === "stopped") return t("limits.barStopped", { agent: name, state: stoppedWords(shown.window, locale, t) });
+  const figure = shown.kind === "limited" ? { window: windowLabel(shown.window, t), percent: percentText(shown.window.usedPercent) } : {};
+  if (shown.spent.length === 0) return shown.kind === "limited" ? t("limits.barLabel", { agent: name, ...figure })
+    : t(shown.kind === "unknown" ? "limits.barUnknown" : "limits.barUnlimited", { agent: name });
+  const state = shown.kind === "limited" ? t("limits.switched.limited", { agent: name, ...figure })
+    : t(shown.kind === "unknown" ? "limits.switched.unknown" : "limits.switched.unlimited", { agent: name });
+  return t("limits.barSwitched", { count: shown.spent.length, state,
+    spent: new Intl.ListFormat(locale, { type: "conjunction" }).format(shown.spent.map(agent => AGENT_NAMES[agent.adapter].short)) });
+}
+
 /**
  * The bar's plan limits: the agent work goes on with now (the first in the task stack whose limit is not spent) as a
  * ring, its name and the window that holds it, after the spent agents before it ("○Claude › ○Codex Weekly"); a phone
- * keeps the rings. With every one spent, the first and until when it stops. The percent is the ring's and the menu's.
+ * keeps the rings. One nothing holds (an API key) has the name alone. With every one spent, the first and until when it stops. The percent is the ring's and the menu's.
  * A press opens every agent's windows with when each resets and the account each is signed in as. Nothing shows until
  * some agent's limits are known.
  */
@@ -80,17 +92,14 @@ export function LimitsMenu() {
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   const agents = limits.data?.agents ?? [];
-  const shown = limits.data ? barLimit(limits.data) : null;
+  const shown = limits.data ? barLimit(limits.data, now) : null;
   if (!shown) return null;
-  const percent = shown.window?.usedPercent ?? 0;
-  const tone = shown.kind === "stopped" ? "spent" : limitTone(percent);
+  const shownWindow = shown.kind === "limited" || shown.kind === "stopped" ? shown.window : null;
+  const percent = shown.kind === "stopped" ? 100 : shownWindow?.usedPercent ?? 0;
+  const tone = limitTone(percent);
   const name = AGENT_NAMES[shown.agent.adapter].short;
-  const spent = shown.kind === "using" ? shown.spent : [];
-  const label = shown.kind === "stopped" ? t("limits.barStopped", { agent: name, state: stoppedWords(shown.window, i18n.language, t) })
-    : !shown.window ? t("limits.barUnknown", { agent: name })
-    : spent.length ? t("limits.barSwitched", { spent: spent.map(agent => AGENT_NAMES[agent.adapter].short).join(", "), agent: name,
-      window: windowLabel(shown.window, t), percent: percentText(percent) })
-    : t("limits.barLabel", { agent: name, window: windowLabel(shown.window, t), percent: percentText(percent) });
+  const spent = shown.kind === "stopped" ? [] : shown.spent;
+  const label = barWords(shown, name, i18n.language, t);
   const read = readWords(agents.map(agent => agent.observedAt).filter(at => at !== null).sort()[0] ?? null, now, t);
   return <>
     <Button ref={trigger} variant="ghost" size="bar" data-limits-trigger data-tone={tone} aria-haspopup="dialog" aria-expanded={open}
@@ -100,15 +109,16 @@ export function LimitsMenu() {
         <span className="text-sm text-muted narrow:hidden">{AGENT_NAMES[agent.adapter].short}</span>
         <Icon name="right" className="size-3.5 text-muted" />
       </span>)}
-      <UsageRing percent={shown.kind === "stopped" ? 100 : percent} tone={tone} />
+      {/* An agent nothing holds has the ring of no limit (four arcs), and no window or figure. */}
+      <UsageRing percent={percent} tone={tone} open={shown.kind === "unlimited"} />
       {/* Which agent and which of its windows: a computer has the room, a phone keeps the ring. The window's name goes
           first, where the buttons' side of the bar (AppBar BUTTONS) no longer holds it and it would take the search box's room. */}
       <span className="text-sm narrow:hidden">{name}</span>
       {shown.kind === "stopped" ? <>
         <span className="text-sm text-error narrow:hidden">{stoppedWords(shown.window, i18n.language, t)}</span>
         <span className="hidden text-sm text-error narrow:inline">{stoppedWords(shown.window, i18n.language, t, true)}</span>
-      </> : shown.window ? <span className="text-sm text-muted narrow:hidden @max-[64rem]:hidden">{windowLabel(shown.window, t)}</span>
-        : <span className="text-sm text-muted">—</span>}
+      </> : shown.kind === "limited" ? <span className="text-sm text-muted narrow:hidden @max-[64rem]:hidden">{windowLabel(shown.window, t)}</span>
+        : shown.kind === "unknown" && <span className="text-sm text-muted">—</span>}
     </Button>
     {/* The heading's line is as high as its button, so the box is shorter over it: the title stands as far from the top
         edge as from the side. The button's box is wider than its mark, so it is pulled out to end the mark where the
@@ -124,7 +134,7 @@ export function LimitsMenu() {
         </span></span>}>
       <div data-limits-menu lang={i18n.language} className="pt-2">
         {agents.map(agent => <AgentBlock key={agent.adapter} agent={agent} now={now}
-          shown={agent.adapter === shown.agent.adapter ? shown.window : null} instead={agent.adapter === shown.agent.adapter && spent.length > 0} />)}
+          shown={agent.adapter === shown.agent.adapter ? shownWindow : null} instead={agent.adapter === shown.agent.adapter && spent.length > 0} />)}
       </div>
     </Popup>}
   </>;

@@ -7,9 +7,10 @@
  */
 import { AGENT_ADAPTERS, type BuiltinAdapterId } from '@alpacawork/contract/agent-adapters';
 import { limitsReportSchema, type AgentLimits, type AgentLimitsResponse, type LimitsReport, type LimitsStackRow } from '@alpacawork/contract/agent-limits';
-import { AGENT_CHECK_MS, compileAgentSetting, resolveAgentSelection } from '@alpacawork/contract';
+import { AGENT_CHECK_MS } from '@alpacawork/contract';
+import { defaultAiStack } from '../ai-stack.js';
 import { enabledAgents, settingAdapter, type AgentSetting } from '@alpacawork/contract/agent-settings';
-import type { AiRow } from '@alpacawork/contract';
+import type { AgentsSettings } from '../agents-settings.js';
 import { runtimeAdapter } from './registry.js';
 import type { LimitsProbe } from './adapters/types.js';
 import { commandPrefix, launchCommand } from './availability.js';
@@ -19,7 +20,7 @@ export const LIMITS_FRESH_MS = 5 * 60_000;
 /** Claude's first stream lines list its tools and skills before the answer. */
 const LIMITS_OUTPUT = 1024 * 1024;
 
-export type LimitsConfig = { agents: Record<string, AgentSetting>; aiStack?: readonly AiRow[] };
+export type LimitsConfig = Pick<AgentsSettings, 'agents' | 'aiStack'>;
 type Known = { limits: AgentLimits; at: number };
 
 /** Kinds of agent in the order the screen lists them: the task stack's, then the other enabled profiles'. */
@@ -34,21 +35,14 @@ export function limitsAgents(config: LimitsConfig): [BuiltinAdapterId, AgentSett
   return [...kinds];
 }
 
-/**
- * The rows tasks run on, as a launch picks them: the task stack's rows of enabled agents, or with no stack the first
- * enabled agent at its default values (placement's own fallback).
- */
+/** The rows tasks run on (`defaultAiStack`), enabled agents only, as the kind of agent and the model each launches. */
 export function limitsStack(config: LimitsConfig): LimitsStackRow[] {
   const enabled = new Map(enabledAgents(config.agents));
-  const rows = config.aiStack?.length ? config.aiStack : [...enabled.keys()].slice(0, 1).map(agent => ({ agent, values: defaultValues(agent, enabled.get(agent)!) }));
-  return rows.flatMap(row => {
+  return defaultAiStack(config).flatMap(row => {
     const setting = enabled.get(row.agent), adapter = setting && settingAdapter(row.agent, setting);
-    const model = row.values?.model;
+    const model = row.values.model;
     return adapter ? [{ adapter, model: typeof model === 'string' && model ? model : null }] : [];
   });
-}
-function defaultValues(key: string, setting: AgentSetting): AiRow['values'] {
-  try { return resolveAgentSelection(compileAgentSetting(key, setting)).values; } catch { return {}; }
 }
 
 /** Every agent's answer passes the same contract; an account name the contract refuses is dropped, not the limits. */

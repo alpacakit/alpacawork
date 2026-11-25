@@ -20,9 +20,10 @@
   "limits": {
     "barLabel": "AI 用量上限：{{agent}}，{{window}} 已用 {{percent}}",
     "barStopped": "AI 用量上限：{{agent}}：{{state}}",
-    "barSwitched": "AI 用量上限：{{spent}} 已达上限，改用 {{agent}}；{{window}} 已用 {{percent}}",
+    "barSwitched_other": "AI 用量上限：{{spent}} 已达上限，{{state}}",
     "barUnknown": "AI 用量上限：无法读取 {{agent}} 的上限",
-    "instead": "正在替代使用",
+    "barUnlimited": "AI 用量上限：{{agent}} 目前没有上限",
+    "instead": "替代使用中",
     "none": "当前没有上限",
     "readAgo_other": "{{count}} 分钟前更新",
     "readNow": "刚刚更新",
@@ -38,6 +39,11 @@
     "stopped": "已停止",
     "stoppedUntil": "停止至 {{when}}",
     "stoppedUntilShort": "至 {{when}}",
+    "switched": {
+      "limited": "改用 {{agent}}，{{window}} 已用 {{percent}}",
+      "unknown": "无法读取 {{agent}} 的上限",
+      "unlimited": "改用 {{agent}}，没有上限"
+    },
     "title": "AI 用量上限",
     "unavailable": "无法读取。请确认已登录",
     "unsupported": "无法获取上限",

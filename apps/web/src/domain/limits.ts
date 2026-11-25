@@ -14,40 +14,46 @@ export const tightestWindow = (windows: readonly LimitWindow[]): LimitWindow | n
 export const rowWindows = (windows: readonly LimitWindow[], model: string | null): LimitWindow[] =>
   windows.filter(window => window.model === null || model !== null && window.model.toLowerCase() === model.toLowerCase());
 
+/** Whether a window holds its agent back now: spent, and not yet past its reset (the menu then says no reset either). */
+export const holds = (window: LimitWindow, now: number): boolean =>
+  limitTone(window.usedPercent) === "spent" && !(window.resetsAt && resetMinute(window.resetsAt) <= now);
+
 /**
- * What the bar shows, from the stack tasks run on:
- * - `using`: the first row that can work now, and its fullest window that holds it (null while its limits are unknown,
- *   so another agent's figure never stands as its own); `spent`: the agents of the rows before it whose limit is spent.
- * - `stopped`: every row is spent; the first row's agent, and the window holding it longest (when work goes on).
- * A row whose agent has no limits (one used with an API key) is passed over. Null, and no bar, until some agent's limits are known.
+ * What the bar shows, from the stack tasks run on: the first row that can work now, after `spent`, the other agents of
+ * the rows before it that their limits hold back.
+ * - `limited`: the row's fullest window that holds it.
+ * - `unknown`: its limits could not be read; another agent's figure never stands as its own.
+ * - `unlimited`: nothing holds it (an agent used with an API key, or one that reports no limits): work goes on there.
+ * - `stopped`: every row is held; the first row's agent, and its window that holds it longest (when work goes on).
+ * Null, and no bar, until some agent's limits are known.
  */
+type Spent = { spent: AgentLimits[] };
 export type BarLimit =
-  | { kind: "using"; agent: AgentLimits; window: LimitWindow | null; spent: AgentLimits[] }
+  | { kind: "limited"; agent: AgentLimits; window: LimitWindow } & Spent
+  | { kind: "unknown" | "unlimited"; agent: AgentLimits } & Spent
   | { kind: "stopped"; agent: AgentLimits; window: LimitWindow };
-export function barLimit({ agents, stack }: AgentLimitsResponse): BarLimit | null {
+export function barLimit({ agents, stack }: AgentLimitsResponse, now: number): BarLimit | null {
   if (!agents.some(entry => entry.state === "ok")) return null;
-  const spent: { agent: AgentLimits; windows: LimitWindow[] }[] = [];
+  const held: { agent: AgentLimits; windows: LimitWindow[] }[] = [];
+  // A model of the same agent standing in is the same agent to the reader: only others are said to be spent.
+  const spentBefore = (agent: AgentLimits) =>
+    [...new Map(held.filter(entry => entry.agent.adapter !== agent.adapter).map(entry => [entry.agent.adapter, entry.agent])).values()];
   for (const row of stack) {
     const agent = agents.find(entry => entry.adapter === row.adapter);
-    if (!agent || agent.state === "unsupported") continue;
-    // Another agent's figure never stands for one whose own are unknown.
-    if (agent.state === "unavailable") return using(agent, null, spent);
+    if (!agent) continue;
+    if (agent.state === "unavailable") return { kind: "unknown", agent, spent: spentBefore(agent) };
     const windows = rowWindows(agent.windows, row.model);
-    if (windows.length === 0) continue;
-    const full = windows.filter(window => window.usedPercent >= 100);
-    if (full.length === 0) return using(agent, tightestWindow(windows), spent);
-    spent.push({ agent, windows: full });
+    if (agent.state === "unsupported" || windows.length === 0) return { kind: "unlimited", agent, spent: spentBefore(agent) };
+    const holding = windows.filter(window => holds(window, now));
+    if (holding.length === 0) return { kind: "limited", agent, window: tightestWindow(windows)!, spent: spentBefore(agent) };
+    held.push({ agent, windows: holding });
   }
-  const first = spent[0];
+  const first = held[0];
   if (!first) return null;
-  // It works again once its last spent window resets.
-  const window = first.windows.reduce((latest, next) => (next.resetsAt ? Date.parse(next.resetsAt) : Infinity) > (latest.resetsAt ? Date.parse(latest.resetsAt) : Infinity) ? next : latest);
+  // It works again once its last holding window resets.
+  const until = (window: LimitWindow) => window.resetsAt ? Date.parse(window.resetsAt) : Infinity;
+  const window = first.windows.reduce((latest, next) => until(next) > until(latest) ? next : latest);
   return { kind: "stopped", agent: first.agent, window };
-}
-function using(agent: AgentLimits, window: LimitWindow | null, spent: readonly { agent: AgentLimits }[]): BarLimit {
-  // A model of the same agent standing in is the same agent to the reader: only others are said to be spent.
-  const others = [...new Map(spent.filter(entry => entry.agent.adapter !== agent.adapter).map(entry => [entry.agent.adapter, entry.agent])).values()];
-  return { kind: "using", agent, window, spent: others };
 }
 
 type T = (key: string, options?: Record<string, unknown>) => string;

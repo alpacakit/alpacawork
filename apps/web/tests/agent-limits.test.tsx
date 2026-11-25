@@ -10,25 +10,31 @@ const week = (usedPercent: number, model: string | null = null): LimitWindow =>
 const agent = (adapter: AgentLimits["adapter"], state: AgentLimits["state"], windows: LimitWindow[] = []): AgentLimits =>
   ({ adapter, state, windows, account: null, observedAt: state === "ok" ? "2026-11-24T00:00:00.000Z" : null });
 
+const NOW = Date.parse("2026-11-25T00:00:00Z");
 const at = (iso: string, window: LimitWindow): LimitWindow => ({ ...window, resetsAt: iso });
 const response = (agents: AgentLimits[], stack: { adapter: AgentLimits["adapter"]; model: string | null }[]) => ({ agents, stack });
-const shownOf = (bar: ReturnType<typeof barLimit>) => bar && { kind: bar.kind, agent: bar.agent.adapter, percent: bar.window?.usedPercent ?? null,
-  model: bar.window?.model ?? null, spent: bar.kind === "using" ? bar.spent.map(agent => agent.adapter) : [] };
+const shownOf = (bar: ReturnType<typeof barLimit>) => bar && { kind: bar.kind, agent: bar.agent.adapter,
+  percent: bar.kind === "limited" || bar.kind === "stopped" ? bar.window.usedPercent : null,
+  spent: bar.kind === "stopped" ? [] : bar.spent.map(agent => agent.adapter) };
+const row = (adapter: AgentLimits["adapter"], model: string | null = null) => ({ adapter, model });
 
 test("the bar shows the first agent in the stack that can work now, and the window that holds it", () => {
   const claude = agent("claude", "ok", [week(85), week(100, "Fable")]), codex = agent("codex", "ok", [week(25)]);
   // A model's own window holds only the row on that model: Opus works on while Fable's week is spent.
-  expect(shownOf(barLimit(response([claude, codex], [{ adapter: "claude", model: "opus" }]))))
-    .toEqual({ kind: "using", agent: "claude", percent: 85, model: null, spent: [] });
+  expect(shownOf(barLimit(response([claude, codex], [row("claude", "opus")]), NOW)))
+    .toEqual({ kind: "limited", agent: "claude", percent: 85, spent: [] });
   // The row on Fable is held by it (the provider's "Fable" is the row's "fable"), and work goes on to the next row.
-  expect(shownOf(barLimit(response([claude, codex], [{ adapter: "claude", model: "fable" }, { adapter: "codex", model: null }]))))
-    .toEqual({ kind: "using", agent: "codex", percent: 25, model: null, spent: ["claude"] });
+  expect(shownOf(barLimit(response([claude, codex], [row("claude", "fable"), row("codex")]), NOW)))
+    .toEqual({ kind: "limited", agent: "codex", percent: 25, spent: ["claude"] });
   // A row without a model is held by the account's windows alone.
-  expect(shownOf(barLimit(response([agent("claude", "ok", [week(40), week(90, "Fable")])], [{ adapter: "claude", model: null }]))))
-    .toEqual({ kind: "using", agent: "claude", percent: 40, model: null, spent: [] });
+  expect(shownOf(barLimit(response([agent("claude", "ok", [week(40), week(90, "Fable")])], [row("claude")]), NOW)))
+    .toEqual({ kind: "limited", agent: "claude", percent: 40, spent: [] });
   // Another model of the same agent standing in is not said to be another agent.
-  expect(shownOf(barLimit(response([claude], [{ adapter: "claude", model: "fable" }, { adapter: "claude", model: "opus" }]))))
-    .toEqual({ kind: "using", agent: "claude", percent: 85, model: null, spent: [] });
+  expect(shownOf(barLimit(response([claude], [row("claude", "fable"), row("claude", "opus")]), NOW)))
+    .toEqual({ kind: "limited", agent: "claude", percent: 85, spent: [] });
+  // A spent window past its reset holds nothing: the menu says no reset for it either.
+  expect(shownOf(barLimit(response([agent("claude", "ok", [at("2026-11-24T23:00:00Z", week(100))]), codex], [row("claude"), row("codex")]), NOW)))
+    .toEqual({ kind: "limited", agent: "claude", percent: 100, spent: [] });
   // The user chose red from 80%.
   expect([79, 80, 100].map(limitTone)).toEqual(["normal", "near", "spent"]);
 });
@@ -37,30 +43,36 @@ test("with every agent in the stack spent, the bar says the first and until when
   const claude = agent("claude", "ok", [at("2026-11-29T11:00:00Z", week(100)), at("2026-11-26T11:00:00Z", week(100, "Fable")), at("2026-11-30T00:00:00Z", week(100, "Sonnet"))]);
   const codex = agent("codex", "ok", [week(25)]);
   // Only the row's own windows: Sonnet's later reset does not hold Opus.
-  expect(barLimit(response([claude, codex], [{ adapter: "claude", model: "fable" }])))
+  expect(barLimit(response([claude, codex], [row("claude", "fable")]), NOW))
     .toMatchObject({ kind: "stopped", agent: { adapter: "claude" }, window: { resetsAt: "2026-11-29T11:00:00Z" } });
   // A stack whose next row is spent too stops on its first; the window names when.
   const spentCodex = agent("codex", "ok", [at("2026-11-27T00:00:00Z", week(100))]);
-  expect(barLimit(response([claude, spentCodex], [{ adapter: "claude", model: "opus" }, { adapter: "codex", model: null }])))
+  expect(barLimit(response([claude, spentCodex], [row("claude", "opus"), row("codex")]), NOW))
     .toMatchObject({ kind: "stopped", agent: { adapter: "claude" } });
-  const stopped = barLimit(response([claude], [{ adapter: "claude", model: "opus" }]));
+  const stopped = barLimit(response([claude], [row("claude", "opus")]), NOW);
   expect(stopped && stopped.kind === "stopped" && stoppedWords(stopped.window, "en", t)).toMatch(/29/);
   expect(stopped && stopped.kind === "stopped" && stoppedWords(stopped.window, "en", t, true)).not.toMatch(/:/);
 });
 
-test("an agent whose limits are unknown shows none in its place, one without limits is passed over, and no bar until one is known", () => {
+test("an agent nothing holds (an API key, or one that reports no limits) is where work goes, so the bar never says stopped for it", () => {
+  const spentCodex = agent("codex", "ok", [at("2026-11-27T00:00:00Z", week(100))]), spentClaude = agent("claude", "ok", [week(100)]);
+  expect(shownOf(barLimit(response([agent("claude", "ok"), spentCodex], [row("claude"), row("codex")]), NOW)))
+    .toEqual({ kind: "unlimited", agent: "claude", percent: null, spent: [] });
+  expect(shownOf(barLimit(response([spentClaude, agent("codex", "ok")], [row("claude"), row("codex")]), NOW)))
+    .toEqual({ kind: "unlimited", agent: "codex", percent: null, spent: ["claude"] });
+  expect(shownOf(barLimit(response([spentClaude, agent("grok", "unsupported")], [row("claude"), row("grok")]), NOW)))
+    .toEqual({ kind: "unlimited", agent: "grok", percent: null, spent: ["claude"] });
+});
+
+test("an agent whose limits are unknown shows none in its place, and no bar until one is known", () => {
   const codex = agent("codex", "ok", [week(9)]);
-  expect(shownOf(barLimit(response([agent("claude", "unavailable"), codex], [{ adapter: "claude", model: "opus" }, { adapter: "codex", model: null }]))))
-    .toEqual({ kind: "using", agent: "claude", percent: null, model: null, spent: [] });
+  expect(shownOf(barLimit(response([agent("claude", "unavailable"), codex], [row("claude", "opus"), row("codex")]), NOW)))
+    .toEqual({ kind: "unknown", agent: "claude", percent: null, spent: [] });
   // After a spent agent too: the unknown one is where work goes, not the one after it.
   expect(shownOf(barLimit(response([agent("claude", "ok", [week(100)]), agent("codex", "unavailable"), agent("copilot", "ok", [week(5)])],
-    [{ adapter: "claude", model: null }, { adapter: "codex", model: null }, { adapter: "copilot", model: null }]))))
-    .toEqual({ kind: "using", agent: "codex", percent: null, model: null, spent: ["claude"] });
-  // An agent without any limit (an API key) is no warning: the next row stands first.
-  expect(shownOf(barLimit(response([agent("claude", "ok"), agent("grok", "unsupported"), codex],
-    [{ adapter: "claude", model: null }, { adapter: "grok", model: null }, { adapter: "codex", model: null }]))))
-    .toEqual({ kind: "using", agent: "codex", percent: 9, model: null, spent: [] });
-  expect(barLimit(response([agent("claude", "unavailable"), agent("grok", "unsupported")], [{ adapter: "claude", model: null }]))).toBeNull();
+    [row("claude"), row("codex"), row("copilot")]), NOW)))
+    .toEqual({ kind: "unknown", agent: "codex", percent: null, spent: ["claude"] });
+  expect(barLimit(response([agent("claude", "unavailable"), agent("grok", "unsupported")], [row("claude")]), NOW)).toBeNull();
 });
 
 test("every window has a name in words, a model's own window names its model, and the account's sets itself apart", () => {

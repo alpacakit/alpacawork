@@ -1,5 +1,5 @@
 import { isDeepStrictEqual } from 'node:util';
-import { compileAgentSetting, effectiveAgentValues, resolveAgentSelection, selectionOffer,
+import { compileAgentSetting, effectiveAgentValues, enabledAgents, resolveAgentSelection, selectionOffer,
   type AiRow, type AiStackPrefix, type Selection } from '@alpacawork/contract';
 import { PROBLEM_CODE, Problem } from '@alpacawork/core';
 import { validateAgentSelection, type AgentsSettings } from './agents-settings.js';
@@ -16,6 +16,16 @@ function resolveRow(config: AgentsSettings, row: Exclude<AiStackPrefix[number], 
   const values = { ...defaults, ...row.values };
   validateAgentSelection(config, row.agent, values);
   return { agent: row.agent, values: resolveAgentSelection(compiled, values).values };
+}
+
+/**
+ * The rows tasks run on when a request names none: the task stack, or with no stack the first enabled agent at its
+ * default values. Placement picks its agent from it, and the screen's plan limits read it as the rows work goes on.
+ */
+export function defaultAiStack(config: Pick<AgentsSettings, 'agents' | 'aiStack'>): readonly AiRow[] {
+  if (config.aiStack?.length) return config.aiStack;
+  const first = enabledAgents(config.agents)[0];
+  return first ? [{ agent: first[0], values: resolveAgentSelection(compileAgentSetting(...first)).values }] : [];
 }
 
 /** Expand explicitly named rows, stopping at the first boundary before reaching lower-priority settings. */
