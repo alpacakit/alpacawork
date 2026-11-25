@@ -76,17 +76,6 @@ export function inputDocument({ main, fields }: InputParts): string {
   return [main ?? '', rest.join('\n')].filter(Boolean).join('\n\n');
 }
 /**
- * One input from the records of a step's start and end, field by field: a field the end gives is the end's, any other
- * the start's (the end may say more, as a Codex edit's diff; the start may say what the end leaves out, as where a
- * command ran).
- */
-export function joinInputParts(start: InputParts | undefined, end: InputParts | undefined): InputParts | undefined {
-  if (!start || !end) return end ?? start;
-  const fields = { ...start.fields };
-  for (const [key, value] of Object.entries(end.fields)) if (value !== undefined) fields[key] = value;
-  return { main: end.main ?? start.main, fields };
-}
-/**
  * A tool call's input by field (InputParts): the main argument is its named fields that have words (an edit's path, a
  * search's pattern and path); one given empty is said by name with the rest, as given. The agent's words for a
  * command are said apart, so they are not repeated.

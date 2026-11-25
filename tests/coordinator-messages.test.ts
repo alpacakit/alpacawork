@@ -296,13 +296,18 @@ test('an independent quoted Task note retains its dialogue, apart from a Request
   });
 });
 
-test('an answer whose Run took steps offers them, even when an unreadable line left its latest steps empty', t => {
+test('an answer offers its steps when its Run began one, even when an unreadable line left its latest steps empty, and only then', t => {
   const w = callerWorkspace(t), worked = w.screenRun({ words: 'Check', session: 'worked' }), quiet = w.screenRun({ words: 'Hi', session: 'quiet' });
   const at = new Date().toISOString();
-  // A step started, then a line that could not be read dropped it from the latest steps; only its count is left.
-  mkdirSync(runFolder(w.root, worked.id), { recursive: true });
-  writeFileSync(join(runFolder(w.root, worked.id), RUN_FILES.activity), JSON.stringify({ at, kind: 'output', toolName: null, doing: null,
-    note: null, context: null, steps: [], stepEvents: 1 }));
+  const activity = (run: { id: string }, counts: { stepEvents: number; stepsStarted?: number }) => {
+    mkdirSync(runFolder(w.root, run.id), { recursive: true });
+    writeFileSync(join(runFolder(w.root, run.id), RUN_FILES.activity), JSON.stringify({ at, kind: 'output', toolName: null, doing: null,
+      note: null, context: null, steps: [], ...counts }));
+  };
+  // A step began, then a line that could not be read dropped it from the latest steps.
+  activity(worked, { stepEvents: 2, stepsStarted: 1 });
+  // Words alone: the Run's end settled nothing it began, though an end was counted.
+  activity(quiet, { stepEvents: 1, stepsStarted: 0 });
   w.end(worked, 'succeeded', 'Checked'); w.end(quiet, 'succeeded', 'Hello');
   const turns = new CoordinatorConversation(w.root).read().turns;
   assert.equal(turns.find(turn => turn.id === worked.requestId)?.workedBy, worked.id);

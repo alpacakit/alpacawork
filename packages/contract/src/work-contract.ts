@@ -79,4 +79,5 @@ export type RunStepDetail = z.infer<typeof runStepDetailSchema>;
 /** The running turn's recent work: its rounded name (null once it has gone quiet), and its latest words and steps as they are. */
 export const coordinatorWorkSchema = z.object({ name: workNameSchema.nullable(), count: z.number().int().nonnegative(),
   conversation: z.string(), turn: z.string(), run: runIdSchema, steps: runStepsSchema, stepEvents: z.number().int().nonnegative(),
+  stepsStarted: z.number().int().nonnegative(),
   words: z.string().max(RUN_NOTE_LIMIT).nullable() }).strict().nullable();

@@ -41,8 +41,10 @@ class WorkActivity {
   private readonly active = new Map<string, ActiveTool>();
   private readonly recent = new RecentWork();
   steps: RunStep[] = [];
-  /** Every step start, end and settling seen, counted whatever `steps` keeps of them. */
+  /** Every step start, end and settling seen, counted whatever `steps` keeps of them: that something changed. */
   events = 0;
+  /** Steps begun (a tool call started, or reported whole without a start): only these say the Run took steps. */
+  started = 0;
 
   get doing(): ActiveTool | null { return [...this.active.values()].at(-1) ?? null; }
   get hasActive(): boolean { return this.active.size > 0; }
@@ -69,6 +71,7 @@ class WorkActivity {
       this.active.set(id, { at, toolName: name, command });
       const step = stepFields(event, id, name);
       this.recent.start(id, recentWorkName(step.kind, command), Date.parse(at));
+      this.started++;
       this.push({ ...step, state: 'running', result: null });
       return name;
     }
@@ -88,6 +91,7 @@ class WorkActivity {
       });
     } else if (name) {
       // Some bridge tools report a complete item without sending a start.
+      this.started++;
       this.push({ ...stepFields(event, id, name), ...details });
     }
     return active?.toolName ?? name;
@@ -174,7 +178,7 @@ export class OutputActivityReader {
     }
     if (this.dirty && this.latest) {
       const activity: RunActivity = { ...this.latest, doing: this.work.doing, context: this.context, steps: this.work.steps,
-        stepEvents: this.work.events };
+        stepEvents: this.work.events, stepsStarted: this.work.started };
       writeRunFile(folder, RUN_FILES.activity, JSON.stringify(activity));
       this.dirty = false;
     }

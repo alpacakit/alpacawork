@@ -15,11 +15,12 @@
  */
 import { open, type FileHandle } from 'node:fs/promises';
 import { join } from 'node:path';
-import { RUN_FILES, RUN_STEPS_PAGE_LIMIT, RUN_TOOL_ID_LIMIT, RUN_TOOL_NAME_LIMIT, clipRunText, fullRunText, inputDocument, joinInputParts,
+import { RUN_FILES, RUN_STEPS_PAGE_LIMIT, RUN_TOOL_ID_LIMIT, RUN_TOOL_NAME_LIMIT, clipRunText, fullRunText,
   type RunStepDetail, type RunStepEntry, type RunStepLine, type RunStepText, type RunStepsPage } from '@alpacawork/contract/run';
 import type { AgentAdapter } from '../agents/adapters/types.js';
 import type { ActivityEvent } from './activity-events.js';
 import { runStepKind } from './recent-work.js';
+import { joinStepCalls, stepInputDocument } from '../agents/adapters/activity.js';
 
 /**
  * The longest output line read as one row. A longer one (an agent's single message past this) is passed over: the steps
@@ -181,11 +182,12 @@ export class RunStepIndex {
       };
       const started = await events(step.start), ended = step.end === step.start ? started : await events(step.end);
       // The input is taken from the end's record where it says it (it may hold more, as a Codex edit's diff), else the start's.
-      // The input from the records of its start and end, field by field (joinInputParts); a bridge's, already one text,
+      // The input from the records of its start and end, field by field (joinStepCalls); a bridge's, already one text,
       // is the end's where it says it.
       const said = [...ended, ...started];
-      const call = joinInputParts(started.map(event => event.call).find(Boolean), ended.map(event => event.call).find(Boolean));
-      const input = call ? { text: inputDocument(call), omitted: 0 }
+      const call = joinStepCalls(started.map(event => event.call).find(Boolean), ended.map(event => event.call).find(Boolean));
+      const document = call && stepInputDocument(call);
+      const input = document !== undefined ? { text: document, omitted: 0 }
         : said.map(event => event.input).find(text => !!text && (text.text !== '' || text.omitted > 0))
         ?? ({ text: said.map(event => event.detail?.text).find(Boolean) ?? '', omitted: 0 } satisfies RunStepText);
       const outcome = ended.map(event => event.outcome).find(Boolean);

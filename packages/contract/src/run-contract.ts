@@ -27,7 +27,7 @@ export { runStepSchema, runStepsSchema, runStepKindSchema, RUN_STEP_LIMIT, RUN_S
   RUN_TOOL_NAME_LIMIT, RUN_NOTE_LIMIT, type RunStep, type RunStepKind, type RunStepLine } from './work-contract.js';
 export { runStepsPageSchema, runStepEntrySchema, runStepDetailSchema, runStepTextSchema, RUN_STEPS_PAGE_LIMIT,
   RUN_STEP_FULL_TEXT_LIMIT, type RunStepsPage, type RunStepEntry, type RunStepDetail, type RunStepText } from './work-contract.js';
-export { clipRunText, previewRunLine, previewToolInput, toolInputText, toolInputDocument, toolInputParts, inputDocument, joinInputParts, fullRunText, toolResultText, toolArgumentText, type InputParts } from './work-preview.js';
+export { clipRunText, previewRunLine, previewToolInput, toolInputText, toolInputDocument, toolInputParts, inputDocument, fullRunText, toolResultText, toolArgumentText, type InputParts } from './work-preview.js';
 import { runWorkSchema, runStepsSchema, RUN_NOTE_LIMIT, RUN_TOOL_NAME_LIMIT } from './work-contract.js';
 export const runActivitySchema = z.object({
   at: z.iso.datetime({ offset: true }), kind: runActivityKindSchema,
@@ -42,14 +42,15 @@ export const runActivitySchema = z.object({
    * `steps`: a change of it says the Run's opened list of steps is behind (absent before any step was counted).
    */
   stepEvents: z.number().int().nonnegative().optional(),
+  /** How many steps this Run began, every one counted (absent before any was): the one ground for its having steps. */
+  stepsStarted: z.number().int().nonnegative().optional(),
 }).strict();
 export type RunActivity = z.infer<typeof runActivitySchema>;
 /**
- * Whether a Run has taken any step, the one answer every place that offers its steps asks: its latest steps, or any
- * step's start or end counted (an unreadable line can leave the latest steps empty while steps were taken).
+ * Whether a Run has taken any step, the one answer every place that offers its steps asks: it began one. Only a step's
+ * start counts; an end, the Run's end, or the latest steps kept (an unreadable line can leave them empty) do not.
  */
-export const tookSteps = (activity: { steps: readonly unknown[]; stepEvents?: number } | null | undefined): boolean =>
-  !!activity && (activity.steps.length > 0 || (activity.stepEvents ?? 0) > 0);
+export const tookSteps = (activity: { stepsStarted?: number } | null | undefined): boolean => (activity?.stepsStarted ?? 0) > 0;
 /** A working Run's activity as the screen reads it: its fill with its model's resolved window (agents/context-limits). */
 export const runActivityViewSchema = runActivitySchema.extend({ context: contextViewSchema.nullable() }).strict();
 export type RunActivityView = z.infer<typeof runActivityViewSchema>;

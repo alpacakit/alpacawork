@@ -674,8 +674,8 @@ test("opened, only the responsible person's steps are read and listed; everyone 
   const asked: string[] = [];
   runSteps.of = async run => { asked.push(run); return listedSteps(steps("lead")); };
   const data = screenData(tree({ placements: [workingPlacement("P1"), workingPlacement("P2")], runs: [
-    run("R1", { state: "running", endedAt: null, activity: { ...note("lead words"), steps: steps("lead") } }),
-    run("R2", { placementId: "P2", state: "running", endedAt: null, activity: { ...note("member words"), steps: steps("member") } })] }));
+    run("R1", { state: "running", endedAt: null, activity: { ...note("lead words"), steps: steps("lead"), stepsStarted: 2 } }),
+    run("R2", { placementId: "P2", state: "running", endedAt: null, activity: { ...note("member words"), steps: steps("member"), stepsStarted: 2 } })] }));
   render(<TestWorkspace data={data}><ReportFeed task={data.tasks[0]!} people={data.people} onFollow={() => {}} /></TestWorkspace>);
   const lead = document.querySelector('[data-working-person="P1"]')!;
   expect(lead.querySelector("[data-work-line]")?.textContent).toContain("lead step 2");
@@ -693,7 +693,7 @@ test("opened, only the responsible person's steps are read and listed; everyone 
 test("an opened list stays while the latest steps the activity carries are none, as long as the Run has taken steps", async () => {
   await inEnglish();
   runSteps.of = async () => listedSteps([{ id: "a", tool: "Bash", kind: "command", text: "pnpm test", state: "running" }]);
-  const activity = (steps: number) => ({ ...note("lead words"), stepEvents: 1, steps: steps ? [{ id: "a", at, tool: "Bash", kind: "command" as const,
+  const activity = (steps: number) => ({ ...note("lead words"), stepEvents: 1, stepsStarted: 1, steps: steps ? [{ id: "a", at, tool: "Bash", kind: "command" as const,
     text: "pnpm test", more: 0, about: null, state: "running" as const, result: null }] : [] });
   const data = (steps: number) => screenData(tree({ placements: [workingPlacement("P1")], runs: [
     run("R1", { state: "running", endedAt: null, activity: activity(steps) })] }));

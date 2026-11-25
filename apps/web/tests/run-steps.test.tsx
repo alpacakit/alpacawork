@@ -122,18 +122,25 @@ test('answers in any order: an older page never undoes a newer change, and anoth
   expect(takeIn(earlier, { steps: [], total: 1, generation: 2 })).toBeNull();
 });
 
-test('an opened step shows no text of another generation of the Run\'s output', async () => {
+test('a newer generation from any answer reads the list anew: a step still there stays open with its new text, one gone closes', async () => {
   server.put(entry(0, 'pnpm test'));
+  server.put(entry(1, 'pnpm lint', { id: 'gone' }));
   render(<AnswerSteps run="R7" />);
   fireEvent.click(screen.getByRole('button', { name: 'Steps behind this answer' }));
-  const row = await screen.findByRole('button', { name: /pnpm test/ });
-  // The output was replaced: its step 0 is another step now.
-  server.generation = 2;
-  server.details.set(0, { input: { text: 'rm -rf build', omitted: 0 }, output: null });
-  fireEvent.click(row);
-  await waitFor(() => expect(server.asked).toContain('R7 step 0'));
-  expect(screen.queryByText('rm -rf build')).toBeNull();
-  expect(screen.getByText('Reading…')).toBeTruthy();
+  fireEvent.click(await screen.findByRole('button', { name: /pnpm lint/ }));
+  await waitFor(() => expect(document.querySelector('[data-run-step-input]')?.textContent).toBe('pnpm lint'));
+  // The output was replaced: step s0 is still there, with what it ran now; the step "gone" is not.
+  server.generation = 2; server.steps = []; server.version = 0;
+  server.put(entry(0, 'pnpm test --run'));
+  server.put(entry(1, 'pnpm build', { id: 'new' }));
+  server.asked = [];
+  fireEvent.click(screen.getByRole('button', { name: /pnpm test/ }));
+  // The opened step's answer is of the newer generation: the list is read again, and the step read once it holds it.
+  await waitFor(() => expect(document.querySelector('[data-run-step-input]')?.textContent).toBe('pnpm test --run'));
+  expect(server.asked).toContain('R7 latest 12');
+  expect(screen.queryByText('Reading…')).toBeNull();
+  expect(document.querySelectorAll('[data-run-step-input]')).toHaveLength(1);
+  expect(screen.getByRole('button', { name: /pnpm build/ }).getAttribute('aria-expanded')).toBe('false');
 });
 
 test('a step whose outcome could not be read is not shown done, and opened says why', async () => {

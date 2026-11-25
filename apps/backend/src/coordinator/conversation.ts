@@ -36,7 +36,7 @@ import { replySource, replyPrompt } from './reply.js';
 import { coordinatorAttachmentFile, coordinatorFolders, coordinatorRequestId, discardCoordinatorFiles } from './files.js';
 import { readRecentWork } from '../runs/recent-work.js';
 import { readRunActivity } from '../runs/activity.js';
-import { runFolder } from '@alpacawork/contract/run';
+import { runFolder, tookSteps } from '@alpacawork/contract/run';
 import type { ControlIndexDTO } from '@alpacawork/contract/control';
 
 type Message = z.output<typeof coordinatorMessageInputSchema>;
@@ -112,8 +112,10 @@ export class CoordinatorConversation {
     if (!run) return null;
     const folder = runFolder(this.root, run.id), label = readRecentWork(folder), activity = readRunActivity(folder);
     const steps = activity?.steps ?? [], words = activity?.note?.text ?? null;
-    return label || steps.length || words ? { conversation: run.conversationId, turn: run.requestId, run: run.id, name: label?.name ?? null, count: label?.count ?? 0, steps,
-      stepEvents: activity?.stepEvents ?? 0, words } : null;
+    // Once the Run has begun a step it is told, whatever its latest steps and words are, so its steps can be opened.
+    return label || steps.length || words || tookSteps(activity) ? { conversation: run.conversationId, turn: run.requestId, run: run.id,
+      name: label?.name ?? null, count: label?.count ?? 0, steps, stepEvents: activity?.stepEvents ?? 0,
+      stepsStarted: activity?.stepsStarted ?? 0, words } : null;
   }
   /** Startup alone calls this, before recovery can turn an unfinished Run into another answer. */
   async seedSeen(): Promise<void> {

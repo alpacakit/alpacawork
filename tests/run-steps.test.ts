@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { RunStepIndex, RUN_STEPS_LINE_LIMIT } from '@alpacawork/backend/test-dist/runs/run-steps.js';
 import { OutputActivityReader, readRunActivity } from '@alpacawork/backend/test-dist/runs/activity.js';
 import { AGENT_RUNTIME_ADAPTERS } from '@alpacawork/backend/test-dist/agents/registry.js';
-import { RUN_STEP_FULL_TEXT_LIMIT, fullRunText, runStepsPageSchema, runStepDetailSchema, toolInputDocument } from '@alpacawork/contract/run';
+import { RUN_STEP_FULL_TEXT_LIMIT, fullRunText, runStepsPageSchema, runStepDetailSchema, toolInputDocument, tookSteps } from '@alpacawork/contract/run';
 
 function folder(t: TestContext) {
   const path = mkdtempSync(join(tmpdir(), 'run-steps-'));
@@ -222,4 +222,26 @@ test('an input is put together field by field from its start and end: where a co
 
 test('a main argument given empty is said as given', () => {
   assert.equal(toolInputDocument('Grep', { pattern: '', path: '/src' }), '/src\n\npattern: ""');
+});
+
+test('only a step that began counts as the Run having steps: an end alone, or the Run\'s end, does not', t => {
+  const path = folder(t);
+  const reader = new OutputActivityReader(AGENT_RUNTIME_ADAPTERS.claude);
+  write(path, [claudeEnd('stray', 'ok'), { type: 'result', is_error: false }]);
+  reader.poll(path);
+  assert.equal(tookSteps(readRunActivity(path)), false);
+  write(path, [bash('one', 'pnpm test'), '{"type":"user","message":{"content":[{"type":"tool_res']);
+  reader.poll(path);
+  const after = readRunActivity(path);
+  assert.deepEqual([after?.steps.length, after?.stepsStarted, tookSteps(after)], [0, 1, true]);
+});
+
+test('a search whose fields are said on one line is put together field by field from its start and end', async t => {
+  const path = folder(t);
+  const call = (type: string, args: Record<string, unknown>) => ({ type, item: { id: 'g1', type: 'mcp_tool_call', server: 'fs', tool: 'grep', arguments: args, status: 'completed' } });
+  write(path, [call('item.started', { pattern: 'floor', path: '/src' }), call('item.completed', { pattern: 'round' })]);
+  assert.equal((await (await read(path, 'codex')).detail(0))?.input.text, toolInputDocument('grep', { pattern: 'round', path: '/src' }));
+  writeFileSync(join(path, 'stdout.log'), '');
+  write(path, [call('item.started', { pattern: 'floor', path: '/src' }), call('item.completed', { pattern: '' })]);
+  assert.equal((await (await read(path, 'codex')).detail(0))?.input.text, toolInputDocument('grep', { pattern: '', path: '/src' }));
 });

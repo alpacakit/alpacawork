@@ -1,7 +1,7 @@
 /** Translate native Claude and common bridge stdout events for the activity projection. */
 import { bridgeToolEventSchema } from '@alpacawork/contract/agent-bridge';
-import { RUN_NOTE_LIMIT, previewRunLine, previewToolInput, toolInputParts, toolResultText, type RunStepText } from '@alpacawork/contract/run';
-import type { ActivityEvent } from '../../runs/activity-events.js';
+import { RUN_NOTE_LIMIT, inputDocument, previewRunLine, previewToolInput, toolInputDocument, toolResultText, type RunStepText } from '@alpacawork/contract/run';
+import type { ActivityEvent, StepCall } from '../../runs/activity-events.js';
 import { commandOf } from '../../runs/shell-command.js';
 import { object } from './output.js';
 
@@ -39,35 +39,66 @@ function shellScript(command: unknown): unknown {
 }
 /** All of a text as the output holds it: the step's opened view bounds it. */
 const whole = (text: string): RunStepText => ({ text, omitted: 0 });
-/** A step's input as a preview and by field (`call`): its main argument and the other fields it gave. */
-const written = (main: unknown, fields: Record<string, unknown> = {}): Pick<ActivityEvent, 'detail' | 'call'> =>
-  ({ detail: previewRunLine(main), call: { ...typeof main === 'string' ? { main } : {}, fields } });
-/** A named tool's call: its preview, the agent's words for it, and its input by field. */
-function toolCall(tool: unknown, raw: unknown): Pick<ActivityEvent, 'detail' | 'about' | 'call'> {
-  const call = toolInputParts(tool, raw);
-  return { ...previewToolInput(tool, raw), ...call ? { call } : {} };
-}
+/** A tool call's input as given: the tool's name and its fields, as written in the record. */
+const toolCall = (tool: unknown, raw: unknown): Pick<ActivityEvent, 'detail' | 'about' | 'call'> =>
+  ({ ...previewToolInput(tool, raw), call: { tool: typeof tool === 'string' ? tool : '', input: raw } });
 /** A file change as Codex records it: what was done to which path, then its diff. */
 function fileChange(change: Record<string, unknown>): string {
   const kind = object(change.kind), done = typeof change.kind === 'string' ? change.kind : typeof kind.type === 'string' ? kind.type : 'change';
   const moved = typeof kind.move_path === 'string' ? ` → ${kind.move_path}` : '';
   return [`${done}: ${String(change.path)}${moved}`, typeof change.diff === 'string' && change.diff ? change.diff : ''].filter(Boolean).join('\n');
 }
-/** A bridge item's input: its main argument, and the other fields it records about what it asked (a field it does not record is left to the other record). */
+/** The fields of a Codex item that say what it asked, by its type (what it got back and its state are not its input). */
+const ITEM_INPUT: Record<string, readonly string[]> = {
+  command_execution: ['command', 'cwd'], web_search: ['query', 'action'], file_change: ['changes'],
+  collab_agent_tool_call: ['prompt', 'tool', 'model', 'receiverThreadIds'], image_view: ['path'],
+};
+const changedPaths = (changes: unknown) => (Array.isArray(changes) ? changes : []).map(object).filter(change => typeof change.path === 'string');
+/** A Codex item's input as given: its type and the fields of it the record holds. */
 function bridgeInput(item: Record<string, unknown>): Pick<ActivityEvent, 'detail' | 'about' | 'call'> {
-  switch (item.type) {
-    case 'command_execution': return written(shellScript(item.command), { cwd: item.cwd });
-    case 'web_search': return written(firstText(item.query, object(item.action).url), { action: item.action });
-    case 'file_change': {
-      if (!Array.isArray(item.changes)) return { detail: previewRunLine(undefined), call: { fields: {} } };
-      const changes = item.changes.map(object).filter(change => typeof change.path === 'string');
-      return { detail: previewRunLine(changes.map(change => change.path).join('  ')),
-        call: { ...changes.length ? { main: changes.map(fileChange).join('\n\n') } : {}, fields: {} } };
+  const fields = ITEM_INPUT[String(item.type)];
+  if (!fields) return toolCall(item.tool ?? item.name, item.arguments);
+  const input = Object.fromEntries(fields.filter(key => key in item).map(key => [key, item[key]]));
+  const line = item.type === 'command_execution' ? shellScript(item.command) : item.type === 'web_search' ? firstText(item.query, object(item.action).url)
+    : item.type === 'file_change' ? changedPaths(item.changes).map(change => change.path).join('  ') : item.type === 'image_view' ? item.path : item.prompt;
+  return { detail: previewRunLine(line), call: { tool: `codex:${String(item.type)}`, input } };
+}
+/**
+ * A step's input to read in full, from its call as given (the start's and end's put together field by field): the main
+ * argument as written, then every other field by name. One rule for every agent: a Codex item's fields are said as its
+ * type says them, any other tool's as toolInputDocument does.
+ */
+export function stepInputDocument(call: StepCall): string | undefined {
+  const input = object(call.input);
+  switch (call.tool) {
+    case 'codex:command_execution': {
+      const script = shellScript(input.command);
+      return inputDocument({ ...typeof script === 'string' ? { main: script } : {}, fields: 'cwd' in input ? { cwd: input.cwd } : {} });
     }
-    case 'collab_agent_tool_call': return written(item.prompt, { tool: item.tool, model: item.model, receiverThreadIds: item.receiverThreadIds });
-    case 'image_view': return written(item.path);
-    default: return toolCall(item.tool ?? item.name, item.arguments);
+    case 'codex:web_search': {
+      const query = firstText(input.query, object(input.action).url);
+      return inputDocument({ ...query === undefined ? {} : { main: query }, fields: Object.fromEntries(Object.entries(input).filter(([key]) => key !== 'query')) });
+    }
+    case 'codex:file_change': return changedPaths(input.changes).map(fileChange).join('\n\n');
+    case 'codex:collab_agent_tool_call': {
+      const { prompt, ...fields } = input;
+      return inputDocument({ ...typeof prompt === 'string' ? { main: prompt } : {}, fields });
+    }
+    case 'codex:image_view': return typeof input.path === 'string' ? input.path : undefined;
+    default: return toolInputDocument(call.tool, call.input);
   }
+}
+/**
+ * One call from the records of a step's start and end, field by field: a field the end gives is the end's, even
+ * empty; any other the start's. A call whose input is not fields (a string) is the end's whole.
+ */
+export function joinStepCalls(start: StepCall | undefined, end: StepCall | undefined): StepCall | undefined {
+  if (!start || !end) return end ?? start;
+  const fields = (value: unknown) => value !== null && typeof value === 'object' && !Array.isArray(value);
+  if (!fields(start.input) || !fields(end.input)) return end.input === undefined ? start : end;
+  const input = { ...start.input as Record<string, unknown> };
+  for (const [key, value] of Object.entries(end.input as Record<string, unknown>)) if (value !== undefined) input[key] = value;
+  return { tool: end.tool || start.tool, input };
 }
 
 /** What a structured result says when it gives no text. */
