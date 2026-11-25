@@ -206,18 +206,19 @@ function seenBoxOf(element: HTMLElement): Box {
  */
 export function frontPart(box: Box, from: { x: number; y: number }, front: (x: number, y: number) => boolean): Box {
   // The edge of what is in front between a point in front (`seen`) and the box's edge (`edge`): the box's own where
-  // no more than the ring's width of it is hidden (a neighbour touching it), else where it stops being in front.
+  // no more than the ring's width of it is hidden (a neighbour touching it, a frame drawn over its border), else where
+  // it stops being in front.
   const reach = (seen: number, edge: number, inFrontAt: (at: number) => boolean) => {
     const toward = edge > seen ? 1 : -1, last = edge - toward * 0.5;
     if (inFrontAt(last)) return edge;
     let hidden = last;
     while (Math.abs(hidden - seen) > 1) { const middle = (seen + hidden) / 2; if (inFrontAt(middle)) seen = middle; else hidden = middle; }
-    const stop = Math.round(seen);
+    const stop = toward > 0 ? Math.ceil(seen) : Math.floor(seen);
     return Math.abs(edge - stop) <= RING ? edge : stop - toward * RING;
   };
   const left = reach(from.x, box.left, x => front(x, from.y)), right = reach(from.x, box.left + box.width, x => front(x, from.y));
   const top = reach(from.y, box.top, y => front(from.x, y)), bottom = reach(from.y, box.top + box.height, y => front(from.x, y));
-  return { left, top, width: right - left, height: bottom - top };
+  return { left, top, width: Math.max(0, right - left), height: Math.max(0, bottom - top) };
 }
 /**
  * The first element marked as `selector` that is laid out and shown in a box it scrolls in, but out of sight there

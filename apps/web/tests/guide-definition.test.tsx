@@ -298,6 +298,8 @@ test("a row partly under a detail widened over the list is ringed only where it 
   const middle = { x: 290, y: 201 };
   // The detail lies over the list from 428 rightwards: the ring, drawn 4px outside its part, stops short of it.
   expect(frontPart(row, middle, x => x < 428)).toEqual({ left: 24, top: 185, width: 400, height: 33 });
+  // Covered from the left (to 100), the same from that side.
+  expect(frontPart(row, middle, x => x >= 100)).toEqual({ left: 104, top: 185, width: 453, height: 33 });
   // Nothing over it, or only the next row's edge touching its last pixel: the whole row.
   expect(frontPart(row, middle, () => true)).toEqual(row);
   expect(frontPart(row, middle, (_, y) => y < 217.4)).toEqual(row);
