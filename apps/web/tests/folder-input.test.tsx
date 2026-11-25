@@ -167,7 +167,8 @@ describe("walking the list", () => {
     fireEvent.click(screen.getByRole("button", { name: "Choose" }));
     const shop = await screen.findByRole("button", { name: "shop" });
     expect(field.getAttribute("value")).toBe("/code");
-    shop.focus();
+    // Opened, the focus is on the first folder, so keys go on from Choose.
+    await waitFor(() => expect(document.activeElement).toBe(shop));
     fireEvent.keyDown(shop, { key: "ArrowDown" });
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "blog" }));
     fireEvent.keyDown(document.activeElement!, { key: "ArrowUp" });

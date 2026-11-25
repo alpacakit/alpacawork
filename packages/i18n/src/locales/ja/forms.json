@@ -21,7 +21,7 @@
     "storageUnavailable": "下書きを保存できないため、二重に送らないよう送信を止めています。この画面を閉じずに入力をコピーしてください。"
   },
   "folderInput": {
-    "cancel": "やめる",
+    "cancel": "新しいフォルダを作るのをやめる",
     "choose": "選ぶ",
     "chooseHere": "この画面で選ぶ",
     "chooserTitle": "作業フォルダを選ぶ",

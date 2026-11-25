@@ -118,7 +118,8 @@ export function FolderInput({ value, onChange, onBlur, ref, className, placehold
   const go = (path: string | null) => {
     setReason(null);
     setNaming(null);
-    if (walking === false) { before.current = value; walked.current = false; }
+    // Opened, the focus goes into it (a Choose pressed by keys goes on there by keys).
+    if (walking === false) { before.current = value; walked.current = false; refocus.current = true; }
     else { walked.current = true; refocus.current = !!list.current?.contains(document.activeElement); }
     setWalking(path);
   };
@@ -300,9 +301,10 @@ export function FolderInput({ value, onChange, onBlur, ref, className, placehold
         }}
         onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
         onKeyDown={onKeyDown} />
-      <Button type="button" variant="outline" aria-expanded={walking !== false} data-folder-walk disabled={asking !== null}
+      <Button type="button" variant="outline" aria-expanded={walking !== false} data-folder-walk aria-disabled={asking !== null}
         className="aria-expanded:border-muted aria-expanded:bg-hover narrow:min-h-control-lg"
-        onClick={() => walking === false ? void choose() : close()}>
+        // Pressed again, the list closes on the folder it shows, as the form would save it (Cancel puts back).
+        onClick={() => asking ? undefined : walking === false ? void choose() : close(value)}>
         <Icon name="folder" className="size-4" />{t("folderInput.choose")}
       </Button>
       {/* Hidden, not removed, when the field is left: a node removed while the focus is between two elements makes
@@ -335,10 +337,10 @@ export function FolderInput({ value, onChange, onBlur, ref, className, placehold
         className="flex h-9 min-w-0 flex-1 items-center gap-0.5 overflow-hidden font-mono text-sm whitespace-nowrap narrow:h-11">
         {shown && crumbs(shown.path, shown.home).map((crumb, at, all) => {
           const last = at === all.length - 1;
-          // The folder above keeps its name up to almost half the line (a third on a phone); the folder you are in
-          // takes the rest.
+          // The folders above give way first (to a few letters, at most almost half the line, a third on a phone), so
+          // the name of the folder you are in is cut last.
           return <span key={crumb.path} className={cn("flex min-w-0 items-center gap-0.5",
-            at === 0 || crumb.label === "…" ? "flex-none" : last ? "shrink" : "max-w-[45%] flex-none narrow:max-w-[32%]")}>
+            at === 0 || crumb.label === "…" ? "flex-none" : last ? "shrink" : "max-w-[45%] min-w-8 shrink-[100] narrow:max-w-[32%]")}>
             {at > 0 && <Icon name="right" className="size-3 flex-none text-soft" />}
             {last
               ? <span aria-current="location" className="min-w-0 truncate px-1.5 font-semibold">{crumb.label}</span>
