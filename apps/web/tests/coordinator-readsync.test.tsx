@@ -2,7 +2,7 @@ import { announceConversation } from './conversation-fixture';
 import { snapshotJson } from './conversation-fixture';
 import { setConversationState } from './conversation-fixture';
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { opening, useConversationReading } from "../src/features/coordinator/read-boundary";
 import { useConversation } from "../src/features/coordinator/coordinator";
 import { useConnection } from "../src/data/connection";
@@ -302,10 +302,12 @@ test("the open conversation reads folded history beyond one transport batch and 
   vi.stubGlobal("fetch", fetcher);
   setConversationState({ expanded: true, opening: opening(turns) });
   function Reading() { useConversationReading(document, "fixture", "conversation"); return null; }
-  const mounted = render(<Reading />); await flush();
+  // A person at the page: an open conversation reads only then.
+  const mounted = render(<Reading />); fireEvent.pointerDown(document); await flush();
   expect(pending()).toHaveLength(260); expect(seen()).toEqual([]);
   const after = [...turns.slice(0, -1), turn("still-running"), turn("arrived-after-click")];
   setConversationState({ conversation: snapshot(after) });
+  fireEvent.pointerDown(document);
   first.resolve(post(JSON.parse(fetcher.mock.calls[0]![1].body).seen));
   await waitFor(() => expect(pending()).toEqual([]));
   expect(seen()).toEqual(after.map(turn => turn.id));
@@ -332,9 +334,10 @@ test("a reply read in the open conversation is sent once", async () => {
   await waitFor(() => expect(useConversation.getState().conversation?.turns).toHaveLength(1));
   setConversationState({ expanded: true, opening: opening([turn("a", { seen: true })]) });
   function Reading() { useConversationReading(document, "fixture", "conversation"); return null; }
-  render(<Reading />);
+  render(<Reading />); fireEvent.pointerDown(document);
   try {
     setConversationState({ conversation: snapshot([turn("a", { seen: true }), turn("b")]) });
+    fireEvent.pointerDown(document);
     await waitFor(() => expect(seen()).toEqual(["a", "b"])); await flush();
     expect(fetcher.mock.calls.filter(([url]) => String(url).endsWith("/read")).map(([, init]) => JSON.parse(init.body).seen)).toEqual([["b"]]);
   } finally { cleanup(); }

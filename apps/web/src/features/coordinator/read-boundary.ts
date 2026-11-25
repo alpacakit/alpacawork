@@ -22,7 +22,20 @@ export function learn(taken: Opening, turns: readonly CoordinatorTurn[], request
     settled: request >= taken.waitFor };
 }
 
-/** An open conversation on a visible page reads every completed reply, including folded history. */
+/**
+ * Input only a person makes. Pointer moves are left out because browsers send them when the page changes under a
+ * still pointer, and scroll because the thread scrolls itself to a new reply. Text can arrive without a key event
+ * (an input method, dictation), so `beforeinput` counts too.
+ */
+const ACTIONS = ["pointerdown", "keydown", "wheel", "touchstart", "beforeinput"] as const;
+
+/**
+ * An open conversation on a visible page reads the completed replies shown when a person acts: the press that opens
+ * it reads every completed reply it holds, including folded history, and any later input on the page reads what has
+ * arrived since. Every screen shares one read state, so a reply that reaches a page nobody acts on (a desktop tab
+ * stays "visible" while its person is away, or comes back into view when a tab before it closes) stays unread, as
+ * does one that arrives after the press, even the press's own first read.
+ */
 export function useConversationReading(doc: Document, rootScope: string, conversationId: string | null) {
   useEffect(() => {
     const read = () => {
@@ -32,13 +45,15 @@ export function useConversationReading(doc: Document, rootScope: string, convers
       state.observeSeen(state.conversation.turns.filter(isUnread).map(turn => turn.id));
     };
     const leave = () => useConversation.getState().flushSeen(true);
-    const visibility = () => { if (doc.visibilityState === "visible") read(); else leave(); };
-    const stop = useConversation.subscribe(read);
+    const visibility = () => { if (doc.visibilityState !== "visible") leave(); };
+    // Opening is always a person's press (the line, a pull or a drag), taken after its pointerdown has passed.
+    const stop = useConversation.subscribe((next, before) => { if (next.expanded && !before.expanded) read(); });
+    for (const type of ACTIONS) doc.addEventListener(type, read, { capture: true, passive: true });
     doc.addEventListener("visibilitychange", visibility);
     doc.defaultView?.addEventListener("pagehide", leave);
-    read();
     return () => {
       stop();
+      for (const type of ACTIONS) doc.removeEventListener(type, read, { capture: true });
       doc.removeEventListener("visibilitychange", visibility);
       doc.defaultView?.removeEventListener("pagehide", leave);
     };
