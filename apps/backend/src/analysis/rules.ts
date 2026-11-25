@@ -30,12 +30,16 @@ export function launchOf(run: RunEvidence): Launch | null {
     provider: run.session?.provider ?? run.launch.adapter, session: run.session?.id ?? null };
 }
 
+/** Whether a launch began before another of its conversation: the earlier start, then the lower Run number. */
+export const beganBefore = (run: Launch, other: Launch) =>
+  run.started < other.started || run.started === other.started && Number(run.id.slice(1)) < Number(other.id.slice(1));
+
 export function firstConversations(launches: Iterable<Launch>): Set<string> {
   const first = new Map<string, Launch>();
   for (const run of launches) {
     if (!run.session) continue;
     const key = JSON.stringify([run.provider, run.session]), old = first.get(key);
-    if (!old || run.started < old.started || run.started === old.started && Number(run.id.slice(1)) < Number(old.id.slice(1))) first.set(key, run);
+    if (!old || beganBefore(run, old)) first.set(key, run);
   }
   return new Set(Array.from(first.values(), run => run.id));
 }

@@ -1,4 +1,4 @@
-import { analysisTasksInput, analysisUsageInput, analysisListInput, analysisTaskInput,
+import { analysisTasksInput, analysisUsageInput, analysisListInput, analysisTaskInput, analysisBreakdownInput, analysisBreakdownViewSchema,
   analysisTasksViewSchema, analysisUsageViewSchema, analysisUnitListSchema, analysisUnitValuesSchema,
   analysisTaskBySchema, analysisTaskValues, analysisUsageBySchema, analysisUsageValues } from './analysis.js';
 import { uiLocales } from '@alpacawork/core/ui-language';
@@ -241,6 +241,10 @@ const definitions = {
     ...analysisScope, ...analysisPeriodOptions, analysisBucket,
     text('by', `Breakdown (${analysisUsageGroups}). Skill, tool and MCP trends start on their collection date`),
   ], { output: analysisUsageViewSchema }),
+  'analysis/breakdown': command('read', 'Count one breakdown alone, as analysis tasks or analysis usage gives it, without their totals and trends', analysisBreakdownInput, [
+    ...analysisScope, ...analysisPeriodOptions, analysisBucket, text('look', 'Which breakdown (tasks, usage)'),
+    text('by', `Breakdown (tasks: ${analysisTaskGroups}. usage: ${analysisUsageGroups})`),
+  ], { output: analysisBreakdownViewSchema }),
   'analysis/list': command('read', 'List the tasks counted in a selected value', analysisListInput, [
     ...analysisScope, ...analysisPeriodOptions,
     text('set', 'Task set (passed, reworked, stopped, accepted, finished, used)'),

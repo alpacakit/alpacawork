@@ -1,15 +1,15 @@
 import { createHash } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
-import type { DatabaseSync } from 'node:sqlite';
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 import { sumRunUsage } from '@alpacawork/contract';
 import type { ChangeLog } from '@alpacawork/db';
 import { isAnalysisTallyBy, type AnalysisAcceptedTotals, type AnalysisBucket, type AnalysisDays, type AnalysisHead,
-  type AnalysisListInput, type AnalysisListRow, type AnalysisModel, type AnalysisTallyBy, type AnalysisTaskInput, type AnalysisTaskBy,
+  type AnalysisBreakdownInput, type AnalysisBreakdownView, type AnalysisListInput, type AnalysisListRow, type AnalysisModel, type AnalysisTallyBy, type AnalysisTaskInput, type AnalysisTaskBy,
   type AnalysisTaskCounts, type AnalysisTasksInput, type AnalysisTasksView, type AnalysisUnitList,
   type AnalysisUnitValues, type AnalysisUsageBy, type AnalysisUsageCounts, type AnalysisUsageInput, type AnalysisUsageView } from '@alpacawork/contract/analysis';
 import { authorize, type Caller } from '../control/authorize.js';
-import { readControl } from '../control/task-store.js';
+import { ControlStore } from '@alpacawork/db';
+import { Kept, Slices } from './slices.js';
 import type { Tally } from '../agents/adapters/tally.js';
 import { FactsCache, type AnalysisFacts, type FactLaunch, type Unit } from './facts.js';
 import { addDays, bucketStart, buckets, calendar, inDays, makeHead, monday, serverZone } from './calendar.js';
@@ -113,8 +113,9 @@ function usageCounts(items: readonly DatedLaunch[], now: number): AnalysisUsageC
 
 /**
  * A scope's launches summed day by day: the usage of any whole days is the sum of their days (by the one Run rule,
- * sumRunUsage), with the launches still running counted to now and each unit once. Built once per reading of the facts,
- * so a span, the span before, the whole record and every bin of a chart each read only their days.
+ * sumRunUsage), with the launches still running counted to now and each unit once. Made once per reading of the facts
+ * (giving the loop back as it goes), so a span, the span before, the whole record and every bin of a chart each read
+ * only their days; it also holds each day's launches, so a span's launches are read without going through the others.
  */
 class DailyUsage {
   private readonly days: string[] = [];
@@ -122,8 +123,9 @@ class DailyUsage {
     output: number; input: number; cache: number }[] = [];
   private readonly running: FactLaunch[][] = [];
   private readonly slots: Int32Array[] = [];
-  constructor(launches: readonly DatedLaunch[]) {
-    const byDay = new Map<string, DatedLaunch[]>();
+  private readonly items: DatedLaunch[][] = [];
+  static async of(launches: readonly DatedLaunch[], slices: Slices) {
+    const daily = new DailyUsage(), byDay = new Map<string, DatedLaunch[]>();
     for (const item of launches) {
       const found = byDay.get(item.day);
       if (found) found.push(item);
@@ -132,18 +134,29 @@ class DailyUsage {
     for (const day of [...byDay.keys()].sort()) {
       const items = byDay.get(day)!, still = items.filter(({ run }) => !run.live);
       const { runs, runMs, tokens, tokensUnknown } = sumRunUsage(still.map(item => item.run), null);
-      this.days.push(day);
-      this.ended.push({ runs, runMs, tokensUnknown, newConversations: items.filter(item => item.first).length,
+      daily.days.push(day);
+      daily.ended.push({ runs, runMs, tokensUnknown, newConversations: items.filter(item => item.first).length,
         output: tokens?.output ?? 0, input: tokens?.input ?? 0, cache: tokens ? tokens.cacheRead + tokens.cacheWrite : 0 });
-      this.running.push(items.filter(({ run }) => run.live).map(item => item.run));
-      this.slots.push(Int32Array.from(new Set(items.map(item => item.slot))));
+      daily.running.push(items.filter(({ run }) => run.live).map(item => item.run));
+      daily.slots.push(Int32Array.from(new Set(items.map(item => item.slot))));
+      daily.items.push(items);
+      if (slices.due) await slices.pause();
     }
+    return daily;
   }
 
   private index(day: string) {
     let low = 0, high = this.days.length;
     while (low < high) { const mid = (low + high) >>> 1; if (this.days[mid]! < day) low = mid + 1; else high = mid; }
     return low;
+  }
+
+  /** The launches of the days (none for none). */
+  within(range: AnalysisDays | null): DatedLaunch[] {
+    const found: DatedLaunch[] = [];
+    for (let at = range ? this.index(range.from) : 0; range && at < this.days.length && this.days[at]! <= range.to; at++)
+      for (const item of this.items[at]!) found.push(item);
+    return found;
   }
 
   count(range: AnalysisDays | null, now: number): AnalysisUsageCounts {
@@ -209,30 +222,77 @@ function matchingProject(facts: AnalysisFacts, project: string | null, ownProjec
   };
 }
 
-/** A scope's finished units and launches, each with its local day: worked out once per reading of the facts. */
-type Dated = { units: DatedUnit[]; launches: DatedLaunch[]; first: number; daily?: DailyUsage };
-const datedKept = new WeakMap<AnalysisFacts, Map<string, Dated>>();
-function datedOf(facts: AnalysisFacts, scope: string, allows: (project: string) => boolean, date: (time: number) => string): Dated {
-  let kept = datedKept.get(facts);
-  if (!kept) datedKept.set(facts, kept = new Map());
-  const found = kept.get(scope);
-  if (found) return found;
-  const dated: Dated = { units: [], launches: [], first: Infinity };
+
+/**
+ * What the reads keep between them, apart from the facts (kept once, FactsCache): for a few zones, every unit's and
+ * launch's local day (`ZoneDays`, one per zone whatever the project); for a few scopes (a project in a zone), their
+ * share of those days and their day sums (`ScopeView`, references and sums only, kept with their zone). The least used
+ * goes past the bounds; all of it goes when the facts change. Each is made once, giving the loop back as it goes.
+ */
+const ZONES_KEPT = 3, SCOPES_KEPT = 4;
+type ZoneDays = { units: { project: string; dated: DatedUnit | null; first: number }[]; launches: (DatedLaunch & { project: string })[] };
+type ScopeView = { units: DatedUnit[]; launches: DatedLaunch[]; first: number; daily: DailyUsage;
+  byDimension: Map<string, Promise<DimensionDays[]>> };
+type DimensionDays = DimensionValue & { daily: DailyUsage };
+/** A zone's days and, with them, its scopes' (a zone let go takes its scopes with it). */
+type ZoneKept = { days: Promise<ZoneDays>; scopes: Kept<string, Promise<ScopeView>> };
+const kept = { facts: undefined as AnalysisFacts | undefined, zones: new Kept<string, ZoneKept>(ZONES_KEPT) };
+/** How many zones and scopes the analysis keeps now (they stay within their bounds however many are read). */
+export const analysisKept = () => {
+  let scopes = 0;
+  for (const zone of kept.zones.values()) scopes += zone.scopes.count;
+  return { zones: kept.zones.count, scopes };
+};
+
+async function zoneDays(facts: AnalysisFacts, date: (time: number) => string, slices: Slices): Promise<ZoneDays> {
+  const zone: ZoneDays = { units: [], launches: [] };
   let slot = -1;
   for (const unit of facts.units.values()) {
-    if (!allows(unit.node.project!)) continue;
     slot++;
+    const project = unit.node.project!;
+    let first = Infinity, dated: DatedUnit | null = null;
     if (unit.node.requested) {
-      dated.first = Math.min(dated.first, Date.parse(unit.outcome.requestedAt));
-      if (unit.outcome.finishedAt) dated.units.push({ unit, day: date(Date.parse(unit.outcome.finishedAt)) });
+      first = Date.parse(unit.outcome.requestedAt);
+      if (unit.outcome.finishedAt) dated = { unit, day: date(Date.parse(unit.outcome.finishedAt)) };
     }
     for (const run of unit.launches) {
-      dated.first = Math.min(dated.first, run.started);
-      dated.launches.push({ root: unit.node.id, slot, first: facts.first.has(run.id), run, day: date(run.started) });
+      first = Math.min(first, run.started);
+      zone.launches.push({ root: unit.node.id, slot, first: facts.first.has(run.id), run, day: date(run.started), project });
     }
+    zone.units.push({ project, dated, first });
+    if (slices.due) await slices.pause();
   }
-  kept.set(scope, dated);
-  return dated;
+  return zone;
+}
+
+async function scopeView(zone: ZoneDays, allows: (project: string) => boolean, slices: Slices): Promise<ScopeView> {
+  const allowed = new Map<string, boolean>(), inScope = (project: string) => {
+    let found = allowed.get(project);
+    if (found === undefined) allowed.set(project, found = allows(project));
+    return found;
+  };
+  const view = { units: [] as DatedUnit[], launches: [] as DatedLaunch[], first: Infinity };
+  for (const unit of zone.units) {
+    if (!inScope(unit.project)) continue;
+    view.first = Math.min(view.first, unit.first);
+    if (unit.dated) view.units.push(unit.dated);
+  }
+  for (const launch of zone.launches) if (inScope(launch.project)) view.launches.push(launch);
+  return { ...view, daily: await DailyUsage.of(view.launches, slices), byDimension: new Map() };
+}
+
+/** A model's key and label: one per name and effort however many launches name it. */
+const modelKeys = new Kept<string, { key: string; label: string; model: AnalysisModel }>(256);
+function modelKeyOf(name: string, effort: string | null) {
+  const id = `${name}\u0000${effort ?? ''}`;
+  let found = modelKeys.get(id);
+  if (!found) {
+    const label = effort === null ? name : `${name}(${effort})`;
+    // Custom launch values can contain parentheses or exceed the list key length limit.
+    const key = createHash('sha256').update(JSON.stringify([name, effort])).digest('base64url');
+    modelKeys.set(id, found = { key, label, model: { name, effort } });
+  }
+  return found;
 }
 
 class ScopedAnalysis {
@@ -240,22 +300,16 @@ class ScopedAnalysis {
   readonly firstDay: string | null;
   readonly datedUnits: readonly DatedUnit[];
   readonly datedLaunches: readonly DatedLaunch[];
-  private readonly dated: Dated;
-  readonly date: ReturnType<typeof calendar>;
   private readonly tallyDay: string;
-  private readonly allows: (project: string) => boolean;
 
-  constructor(private readonly facts: AnalysisFacts, readonly project: string | null, ownProject: string | null,
-    private readonly timeZone: string, readonly now: number, tallySince: number,
-    private readonly tallies: ReadonlyMap<string, Tally>) {
-    this.date = calendar(timeZone);
-    this.today = this.date(now);
-    this.tallyDay = this.date(tallySince);
-    this.allows = matchingProject(facts, project, ownProject);
-    const dated = this.dated = datedOf(facts, JSON.stringify([project, ownProject, timeZone]), this.allows, this.date);
-    this.datedUnits = dated.units;
-    this.datedLaunches = dated.launches;
-    this.firstDay = Number.isFinite(dated.first) ? this.date(Math.min(dated.first, now)) : null;
+  constructor(private readonly facts: AnalysisFacts, private readonly view: ScopeView, readonly project: string | null,
+    private readonly allows: (project: string) => boolean, private readonly timeZone: string, readonly now: number,
+    tallySince: number, private readonly tallies: ReadonlyMap<string, Tally>, readonly date: ReturnType<typeof calendar>) {
+    this.today = date(now);
+    this.tallyDay = date(tallySince);
+    this.datedUnits = view.units;
+    this.datedLaunches = view.launches;
+    this.firstDay = Number.isFinite(view.first) ? date(Math.min(view.first, now)) : null;
   }
 
   head(input: Parameters<typeof makeHead>[4]) {
@@ -277,14 +331,8 @@ class ScopedAnalysis {
 
   private modelKey(run: ModelRun) {
     // Tallies can arrive after the Run facts have been cached.
-    const tally = this.tallies.get(run.id);
-    const model = tally?.model ?? run.model;
-    const name = model ?? run.agent;
-    const effort = model === null ? null : run.effort;
-    const label = effort === null ? name : `${name}(${effort})`;
-    // Custom launch values can contain parentheses or exceed the list key length limit.
-    const key = createHash('sha256').update(JSON.stringify([name, effort])).digest('base64url');
-    return { key, label, model: { name, effort } };
+    const model = this.tallies.get(run.id)?.model ?? run.model;
+    return modelKeyOf(model ?? run.agent, model === null ? null : run.effort);
   }
 
   private usageKeys(item: DatedLaunch, by: AnalysisUsageBy): DimensionValue[] {
@@ -314,6 +362,39 @@ class ScopedAnalysis {
     });
   }
 
+  /**
+   * The day sums of each row of a breakdown that gives a launch one row (model, agent, project): made once per scope
+   * and kept with it, so a row's numbers for any days are read from its days.
+   */
+  async dimensionDays(by: 'model' | 'agent' | 'project', slices: Slices) {
+    // A model row names the model a tally reports where the launch named none: kept per number of tallies (they only
+    // grow), so a tally that arrives makes the rows again.
+    const key = by === 'model' ? `model:${this.tallies.size}` : by;
+    let found = this.view.byDimension.get(key);
+    if (!found && by === 'model') for (const old of this.view.byDimension.keys()) if (old.startsWith('model:')) this.view.byDimension.delete(old);
+    if (!found) this.view.byDimension.set(key, found = (async () => {
+      const rows = new Map<string, DimensionValue & { items: DatedLaunch[] }>();
+      for (const item of this.datedLaunches) {
+        const dimension = this.usageKeys(item, by)[0]!, row = rows.get(dimension.key);
+        if (row) row.items.push(item);
+        else rows.set(dimension.key, { ...dimension, items: [item] });
+        if (slices.due) await slices.pause();
+      }
+      const result: DimensionDays[] = [];
+      for (const { items, ...dimension } of rows.values()) result.push({ ...dimension, daily: await DailyUsage.of(items, slices) });
+      return result;
+    })());
+    return found;
+  }
+
+  private taskBreakdown(by: AnalysisTaskBy, current: readonly DatedUnit[]) {
+    return { by, rows: [...group(current, ({ unit }) => this.taskKeys(unit, by)).values()].map(({ items, ...dimension }) => {
+      const { finished, accepted, passed, share } = taskCounts(items), totals = acceptedTotals(items.map(item => ({ ...item, prCount: 0 })));
+      return { ...dimension, finished, accepted, passed, share, leadMedianMs: totals.leadMedianMs,
+        submitsPerAccepted: accepted ? totals.submits / accepted : null };
+    }).sort((a, b) => b.finished - a.finished || compareKey(a, b)) };
+  }
+
   tasks(input: AnalysisTasksInput): AnalysisTasksView {
     const head = this.head(input);
     const prCounts = creditAcceptedPrs(this.datedUnits);
@@ -328,30 +409,43 @@ class ScopedAnalysis {
     for (const { day } of this.datedUnits) counts.set(day, (counts.get(day) ?? 0) + 1);
     const from = monday(head.firstDay ?? head.today), finished: number[] = [];
     if (head.firstDay) for (let day = from; day <= head.today; day = addDays(day, 1)) finished.push(counts.get(day) ?? 0);
-    const by = input.by;
-    const breakdown = by ? { by, rows: [...group(current, ({ unit }) => this.taskKeys(unit, by)).values()].map(({ items, ...dimension }) => {
-      const { finished, accepted, passed, share } = taskCounts(items), totals = acceptedTotals(items);
-      return { ...dimension, finished, accepted, passed, share, leadMedianMs: totals.leadMedianMs,
-        submitsPerAccepted: accepted ? totals.submits / accepted : null };
-    }).sort((a, b) => b.finished - a.finished || compareKey(a, b)) } : null;
     return { head, counts: { value: value.counts, previous: before?.counts ?? null },
-      accepted: { value: value.accepted, previous: before?.accepted ?? null }, ever, series, grass: { from, finished }, breakdown };
+      accepted: { value: value.accepted, previous: before?.accepted ?? null }, ever, series, grass: { from, finished },
+      breakdown: input.by ? this.taskBreakdown(input.by, current) : null };
   }
 
-  usage(input: AnalysisUsageInput): AnalysisUsageView {
-    const head = this.head(input), daily = this.dated.daily ??= new DailyUsage(this.datedLaunches);
+  usage(input: AnalysisUsageInput, rows?: DimensionDays[]): AnalysisUsageView {
+    const head = this.head(input), daily = this.view.daily;
     const value = daily.count(head.period, this.now);
     const lifetime = this.head({}).period;
     const ever = lifetime && (input.period === 'all' ? value : daily.count(lifetime, this.now));
     const series = { bucket: input.bucket, points: buckets(head.firstDay, head.today, input.bucket)
       .map(point => ({ ...point, counts: daily.count(point, this.now) })) };
-    const by = input.by;
-    const breakdown = isAnalysisTallyBy(by) ? this.countedBreakdown(by, head, series)
-      : by ? { by, since: null, counted: null, series: null, rows: this.usageGroups(within(this.datedLaunches, head.period), by) } : null;
-    return { head, counts: { value, previous: head.previous && daily.count(head.previous, this.now) }, ever, series, breakdown };
+    return { head, counts: { value, previous: head.previous && daily.count(head.previous, this.now) }, ever, series,
+      breakdown: input.by ? this.usageBreakdown(input.by, head, input.bucket, rows) : null };
   }
 
-  private countedBreakdown(by: AnalysisTallyBy, head: AnalysisHead, chart: AnalysisUsageView['series']) {
+  /** One look's breakdown alone (`analysis breakdown`): the same rows `analysis tasks` and `analysis usage` give. */
+  breakdown(input: AnalysisBreakdownInput, rows?: DimensionDays[]): AnalysisBreakdownView {
+    const head = this.head(input);
+    if (input.look === 'tasks') return { head, breakdown: { look: 'tasks', ...this.taskBreakdown(input.by as AnalysisTaskBy, within(this.datedUnits, head.period)) } };
+    return { head, breakdown: { look: 'usage', ...this.usageBreakdown(input.by, head, input.bucket, rows) } };
+  }
+
+  private usageBreakdown(by: AnalysisUsageBy, head: AnalysisHead, bucket: AnalysisBucket, rows?: DimensionDays[]) {
+    if (isAnalysisTallyBy(by)) return this.countedBreakdown(by, head, { bucket, points: buckets(head.firstDay, head.today, bucket) });
+    return { by, since: null, counted: null, series: null,
+      rows: rows ? this.rowsOfDays(rows, head) : this.usageGroups(this.view.daily.within(head.period), by) };
+  }
+
+  /** The rows of a breakdown from their kept day sums; a launch whose row a tally has moved since is counted again. */
+  private rowsOfDays(rows: DimensionDays[], head: AnalysisHead) {
+    return rows.map(({ daily, ...dimension }) => ({ ...dimension, counts: daily.count(head.period, this.now), calls: null }))
+      .filter(row => row.counts.launches > 0)
+      .sort((a, b) => b.counts.launches - a.counts.launches || compareKey(a, b));
+  }
+
+  private countedBreakdown(by: AnalysisTallyBy, head: AnalysisHead, chart: { bucket: AnalysisBucket; points: AnalysisDays[] }) {
     const launches = this.collectedLaunches(this.datedLaunches);
     if (!launches.length) return { by, since: null, counted: null, series: null, rows: [] };
     const since = this.tallyDay;
@@ -373,42 +467,51 @@ class ScopedAnalysis {
     })).sort((a, b) => (b.calls ?? b.counts.launches) - (a.calls ?? a.counts.launches) || compareKey(a, b));
   }
 
-  private usageRows(input: AnalysisListInput, head: AnalysisHead) {
-    const by = input.by;
-    const launches = isAnalysisTallyBy(by) ? this.collectedLaunches(this.datedLaunches) : this.datedLaunches;
-    const selected = within(launches, head.period).filter(item =>
-      !by || this.usageKeys(item, by).some(({ key }) => input.key === undefined || key === input.key));
-    return [...group(selected, item => single(item.root)).values()].map(({ key, items }) => {
-      const unit = this.facts.units.get(key)!;
-      if (!input.value) return row(unit, null);
-      if (input.value === 'calls') return row(unit, items.reduce((sum, { run }) => sum + this.calls(run, input.by, input.key), 0));
-      const { launches, runMs, newConversations, tokens } = this.useCounts(items);
-      if (input.value === 'tokens') return row(unit, tokens.output + tokens.input + tokens.cache);
-      return row(unit, ({ launches, runMs, newConversations, ...tokens } as Record<string, number>)[input.value] ?? null);
+  /** Each unit with launches in the days (and the row, when given) and its value: launches are gathered by unit once. */
+  private usageEntries(input: AnalysisListInput, head: AnalysisHead): Entry[] {
+    const by = input.by, inDays = this.view.daily.within(head.period);
+    const launches = isAnalysisTallyBy(by) ? this.collectedLaunches(inDays) : inDays;
+    const byUnit = new Map<string, DatedLaunch[]>();
+    for (const item of launches) {
+      if (by && !this.usageKeys(item, by).some(({ key }) => input.key === undefined || key === input.key)) continue;
+      const found = byUnit.get(item.root);
+      if (found) found.push(item);
+      else byUnit.set(item.root, [item]);
+    }
+    return [...byUnit].map(([root, items]) => {
+      const unit = this.facts.units.get(root)!;
+      if (!input.value) return { unit, value: null };
+      if (input.value === 'calls') return { unit, value: items.reduce((sum, { run }) => sum + this.calls(run, input.by, input.key), 0) };
+      const { runs, runMs, tokens } = sumRunUsage(items.map(item => item.run), this.now);
+      const output = tokens?.output ?? 0, inputs = tokens?.input ?? 0, cache = tokens ? tokens.cacheRead + tokens.cacheWrite : 0;
+      const values: Record<string, number> = { launches: runs, runMs, newConversations: items.filter(item => item.first).length,
+        output, input: inputs, cache, tokens: output + inputs + cache };
+      return { unit, value: values[input.value] ?? null };
     });
   }
 
-  private taskRows(input: AnalysisListInput, head: AnalysisHead) {
+  private taskEntries(input: AnalysisListInput, head: AnalysisHead): Entry[] {
     const prCounts = input.value === 'prs' ? creditAcceptedPrs(this.datedUnits) : null;
     const units = within(this.datedUnits, head.period).map(item => item.unit).filter(unit =>
       (input.set === 'finished' || input.set === 'accepted' && unit.outcome.acceptedAt || unit.outcome.outcome === input.set)
       && (!input.by || this.taskKeys(unit, input.by as AnalysisTaskBy).some(group => group.key === input.key)));
     return units.map(unit => {
-      if (!input.value) return row(unit, null);
+      if (!input.value) return { unit, value: null };
       const { review, answer, ai, other } = unit.clock?.time ?? emptyClock();
       const values: Record<string, number | null> = { lead: unit.outcome.leadMs, submits: unit.outcome.submits,
         questions: unit.questions, prs: prCounts?.get(unit) ?? 0, you: review + answer, ai, other };
-      return row(unit, values[input.value] ?? null);
+      return { unit, value: values[input.value] ?? null };
     });
   }
 
   list(input: AnalysisListInput): AnalysisUnitList {
     const head = this.head(input);
     const home = input.set === 'finished' && input.period === 'today' && !input.end && !input.by && !input.value;
-    const rows = (input.set === 'used' ? this.usageRows(input, head) : this.taskRows(input, head))
+    // The page's rows are written out after the order is known: only they become rows.
+    const entries = (input.set === 'used' ? this.usageEntries(input, head) : this.taskEntries(input, head))
       .filter(item => !input.value || item.value !== null && (item.value > 0 || input.value === 'lead' || input.value === 'submits'))
       .sort((a, b) => ((b.value ?? 0) - (a.value ?? 0)) ||
-        (home ? 1 : -1) * (a.finishedAt ?? '').localeCompare(b.finishedAt ?? '') || Number(a.id.slice(1)) - Number(b.id.slice(1)));
+        (home ? 1 : -1) * (a.unit.outcome.finishedAt ?? '').localeCompare(b.unit.outcome.finishedAt ?? '') || compareTask(a.unit, b.unit));
     const selector = createHash('sha256').update(JSON.stringify([head.project, head.timeZone, head.period, input.set, input.by, input.key, input.value]))
       .digest('base64url').slice(0, 22);
     let offset = 0;
@@ -419,7 +522,8 @@ class ScopedAnalysis {
       offset = Number(match[2]);
     }
     const end = offset + (input.limit ?? 100);
-    return { head, total: rows.length, rows: rows.slice(offset, end), cursor: end < rows.length ? `${selector}.${end}` : null };
+    return { head, total: entries.length, rows: entries.slice(offset, end).map(({ unit, value }) => row(unit, value)),
+      cursor: end < entries.length ? `${selector}.${end}` : null };
   }
 
   task(asked: string): AnalysisUnitValues {
@@ -448,47 +552,83 @@ class ScopedAnalysis {
       tallied: { runs: collected.length, of: items.filter(({ run }) => run.tallyEligible).length, since: this.tallyDay } };
   }
 }
+type Entry = { unit: Unit; value: number | null };
 
 export class AnalysisReader {
   private readonly facts: FactsCache;
   readonly tallies = new Map<string, Tally>();
   private readonly timeZone = serverZone();
+  /** Reads of the facts are taken one at a time: each gives the loop back as it goes. */
+  private queue: Promise<unknown> = Promise.resolve();
   constructor(private readonly root: string, private readonly tallySince: number, journal?: ChangeLog) {
     this.facts = new FactsCache(root, tallySince, journal);
   }
   close() { this.facts.close(); }
 
-  private scoped<T>(input: { project?: string; timeZone?: string }, caller: Caller, apply: (view: ScopedAnalysis) => T): T {
-    return readControl(this.root, db => this.readAt(db, input, caller, apply));
+  /**
+   * One read: the caller's scope, the facts at one read point, then the scope's days (all made in slices, so serve
+   * answers others between them), then `apply`, which counts from what is kept.
+   */
+  private async scoped<T>(input: { project?: string; timeZone?: string }, caller: Caller,
+    apply: (view: ScopedAnalysis, slices: Slices) => T | Promise<T>): Promise<T> {
+    const turn = this.queue.then(() => this.readOnce(input, caller, apply));
+    this.queue = turn.catch(() => {});
+    return turn;
   }
-  private readAt<T>(db: DatabaseSync, input: { project?: string; timeZone?: string }, caller: Caller,
-    apply: (view: ScopedAnalysis) => T): T {
-    const { readScope } = authorize(db, caller, { name: 'task.list' }, { task: null, quote: null });
-    if (readScope !== null && input.project !== undefined && input.project !== readScope)
-      throw new Problem(PROBLEM_CODE.forbidden, 'A Run reads only its own project');
-    const facts = this.facts.read(db);
-    return apply(new ScopedAnalysis(facts, readScope ?? input.project ?? null, readScope, input.timeZone ?? this.timeZone,
-      Date.now(), this.tallySince, this.tallies));
+  private async readOnce<T>(input: { project?: string; timeZone?: string }, caller: Caller,
+    apply: (view: ScopedAnalysis, slices: Slices) => T | Promise<T>): Promise<T> {
+    const store = new ControlStore(this.root, { busyTimeoutMs: 10_000 }, true), slices = new Slices();
+    try {
+      return await store.readAsync(async () => {
+        const db = store.connection;
+        const { readScope } = authorize(db, caller, { name: 'task.list' }, { task: null, quote: null });
+        if (readScope !== null && input.project !== undefined && input.project !== readScope)
+          throw new Problem(PROBLEM_CODE.forbidden, 'A Run reads only its own project');
+        const facts = await this.facts.read(db, slices);
+        const project = readScope ?? input.project ?? null, zone = input.timeZone ?? this.timeZone;
+        const allows = matchingProject(facts, project, readScope), date = calendar(zone);
+        if (kept.facts !== facts) { kept.facts = facts; kept.zones.clear(); }
+        let days = kept.zones.get(zone);
+        if (!days) kept.zones.set(zone, days = { days: zoneDays(facts, date, slices), scopes: new Kept(SCOPES_KEPT) });
+        const scope = JSON.stringify([project, readScope]), { scopes } = days;
+        let view = scopes.get(scope);
+        if (!view) scopes.set(scope, view = days.days.then(zone => scopeView(zone, allows, slices)));
+        let ready: ScopeView;
+        try { ready = await view; }
+        catch (error) { kept.zones.delete(zone); throw error; }
+        return await apply(new ScopedAnalysis(facts, ready, project, allows, zone, Date.now(), this.tallySince, this.tallies, date), slices);
+      });
+    } finally { store.close(); }
   }
   /**
    * Reads ahead what the first analysis read would wait for: the facts, and the days of the face it opens on (every
    * project, the last 7 days by day). Serve calls it once, in a quiet moment after it starts (warmAnalysisWhenIdle).
    */
-  warm() {
+  async warm() {
     const person = { kind: 'human' } as const;
-    this.tasks({ period: '7d', bucket: 'day' }, person);
-    this.usage({ period: '7d', bucket: 'day' }, person);
+    await this.tasks({ period: '7d', bucket: 'day' }, person);
+    await this.usage({ period: '7d', bucket: 'day' }, person);
   }
   tasks(input: AnalysisTasksInput, caller: Caller) { return this.scoped(input, caller, view => view.tasks(input)); }
-  usage(input: AnalysisUsageInput, caller: Caller) { return this.scoped(input, caller, view => view.usage(input)); }
+  usage(input: AnalysisUsageInput, caller: Caller) {
+    return this.scoped(input, caller, async (view, slices) => view.usage(input, await this.rowsFor(view, input.by, slices)));
+  }
+  breakdown(input: AnalysisBreakdownInput, caller: Caller) {
+    return this.scoped(input, caller, async (view, slices) => view.breakdown(input, input.look === 'usage' ? await this.rowsFor(view, input.by, slices) : undefined));
+  }
   list(input: AnalysisListInput, caller: Caller) { return this.scoped(input, caller, view => view.list(input)); }
   task(input: AnalysisTaskInput, caller: Caller) { return this.scoped(input, caller, view => view.task(input.task)); }
+  /** A breakdown's kept day sums, for the breakdowns that give a launch one row (model, agent, project). */
+  private async rowsFor(view: ScopedAnalysis, by: AnalysisUsageBy | undefined, slices: Slices) {
+    if (by !== 'agent' && by !== 'project' && by !== 'model') return undefined;
+    return view.dimensionDays(by, slices);
+  }
 }
 
 const WARM_CHECK_MS = 1000, WARM_BUSY = 0.5, WARM_CHECKS = 30;
 /**
  * Calls `warm` once serve has a quiet second (its event loop busy under half of it and `quiet()` true), checking each
- * second; after 30 checks it warms anyway. The work blocks as a first read would, but at a moment nobody waits on.
+ * second; after 30 checks it warms anyway. The work gives the loop back every slice as any read does.
  * Returns a stop for serve's close.
  */
 export function warmAnalysisWhenIdle(reader: Pick<AnalysisReader, 'warm'>, quiet: () => boolean) {
@@ -498,8 +638,7 @@ export function warmAnalysisWhenIdle(reader: Pick<AnalysisReader, 'warm'>, quiet
       timer = undefined;
       const busy = performance.eventLoopUtilization(since).utilization;
       if (++checks < WARM_CHECKS && (busy > WARM_BUSY || !quiet())) return check();
-      try { reader.warm(); }
-      catch (error) { console.error('Analysis could not read ahead', error); }
+      void reader.warm().catch(error => console.error('Analysis could not read ahead', error));
     }, WARM_CHECK_MS);
   };
   check();

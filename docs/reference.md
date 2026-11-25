@@ -83,6 +83,7 @@ The screen and these read commands use the same counts. A person or the coordina
 | --- | --- |
 | `alpacawork analysis tasks --period 7d --bucket day` | Finished Tasks, time to acceptance, trends and daily finished counts |
 | `alpacawork analysis usage --period 28d --bucket week --by model` | Task Run launches, elapsed running time, new conversations and measured tokens |
+| `alpacawork analysis breakdown --period 7d --bucket day --look usage --by model` | One breakdown alone, the rows `analysis tasks` or `analysis usage` gives with `--by`, without their totals and trends |
 | `alpacawork analysis list --period today --set finished` | The Tasks behind a number, including today's finished marks |
 | `alpacawork analysis task --task <task>` | One top-level Task's values, including the requested child when it resolves to that parent |
 

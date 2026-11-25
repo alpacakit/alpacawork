@@ -230,7 +230,7 @@ test('Claude and bridge tally skill reads in compound shell commands', () => {
 test('serve reads the analysis ahead once, when it is quiet, and not after it closes', t => {
   t.mock.timers.enable({ apis: ['setTimeout'] });
   let warmed = 0, quiet = false;
-  const stop = warmAnalysisWhenIdle({ warm: () => { warmed++; } }, () => quiet);
+  const stop = warmAnalysisWhenIdle({ warm: async () => { warmed++; } }, () => quiet);
   t.mock.timers.tick(3000);
   assert.equal(warmed, 0);
   quiet = true;
@@ -239,7 +239,7 @@ test('serve reads the analysis ahead once, when it is quiet, and not after it cl
   t.mock.timers.tick(60_000);
   assert.equal(warmed, 1);
   stop();
-  const closed = warmAnalysisWhenIdle({ warm: () => { warmed++; } }, () => true);
+  const closed = warmAnalysisWhenIdle({ warm: async () => { warmed++; } }, () => true);
   closed();
   t.mock.timers.tick(60_000);
   assert.equal(warmed, 1);

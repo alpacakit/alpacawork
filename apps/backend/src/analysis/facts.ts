@@ -4,7 +4,8 @@ import type { TaskBaseState } from '@alpacawork/raw';
 import type { TaskLog } from '@alpacawork/raw/task-log-schema';
 import type { RunRecord } from '@alpacawork/contract/run';
 import { taskLogs } from '../control/task-history.js';
-import { clocks, firstConversations, launchOf, modelRun, prLinks, taskOutcome, userQuestions,
+import { Slices } from './slices.js';
+import { beganBefore, clocks, firstConversations, launchOf, modelRun, prLinks, taskOutcome, userQuestions,
   type Launch, type ModelRun, type Outcome, type RunEvidence, type UserQuestion } from './rules.js';
 import { tallyEligible } from './tally-scope.js';
 
@@ -123,6 +124,9 @@ function unitFacts(node: TaskNode, ids: readonly string[], logs: ReadonlyMap<str
     clock: to === null ? null : clocks(log, ownQuestions, childQuestions, launches, from, to, to) };
 }
 
+/** Task histories are read this many Tasks at a time, so a full read gives the loop back between them. */
+const HISTORY_SLICE = 500;
+
 /**
  * A single serve owns this reader. Its journal cursor only advances after a full committed read. A read after changes
  * reads again only what they name (the Tasks, values, Runs and placements changed) and counts again only the units
@@ -150,14 +154,20 @@ export class FactsCache {
 
   close() { this.release?.(); }
 
-  read(db: DatabaseSync): AnalysisFacts {
-    const identity = db.prepare('SELECT id FROM workspace_identity WHERE singleton=1').get()?.id;
+  /**
+   * The facts as of `db`'s read point. The work gives the event loop back every slice; `db` holds one read point across
+   * the pauses (ControlStore.readAsync), and reads are taken one at a time (the caller's queue), so a pause never sees
+   * another read's half-kept state.
+   */
+  async read(db: DatabaseSync, slices: Slices): Promise<AnalysisFacts> {
+    // The journal is read and the read point is taken with no pause between them.
     const change = this.journal?.read('analysis');
+    const identity = db.prepare('SELECT id FROM workspace_identity WHERE singleton=1').get()?.id;
     const full = !this.data || this.workspace !== identity || !change || change.kind === 'overflow';
     if (!full && change.kind === 'changes' && !change.batches.length) return this.data!;
     try {
       const keys = full || change.kind !== 'changes' ? [] : change.batches.flatMap(batch => batch.keys);
-      const next = this.refresh(db, full, keys);
+      const next = await this.refresh(db, full, keys, slices);
       if (change) this.journal!.acknowledge('analysis', change.through);
       this.workspace = identity;
       return this.data = next;
@@ -189,11 +199,17 @@ export class FactsCache {
   }
 
   /** The Run that began each conversation named (every one, for a full read), again from its launched Runs. */
-  private settleFirst(keys: Iterable<string> | 'all') {
+  private async settleFirst(keys: Iterable<string> | 'all', slices: Slices) {
     if (keys === 'all') {
-      for (const id of firstConversations([...this.runs.values()].filter(launch => launch !== null))) {
-        this.first.add(id); this.firstOf.set(this.sessionOf.get(id)!, id);
+      const first = new Map<string, FactLaunch>();
+      for (const launch of this.runs.values()) {
+        const key = launch && this.sessionOf.get(launch.id);
+        if (!key) continue;
+        const old = first.get(key);
+        if (!old || beganBefore(launch, old)) first.set(key, launch);
+        if (slices.due) await slices.pause();
       }
+      for (const [key, launch] of first) { this.first.add(launch.id); this.firstOf.set(key, launch.id); }
       return;
     }
     for (const key of keys) {
@@ -205,7 +221,7 @@ export class FactsCache {
     }
   }
 
-  private refresh(db: DatabaseSync, full: boolean, keys: readonly ChangeKey[]): AnalysisFacts {
+  private async refresh(db: DatabaseSync, full: boolean, keys: readonly ChangeKey[], slices: Slices): Promise<AnalysisFacts> {
     const changedTasks = new Set(keys.filter(key => key.kind === 'task').map(key => key.id));
     const runIds = new Set(keys.filter(key => key.kind === 'run').map(key => key.id));
     const placementIds = keys.filter(key => key.kind === 'placement').map(key => key.id);
@@ -225,9 +241,11 @@ export class FactsCache {
     }
     const tasks = full ? [...nodes.values()].filter(node => node.kind === 'task') : [];
     const historyNodes = full ? tasks : [...changedTasks].flatMap(id => nodes.get(id)?.kind === 'task' ? [nodes.get(id)!] : []);
-    if (historyNodes.length) {
-      const current = taskLogs(db, this.root, historyNodes.map(node => node.internal));
-      for (const node of historyNodes) this.logs.set(node.id, current.get(node.internal) ?? []);
+    for (let at = 0; at < historyNodes.length; at += HISTORY_SLICE) {
+      const part = historyNodes.slice(at, at + HISTORY_SLICE);
+      const current = taskLogs(db, this.root, part.map(node => node.internal));
+      for (const node of part) this.logs.set(node.id, current.get(node.internal) ?? []);
+      if (slices.due) await slices.pause();
     }
     if (full || valuesIds.size)
       for (const [id, links] of valuesLinks(db, full ? tasks : [...nodes.values()].filter(node => node.kind === 'task' && valuesIds.has(node.internal)))) {
@@ -238,8 +256,9 @@ export class FactsCache {
       const item = runFromRow(row);
       for (const key of this.keepRun(item)) sessionKeys.add(key);
       taskIds.add(item.run.task);
+      if (slices.due) await slices.pause();
     }
-    this.settleFirst(full ? 'all' : sessionKeys);
+    await this.settleFirst(full ? 'all' : sessionKeys, slices);
     const moved = full || changedTasks.size > 0;
     const tree = this.tree = moved ? ancestry(nodes) : this.tree!;
     const { rootOf, usageRootOf, members, usageMembers } = tree;
@@ -278,6 +297,7 @@ export class FactsCache {
         for (const launch of this.runsByTask.get(task)?.values() ?? []) launches.push(launch);
       units.set(id, unitFacts(node, group, this.logs, this.values, this.firstOwners.get(id) ?? null,
         launches, workers.get(id) ?? []));
+      if (slices.due) await slices.pause();
     }
     return { nodes, units, rootOf, usageRootOf, first: this.first };
   }

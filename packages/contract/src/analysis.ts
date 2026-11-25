@@ -37,6 +37,13 @@ export const analysisTasksInput = z.strictObject({
 export const analysisUsageInput = z.strictObject({
   ...scope, ...dates.shape, bucket: analysisBucketSchema, by: analysisUsageBySchema.optional(),
 }).superRefine(validateDates);
+/** One look's breakdown alone, for a reader that already holds that look's numbers and charts (the screen). */
+export const analysisBreakdownInput = z.strictObject({
+  ...scope, ...dates.shape, bucket: analysisBucketSchema, look: z.enum(['tasks', 'usage']), by: analysisUsageBySchema,
+}).superRefine(validateDates).superRefine((input, ctx) => {
+  if (input.look === 'tasks' && !analysisTaskBySchema.safeParse(input.by).success)
+    ctx.addIssue({ code: 'custom', path: ['by'], message: 'This breakdown applies to AI usage' });
+});
 export const analysisListInput = z.strictObject({
   ...scope, ...dates.shape,
   set: analysisSetSchema, by: analysisUsageBySchema.optional(), key: z.string().min(1).max(512).optional(),
@@ -84,28 +91,35 @@ export const analysisAcceptedTotalsSchema = z.strictObject({
   leadMedianMs: measurement.nullable(), submits: count, questions: count, prs: count, time: times,
 });
 const taskTotals = { counts: analysisTaskCountsSchema, accepted: analysisAcceptedTotalsSchema };
+const tasksBreakdown = z.strictObject({
+  by: analysisTaskBySchema,
+  rows: z.array(z.strictObject({ ...breakdownRow, noOwnerRun: z.literal(true).optional(), finished: count, accepted: count, passed: count, share,
+    leadMedianMs: measurement.nullable(), submitsPerAccepted: measurement.nullable() })),
+});
 export const analysisTasksViewSchema = z.strictObject({
   head: analysisHeadSchema, counts: pair(analysisTaskCountsSchema), accepted: pair(analysisAcceptedTotalsSchema),
   ever: z.strictObject(taskTotals).nullable(),
   series: series(point.extend(taskTotals)), grass: z.strictObject({ from: analysisDaySchema, finished: z.array(count) }),
-  breakdown: z.strictObject({
-    by: analysisTaskBySchema,
-    rows: z.array(z.strictObject({ ...breakdownRow, noOwnerRun: z.literal(true).optional(), finished: count, accepted: count, passed: count, share,
-      leadMedianMs: measurement.nullable(), submitsPerAccepted: measurement.nullable() })),
-  }).nullable(),
+  breakdown: tasksBreakdown.nullable(),
 });
 export const analysisUsageCountsSchema = z.strictObject({
   launches: count, runMs: count, live: count, newConversations: count,
   tokens: z.strictObject({ output: count, input: count, cache: count }), tokensUnknown: count, tasks: count,
 });
+const usageBreakdown = z.strictObject({
+  by: analysisUsageBySchema, since: analysisDaySchema.nullable(),
+  counted: pair(counted).nullable(), series: z.array(counted.nullable()).nullable(),
+  rows: z.array(z.strictObject({ ...breakdownRow, counts: analysisUsageCountsSchema, calls: count.nullable() })),
+});
 export const analysisUsageViewSchema = z.strictObject({
   head: analysisHeadSchema, counts: pair(analysisUsageCountsSchema), ever: analysisUsageCountsSchema.nullable(),
   series: series(point.extend({ counts: analysisUsageCountsSchema })),
-  breakdown: z.strictObject({
-    by: analysisUsageBySchema, since: analysisDaySchema.nullable(),
-    counted: pair(counted).nullable(), series: z.array(counted.nullable()).nullable(),
-    rows: z.array(z.strictObject({ ...breakdownRow, counts: analysisUsageCountsSchema, calls: count.nullable() })),
-  }).nullable(),
+  breakdown: usageBreakdown.nullable(),
+});
+/** `analysis breakdown`: the head (its days) and the one breakdown, as `analysis tasks` or `analysis usage` gives it. */
+export const analysisBreakdownViewSchema = z.strictObject({
+  head: analysisHeadSchema,
+  breakdown: z.union([z.strictObject({ look: z.literal('tasks'), ...tasksBreakdown.shape }), z.strictObject({ look: z.literal('usage'), ...usageBreakdown.shape })]),
 });
 
 export const analysisListRowSchema = z.strictObject({
@@ -138,6 +152,8 @@ export type AnalysisUsageBy = z.infer<typeof analysisUsageBySchema>;
 export type AnalysisTasksInput = z.infer<typeof analysisTasksInput>;
 export type AnalysisUsageInput = z.infer<typeof analysisUsageInput>;
 export type AnalysisListInput = z.infer<typeof analysisListInput>;
+export type AnalysisBreakdownInput = z.infer<typeof analysisBreakdownInput>;
+export type AnalysisBreakdownView = z.infer<typeof analysisBreakdownViewSchema>;
 export type AnalysisTaskInput = z.infer<typeof analysisTaskInput>;
 export type AnalysisTaskCounts = z.infer<typeof analysisTaskCountsSchema>;
 export type AnalysisAcceptedTotals = z.infer<typeof analysisAcceptedTotalsSchema>;
