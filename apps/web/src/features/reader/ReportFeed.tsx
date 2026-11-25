@@ -15,7 +15,8 @@ import { followReference, noteReaderRows, readerHistoryPosition } from "@/state/
 import { usePeopleFor, useTaskHistory } from "@/data/queries";
 import { useTranslation } from "react-i18next";
 import { contextPercent } from "@alpacawork/contract/agent-context";
-import { percentText } from "@/components/ui/usage-ring";
+import { percentText, UsageRing } from "@/components/ui/usage-ring";
+import { limitTone } from "@/domain/limits";
 import type { TFunction } from "i18next";
 import { compareHistoryEvents, inGallery, reportEmbed } from "@alpacawork/contract";
 import type { ControlRunDTO, HistoryCrewDTO, TaskHistoryDTO } from "@alpacawork/contract/control";
@@ -568,11 +569,12 @@ function RecordRow({ row, line, open, onToggle, task, gallery, onFollow }: Recor
   const request = isInstruction(report);
   const galleryKey = report.replyTo ?? report.key;
   const plain = (report.note?.title ?? report.text).replace(/\bR\d+\b/g, "").replace(/\s+/g, " ").trim();
-  const kindWord = t(`reportFeed.row.kind.${report.replyTo ? "reply" : report.kind === "report" && report.set === "done" ? "done" : report.kind}`);
+  const kindWord = t(`reportFeed.row.kind.${report.conversation ? CONVERSATION_KIND[report.conversation.change]
+    : report.replyTo ? "reply" : report.kind === "report" && report.set === "done" ? "done" : report.kind}`);
   const names = useContext(AgentNames);
   const words = same ? t("reportFeed.row.sameTitle")
     : report.carriedOn ? carriedOnWords(report, names, t, ui)
-    : report.conversation ? conversationWords(report.conversation, t, locale)
+    : report.conversation ? conversationFill(report.conversation, locale)
     : report.changed ? t("reportFeed.row.changedTo", { state: stateWords(report.changed) })
     : report.cause ? causeReason(report.cause, ui)
     : report.kind === "error" || report.kind === "run_end" ? t(`history.reasons.${report.text}`, { defaultValue: t("history.reasons.unknown") })
@@ -599,7 +601,7 @@ function RecordRow({ row, line, open, onToggle, task, gallery, onFollow }: Recor
     <RailTime mark={report.finish ? FINISH_MARK : report.conversation ? CONVERSATION_MARK[report.conversation.change] : { kind: row.way, tone: reportTone(report) }}><time dateTime={report.at}>{label(report.at)}</time></RailTime>
     <RowName row={row} kindWord={kindWord} open={open} />
     <span className="col-start-3 row-start-1 flex items-center justify-self-end"><DisclosureChevron open={open} /></span>
-    {(!bodySaysIt || leaving) && <span ref={wordsLine} data-row-words data-leaving={leaving || undefined} aria-hidden={leaving || undefined} dir="auto" title={same ? report.text : undefined} className={`col-span-2 col-start-1 mt-0.5 min-w-0 text-base ${heading || report.kind === "run_end" || report.kind === "error" ? "" : firstLine ? "line-clamp-1" : "line-clamp-2"} ${strong || heading ? "font-semibold" : "font-normal"} ${
+    {(!bodySaysIt || leaving) && words !== null && <span ref={wordsLine} data-row-words data-leaving={leaving || undefined} aria-hidden={leaving || undefined} dir="auto" title={same ? report.text : undefined} className={`col-span-2 col-start-1 mt-0.5 min-w-0 text-base ${heading || report.kind === "run_end" || report.kind === "error" ? "" : firstLine ? "line-clamp-1" : "line-clamp-2"} ${strong || heading ? "font-semibold" : "font-normal"} ${
       heading ? "text-ink" : faint ? "text-soft group-hover/row:text-ink group-data-lit/row:text-ink" : strong ? "text-ink" : ROW_WORDS}`}>{words}</span>}
     {!open && shownMedia && <MediaThumb name={shownMedia} src={taskFileUrl(home, shownMedia, held(shownMedia)?.revision)} className={`${FEED_THUMB} ${report.result ? "" : FEED_THUMB_FOOT}`} />}
     {!open && sent && sent.files.length > (shownMedia ? 1 : 0) && <span data-attachment-count className="relative z-1 col-start-3 row-start-2 flex flex-none items-center gap-0.5 text-xs text-muted">
@@ -876,15 +878,24 @@ function rowEnds(row: HistoryRow): HistoryRow["name"] {
 /** A conversation row's rail mark: a new conversation's, or a compaction's. Quiet: nothing waits on anyone. */
 const CONVERSATION_MARK = { new: { kind: "anew", tone: "quiet" }, compacted: { kind: "compacted", tone: "quiet" } } as const satisfies
   Record<NonNullable<ReportEvent["conversation"]>["change"], NonNullable<ReportEvent["mark"]>>;
-/** What happened to the conversation, with how full it was before and after a compaction when its agent said. */
-function conversationWords(conversation: NonNullable<ReportEvent["conversation"]>, t: TFunction<"reader">, language: string): string {
-  if (conversation.change === "new") return t("reportFeed.row.conversation.new");
+/** A conversation row is named by what happened to the conversation; its rail mark is the same picture. */
+const CONVERSATION_KIND = { new: "conversationNew", compacted: "compacted" } as const;
+/**
+ * A compaction's row shows how full the conversation was before and after, as the context meter draws it (the ring and
+ * its figure); nothing when its agent did not say. A new conversation's row needs no words under its name.
+ */
+function conversationFill(conversation: NonNullable<ReportEvent["conversation"]>, language: string): ReactNode {
+  if (conversation.change === "new") return null;
   const { beforeTokens: before, afterTokens: after, windowTokens: window } = conversation;
-  if (before === null || after === null) return t("reportFeed.row.conversation.compacted");
-  const figure = (tokens: number) => window ? percentText(contextPercent({ usedTokens: tokens, windowTokens: window })!)
-    : new Intl.NumberFormat(language, { notation: "compact", maximumFractionDigits: 1 }).format(tokens);
-  return t(window ? "reportFeed.row.conversation.compactedFill" : "reportFeed.row.conversation.compactedTokens",
-    { before: figure(before), after: figure(after) });
+  if (before === null || after === null) return null;
+  const figure = (tokens: number) => {
+    const percent = window ? contextPercent({ usedTokens: tokens, windowTokens: window })! : null;
+    const shown = percent !== null ? percentText(percent)
+      : new Intl.NumberFormat(language, { notation: "compact", maximumFractionDigits: 1 }).format(tokens);
+    return <span className="inline-flex items-center gap-1 tabular-nums">
+      <UsageRing percent={percent ?? 0} tone={limitTone(percent ?? 0)} open={percent === null} className="size-3.5" />{shown}</span>;
+  };
+  return <span data-compaction-fill className="inline-flex items-center gap-1.5">{figure(before)}<Icon name="arrowRight" className="size-3.5 text-muted" />{figure(after)}</span>;
 }
 const carriedOnAgent = (agent: NonNullable<ReportEvent["recipient"]>) =>
   runAgentLabel({ agent: agent.profileKey, modelId: agent.modelId ?? null, effort: agent.effort ?? null });
@@ -1019,9 +1030,12 @@ function WorkingPerson({ run, task, onFollow, open, lead, others }: { run: Contr
       <AgentLabel data-working-model label={model} /><span>{t("reportFeed.row.working")}</span>{others && <>·{others}</>}
       {before && <span data-working-took-over>· {t("reportFeed.working.tookOver", { agent: `${before.agent} ${modelLabel(runAgentLabel(before), names).short}`,
         reason: beforeCause ? limitName(beforeCause, ui) : t("reportFeed.row.carriedOn.limit") })}</span>}
-      {!!run.compactions?.length && <span data-working-compacted>· {t("reportFeed.working.compacted")}</span>}
       </span>
       {/* Every working line ends its first line with the same meter, so the figures stand in one column. */}
+      {/* A Run that compacted its conversation says so beside its meter, with the meter's own mark for it. */}
+      {!!run.compactions?.length && <span data-working-compacted title={say("context.compactions", { count: run.compactions.length })}
+        aria-label={say("context.compactions", { count: run.compactions.length })} className="flex flex-none items-center self-center text-muted">
+        <Icon name="reload" className="size-3.5" /></span>}
       {run.activity?.context && <span className="flex-none self-center"><ContextMeter context={run.activity.context} press conversations={task.conversations ?? undefined} /></span>}</span>
     {!words ? null : !lead ? <div data-working-note dir="auto" className={`${cell} ${NOTE} text-sm block text-ink`}><MarkdownBody text={words} task={task} onFollow={onFollow} report variant="note" /></div>
       : <LeadNote open={open} words={words} task={task} onFollow={onFollow} className={cell} />}

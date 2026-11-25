@@ -4,16 +4,16 @@ import type { ContextView } from "@alpacawork/contract/agent-context";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TONE_TEXT, UsageRing, percentText } from "@/components/ui/usage-ring";
 import { contextFigure, type ConversationCounts } from "@/domain/context";
+import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
 
 /* Hallmark · component: context meter · genre: modern-minimal · theme: the app's own tokens (the usage ring) */
 
 /**
  * How full a working agent's conversation is, at the end of its line: a ring and the percent (the tokens when its agent
- * names no window, "—" just after a compaction). `press`: a press opens the tokens used and the window, how the
- * conversation is kept workable (compacted near its limit, started anew with the Task's records) and, with
- * `conversations`, how often that happened on the Task; on a line that is itself pressed (a child's), the figures are
- * its tooltip instead.
+ * names no window, "—" just after a compaction). `press`: a press opens the tokens used and the window and, with
+ * `conversations`, how often the Task's conversations were started anew and compacted; on a line that is itself pressed
+ * (a child's), the figures are its tooltip instead.
  */
 export function ContextMeter({ context, press, conversations }: { context: ContextView; press: boolean; conversations?: ConversationCounts }) {
   const { t, i18n } = useTranslation("people");
@@ -26,8 +26,10 @@ export function ContextMeter({ context, press, conversations }: { context: Conte
   const window = context.windowTokens === null ? t("context.noWindow") : t("context.tokens", { count: context.windowTokens, tokens: count(context.windowTokens) });
   const label = t("context.label", { figure: shown, used, window });
   // What happened on this Task, leaving out what did not.
-  const counts = conversations ? [conversations.anew && t("context.anew", { count: conversations.anew }),
-    conversations.compacted && t("context.compactions", { count: conversations.compacted })].filter(Boolean) : [];
+  const counts = conversations ? [
+    { icon: "chat" as const, count: conversations.anew, words: t("context.anew", { count: conversations.anew }) },
+    { icon: "reload" as const, count: conversations.compacted, words: t("context.compactions", { count: conversations.compacted }) },
+  ].filter(each => each.count > 0) : [];
   const face = <>
     <UsageRing percent={figure.percent ?? 0} tone={figure.tone} open={figure.open} className="size-3.5" />
     <span className={cn("min-w-[4ch] text-right tabular-nums", figure.percent === null ? "text-muted" : TONE_TEXT[figure.tone])}>{shown}</span>
@@ -49,9 +51,9 @@ export function ContextMeter({ context, press, conversations }: { context: Conte
       </dl>
       {figure.waiting && <p className="m-0 mt-2 text-xs text-muted">{t("context.compacted")}</p>}
       {figure.open && <p className="m-0 mt-2 text-xs text-muted">{t("context.setWindow")}</p>}
-      {/* How the conversation is kept workable, said where its fill is read; and how often it happened on this Task. */}
-      <p className="m-0 mt-3 text-xs text-muted">{t("context.kept")}</p>
-      {counts.length > 0 && <p data-conversation-counts className="m-0 mt-2 text-xs">{t("context.counts", { counts: counts.join(t("context.countsSeparator")) })}</p>}
+      {/* How often this Task's conversations were started anew and compacted, with History's marks for them. */}
+      {counts.length > 0 && <div data-conversation-counts className="mt-2 flex gap-3 text-xs tabular-nums">{counts.map(({ icon, words, count }) =>
+        <span key={icon} title={words} aria-label={words} className="inline-flex items-center gap-1"><Icon name={icon} className="size-3.5 text-muted" />{count}</span>)}</div>}
     </PopoverContent>
   </Popover>;
 }

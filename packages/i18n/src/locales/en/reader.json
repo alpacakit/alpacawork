@@ -328,12 +328,6 @@
       },
       "cause": "Received “{{title}}” · {{at}}",
       "changedTo": "Set to {{state}}",
-      "conversation": {
-        "compacted": "Compacted the conversation and carried on",
-        "compactedFill": "Compacted the conversation and carried on · {{before}} → {{after}} used",
-        "compactedTokens": "Compacted the conversation and carried on · {{before}} → {{after}} tokens",
-        "new": "Started a new conversation with the task's details"
-      },
       "end": {
         "again": {
           "question": "Asked the same question again",
@@ -364,8 +358,9 @@
         "answer": "Answer",
         "changed": "Change",
         "comment": "Note",
+        "compacted": "Compacted",
         "confirm": "Review",
-        "conversation": "Conversation",
+        "conversationNew": "New conversation",
         "dialogue": "Message",
         "done": "Done",
         "error": "Stopped",
@@ -407,7 +402,6 @@
     "sendBack": "Send back…",
     "sentBody": "Body sent to the agent",
     "working": {
-      "compacted": "compacted its conversation",
       "others_one": "+{{count}} more",
       "others_other": "+{{count}} more",
       "tookOver": "took over from {{agent}}, stopped on {{reason}}"
