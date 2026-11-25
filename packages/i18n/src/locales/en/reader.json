@@ -67,6 +67,7 @@
   },
   "entries": {
     "after": "Waits for",
+    "analysis": "Analysis",
     "context": "Context",
     "count_one": "{{count}}",
     "count_other": "{{count}}",

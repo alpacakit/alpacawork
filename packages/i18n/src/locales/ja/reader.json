@@ -60,6 +60,7 @@
   },
   "entries": {
     "after": "待ち先",
+    "analysis": "分析",
     "context": "コンテキスト",
     "count_other": "{{count}}",
     "dependencies": "依存",

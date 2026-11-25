@@ -74,6 +74,7 @@
   },
   "entries": {
     "after": "Espera a",
+    "analysis": "Análisis",
     "context": "Contexto",
     "count_one": "{{count}}",
     "count_many": "{{count}}",

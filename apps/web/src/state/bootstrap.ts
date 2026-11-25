@@ -42,7 +42,8 @@ export function openScreenLink(href: string) {
  * before (a link opened afresh), the tab is kept and the reader shows the task pane if it is empty.
  */
 function validPane(value: string | null, task: string | null): ReaderPane {
-  return task && (value === "files" || value === "about" || value === "analysis") ? value : "task";
+  // A project has no Analysis tab: only a task's values are counted.
+  return task && (value === "files" || value === "about" || value === "analysis" && task.startsWith("T")) ? value : "task";
 }
 
 function validPath(value: string | null, task: string | null, pane: ReaderPane, detail: TaskDetail | undefined, root: string): string | null {

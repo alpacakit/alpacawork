@@ -297,7 +297,7 @@ function AwaitedContent({ address, mode, canDock, analysis }: { address: string;
   const sheet = useSheetControl();
   const offline = useConnection((state) => state.offline);
   const behind = useReaderBehind();
-  const backToList = useAnalysisListBack(address, behind);
+  const backToList = useAnalysisListBack(behind);
   const head = useRef<HTMLElement>(null);
   useLayoutEffect(() => {
     if (analysis && readerOpenedByPress())

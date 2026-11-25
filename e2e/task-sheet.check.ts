@@ -206,6 +206,10 @@ test.describe("the task's analysis", () => {
     await expect(analysis).toHaveAttribute("aria-current", "page");
     await history.tap();
     const back = reader(page).locator("[data-reader-back]");
+    // Back walks the tabs as it does anywhere; on the step the row opened it goes back to the list.
+    await expect(back).toHaveText("Back");
+    await back.tap();
+    await expect(analysis).toHaveAttribute("aria-current", "page");
     await expect(back).toHaveText("Back to list");
     await back.tap();
     await expect(reader(page)).toHaveCount(0);

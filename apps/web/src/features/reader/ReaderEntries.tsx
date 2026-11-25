@@ -1,4 +1,4 @@
-import { Fragment, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { Fragment, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
@@ -7,7 +7,7 @@ import type { Task, TaskDetail } from "@/data/types";
 import { relatedListsOf } from "./related-lists";
 import { panelEntry, toggleReaderPanel, useReaderPanel, type ReaderPanelKind } from "./reader-panel";
 import { Popup } from "@/components/ui/popup";
-import { menuRow } from "@/components/ui/menu-rows";
+import { menuRow, MenuTick } from "@/components/ui/menu-rows";
 import { moveMenuFocus } from "@/features/chrome/menu-move";
 import { useFileShelves } from "./files/file-shelves";
 import { useViewStore, type ReaderPane } from "@/state/view-store";
@@ -47,7 +47,7 @@ export function ReaderEntries({ task, detail, pane }: { task: Task; detail: Task
     paneEntry("about", "file", t("entries.context"), { iconClassName: "-mx-0.5" }),
     ...!!detail?.files.length || pane === "files" ? [paneEntry("files", "folder", t("entries.files"),
       deliverables ? { count: t("entries.count", { count: deliverables }), spoken: `${t("entries.files")} ${t("entries.count", { count: deliverables })}` } : {})] : [],
-    ...task.kind === "task" ? [paneEntry("analysis", "chart", t("analysis:face.analysis"))] : [],
+    ...task.kind === "task" ? [paneEntry("analysis", "chart", t("entries.analysis"))] : [],
     ...lists.family?.entry ? [relatedEntry("family", "family", t("family.entry"), lists.family.count)] : [],
     ...lists.dependencies?.entry ? [relatedEntry("dependencies", "swap", t("entries.dependencies"), lists.dependencies.count)] : [],
   ];
@@ -65,10 +65,10 @@ export function ReaderEntries({ task, detail, pane }: { task: Task; detail: Task
         : <button type="button" data-reader-entry={entry.key} aria-current={entry.on ? "page" : undefined} aria-label={entry.spoken}
           onClick={entry.press} className={cn(TAB, "group")}>{face(entry)}</button>}
     </Fragment>)}
-    {hidden.length > 0 && <MoreEntries entries={hidden} face={face} />}
+    {hidden.length > 0 && <MoreEntries entries={hidden} face={face} row={row} />}
     {/* Every tab drawn once more, unseen and out of the way, so each one's width is known whether it stands or not. */}
     <div ref={measure} aria-hidden inert className="pointer-events-none invisible absolute top-0 left-0 flex items-center gap-1 px-1">
-      {entries.map((entry, at) => <Fragment key={entry.key}>{at === firstRelated && <span className="w-2 flex-none" />}
+      {entries.map((entry, at) => <Fragment key={entry.key}>{at === firstRelated && <span data-measure="spacer" className="w-2 flex-none" />}
         <span data-measure={entry.key} className={TAB}>{face(entry)}</span></Fragment>)}
       <span data-measure="more" className={TAB}><Icon name="more" className="size-3.5" /></span>
     </div>
@@ -89,7 +89,8 @@ function useFitting(entries: Entry[]) {
     const box = row.current, ruler = measure.current;
     if (!box || !ruler) return;
     const read = () => {
-      const next: Record<string, number> = {};
+      // The gap between tabs too, as the row draws it (it grows with the text's size).
+      const next: Record<string, number> = { gap: parseFloat(getComputedStyle(ruler).columnGap) || 0 };
       for (const item of ruler.querySelectorAll<HTMLElement>("[data-measure]")) next[item.dataset.measure!] = item.offsetWidth;
       setWidths(was => Object.keys(next).length === Object.keys(was).length && Object.entries(next).every(([key, width]) => was[key] === width) ? was : next);
       // The row's own room, inside its padding.
@@ -106,15 +107,16 @@ function useFitting(entries: Entry[]) {
 }
 
 /**
- * The tabs that stand in a row `room` wide, each `widths[key]` wide with More's `widths.more`: all of them when they
- * fit; else as many as fit from the start beside More, the pane shown taking the last place when it is not among them.
+ * The tabs that stand in a row `room` wide, each `widths[key]` wide with More's `widths.more`, `widths.gap` between
+ * them and `widths.spacer` more before the related lists: all of them when they fit; else as many as fit from the
+ * start beside More, the pane shown taking the last place when it is not among them.
  */
 export function standing<T extends { key: string; on: boolean; related?: unknown }>(entries: T[], widths: Record<string, number>, room: number): T[] {
-  const gap = 4, spacer = 8 + gap;
+  const gap = widths.gap ?? 0, spacer = (widths.spacer ?? 0) + gap;
   // A related list stands after a gap from the panes: the first of them standing has it.
   const width = (list: T[]) => list.reduce((sum, entry, at) => sum + (widths[entry.key] ?? 0) + (at ? gap : 0)
     + (at > 0 && entry.related && list.findIndex(each => each.related) === at ? spacer : 0), 0);
-  if (!Object.keys(widths).length || width(entries) <= room) return entries;
+  if (!entries.some(entry => entry.key in widths) || width(entries) <= room) return entries;
   const more = (widths.more ?? 0) + gap;
   const pinned = entries.filter(entry => entry.on && !entry.related);
   const pick = (n: number) => { const head = entries.slice(0, n); return [...head, ...pinned.filter(entry => !head.includes(entry))]; };
@@ -124,20 +126,38 @@ export function standing<T extends { key: string; on: boolean; related?: unknown
   return entries.filter(entry => chosen.has(entry));
 }
 
-/** More (⋯): the tabs the row has no room for, as a menu; pressing one does what the tab does. */
-function MoreEntries({ entries, face }: { entries: Entry[]; face: (entry: Entry) => ReactNode }) {
+/**
+ * More (⋯): the tabs the row has no room for, as a menu; pressing one does what the tab does, a related list's ticked
+ * while its panel is open. A pane chosen comes into the row and takes the focus; a related list's panel, closed, gives
+ * it back to More, where its tab is.
+ */
+function MoreEntries({ entries, face, row }: { entries: Entry[]; face: (entry: Entry) => ReactNode; row: RefObject<HTMLDivElement | null> }) {
   const { t } = useTranslation("reader");
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
+  const related = entries.flatMap(entry => entry.related ? [entry.related] : []);
+  const hold = (element: HTMLButtonElement | null) => {
+    trigger.current = element;
+    const releases = related.map(kind => panelEntry[kind](element));
+    return () => { trigger.current = null; releases.forEach(release => release()); };
+  };
+  const pick = (entry: Entry) => {
+    setOpen(false);
+    entry.press();
+    if (!entry.related) requestAnimationFrame(() => row.current?.querySelector<HTMLElement>(`[data-reader-entry="${entry.key}"]`)?.focus());
+  };
   return <>
-    <button ref={trigger} type="button" data-reader-entries-more aria-haspopup="menu" aria-expanded={open}
+    <button ref={hold} type="button" data-reader-entries-more aria-haspopup="menu" aria-expanded={open}
       aria-label={t("entries.more")} title={t("entries.more")} onClick={() => setOpen(value => !value)} className={TAB}>
       <Icon name="more" className="size-3.5" />
     </button>
     {open && <Popup open onOpenChange={setOpen} label={t("entries.more")} align="end" className="w-56 p-1" anchorRef={trigger}>
       <div role="menu" aria-label={t("entries.more")} onKeyDown={moveMenuFocus}>
-        {entries.map(entry => <button key={entry.key} type="button" role="menuitem" data-reader-entry-more={entry.key} aria-label={entry.spoken}
-          onClick={() => { setOpen(false); entry.press(); }} className={cn(menuRow(false), "gap-1.5 text-sm")}>{face(entry)}</button>)}
+        {entries.map(entry => <button key={entry.key} type="button" role={entry.related ? "menuitemcheckbox" : "menuitem"}
+          aria-checked={entry.related ? entry.on : undefined} data-reader-entry-more={entry.key} aria-label={entry.spoken}
+          onClick={() => pick(entry)} className={cn(menuRow(entry.on), "gap-1.5 text-sm")}>
+          {face(entry)}{entry.related && <span className="ms-auto"><MenuTick checked={entry.on} /></span>}
+        </button>)}
       </div>
     </Popup>}
   </>;

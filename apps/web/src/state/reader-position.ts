@@ -162,8 +162,8 @@ export function readerBack(toList = false) {
   else navigate(() => useViewStore.getState().setReaderPane("task"), { bound: true, write: "over" });
 }
 
-/** Whether Back in the header returns to the analysis list: the task its row opened, on any of its tabs. */
-export function useAnalysisListBack(task: string, behind: ReaderPlace | null) {
+/** Whether Back in the header returns to the analysis list: on the step its row opened, with nothing behind it. */
+export function useAnalysisListBack(behind: ReaderPlace | null) {
   const inList = useViewStore(state => !!state.analysis?.list);
-  return inList && (!behind || behind.task === task);
+  return inList && !behind;
 }

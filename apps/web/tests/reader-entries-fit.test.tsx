@@ -2,7 +2,7 @@ import { expect, test } from "vitest";
 import { standing } from "../src/features/reader/ReaderEntries";
 
 const tab = (key: string, on = false, related = false) => ({ key, on, ...related ? { related: key } : {} });
-const widths = { task: 60, about: 100, analysis: 60, family: 120, more: 30 };
+const widths = { task: 60, about: 100, analysis: 60, family: 120, more: 30, gap: 4, spacer: 8 };
 const keys = (list: { key: string }[]) => list.map(entry => entry.key);
 
 test("every tab stands when they fit; else those that fit from the start beside More, the shown one always among them", () => {

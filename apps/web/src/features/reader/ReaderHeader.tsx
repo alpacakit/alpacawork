@@ -19,7 +19,6 @@ import { useViewStore, type ReaderPane } from "@/state/view-store";
 import type { ReaderMode } from "./Reader";
 import { navigate, readerNow } from "@/lib/history";
 import { useSheetControl } from "./TaskSheet";
-import { cn } from "@/lib/utils";
 import { useTaskCardOn } from "@/features/coordinator/TaskCard";
 import { taskInDraft } from "@/features/coordinator/editor/draft";
 
@@ -54,7 +53,7 @@ export function ReaderHeader({ task, mode, canDock, onFollow, walking, pane, rul
   const behind = useReaderBehind();
   // A walk through the waiting questions goes on by itself: going back to the question before is not this Back.
   const analysisList = useViewStore(state => !!state.analysis?.list);
-  const backToList = useAnalysisListBack(task.id, behind);
+  const backToList = useAnalysisListBack(behind);
   const back = !!behind && !(walking && behind.task !== task.id) || backToList || pane !== "task";
   return (
     // On a phone's sheet the header moves the sheet as its grip does.
