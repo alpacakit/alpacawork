@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import icon from "../../../public/icons/icon-192-2c.png?inline";
 import { Button } from "@/components/ui/button";
@@ -125,6 +125,7 @@ export function CardPane({ place, reads: { face, tasks, usage }, waitFrom }: {
   const picks = facts ? cardPicks(choice, facts) : null;
   const [sharing] = useState(canShareFiles);
   const [copying] = useState(canCopyPictures);
+  const postHint = useId();
   // As the analysis says it: what failed, no record for these days, or a wait.
   const failed = tasks.error ?? usage.error;
   const state = svg ? null : failed ? <p className="text-soft">{failed.message}</p>
@@ -187,7 +188,7 @@ export function CardPane({ place, reads: { face, tasks, usage }, waitFrom }: {
     <div className="mt-4 flex flex-wrap items-center gap-2 narrow:[&>button]:min-h-10">
       {/* Opening the X composer leads, black on a light page and white on a dark one. Saving,
           copying and the device's own sharing stand beside it, quieter. */}
-      <Button disabled={!current} onClick={post} aria-label={t("card.postOnX")} title={t("card.postOnX")}
+      <Button disabled={!current} onClick={post} aria-describedby={postHint}
         className="min-h-10 gap-2.5 border-scrim bg-scrim px-5 text-base font-semibold text-paper hover:border-scrim hover:bg-scrim hover:text-paper active:translate-y-px dark:border-paper dark:bg-paper dark:text-scrim dark:hover:border-paper dark:hover:bg-paper dark:hover:text-scrim">
         <XMark />{t("card.post")}</Button>
       <Button variant="outline" disabled={!current} onClick={() => void save()} className="active:translate-y-px"><Icon name="download" className="size-3.5" />{t("card.save")}</Button>
@@ -195,7 +196,7 @@ export function CardPane({ place, reads: { face, tasks, usage }, waitFrom }: {
       {sharing && <Button variant="outline" disabled={!current} onClick={() => void share()} className="active:translate-y-px">{t("card.share")}</Button>}
     </div>
     {/* What posting will do with the picture, said before it is pressed. */}
-    <p className="mt-2 text-xs text-soft">{copying ? t("card.postHintCopy") : t("card.postHintSave")}</p>
+    <p id={postHint} className="mt-2 text-xs text-soft">{copying ? t("card.postHintCopy") : t("card.postHintSave")}</p>
     <div className="mt-8 grid gap-6">
       {row(t("period.label"), <Seg label={t("period.label")} value={card.length} className={fold}
         onChange={length => useViewStore.getState().showAnalysis({ ...place, card: { ...card, length } })}
