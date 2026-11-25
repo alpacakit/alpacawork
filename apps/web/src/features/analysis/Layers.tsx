@@ -101,7 +101,7 @@ function ListPane({ place, project, days }: { place: AnalysisPlace; project: str
     <p className="mt-0.5 text-xs text-soft">{[member, !list.days && span && spanLabel(span.from, span.to)].filter(Boolean).join(t("sep"))}</p>
     {rows.length ? <>
       {/* A heading that wraps (a narrow window, a long language) makes the line taller, never runs into the first row. */}
-      <div className={cn("mt-4 grid min-h-7 items-end gap-x-3 border-b border-rule pb-1.5 text-xs leading-snug text-soft", columns)}>
+      <div className={cn("mt-4 grid min-h-7 items-end gap-x-3 border-b border-rule pb-1.5 text-xs text-soft", columns)}>
         <span>{t("list.task")}</span><span />{!noDays && <span className="text-end [word-break:auto-phrase]">{t("list.day")}{!list.value && " ▼"}</span>}
         <span className="text-end whitespace-nowrap">{listColumn(list)}{list.value && " ▼"}</span>
       </div>

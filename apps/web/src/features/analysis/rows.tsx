@@ -63,7 +63,7 @@ export function Parts({ items = [], line }: { items?: PartItem[]; line?: { name:
   const value = "justify-self-end inline-flex items-baseline gap-0.5 text-end whitespace-nowrap";
   const share = "justify-self-end text-end text-xs whitespace-nowrap";
   return <div className="mt-2 text-sm">
-    <div className="grid w-full grid-cols-[minmax(0,1fr)_var(--part-value,auto)_var(--part-share,auto)] gap-x-3 gap-y-0.5">
+    <div className="grid w-full grid-cols-[minmax(0,1fr)_var(--part-value,auto)_var(--part-share,auto)] gap-x-2 gap-y-0.5">
       {items.map(item => {
         const cells = <>
           <span className={name}>{item.color && <i aria-hidden className={cn("me-2 inline-block size-2 flex-none self-center rounded-xs", item.color)} />}{item.name}</span>

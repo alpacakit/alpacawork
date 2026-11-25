@@ -55,7 +55,7 @@ export function BreakdownTable({ id, head, columns, rows, limit = 10, tone = "mu
       </colgroup>
       <thead><tr className="text-xs text-soft">
         <th className="pb-1.5 text-start align-bottom font-normal">{head}</th>
-        {columns.map((name, at) => shows(at) && <th key={name} className="px-2 pb-1.5 text-end align-bottom leading-snug font-normal hyphens-auto [overflow-wrap:break-word] [word-break:auto-phrase]">
+        {columns.map((name, at) => shows(at) && <th key={name} className="px-2 pb-1.5 text-end align-bottom font-normal hyphens-auto [overflow-wrap:break-word] [word-break:auto-phrase]">
           {one
             // The column's name chooses which column shows: the arrow says it opens a choice.
             ? <span className="relative inline-flex max-w-full items-center">
