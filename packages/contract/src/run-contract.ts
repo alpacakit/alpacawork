@@ -241,7 +241,7 @@ export const runConditionsSchema = z.object({
   v: z.literal(1), observedAt: z.iso.datetime({ offset: true }),
   version: z.string().min(1), release: z.string().nullable(), source: z.string().nullable(),
   cwd: z.object({ path: z.string(), commit: z.string().regex(/^[0-9a-f]{40,64}$/).nullable() }).strict(),
-  skills: z.array(z.object({ folder: z.string(), items: z.array(z.object({ name: z.string().min(1),
+  skills: z.array(z.object({ scope: z.enum(['personal', 'project']), folder: z.string(), items: z.array(z.object({ name: z.string().min(1),
     digest: z.string().regex(/^[0-9a-f]{16}$/).nullable() }).strict()) }).strict()),
 }).strict();
 export type RunConditions = z.infer<typeof runConditionsSchema>;

@@ -11,7 +11,7 @@ import { appendFileSync, closeSync, constants, fstatSync, openSync, readSync } f
 import { createHash } from 'node:crypto';
 import { RUN_FILES, RUN_STEP_TEXT_LIMIT, RUN_TOOL_ID_LIMIT, clipRunText, stepJournalEntrySchema,
   type StepFingerprint, type StepJournalEntry, type StepOutput, type StepTimeSource } from '@alpacawork/contract/run';
-import { optionalRunFile, readWholeRunFile } from './files.js';
+import { hasCode } from '@alpacawork/core';
 import type { ActivityEvent } from './activity-events.js';
 import { stepInputDocument } from '../agents/adapters/activity.js';
 
@@ -28,14 +28,14 @@ const replacedIds = (text: string) => text
 /**
  * What a step ran, with what changes from one run of the same thing to the next replaced, so the same command run
  * again reads as the same: absolute paths (where it ran included), UUIDs, long hex digests, task, Run and project IDs,
- * and numbers. `body` is a digest of the whole input so replaced (its numbers kept), when it has more than its first line (a heredoc's
+ * and numbers. `body` is a digest of the whole input so replaced (numbers kept below the first line), when it has more than its first line (a heredoc's
  * text, a script), so two runs of the same first line with different bodies stay apart.
  */
 export function stepFingerprint(input: string): StepFingerprint | null {
   const text = input.replace(/\r\n?/g, '\n').trim();
   if (!text) return null;
   const newline = text.indexOf('\n'), first = newline === -1 ? text : text.slice(0, newline);
-  return { line: clipRunText(replaced(first), RUN_STEP_TEXT_LIMIT), body: newline === -1 ? null : short(replaced(text, true)) };
+  return { line: clipRunText(replaced(first), RUN_STEP_TEXT_LIMIT), body: newline === -1 ? null : short(`${replaced(first)}\n${replaced(text.slice(newline + 1), true)}`) };
 }
 
 /** What came back, as a size and a digest; `whole` false when the agent cut it, so the digest covers its start only. */
@@ -44,20 +44,35 @@ function stepOutput(output: { text: string; omitted: number } | undefined): Step
   return { chars: output.text.length + output.omitted, digest: short(output.text), whole: output.omitted === 0 };
 }
 
-/**
- * The journal's entries as written, skipping a line that cannot be read (a torn last line after a crash; the next
- * append starts on a line of its own). Read whole: about 200 bytes a step event.
- */
+/** One journal line as written, or null for a line that cannot be read (a torn line after a crash). */
+const entryOf = (line: string): StepJournalEntry | null => {
+  if (!line) return null;
+  try { const parsed = stepJournalEntrySchema.safeParse(JSON.parse(line)); return parsed.success ? parsed.data : null; }
+  catch { return null; }
+};
+
+/** The journal's entries as written, skipping lines that cannot be read (the next append starts on a line of its own). */
 export function readStepJournal(folder: string): StepJournalEntry[] {
-  const bytes = optionalRunFile(() => readWholeRunFile(folder, RUN_FILES.steps));
-  if (!bytes) return [];
-  return bytes.toString('utf8').split('\n').flatMap(line => {
-    if (!line) return [];
-    try {
-      const parsed = stepJournalEntrySchema.safeParse(JSON.parse(line));
-      return parsed.success ? [parsed.data] : [];
-    } catch { return []; }
-  });
+  return readStepJournalFrom(folder, 0).entries;
+}
+
+/**
+ * The whole lines the journal gained from byte `offset` on, and where the next read starts. The journal only grows; one
+ * shorter than `offset` was replaced and is read from its start (`restarted`).
+ */
+export function readStepJournalFrom(folder: string, offset: number): { entries: StepJournalEntry[]; offset: number; restarted: boolean } {
+  let fd: number;
+  try { fd = openSync(`${folder}/${RUN_FILES.steps}`, constants.O_RDONLY); }
+  catch (error) { if (hasCode(error, 'ENOENT')) return { entries: [], offset: 0, restarted: offset > 0 }; throw error; }
+  try {
+    const size = fstatSync(fd).size, restarted = size < offset, from = restarted ? 0 : offset;
+    const bytes = Buffer.alloc(size - from);
+    let read = 0;
+    while (read < bytes.length) { const count = readSync(fd, bytes, read, bytes.length - read, from + read); if (!count) break; read += count; }
+    const end = bytes.subarray(0, read).lastIndexOf(10) + 1;
+    const entries = bytes.subarray(0, end).toString('utf8').split('\n').flatMap(line => { const entry = entryOf(line); return entry ? [entry] : []; });
+    return { entries, offset: from + end, restarted };
+  } finally { closeSync(fd); }
 }
 
 const key = (event: StepJournalEntry['event'], line: number, id: string) => `${event}\0${line}\0${id}`;

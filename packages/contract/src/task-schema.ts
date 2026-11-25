@@ -414,35 +414,45 @@ export const taskValuesViewSchema = z.object({ values: z.record(fieldIdSchema, z
   from: z.string().nullable(), context: z.string() }).strict();
 
 /**
- * The one reading of an answer's words against the question as it was asked (its `decide` items). An item is named by
- * a `<n>-<word>` label at the start of a line (after a task mark `T3（…）` or `T3` there, as the screen writes it) or right
- * after another label; its word is the first word of one of its choices, `other` or `stop`, with no closing
- * punctuation. A label naming no choice, and an item no label names, are `unread`; `words` says whether words follow an
- * item's label before the next label or line. Labels inside the words (a quote, a mention) are words.
+ * The one reading of an answer's words against the question as it was asked (its `decide` items). Items are named by
+ * `<n>-<word>` labels that lead a line (after a task mark `T3（…）` or `T3` there, as the screen writes it), one after
+ * another; the first words after them end the labels of that line. Its word is the first word of one of its choices
+ * (as written, or without its closing punctuation), `other` or `stop`. A label naming no choice, and an item no label
+ * names, are `unread`; an item's `words` says whether words follow its labels' line, or the lines after it until the
+ * next labels. Labels inside the words (a quote, a mention) are words.
  */
 export function readAnswerParts(decide: readonly FieldItem[], text: string): { items: AnswerPart[]; words: boolean } {
   const labels = new Map<number, { word: string; words: boolean }>();
-  let rest = '';
+  let last: { word: string; words: boolean } | null = null, rest = false;
   for (const line of text.split(/\r?\n/)) {
     let at = line.replace(/^\s*(?:T\d+(?:（[^\n]*?）)?\s+)?/, '');
-    for (let found = /^([1-9]\d{0,2})-(\S+?)[。．.、,，!！?？)）]*(?=\s|$)/.exec(at); found; found = /^([1-9]\d{0,2})-(\S+?)[。．.、,，!！?？)）]*(?=\s|$)/.exec(at)) {
+    const named: { word: string; words: boolean }[] = [];
+    for (let found = /^([1-9]\d{0,2})-(\S+)(?:\s+|$)/.exec(at); found; found = /^([1-9]\d{0,2})-(\S+)(?:\s+|$)/.exec(at)) {
       at = at.slice(found[0].length);
-      const next = /\s[1-9]\d{0,2}-\S/.exec(at), said = next ? at.slice(0, next.index) : at;
-      if (!labels.has(Number(found[1]))) labels.set(Number(found[1]), { word: found[2]!, words: /\S/.test(said) });
-      rest += ' ' + said; at = next ? at.slice(next.index).trimStart() : '';
+      const label = labels.get(Number(found[1])) ?? { word: found[2]!, words: false };
+      labels.set(Number(found[1]), label); named.push(label);
     }
-    rest += ' ' + at;
+    const said = /\S/.test(at);
+    if (named.length) last = named.at(-1)!;
+    if (said && last) last.words = true;
+    if (said) rest = true;
   }
+  const word = (choices: FieldItem[], said: string) => {
+    const index = choices.findIndex(each => choiceWord(String(each.decide_choice ?? '')) === said);
+    if (index !== -1) return index;
+    const bare = said.replace(/[。．.、,，!！?？)）]+$/, '');
+    return bare === said ? -1 : choices.findIndex(each => choiceWord(String(each.decide_choice ?? '')) === bare);
+  };
   const items = decide.map((item, index): AnswerPart => {
     const n = index + 1, label = labels.get(n);
     if (label === undefined) return { n, kind: 'unread', words: false };
-    const word = label.word, words = label.words;
-    if (word.toLowerCase() === OTHER_WORD) return { n, kind: 'other', words };
-    if (word.toLowerCase() === STOP_WORD) return { n, kind: 'stop', words };
+    const said = label.word.replace(/[。．.、,，!！?？)）]+$/, '').toLowerCase(), words = label.words;
+    if (said === OTHER_WORD) return { n, kind: 'other', words };
+    if (said === STOP_WORD) return { n, kind: 'stop', words };
     const choices = Array.isArray(item.decide_choices) ? item.decide_choices as FieldItem[] : [];
-    const choice = choices.findIndex(each => choiceWord(String(each.decide_choice ?? '')) === word);
+    const choice = word(choices, label.word);
     return choice === -1 ? { n, kind: 'unread', words }
       : { n, kind: 'choice', choice: choice + 1, recommended: !!String(choices[choice]!.decide_choice_recommended ?? '').trim(), words };
   });
-  return { items, words: /\S/.test(rest) };
+  return { items, words: rest };
 }

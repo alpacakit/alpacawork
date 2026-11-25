@@ -158,4 +158,9 @@ test('an answer is read item by item against the question as asked: labels lead 
   // A label quoted inside the words is words, and a word that names no choice is unread.
   assert.deepEqual(readAnswerParts(decide, 'The 1-Later in the log was a quote; hold it').items[0], { n: 1, kind: 'unread', words: false });
   assert.deepEqual(readAnswerParts(decide, '1-Soon').items[0], { n: 1, kind: 'unread', words: false });
+  // Words after a label end the labels: a quoted label there is words, and a next line goes on with the same item.
+  assert.deepEqual(readAnswerParts(decide, '1-other the 2-Go in the log was a quote\nso hold it').items.slice(0, 2),
+    [{ n: 1, kind: 'other', words: true }, { n: 2, kind: 'unread', words: false }]);
+  assert.deepEqual(readAnswerParts([{ decide_question: 'Go', decide_choices: [{ decide_choice: '続行！' }] }], '1-続行！').items[0],
+    { n: 1, kind: 'choice', choice: 1, recommended: false, words: false });
 });

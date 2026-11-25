@@ -21,8 +21,8 @@ test('a Run keeps the skills it could read and alpacawork\'s version once; an up
   assert.deepEqual(readConditions(run), first);
   assert.deepEqual(first.skills[0]!.items.map(item => item.name), ['alpacawork', 'askmeclearly']);
   assert.equal(first.cwd.commit, null);
-  assert.deepEqual(conditionChanges(first, { ...observe(), version: '0.1.8' }).map(({ kind, name }) => [kind, name?.split('/').at(-1) ?? null]),
-    [['release', null], ['skill', 'alpacawork'], ['skill', 'dontspaghettimycode']]);
+  assert.deepEqual(conditionChanges(first, { ...observe(), version: '0.1.8' }).map(({ kind, name }) => [kind, name]),
+    [['release', null], ['skill', 'personal/alpacawork'], ['skill', 'personal/dontspaghettimycode']]);
   const launch = (model: string) => ({ launch: { adapter: 'claude', argv: ['claude'], path: '/bin/claude', values: { model, effort: 'medium' }, env: [] } });
   assert.deepEqual(launchChanges(launch('opus'), launch('fable')), [{ kind: 'model', name: null, before: 'opus', after: 'fable' }]);
 });

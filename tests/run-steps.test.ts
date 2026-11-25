@@ -554,6 +554,7 @@ test('step fingerprint: the same command with other paths, IDs and numbers reads
   assert.deepEqual(one, stepFingerprint('alpacawork task get --task T42 --runs 10 > /home/a/out.json'));
   assert.deepEqual(stepFingerprint('git show 3485f2a36:README.md'), { line: 'git show <hash>:README.md', body: null });
   assert.notDeepEqual(stepFingerprint('python3 - <<EOF\nprint(1)\nEOF'), stepFingerprint('python3 - <<EOF\nprint(2)\nEOF'));
+  assert.deepEqual(stepFingerprint('serve --port 4000 <<EOF\nhello\nEOF'), stepFingerprint('serve --port 5000 <<EOF\nhello\nEOF'));
 });
 
 test('a step time written after the index read its line comes with the next since, and a torn journal line loses nothing after it', async t => {

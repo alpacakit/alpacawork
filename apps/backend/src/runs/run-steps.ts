@@ -23,7 +23,7 @@ import type { ActivityEvent } from './activity-events.js';
 import { runStepKind } from './recent-work.js';
 import { STEP_LINE_LIMIT } from './readers/jsonl.js';
 import { callOmitted, hiddenFiles, joinStepCalls, stepInputDocument } from '../agents/adapters/activity.js';
-import { readStepJournal } from './step-journal.js';
+import { readStepJournalFrom } from './step-journal.js';
 import { RunStore } from '@alpacawork/runs';
 import { isRunMoving, runFolder } from '@alpacawork/contract/run';
 import { runtimeAdapter } from '../agents/registry.js';
@@ -64,6 +64,8 @@ export class RunStepIndex {
   private readonly inside = new Map<string, number>();
   /** The step journal's times, by the line and ID that name each step, as last read. */
   private times = new Map<string, Pick<RunStepEntry, Timed>>();
+  /** Where the next read of the step journal starts. */
+  private journalOffset = 0;
   private offset = 0;
   /** The number of the output line that starts at `offset`. */
   private lines = 0;
@@ -170,22 +172,23 @@ export class RunStepIndex {
   }
 
   /**
-   * The step journal's times, by the line and ID that name each step. The manager may write a time after this index
-   * read the step's line: a step whose times changed takes the next version, as any other change of it does.
+   * The step journal's times, by the line and ID that name each step, read on from where the last read stopped. The
+   * manager may write a time after this index read the step's line: a step whose times changed takes the next version,
+   * as any other change of it does.
    */
   private readTimes(): void {
-    const times = new Map<string, Pick<RunStepEntry, Timed>>();
-    for (const entry of readStepJournal(this.folder)) {
-      const name = `${entry.line}\0${entry.id}`, held = times.get(name) ?? { ...untimed };
+    const read = readStepJournalFrom(this.folder, this.journalOffset);
+    if (read.restarted) this.times = new Map();
+    this.journalOffset = read.offset;
+    const changed = new Set<string>();
+    for (const entry of read.entries) {
+      const name = `${entry.line}\0${entry.id}`, held = { ...this.times.get(name) ?? untimed };
       if (entry.event === 'start') Object.assign(held, { startedAt: entry.at, startSource: entry.source, fingerprint: entry.fingerprint });
       else Object.assign(held, { endedAt: entry.at, endSource: entry.source, output: entry.output });
-      times.set(name, held);
+      this.times.set(name, held); changed.add(name);
     }
-    for (const step of this.steps) {
-      const name = `${step.line}\0${step.id}`;
-      if (JSON.stringify(times.get(name)) !== JSON.stringify(this.times.get(name))) step.changed = ++this.version;
-    }
-    this.times = times;
+    if (changed.size || read.restarted) for (const step of this.steps)
+      if (read.restarted || changed.has(`${step.line}\0${step.id}`)) step.changed = ++this.version;
   }
 
   get total(): number { return this.steps.length; }

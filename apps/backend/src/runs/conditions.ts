@@ -46,12 +46,16 @@ function commitAt(cwd: string): string | null {
 
 /** What an agent of `adapter` working in `cwd` runs under now. */
 export function observeConditions(input: { adapter: string; cwd: string; version: string; release: string | null; home?: string }): RunConditions {
-  const folders = [personalSkillsFolder(input.adapter, input.home ?? homedir()), join(input.cwd, '.claude/skills'), join(input.cwd, '.agents/skills')];
-  const skills = [...new Set(folders)].flatMap(folder => {
+  const personal = personalSkillsFolder(input.adapter, input.home ?? homedir());
+  const folders = [[personal, 'personal'], [join(input.cwd, '.claude/skills'), 'project'], [join(input.cwd, '.agents/skills'), 'project']] as const;
+  const seen = new Set<string>();
+  const skills = folders.flatMap(([folder, scope]) => {
+    if (seen.has(folder)) return [];
+    seen.add(folder);
     let names: string[];
     try { names = readdirSync(folder).filter(name => !name.startsWith('.') && statSync(join(folder, name)).isDirectory()).sort(); }
     catch { return []; }
-    return [{ folder, items: names.map(name => ({ name, digest: skillDigest(join(folder, name)) })) }];
+    return [{ scope, folder, items: names.map(name => ({ name, digest: skillDigest(join(folder, name)) })) }];
   });
   let source: string | null = null;
   try { source = input.release ? String(readPackageVersion(input.release).source ?? '') || null : null; } catch { source = null; }
@@ -76,15 +80,17 @@ export function readConditions(runFolder: string): RunConditions | null {
   catch { return null; }
 }
 
-/** How far back the Run before one is looked for: Runs kept no conditions before they were recorded. */
-const EARLIER_LOOKBACK = 500;
+/** How far back by number the Run started before one is looked for (Runs start in another order than they are numbered). */
+const EARLIER_LOOKBACK = 200;
 
 /** What changed in alpacawork and the skills from one Run's conditions to a later one's. */
 export function conditionChanges(before: RunConditions, after: RunConditions): RunConditionChange[] {
   const changes: RunConditionChange[] = [];
   const release = (c: RunConditions) => `${c.version}${c.source ? ` (${c.source})` : ''}`;
   if (release(before) !== release(after)) changes.push({ kind: 'release', name: null, before: release(before), after: release(after) });
-  const named = (c: RunConditions) => new Map(c.skills.flatMap(({ folder, items }) => items.map(item => [`${folder}/${item.name}`, item.digest] as const)));
+  // A skill is the same skill wherever its work folder is: the agent's own (personal) or the work folder's (project).
+  const named = (c: RunConditions) => new Map(c.skills.flatMap(({ scope, items }) =>
+    items.map(item => [`${scope}/${item.name}`, item.digest] as const)));
   const earlier = named(before), later = named(after);
   for (const name of [...new Set([...earlier.keys(), ...later.keys()])].sort()) {
     const was = earlier.get(name) ?? null, now = later.get(name) ?? null;
@@ -118,9 +124,15 @@ export function readConditionsView(root: string, run: RunId, readable: (run: Run
   if (!record) throw new Problem(PROBLEM_CODE.notFound, 'Run does not exist', { run }, { reason: { kind: 'run_does_not_exist' } });
   const conditions = readConditions(runFolder(root, run));
   let sinceEarlier: RunConditionsView['sinceEarlier'] = null;
-  if (conditions) for (let n = runNumber(run) - 1; n > 0 && n >= runNumber(run) - EARLIER_LOOKBACK; n--) {
-    const earlier = readConditions(runFolder(root, `R${n}` as RunId));
-    if (earlier && readable(`R${n}` as RunId)) { sinceEarlier = { run: `R${n}` as RunId, changes: conditionChanges(earlier, conditions) }; break; }
+  // The Run that started last before this one (by when its conditions were seen), among those this reader may read.
+  if (conditions) {
+    let found: { run: RunId; conditions: RunConditions } | null = null;
+    for (let n = runNumber(run) + EARLIER_LOOKBACK; n > 0 && n >= runNumber(run) - EARLIER_LOOKBACK; n--) {
+      const id = `R${n}` as RunId, earlier = n === runNumber(run) ? null : readConditions(runFolder(root, id));
+      if (earlier && earlier.observedAt < conditions.observedAt && (!found || earlier.observedAt > found.conditions.observedAt) && readable(id))
+        found = { run: id, conditions: earlier };
+    }
+    if (found) sinceEarlier = { run: found.run, changes: conditionChanges(found.conditions, conditions) };
   }
   const previous = placementRuns.filter(each => runNumber(each.id) < runNumber(run)).at(-1);
   const chosen = (key: string) => { const value = (record!.launch.values as Record<string, unknown>)[key]; return typeof value === 'string' ? value : null; };
