@@ -38,8 +38,8 @@ function FeedLine({ row }: { row: number }) {
 }
 
 /**
- * The analysis as it stands: its four numbers across the top (two by two on a phone), the step of time over the right,
- * then each row's name and number on the left and its chart on the right (under them on a phone), the charts as tall
+ * The analysis as it stands: its four numbers across the top (two by two on a phone), then under a rule how it is
+ * counted and the step of time, then each row's name and number on the left and its chart on the right (under them on a phone), the charts as tall
  * as the look draws them (`charts`: their heights on a computer and on a phone), and the calendar of finished tasks
  * under the first row's numbers where the look has one (`calendar`).
  */
@@ -52,8 +52,8 @@ function AnalysisFace({ charts, calendar = false }: { charts: readonly (readonly
         <Bar className="mt-1 h-2.5 w-36 narrow:w-28" /><Bar className="mt-2 h-2.5 w-24" />
       </div>)}
     </div>
-    <div className="mt-8 mb-2 flex h-7 items-center justify-end"><Bar className="h-4 w-44" /></div>
-    {charts.map(([wide, phone], row) => <div key={row} className="grid grid-cols-12 gap-x-6 border-t border-rule py-4 narrow:block narrow:py-3.5">
+    <div className="mt-8 flex h-7 items-center justify-between border-t border-rule pt-4 box-content"><Bar className="h-3.5 w-16" /><Bar className="h-4 w-44" /></div>
+    {charts.map(([wide, phone], row) => <div key={row} className={cn("grid grid-cols-12 gap-x-6 border-t border-rule py-4 narrow:block narrow:py-3.5", row === 0 && "border-t-0")}>
       <div className="col-span-3 min-w-0 space-y-2.5">
         <Bar className="h-3 w-24" /><Bar className="h-5 w-20" />
         {row < 2 && [0, 1, 2].map(line => <Bar key={line} className={cn("h-3.5", length(line + row))} />)}
