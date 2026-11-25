@@ -5,16 +5,20 @@ import type { RunStep, RunStepDetail, RunStepEntry } from '@alpacawork/contract/
 import { StepList, WorkLine, useRunSteps } from '../src/features/people/RunSteps';
 import { AnswerSteps } from '../src/features/coordinator/parts';
 
-// The server's side: one Run's steps and what each ran, read as the screen asks for them.
+// The server's side: one Run's steps, each with the version it last changed at, and what each ran.
 const server = vi.hoisted(() => ({
-  steps: [] as RunStepEntry[], details: new Map<number, RunStepDetail>(), refuse: false, asked: [] as string[],
+  steps: [] as (RunStepEntry & { changed: number })[], version: 0, details: new Map<number, RunStepDetail>(), refuse: false, asked: [] as string[],
+  /** Adds or changes a step, as the server's index does: it takes the next version. */
+  put(step: RunStepEntry) { server.steps[step.n] = { ...step, changed: ++server.version }; },
 }));
 vi.mock('../src/data/run-steps', () => ({
-  readRunSteps: async (run: string, range: { from?: number; limit: number }) => {
-    server.asked.push(`${run} ${range.from ?? 'latest'} ${range.limit}`);
+  readRunSteps: async (run: string, range: { from?: number; limit: number } | { since: number }) => {
+    server.asked.push(`${run} ${'since' in range ? `since ${range.since}` : `${range.from ?? 'latest'} ${range.limit}`}`);
     if (server.refuse) throw new Error('refused');
-    const total = server.steps.length, from = range.from ?? Math.max(0, total - range.limit);
-    return { from, total, steps: server.steps.slice(from, from + range.limit) };
+    const total = server.steps.length, plain = ({ changed: _changed, ...step }: RunStepEntry & { changed: number }) => step;
+    if ('since' in range) return { total, version: server.version, complete: true, steps: server.steps.filter(step => step.changed > range.since).map(plain) };
+    const from = range.from ?? Math.max(0, total - range.limit);
+    return { total, version: server.version, complete: true, steps: server.steps.slice(from, from + range.limit).map(plain) };
   },
   readRunStep: async (run: string, n: number) => {
     server.asked.push(`${run} step ${n}`);
@@ -23,7 +27,7 @@ vi.mock('../src/data/run-steps', () => ({
 }));
 
 beforeAll(async () => { await startI18n(); await i18n.changeLanguage('en'); });
-beforeEach(() => { server.steps = []; server.details = new Map(); server.refuse = false; server.asked = []; });
+beforeEach(() => { server.steps = []; server.version = 0; server.details = new Map(); server.refuse = false; server.asked = []; });
 afterEach(cleanup);
 
 const entry = (n: number, text: string, rest: Partial<RunStepEntry> = {}): RunStepEntry => ({ n, id: `s${n}`, tool: 'Bash', kind: 'command',
@@ -43,7 +47,7 @@ test('the work line says the tool and what it runs on one line, or how many step
 });
 
 test('an answer\'s steps are read only once opened, the latest first, and every earlier one a page at a time', async () => {
-  server.steps = Array.from({ length: 300 }, (_, n) => entry(n, `echo ${n}`));
+  for (let n = 0; n < 300; n++) server.put(entry(n, `echo ${n}`));
   render(<AnswerSteps run="R7" />);
   expect(server.asked).toEqual([]);
   fireEvent.click(screen.getByRole('button', { name: 'Steps behind this answer' }));
@@ -62,7 +66,7 @@ test('an answer\'s steps are read only once opened, the latest first, and every 
 });
 
 test('a step opens to all it ran and got back, read then, a failed one marked and what was left out said', async () => {
-  server.steps = [entry(0, 'pnpm build', { more: 1, state: 'failed' })];
+  server.put(entry(0, 'pnpm build', { more: 1, state: 'failed' }));
   server.details.set(0, { input: { text: 'pnpm build\n  && pnpm test', omitted: 0 }, output: { text: 'FAIL amount.test.ts\n  expected 2', omitted: 1200 } });
   render(<AnswerSteps run="R7" />);
   fireEvent.click(screen.getByRole('button', { name: 'Steps behind this answer' }));
@@ -76,17 +80,37 @@ test('a step opens to all it ran and got back, read then, a failed one marked an
   expect(document.querySelector('[data-run-step-output]')?.textContent).toMatch(/1,?200 more characters left out as too long$/);
 });
 
-test('when any step the screen was told of changes, the list is read again: an earlier step failing while a later one runs', async () => {
-  server.steps = [entry(0, 'pnpm test', { state: 'running' }), entry(1, 'pnpm lint', { state: 'running' })];
-  function Listed({ version }: { version: string }) {
-    return <StepList steps={useRunSteps('R7', true, version)} />;
+test('a change of any step reads only what changed, keeping how far the list was gone back and the step opened', async () => {
+  for (let n = 0; n < 40; n++) server.put(entry(n, `echo ${n}`, { state: n >= 30 ? 'running' : 'done' }));
+  function Listed({ signal }: { signal: number }) {
+    return <StepList steps={useRunSteps('R7', true, signal)} />;
   }
-  const { rerender } = render(<Listed version="s0:running s1:running" />);
-  await waitFor(() => expect(document.querySelectorAll('[data-run-step=running]')).toHaveLength(2));
-  server.steps = [entry(0, 'pnpm test', { state: 'failed' }), entry(1, 'pnpm lint', { state: 'running' })];
-  rerender(<Listed version="s0:failed s1:running" />);
-  await waitFor(() => expect(document.querySelector('[data-run-step=failed]')?.textContent).toContain('pnpm test'));
-  expect(document.querySelectorAll('[data-run-step=running]')).toHaveLength(1);
+  const { rerender } = render(<Listed signal={1} />);
+  await waitFor(() => expect(lines()).toHaveLength(12));
+  fireEvent.click(screen.getByText('Show 24 earlier (28 left)'));
+  await waitFor(() => expect(lines()).toHaveLength(36));
+  fireEvent.click(screen.getByRole('button', { name: /echo 10/ }));
+  await waitFor(() => expect(document.querySelector('[data-run-step-input]')?.textContent).toBe('echo 10'));
+  // The first of the steps going at once fails and another starts; the screen is told something changed.
+  server.put(entry(30, 'echo 30', { state: 'failed' }));
+  server.put(entry(40, 'echo 40', { state: 'running' }));
+  server.asked = [];
+  rerender(<Listed signal={2} />);
+  await waitFor(() => expect(lines()).toHaveLength(37));
+  expect(server.asked).toEqual(['R7 since 40']);
+  expect(lines()[0]).toContain('echo 4');
+  expect(document.querySelector('[data-run-step=failed]')?.textContent).toContain('echo 30');
+  expect(document.querySelector('[data-run-step-input]')?.textContent).toBe('echo 10');
+});
+
+test('a step whose outcome could not be read is not shown done, and opened says why', async () => {
+  server.put(entry(0, 'pnpm test', { state: 'unknown' }));
+  render(<AnswerSteps run="R7" />);
+  fireEvent.click(screen.getByRole('button', { name: 'Steps behind this answer' }));
+  fireEvent.click(await screen.findByRole('button', { name: /pnpm test/ }));
+  expect(screen.getByText('Outcome unknown')).toBeTruthy();
+  expect(screen.queryByText('Done')).toBeNull();
+  expect(await screen.findByText(/whether this step went well is not known/)).toBeTruthy();
 });
 
 test('steps that cannot be read say so', async () => {

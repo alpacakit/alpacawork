@@ -127,8 +127,10 @@
       "state": {
         "done": "Hecho",
         "failed": "Falló",
-        "running": "En curso"
+        "running": "En curso",
+        "unknown": "Resultado desconocido"
       },
+      "unknown": "Parte del registro no se pudo leer, así que no se sabe si este paso salió bien",
       "unreadable": "No se pudieron leer los pasos",
       "unreadableOne": "No se pudo leer lo que ejecutó este paso"
     },

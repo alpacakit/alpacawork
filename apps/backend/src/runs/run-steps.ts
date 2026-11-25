@@ -6,6 +6,12 @@
  * file the lines that started and ended it are. A list is a range of that index; what one step ran and got back is
  * read again from its own lines when it is opened. Output only grows, so a later read goes on from where the last one
  * stopped. Nothing but the index is held.
+ *
+ * Every change to a step (it starts, ends, or is settled) takes the next number of the index's version, so a list
+ * already shown asks only for what changed after the version it holds, wherever in the Run those steps are.
+ *
+ * A line that cannot be read (not JSON, or too long to read) may hold the end of any step running when it came: such a
+ * step ends `unknown` unless a later line says how it ended.
  */
 import { open, type FileHandle } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -21,8 +27,10 @@ import { runStepKind } from './recent-work.js';
  */
 export const RUN_STEPS_LINE_LIMIT = 64 * 1024 * 1024;
 const CHUNK = 1024 * 1024;
-type Settled = Exclude<RunStepEntry['state'], 'running'>;
-type Step = Omit<RunStepEntry, 'n'> & { start: number; end: number | null };
+type Settled = 'done' | 'failed';
+type Step = Omit<RunStepEntry, 'n'> & { start: number; end: number | null;
+  /** The index's version when it last changed. */ changed: number;
+  /** A line that could not be read came while it ran. */ unsure: boolean };
 
 const name = (value: unknown) => typeof value === 'string' ? clipRunText(value, RUN_TOOL_NAME_LIMIT) || null : null;
 const parse = (line: Buffer): unknown => {
@@ -36,6 +44,9 @@ export class RunStepIndex {
   private readonly byId = new Map<string, number>();
   private offset = 0;
   private file: string | null = null;
+  private version = 0;
+  /** How the Run ended, once it has: what its output left running is settled so. */
+  private ended: Settled | null = null;
 
   constructor(private readonly folder: string, private readonly adapter: AgentAdapter) {}
 
@@ -50,20 +61,29 @@ export class RunStepIndex {
       if (!toolName) return;
       const tool = name(event.stepTool) ?? toolName;
       step = { id, tool, kind: runStepKind(tool, toolName, event.command ?? null), ...(event.detail ?? { text: '', more: 0 }),
-        about: event.about ?? null, state: 'running', start: at, end: null };
+        about: event.about ?? null, state: 'running', start: at, end: null, changed: 0, unsure: false };
       this.byId.set(id, this.steps.push(step) - 1);
     } else if (!step.text && event.detail?.text) Object.assign(step, event.detail);
-    if (kind === 'tool_end') { step.state = event.outcome?.failed ? 'failed' : 'done'; step.end = at; }
+    if (kind === 'tool_end') { step.state = event.outcome?.failed ? 'failed' : 'done'; step.end = at; step.unsure = false; }
+    step.changed = ++this.version;
   }
 
-  /** What is still running when the agent's turn ended ended with it. */
+  /** What is still running when the agent's turn ended ended with it, or ended unknown when its end may be unread. */
   private settle(state: Settled): void {
-    for (const step of this.steps) if (step.state === 'running') step.state = state;
+    for (const step of this.steps) if (step.state === 'running') {
+      step.state = step.unsure ? 'unknown' : state;
+      step.changed = ++this.version;
+    }
+  }
+
+  /** A line that could not be read: any step running now may have ended in it. */
+  private unreadable(): void {
+    for (const step of this.steps) if (step.state === 'running') step.unsure = true;
   }
 
   private accept(line: Buffer, at: number): void {
     const value = parse(line);
-    if (value === undefined) return;
+    if (value === undefined) { this.unreadable(); return; }
     for (const event of this.adapter.activity(value, new Date().toISOString())) this.observe(event, at);
   }
 
@@ -75,6 +95,7 @@ export class RunStepIndex {
     try {
       const stat = await handle.stat(), file = `${stat.dev}:${stat.ino}`;
       if (file !== this.file || stat.size < this.offset) {
+        // Read again from the start, its versions going on, so a list holding the old ones takes every step again.
         this.steps.length = 0; this.byId.clear(); this.offset = 0; this.file = file;
       }
       const chunk = Buffer.alloc(CHUNK);
@@ -87,6 +108,7 @@ export class RunStepIndex {
         for (let end = bytes.indexOf(10); end !== -1; end = bytes.indexOf(10, from)) {
           const part = bytes.subarray(from, end);
           if (!dropping && pendingLength + part.length <= RUN_STEPS_LINE_LIMIT) this.accept(Buffer.concat([...pending, part]), lineStart);
+          else this.unreadable();
           pending = []; pendingLength = 0; dropping = false;
           lineStart = position + end + 1; from = end + 1;
         }
@@ -98,20 +120,37 @@ export class RunStepIndex {
       // An unfinished last line is read again next time, once it is whole.
       this.offset = lineStart;
     } finally { await handle.close(); }
+    if (this.ended) this.settle(this.ended);
+  }
+
+  /** The Run has ended so: what its output left running ended with it. */
+  end(state: Settled): void {
+    this.ended = state;
+    this.settle(state);
   }
 
   get total(): number { return this.steps.length; }
 
-  /**
-   * Steps `from` on, at most `limit` (the latest `limit` when `from` is not given). `ended`: how the Run ended, for
-   * steps its output left running; null while it runs.
-   */
-  page(from: number | undefined, limit: number, ended: Settled | null): RunStepsPage {
+  private entry = (step: Step, n: number): RunStepEntry => {
+    const { start: _start, end: _end, changed: _changed, unsure: _unsure, ...rest } = step;
+    return { n, ...rest };
+  };
+
+  /** Steps `from` on, at most `limit` (the latest `limit` when `from` is not given). */
+  range(from: number | undefined, limit: number): RunStepsPage {
     const count = Math.max(1, Math.min(limit, RUN_STEPS_PAGE_LIMIT)), total = this.steps.length;
     const start = Math.min(total, from ?? Math.max(0, total - count));
-    const steps = this.steps.slice(start, start + count).map(({ start: _start, end: _end, state, ...step }, at) =>
-      ({ n: start + at, ...step, state: state === 'running' && ended ? ended : state }));
-    return { steps, from: start, total };
+    const steps = this.steps.slice(start, start + count).map((step, at) => this.entry(step, start + at));
+    return { steps, total, version: this.version, complete: true };
+  }
+
+  /** The steps that changed after version `since`, the earliest changes first, at most a page of them. */
+  since(since: number): RunStepsPage {
+    const changed = this.steps.map((step, n) => ({ step, n })).filter(({ step }) => step.changed > since)
+      .sort((a, b) => a.step.changed - b.step.changed);
+    const page = changed.slice(0, RUN_STEPS_PAGE_LIMIT), complete = page.length === changed.length;
+    return { steps: page.sort((a, b) => a.n - b.n).map(({ step, n }) => this.entry(step, n)), total: this.steps.length,
+      version: complete ? this.version : page.at(-1)!.step.changed, complete };
   }
 
   /** What step `n` ran and got back, read again from its own lines; null when there is no such step. */

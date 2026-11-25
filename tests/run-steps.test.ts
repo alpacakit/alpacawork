@@ -4,9 +4,10 @@ import assert from 'node:assert/strict';
 import { appendFileSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { RunStepIndex } from '@alpacawork/backend/test-dist/runs/run-steps.js';
+import { RunStepIndex, RUN_STEPS_LINE_LIMIT } from '@alpacawork/backend/test-dist/runs/run-steps.js';
+import { OutputActivityReader, readRunActivity } from '@alpacawork/backend/test-dist/runs/activity.js';
 import { AGENT_RUNTIME_ADAPTERS } from '@alpacawork/backend/test-dist/agents/registry.js';
-import { RUN_STEP_FULL_TEXT_LIMIT, runStepsPageSchema, runStepDetailSchema } from '@alpacawork/contract/run';
+import { RUN_STEP_FULL_TEXT_LIMIT, fullRunText, runStepsPageSchema, runStepDetailSchema } from '@alpacawork/contract/run';
 
 function folder(t: TestContext) {
   const path = mkdtempSync(join(tmpdir(), 'run-steps-'));
@@ -32,7 +33,7 @@ test('claude: a step opens to what it ran and got back as written, an edit to it
   write(path, [bash('one', script), '{"type": "assist', claudeEnd('one', 'FAIL amount.test.ts\n  expected 2', true),
     claudeStart('two', { file_path: '/src/format.ts', old_string: 'Math.floor(x)\n', new_string: 'Math.round(x)\n' }, 'Edit')]);
   const index = await read(path);
-  const page = index.page(undefined, 12, null);
+  const page = index.range(undefined, 12);
   assert.equal(runStepsPageSchema.safeParse(page).success, true);
   assert.deepEqual(page.steps.map(({ n, tool, text, more, state }) => ({ n, tool, text, more, state })), [
     { n: 0, tool: 'Bash', text: 'pnpm build', more: 1, state: 'failed' },
@@ -41,7 +42,8 @@ test('claude: a step opens to what it ran and got back as written, an edit to it
   assert.deepEqual(await index.detail(0), { input: { text: script, omitted: 0 }, output: { text: 'FAIL amount.test.ts\n  expected 2', omitted: 0 } });
   assert.deepEqual(await index.detail(1), { input: { text: '/src/format.ts\n\nold_string:\nMath.floor(x)\n\nnew_string:\nMath.round(x)\n', omitted: 0 }, output: null });
   // Once the Run has ended, what its output left running ended with it.
-  assert.equal(index.page(undefined, 12, 'failed').steps[1]?.state, 'failed');
+  index.end('failed');
+  assert.equal(index.range(undefined, 12).steps[1]?.state, 'failed');
 });
 
 test('codex: the command inside its login shell, all of its lines, and a non-zero exit as failed', async t => {
@@ -50,7 +52,7 @@ test('codex: the command inside its login shell, all of its lines, and a non-zer
   write(path, [{ type: 'item.started', item: { id: 'c1', type: 'command_execution', command } },
     { type: 'item.completed', item: { id: 'c1', type: 'command_execution', command, aggregatedOutput: 'no such file', exitCode: 2 } }]);
   const index = await read(path, 'codex');
-  assert.equal(index.page(undefined, 12, null).steps[0]?.state, 'failed');
+  assert.equal(index.range(undefined, 12).steps[0]?.state, 'failed');
   assert.deepEqual(await index.detail(0), { input: { text: 'ls -la\necho done', omitted: 0 }, output: { text: 'no such file', omitted: 0 } });
 });
 
@@ -70,30 +72,77 @@ test('every step can be reached a page at a time, and output read again goes on 
   for (let n = 0; n < 250; n++) rows.push(bash(`s${n}`, `echo ${n}`), claudeEnd(`s${n}`, 'ok'));
   write(path, rows);
   const index = await read(path);
-  const latest = index.page(undefined, 12, null);
-  assert.deepEqual([latest.from, latest.total, latest.steps.length, latest.steps[0]?.text], [238, 250, 12, 'echo 238']);
-  const first = index.page(0, 24, null);
-  assert.deepEqual([first.from, first.steps.length, first.steps[0]?.text], [0, 24, 'echo 0']);
+  const latest = index.range(undefined, 12);
+  assert.deepEqual([latest.steps[0]?.n, latest.total, latest.steps.length, latest.steps[0]?.text], [238, 250, 12, 'echo 238']);
+  const first = index.range(0, 24);
+  assert.deepEqual([first.steps[0]?.n, first.steps.length, first.steps[0]?.text], [0, 24, 'echo 0']);
   // What the output gains later is added; what was read stays where it is.
   write(path, [bash('late', 'echo late')]);
   appendFileSync(join(path, 'stdout.log'), '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"cut"');
   await index.update();
-  assert.deepEqual(index.page(250, 12, null).steps.map(step => step.text), ['echo late']);
+  assert.deepEqual(index.range(250, 12).steps.map(step => step.text), ['echo late']);
   appendFileSync(join(path, 'stdout.log'), ',"name":"Bash","input":{"command":"echo whole"}}]}}\n');
   await index.update();
-  assert.deepEqual(index.page(250, 12, null).steps.map(step => step.text), ['echo late', 'echo whole']);
+  assert.deepEqual(index.range(250, 12).steps.map(step => step.text), ['echo late', 'echo whole']);
 });
 
-test('steps going at once each keep their own state: an earlier one failing is said while a later one runs', async t => {
+test('a list asks only for what changed after its version: a step far back failing while eight run, and new ones', async t => {
   const path = folder(t);
-  write(path, [bash('a', 'pnpm test'), bash('b', 'pnpm lint'), claudeEnd('a', 'FAIL', true)]);
+  const rows: unknown[] = [];
+  for (let n = 0; n < 40; n++) rows.push(bash(`old${n}`, `echo ${n}`), claudeEnd(`old${n}`, 'ok'));
+  for (let n = 0; n < 8; n++) rows.push(bash(`p${n}`, `pnpm test ${n}`));
+  write(path, rows);
+  const index = await read(path), held = index.range(undefined, 12);
+  write(path, [claudeEnd('p0', 'FAIL', true), bash('new', 'echo new')]);
+  await index.update();
+  const changed = index.since(held.version);
+  assert.deepEqual(changed.steps.map(step => [step.n, step.id, step.state]), [[40, 'p0', 'failed'], [48, 'new', 'running']]);
+  assert.deepEqual([changed.total, changed.complete], [49, true]);
+  assert.deepEqual(index.since(changed.version).steps, []);
+  // The live activity counts every step's start and end, not only the six it keeps, so the change is told.
+  const live = new OutputActivityReader(AGENT_RUNTIME_ADAPTERS.claude);
+  writeFileSync(join(path, 'stdout.log'), rows.map(row => JSON.stringify(row)).join('\n') + '\n');
+  live.poll(path);
+  const before = readRunActivity(path)?.stepEvents;
+  appendFileSync(join(path, 'stdout.log'), JSON.stringify(claudeEnd('p0', 'FAIL', true)) + '\n');
+  live.poll(path);
+  assert.equal(readRunActivity(path)?.stepEvents, before! + 1);
+  assert.equal(readRunActivity(path)?.steps.some(step => step.id === 'p0'), false);
+});
+
+test('a step running when a line could not be read, and never said to end later, ends unknown rather than done', async t => {
+  const path = folder(t);
+  write(path, [bash('lost', 'pnpm test'), bash('seen', 'pnpm lint'), '{"type":"user","message":{"content":[{"type":"tool_res',
+    claudeEnd('seen', 'ok'), { type: 'result', is_error: false }]);
   const index = await read(path);
-  assert.deepEqual(index.page(undefined, 12, null).steps.map(step => [step.id, step.state]), [['a', 'failed'], ['b', 'running']]);
+  assert.deepEqual(index.range(undefined, 12).steps.map(step => [step.id, step.state]), [['lost', 'unknown'], ['seen', 'done']]);
+  assert.equal((await index.detail(0))?.output, null);
+});
+
+test('a line too long to read counts as unreadable, its steps not shown done', async t => {
+  const path = folder(t);
+  write(path, [bash('big', 'cat huge.log')]);
+  appendFileSync(join(path, 'stdout.log'), '{"type":"user","x":"' + 'x'.repeat(RUN_STEPS_LINE_LIMIT) + '"}\n');
+  write(path, [{ type: 'result', is_error: false }]);
+  assert.equal((await read(path)).range(undefined, 12).steps[0]?.state, 'unknown');
+});
+
+test('codex: a file change opens to what was done to each file and its diff', async t => {
+  const path = folder(t);
+  const changes = [{ path: '/src/format.ts', kind: { type: 'update', move_path: null }, diff: '@@ -1 +1 @@\n-Math.floor(x)\n+Math.round(x)' },
+    { path: '/src/new.ts', kind: { type: 'add' }, diff: '+export {}' }];
+  write(path, [{ type: 'item.completed', item: { id: 'f1', type: 'file_change', changes, status: 'completed' } }]);
+  assert.deepEqual((await (await read(path, 'codex')).detail(0))?.input,
+    { text: 'update: /src/format.ts\n@@ -1 +1 @@\n-Math.floor(x)\n+Math.round(x)\n\nadd: /src/new.ts\n+export {}', omitted: 0 });
+});
+
+test('what is left out is counted in characters as people count them', () => {
+  assert.equal(fullRunText('x'.repeat(RUN_STEP_FULL_TEXT_LIMIT) + '😀end').omitted, 4);
 });
 
 test('a text past the limit says how much was left out; no output reads as no steps', async t => {
   const path = folder(t);
-  assert.deepEqual((await read(path)).page(undefined, 12, null), { steps: [], from: 0, total: 0 });
+  assert.deepEqual((await read(path)).range(undefined, 12), { steps: [], total: 0, version: 0, complete: true });
   write(path, [bash('big', 'cat big.log'), claudeEnd('big', 'x'.repeat(RUN_STEP_FULL_TEXT_LIMIT + 10))]);
   const detail = await (await read(path)).detail(0);
   assert.equal(runStepDetailSchema.safeParse(detail).success, true);

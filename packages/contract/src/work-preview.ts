@@ -63,26 +63,32 @@ function field(key: string, value: unknown): string {
   return `${key}: ${text ?? String(value)}`;
 }
 /**
- * A tool call's whole input as written, to read in full: its main argument (the one line shows its start), then every
- * other field by name (an edit's old and new text, a read's range), each text with its own lines. The agent's words
- * for a command are said apart, so they are not repeated.
+ * An input to read in full: its main argument as written, then every other field by name, each text with its own lines.
+ * A field with no value says nothing and is left out.
+ */
+export function inputDocument(main: string | undefined, fields: Record<string, unknown>): string {
+  const rest = Object.entries(fields).filter(([, value]) => value !== undefined && value !== null && !(Array.isArray(value) && !value.length))
+    .map(([key, value]) => field(key, value));
+  return [main ?? '', rest.join('\n')].filter(Boolean).join('\n\n');
+}
+/**
+ * A tool call's whole input as written, to read in full (inputDocument): an edit's old and new text, a read's range.
+ * The agent's words for a command are said apart, so they are not repeated.
  */
 export function toolInputDocument(tool: unknown, raw: unknown): string | undefined {
   if (typeof raw === 'string') return raw;
-  const input = record(raw);
   if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return toolArgumentText(raw);
-  const main = mainFields(tool, input), said = tool === 'Bash' || typeof input.command === 'string' ? ['description'] : [];
-  const rest = Object.entries(input).filter(([key, value]) => !main.includes(key) && !said.includes(key) && value !== undefined)
-    .map(([key, value]) => field(key, value));
-  const head = main.length ? toolInputText(tool, raw) ?? '' : '';
-  return [head, rest.join('\n')].filter(Boolean).join('\n\n');
+  const input = record(raw), main = mainFields(tool, input), said = tool === 'Bash' || typeof input.command === 'string' ? ['description'] : [];
+  return inputDocument(main.length ? toolInputText(tool, raw) : undefined,
+    Object.fromEntries(Object.entries(input).filter(([key]) => !main.includes(key) && !said.includes(key))));
 }
-/** A step's text to read in full, up to the limit; `omitted` counts what was already left out before it came here. */
+/** A step's text to read in full, up to the limit; `omitted` counts the characters (code points) left out, before it too. */
 export function fullRunText(value: string, omitted = 0): RunStepText {
   const text = clipRunText(value, RUN_STEP_FULL_TEXT_LIMIT);
-  return { text, omitted: omitted + value.length - text.length };
+  let left = 0;
+  for (const _ of value.slice(text.length)) left++;
+  return { text, omitted: omitted + left };
 }
-
 /** A tool call on one line: the first line of its input, and the agent's own words for a command. */
 export function previewToolInput(tool: unknown, raw: unknown): { detail: RunStepLine; about: string | null } {
   const input = record(raw);

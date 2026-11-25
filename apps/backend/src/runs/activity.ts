@@ -41,6 +41,8 @@ class WorkActivity {
   private readonly active = new Map<string, ActiveTool>();
   private readonly recent = new RecentWork();
   steps: RunStep[] = [];
+  /** Every step start, end and settling seen, counted whatever `steps` keeps of them. */
+  events = 0;
 
   get doing(): ActiveTool | null { return [...this.active.values()].at(-1) ?? null; }
   get hasActive(): boolean { return this.active.size > 0; }
@@ -50,6 +52,7 @@ class WorkActivity {
   observe(event: ActivityEvent): string | null {
     const { at, kind, id } = event;
     const name = toolName(event.toolName);
+    if (kind === 'result' || kind === 'error' || kind === 'tool_start' || kind === 'tool_end') this.events++;
     if (kind === 'result' || kind === 'error') {
       this.reset(kind === 'result' ? 'done' : 'failed');
       return name;
@@ -91,6 +94,8 @@ class WorkActivity {
   }
 
   reset(state?: Settled): void {
+    // Settling or dropping what is running changes those steps as an end would.
+    if (this.steps.some(step => step.state === 'running')) this.events++;
     this.active.clear();
     this.recent.reset();
     // After a gap in stdout, unfinished items have no reliable outcome.
@@ -138,7 +143,7 @@ export class OutputActivityReader {
   }
 
   private resetWork(state?: Settled): void {
-    this.dirty ||= this.work.hasActive;
+    this.dirty ||= this.work.hasActive || this.work.steps.some(step => step.state === 'running');
     this.work.reset(state);
   }
 
@@ -168,7 +173,8 @@ export class OutputActivityReader {
       this.writtenRecent = recent;
     }
     if (this.dirty && this.latest) {
-      const activity: RunActivity = { ...this.latest, doing: this.work.doing, context: this.context, steps: this.work.steps };
+      const activity: RunActivity = { ...this.latest, doing: this.work.doing, context: this.context, steps: this.work.steps,
+        stepEvents: this.work.events };
       writeRunFile(folder, RUN_FILES.activity, JSON.stringify(activity));
       this.dirty = false;
     }

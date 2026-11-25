@@ -115,8 +115,10 @@
       "state": {
         "done": "Done",
         "failed": "Failed",
-        "running": "Running"
+        "running": "Running",
+        "unknown": "Outcome unknown"
       },
+      "unknown": "Part of the record could not be read, so whether this step went well is not known",
       "unreadable": "The steps could not be read",
       "unreadableOne": "What this step ran could not be read"
     },

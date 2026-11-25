@@ -27,7 +27,7 @@ export { runStepSchema, runStepsSchema, runStepKindSchema, RUN_STEP_LIMIT, RUN_S
   RUN_TOOL_NAME_LIMIT, RUN_NOTE_LIMIT, type RunStep, type RunStepKind, type RunStepLine } from './work-contract.js';
 export { runStepsPageSchema, runStepEntrySchema, runStepDetailSchema, runStepTextSchema, RUN_STEPS_PAGE_LIMIT,
   RUN_STEP_FULL_TEXT_LIMIT, type RunStepsPage, type RunStepEntry, type RunStepDetail, type RunStepText } from './work-contract.js';
-export { clipRunText, previewRunLine, previewToolInput, toolInputText, toolInputDocument, fullRunText, toolResultText, toolArgumentText } from './work-preview.js';
+export { clipRunText, previewRunLine, previewToolInput, toolInputText, toolInputDocument, inputDocument, fullRunText, toolResultText, toolArgumentText } from './work-preview.js';
 import { runWorkSchema, runStepsSchema, RUN_NOTE_LIMIT, RUN_TOOL_NAME_LIMIT } from './work-contract.js';
 export const runActivitySchema = z.object({
   at: z.iso.datetime({ offset: true }), kind: runActivityKindSchema,
@@ -37,6 +37,11 @@ export const runActivitySchema = z.object({
   /** How full the conversation is, as its agent last said; null before it has said. */
   context: agentContextSchema.nullable(),
   steps: runStepsSchema,
+  /**
+   * How many times a step of this Run has started or ended so far, every step counted, not only the latest kept in
+   * `steps`: a change of it says the Run's opened list of steps is behind (absent before any step was counted).
+   */
+  stepEvents: z.number().int().nonnegative().optional(),
 }).strict();
 export type RunActivity = z.infer<typeof runActivitySchema>;
 /** A working Run's activity as the screen reads it: its fill with its model's resolved window (agents/context-limits). */

@@ -978,9 +978,9 @@ function WorkingPerson({ run, task, onFollow, open, lead, others }: { run: Contr
   const model = modelLabel(runAgentLabel(run), useContext(AgentNames));
   const steps = run.activity?.steps ?? [];
   // Opened, the lead's line counts its steps and every one of them is listed under it.
-  // Read again as any step it was told of starts or ends, so a step that failed while a later one runs says so.
+  // Brought up to date whenever any of its steps starts or ends, however many run at once.
   const latest = steps.at(-1), listed = lead && open && !!latest;
-  const full = useRunSteps(run.id, listed, steps.map(each => `${each.id}:${each.state}`).join(" "));
+  const full = useRunSteps(run.id, listed, run.activity?.stepEvents ?? 0);
   const count = stepCount(full);
   const words = run.activity?.note?.text ?? "";
   const member = people?.placements.get(run.placementId)?.responsible === false;

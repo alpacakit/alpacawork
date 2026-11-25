@@ -1,6 +1,6 @@
 /**
- * A Run's steps, read from its output when the screen opens them: GET /api/runs/:run/steps?from=&limit= lists them, and
- * GET /api/runs/:run/steps/:n is what step `n` ran and got back.
+ * A Run's steps, read from its output when the screen opens them: GET /api/runs/:run/steps?from=&limit= lists them,
+ * ?since= gives what changed after a version, and GET /api/runs/:run/steps/:n is what step `n` ran and got back.
  */
 import type { Hono } from 'hono';
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
@@ -22,23 +22,27 @@ function count(value: string | undefined): number | undefined {
  * for a Run of no Task); a Run that does not exist is not found.
  */
 export function installRunStepsRoutes(api: Hono, root: string, find: (request: Request, run: RunId) => Pick<RuntimeRunRecord, 'id' | 'state' | 'launch'>) {
-  const opened = (request: Request, param: string) => {
+  const opened = async (request: Request, param: string) => {
     const id = runIdSchema.safeParse(param);
     if (!id.success) throw notFound('Run');
     const run = find(request, id.data);
     const adapter = runtimeAdapter(run.launch.adapter);
-    return { run, index: adapter ? runStepIndex(runFolder(root, run.id), run.launch.adapter, adapter) : null };
+    if (!adapter) return null;
+    const index = await runStepIndex(runFolder(root, run.id), run.launch.adapter, adapter);
+    // Once the Run has ended, what its output left running ended with it.
+    if (!isRunMoving(run.state)) index.end(run.state === 'succeeded' ? 'done' : 'failed');
+    return index;
   };
   const headers = { 'Cache-Control': 'no-store' };
   api.get('/api/runs/:run/steps', async c => {
-    const { run, index } = opened(c.req.raw, c.req.param('run'));
-    const from = count(c.req.query('from')), limit = count(c.req.query('limit')) ?? RUN_STEPS_PAGE_LIMIT;
-    const ended = isRunMoving(run.state) ? null : run.state === 'succeeded' ? 'done' : 'failed';
-    return c.json(index ? (await index).page(from, limit, ended) : { steps: [], from: 0, total: 0 }, 200, headers);
+    const index = await opened(c.req.raw, c.req.param('run'));
+    const since = count(c.req.query('since')), from = count(c.req.query('from')), limit = count(c.req.query('limit')) ?? RUN_STEPS_PAGE_LIMIT;
+    if (!index) return c.json({ steps: [], total: 0, version: 0, complete: true }, 200, headers);
+    return c.json(since === undefined ? index.range(from, limit) : index.since(since), 200, headers);
   });
   api.get('/api/runs/:run/steps/:n', async c => {
-    const { index } = opened(c.req.raw, c.req.param('run'));
-    const detail = index ? await (await index).detail(count(c.req.param('n'))!) : null;
+    const index = await opened(c.req.raw, c.req.param('run'));
+    const detail = index ? await index.detail(count(c.req.param('n'))!) : null;
     if (!detail) throw notFound('Step');
     return c.json(detail, 200, headers);
   });

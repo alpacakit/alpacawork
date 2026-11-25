@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { RUN_STEPS_PAGE_LIMIT, type RunStep, type RunStepDetail, type RunStepEntry, type RunStepText } from "@alpacawork/contract/run";
+import { type RunStep, type RunStepDetail, type RunStepEntry, type RunStepText } from "@alpacawork/contract/run";
 import { readRunStep, readRunSteps } from "@/data/run-steps";
 import { Message } from "@/components/ui/message";
 import { cn } from "@/lib/utils";
 
 /* Hallmark · component: an agent's work line and its steps · genre: modern-minimal · theme: the app's own tokens (ink,
  * soft, muted, error, working, line) · states: folded (one line: the moving mark, the tool and what it runs) · open
- * (every step so far, one line each) · a step opened (what it ran and what came back, in full) · a step done (✓) or
- * failed (red ✗) · reading · not readable · reduced motion (the mark's three dots stand still) */
+ * (every step so far, one line each) · a step opened (what it ran and what came back, in full) · a step done (✓),
+ * failed (red ✗) or of an unknown outcome (?) · reading · not readable · reduced motion (the mark's three dots stand still) */
 
 /** Codex names its items by their type; said as the tool names other agents give. Any other tool keeps its own name. */
 const ITEM_NAMES: Record<string, string> = { command_execution: "Bash", file_change: "Edit", web_search: "WebSearch", mcp_tool_call: "MCP", collab_tool_call: "Agent" };
@@ -66,54 +66,87 @@ export function WorkLine({ step, idle, label, end, className, ...data }: { step:
   </div>;
 }
 
-/** A Run's steps as far as they are listed: from step `from` (counted from the Run's first, 0) to the latest, of `total`. */
-export type ListedSteps = { from: number; total: number; steps: readonly RunStepEntry[] };
+/**
+ * A Run's steps as far as they are listed: from step `from` (counted from the Run's first, 0) to the latest, of
+ * `total`, as they stood at the index's `version`.
+ */
+export type ListedSteps = { from: number; total: number; version: number; steps: readonly RunStepEntry[] };
 export type StepsRead = { run?: string; listed: ListedSteps | null; failed: boolean; earlier: () => void };
 /** How many steps a Run has taken, as far as they were read. */
 export const stepCount = (read: StepsRead) => read.listed?.total;
 /** The steps a list starts with, and how many more a press on "earlier" adds. */
 const FIRST = 12, EARLIER = 24;
-/** Every step from `from` to the latest, a page at a time. */
-async function readFrom(run: string, from: number, signal: AbortSignal): Promise<ListedSteps> {
-  const steps: RunStepEntry[] = [];
-  for (let at = from; ;) {
-    const page = await readRunSteps(run, { from: at, limit: RUN_STEPS_PAGE_LIMIT }, signal);
-    steps.push(...page.steps);
-    at += page.steps.length;
-    if (!page.steps.length || at >= page.total) return { from, total: page.total, steps };
+/**
+ * A list with the steps that changed after its version: those it holds take their new state, new ones go at its foot,
+ * and those before where it starts stay out of it. Where it starts, and so what was gone back to, does not move.
+ */
+export function withChanges(listed: ListedSteps, changed: readonly RunStepEntry[], total: number, version: number): ListedSteps {
+  const steps = [...listed.steps];
+  for (const step of [...changed].sort((a, b) => a.n - b.n)) {
+    const at = step.n - listed.from;
+    if (at >= 0 && at <= steps.length) steps[at] = step;
+  }
+  return { from: listed.from, total: Math.max(total, listed.from + steps.length), version, steps };
+}
+/** Every step that changed after `version`, a page at a time until the answer is the latest. */
+async function readChanges(run: string, version: number, signal: AbortSignal) {
+  const changed: RunStepEntry[] = [];
+  for (let since = version; ;) {
+    const page = await readRunSteps(run, { since }, signal);
+    changed.push(...page.steps);
+    since = page.version;
+    if (page.complete) return { changed, total: page.total, version: page.version };
   }
 }
 /**
- * The steps of Run `run`, read while `shown`: the latest few first, earlier ones a page at a time on `earlier`, and those
- * listed read again whenever `version` changes (any step the screen was told of started or ended). Nothing is read
- * while they are not shown.
+ * The steps of Run `run`, read while `shown`: the latest few first, and earlier ones a page at a time on `earlier`.
+ * Whenever `signal` changes (a step of the Run started or ended, any of them), only what changed since the list's
+ * version is read and taken in, so how far it was gone back and the steps opened in it stay as they are. Nothing is
+ * read while they are not shown.
  */
-export function useRunSteps(run: string | undefined, shown: boolean, version = ""): StepsRead {
+export function useRunSteps(run: string | undefined, shown: boolean, signal: string | number = ""): StepsRead {
   const [state, setState] = useState<{ run?: string; listed: ListedSteps | null; failed: boolean }>({ listed: null, failed: false });
-  // Where the list starts, kept apart so a read again starts there whatever came back last.
-  const start = useRef<{ run: string; from: number } | null>(null);
-  const live = shown && state.run === run;
+  const current = useRef(state);
+  current.current = state;
+  const live = shown && !!run && state.run === run;
+  // The signal the list is up to date with: a first read is, so only a later change reads what changed.
+  const told = useRef(signal);
   useEffect(() => {
-    if (!run || !shown) { start.current = null; return; }
+    told.current = signal;
+    if (!run || !shown) { setState({ listed: null, failed: false }); return; }
     const abort = new AbortController();
-    const from = start.current?.run === run ? start.current.from : null;
-    const read = from === null
-      ? readRunSteps(run, { limit: FIRST }, abort.signal).then(page => ({ from: page.from, total: page.total, steps: page.steps }))
-      : readFrom(run, from, abort.signal);
-    read.then(listed => { start.current = { run, from: listed.from }; setState({ run, listed, failed: false }); },
-      () => { if (!abort.signal.aborted) setState(previous => ({ ...previous, run, failed: true })); });
+    readRunSteps(run, { limit: FIRST }, abort.signal).then(page =>
+      setState({ run, failed: false, listed: { from: page.steps[0]?.n ?? page.total, total: page.total, version: page.version, steps: page.steps } }),
+    () => { if (!abort.signal.aborted) setState({ run, listed: null, failed: true }); });
     return () => abort.abort();
-  }, [run, shown, version]);
+  }, [run, shown]);
+  // Read again by what changed since the version held; a read under way finishes first, then the next takes its version.
+  const reading = useRef<Promise<unknown>>(Promise.resolve());
+  const loaded = live && !!state.listed;
+  useEffect(() => {
+    if (!run || !loaded || told.current === signal) return;
+    told.current = signal;
+    const abort = new AbortController();
+    reading.current = reading.current.then(async () => {
+      const held = current.current.listed;
+      if (abort.signal.aborted || !held || current.current.run !== run) return;
+      try {
+        const { changed, total, version } = await readChanges(run, held.version, abort.signal);
+        setState(previous => previous.run !== run || !previous.listed ? previous
+          : { run, failed: false, listed: withChanges(previous.listed, changed, total, version) });
+      } catch { if (!abort.signal.aborted) setState(previous => ({ ...previous, failed: true })); }
+    });
+    return () => abort.abort();
+  }, [run, loaded, signal]);
   const earlier = useCallback(() => {
-    const listed = state.listed;
+    const listed = current.current.listed;
     if (!run || !listed || listed.from === 0) return;
     const from = Math.max(0, listed.from - EARLIER);
     readRunSteps(run, { from, limit: listed.from - from }).then(page => {
       setState(previous => previous.run !== run || previous.listed?.from !== listed.from ? previous
-        : { run, failed: false, listed: { from, total: Math.max(page.total, listed.total), steps: [...page.steps, ...listed.steps] } });
-      start.current = { run, from };
+        : { run, failed: false, listed: { ...previous.listed, from, steps: [...page.steps, ...previous.listed.steps] } });
     }, () => setState(previous => ({ ...previous, failed: true })));
-  }, [run, state.listed]);
+  }, [run]);
   return live ? { ...state, earlier } : { listed: null, failed: false, earlier };
 }
 
@@ -147,14 +180,16 @@ function StepRow({ run, step }: { run: string; step: RunStepEntry }) {
     <button type="button" aria-expanded={open} onClick={() => setOpen(!open)}
       className="flex w-full min-w-0 cursor-pointer items-baseline gap-1.5 rounded-sm py-0.5 text-left text-soft outline-none hover:text-ink focus-visible:outline-2 focus-visible:outline-ring narrow:py-1.5">
       <span data-run-step-mark className={cn("w-2.5 flex-none text-center font-sans", step.state === "failed" ? "text-error" : step.state === "running" ? "text-working motion-safe:animate-pulse" : "text-muted")}>
-        <span aria-hidden>{step.state === "running" ? "●" : step.state === "failed" ? "✗" : "✓"}</span>
-        <span className="sr-only">{step.state === "running" ? t("now.step.state.running") : step.state === "failed" ? t("now.step.state.failed") : t("now.step.state.done")}</span></span>
+        <span aria-hidden>{step.state === "running" ? "●" : step.state === "failed" ? "✗" : step.state === "unknown" ? "?" : "✓"}</span>
+        <span className="sr-only">{step.state === "running" ? t("now.step.state.running") : step.state === "failed" ? t("now.step.state.failed")
+          : step.state === "unknown" ? t("now.step.state.unknown") : t("now.step.state.done")}</span></span>
       <LineWords line={step} />
     </button>
     {open && <div className="mt-1 mb-2 ml-4 flex min-w-0 flex-col gap-1">
       {detail?.value ? <>
         <StepText data-run-step-input text={detail.value.input} tone="text-ink" />
-        {detail.value.output && <StepText data-run-step-output text={detail.value.output} tone={step.state === "failed" ? "text-error" : "text-soft"} />}</>
+        {detail.value.output && <StepText data-run-step-output text={detail.value.output} tone={step.state === "failed" ? "text-error" : "text-soft"} />}
+        {step.state === "unknown" && <Message tone="caution" size="line" quiet title={t("now.step.unknown")} className="text-xs" />}</>
         : detail?.failed ? <Message tone="error" size="line" title={t("now.step.unreadableOne")} className="text-xs" />
         : <span className="text-muted">{t("now.step.reading")}</span>}
     </div>}

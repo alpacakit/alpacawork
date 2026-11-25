@@ -24,7 +24,7 @@ test('coordinator steps and words survive quiet in the index and clear on Run en
   let current = await stream.index();
   for (let i = 0; i < 15 && current.coordinatorWork?.name !== 'task.new'; i++) current = await stream.index();
   const identity = { conversation: run.conversation, turn: run.requestId, run: run.id };
-  assert.deepEqual(current.coordinatorWork, { ...identity, name: 'task.new', count: 1, steps: [], words: null });
+  assert.deepEqual(current.coordinatorWork, { ...identity, name: 'task.new', count: 1, steps: [], stepEvents: 0, words: null });
   assert.deepEqual(current.person.coordinator, revision, 'activity is independent of conversation read markers');
   write('task.update');
   do { current = await stream.index(); } while (current.coordinatorWork?.name !== 'task.update');
@@ -33,13 +33,14 @@ test('coordinator steps and words survive quiet in the index and clear on Run en
   const steps = [{ id: 'check', at, tool: 'Bash', kind: 'command', text: 'cat catalog.txt', more: 0, about: null, state: 'done', result: null }];
   const words = 'The catalog is ready.';
   writeFileSync(join(folder, 'activity.json'), JSON.stringify({
-    at, kind: 'tool_end', toolName: 'Bash', doing: null, note: { at, text: words }, context: null, steps,
+    at, kind: 'tool_end', toolName: 'Bash', doing: null, note: { at, text: words }, context: null, steps, stepEvents: 7,
   }));
   do { current = await stream.index(); } while (current.coordinatorWork?.words !== words);
-  assert.deepEqual(current.coordinatorWork, { ...identity, name: 'task.update', count: 1, steps, words });
+  // Every step's start and end is counted with the work, so an opened list knows when any of them changed.
+  assert.deepEqual(current.coordinatorWork, { ...identity, name: 'task.update', count: 1, steps, stepEvents: 7, words });
   writeFileSync(file, 'null');
   do { current = await stream.index(); } while (current.coordinatorWork?.name !== null);
-  assert.deepEqual(current.coordinatorWork, { ...identity, name: null, count: 0, steps, words });
+  assert.deepEqual(current.coordinatorWork, { ...identity, name: null, count: 0, steps, stepEvents: 7, words });
   assert.deepEqual(current.person.coordinator, revision);
   w.end(run);
   do { current = await stream.index(); } while (current.coordinatorWork !== null);

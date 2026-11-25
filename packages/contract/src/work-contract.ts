@@ -47,20 +47,30 @@ export const runStepTextSchema = z.object({ text: z.string().max(RUN_STEP_FULL_T
 export type RunStepText = z.infer<typeof runStepTextSchema>;
 /** How many steps one read of a Run's steps gives at most. */
 export const RUN_STEPS_PAGE_LIMIT = 200;
-/** One step in a Run's list of steps: its place in the Run (`n`, from 0), and what it ran on one line. */
+/**
+ * One step in a Run's list of steps: its place in the Run (`n`, from 0), what it ran on one line, and how it went.
+ * `unknown`: a line of the Run's output that could not be read came while it ran and nothing said later how it ended,
+ * so whether it went well is not known.
+ */
 export const runStepEntrySchema = z.object({
   n: z.number().int().nonnegative(), id: z.string().max(RUN_TOOL_ID_LIMIT), tool: z.string().max(RUN_TOOL_NAME_LIMIT),
   kind: runStepKindSchema, ...runStepLineSchema.shape, about: z.string().max(RUN_STEP_TEXT_LIMIT).nullable(),
-  state: runStepSchema.shape.state,
+  state: z.enum(['running', 'done', 'failed', 'unknown']),
 }).strict();
 export type RunStepEntry = z.infer<typeof runStepEntrySchema>;
-/** GET /api/runs/:run/steps?from=&limit=: the Run's steps from `from` on, oldest first, of `total` so far. */
+/**
+ * GET /api/runs/:run/steps: `?from=&limit=` gives the Run's steps from `from` on (the latest `limit` without `from`),
+ * oldest first; `?since=` gives the steps that changed after version `since` (new ones too), oldest change first.
+ * `version` is how far this answer has caught up: asked again `since` it, a list misses no change. `total`: the steps
+ * so far. `complete`: `version` is the latest (a long run of changes comes a page at a time).
+ */
 export const runStepsPageSchema = z.object({ steps: z.array(runStepEntrySchema).max(RUN_STEPS_PAGE_LIMIT),
-  from: z.number().int().nonnegative(), total: z.number().int().nonnegative() }).strict();
+  total: z.number().int().nonnegative(), version: z.number().int().nonnegative(), complete: z.boolean() }).strict();
 export type RunStepsPage = z.infer<typeof runStepsPageSchema>;
 /** GET /api/runs/:run/steps/:n: what that step ran and what came back (null before it has ended or when nothing did). */
 export const runStepDetailSchema = z.object({ input: runStepTextSchema, output: runStepTextSchema.nullable() }).strict();
 export type RunStepDetail = z.infer<typeof runStepDetailSchema>;
 /** The running turn's recent work: its rounded name (null once it has gone quiet), and its latest words and steps as they are. */
 export const coordinatorWorkSchema = z.object({ name: workNameSchema.nullable(), count: z.number().int().nonnegative(),
-  conversation: z.string(), turn: z.string(), run: runIdSchema, steps: runStepsSchema, words: z.string().max(RUN_NOTE_LIMIT).nullable() }).strict().nullable();
+  conversation: z.string(), turn: z.string(), run: runIdSchema, steps: runStepsSchema, stepEvents: z.number().int().nonnegative(),
+  words: z.string().max(RUN_NOTE_LIMIT).nullable() }).strict().nullable();

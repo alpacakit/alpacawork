@@ -1,6 +1,6 @@
 /** Translate native Claude and common bridge stdout events for the activity projection. */
 import { bridgeToolEventSchema } from '@alpacawork/contract/agent-bridge';
-import { RUN_NOTE_LIMIT, previewRunLine, previewToolInput, toolInputDocument, toolResultText, type RunStepText } from '@alpacawork/contract/run';
+import { RUN_NOTE_LIMIT, inputDocument, previewRunLine, previewToolInput, toolInputDocument, toolResultText, type RunStepText } from '@alpacawork/contract/run';
 import type { ActivityEvent } from '../../runs/activity-events.js';
 import { commandOf } from '../../runs/shell-command.js';
 import { object } from './output.js';
@@ -47,25 +47,43 @@ function toolCall(tool: unknown, raw: unknown): Pick<ActivityEvent, 'detail' | '
   const document = toolInputDocument(tool, raw);
   return { ...previewToolInput(tool, raw), ...document === undefined ? {} : { input: whole(document) } };
 }
+/** A file change as Codex records it: what was done to which path, then its diff. */
+function fileChange(change: Record<string, unknown>): string {
+  const kind = object(change.kind), done = typeof change.kind === 'string' ? change.kind : typeof kind.type === 'string' ? kind.type : 'change';
+  const moved = typeof kind.move_path === 'string' ? ` → ${kind.move_path}` : '';
+  return [`${done}: ${String(change.path)}${moved}`, typeof change.diff === 'string' && change.diff ? change.diff : ''].filter(Boolean).join('\n');
+}
+/** A bridge item's input: its main argument, and the other fields it records about what it asked (inputDocument). */
 function bridgeInput(item: Record<string, unknown>): Pick<ActivityEvent, 'detail' | 'about' | 'input'> {
   switch (item.type) {
-    case 'command_execution': return written(shellScript(item.command));
-    case 'web_search': return written(firstText(item.query, object(item.action).url));
+    case 'command_execution': {
+      const script = shellScript(item.command);
+      return written(script, inputDocument(typeof script === 'string' ? script : undefined, { cwd: item.cwd }));
+    }
+    case 'web_search': {
+      const query = firstText(item.query, object(item.action).url);
+      return written(query, inputDocument(query, { action: item.action }));
+    }
     case 'file_change': {
       const changes = (Array.isArray(item.changes) ? item.changes : []).map(object).filter(change => typeof change.path === 'string');
-      return written(changes.map(change => change.path).join('  '),
-        changes.map(change => typeof change.kind === 'string' ? `${change.kind}: ${change.path}` : String(change.path)).join('\n'));
+      return written(changes.map(change => change.path).join('  '), changes.map(fileChange).join('\n\n'));
     }
-    case 'collab_agent_tool_call': return written(item.prompt);
+    case 'collab_agent_tool_call': return written(item.prompt, inputDocument(typeof item.prompt === 'string' ? item.prompt : undefined,
+      { tool: item.tool, model: item.model, receiverThreadIds: item.receiverThreadIds }));
     case 'image_view': return written(item.path);
     default: return toolCall(item.tool ?? item.name, item.arguments);
   }
 }
 
+/** What a structured result says when it gives no text. */
+const structured = (value: unknown): string | undefined => {
+  if (value === null || value === undefined) return undefined;
+  try { return JSON.stringify(value, null, 2); } catch { return undefined; }
+};
 function bridgeOutcome(item: Record<string, unknown>): NonNullable<ActivityEvent['outcome']> {
   const result = object(item.result);
   const output = firstText(item.aggregatedOutput, toolResultText(item.result), toolResultText(result.content),
-    toolResultText(item.contentItems), object(item.error).message);
+    toolResultText(item.contentItems), object(item.error).message) ?? structured(result.structuredContent);
   return {
     result: previewRunLine(output), ...output === undefined ? {} : { output: whole(output) },
     failed: item.status === 'failed' || item.status === 'declined' || item.success === false ||

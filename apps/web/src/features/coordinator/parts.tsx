@@ -83,31 +83,26 @@ export function WorkingReply({ turn }: { turn: { id: string; at: string } }) {
   const work = useSyncExternalStore(store?.subscribe ?? noStore, () => store?.getState().info.coordinatorWork ?? null);
   const conversation = useConversation(state => state.conversation?.id);
   const [open, setOpen] = useState(false);
-  const pressed = useRef(false), end = useRef<HTMLDivElement>(null);
   const seconds = useSecondsSince(turn.at);
-  // Opened by a press, the line comes into sight as one place request.
-  useLayoutEffect(() => {
-    if (!pressed.current || !end.current) return;
-    pressed.current = false;
-    if (open) scrollThreadTo(end.current, end.current, { block: 'nearest' });
-  }, [open]);
   // Offline, the last work received says nothing of now: as the folded words drop it (work-pace), so do these.
   const offline = useConnection(state => state.offline);
   const mine = !offline && work && work.conversation === conversation && work.turn === turn.id ? work : null;
   const step = mine?.steps.at(-1);
-  // Read again as any step it was told of starts or ends, so a step that failed while a later one runs says so.
-  const steps = useRunSteps(mine?.run, open && !!step, mine?.steps.map(each => `${each.id}:${each.state}`).join(' '));
-  useListedInSight(steps.listed, end);
+  // Brought up to date whenever any of its steps starts or ends, however many run at once.
+  const steps = useRunSteps(mine?.run, open && !!step, mine?.stepEvents ?? 0);
+  const block = useRef<HTMLDivElement>(null);
+  useListedInSight(steps.listed, block);
   const time = seconds === null ? null : <span data-work-seconds className="flex-none text-muted tabular-nums">{seconds}s</span>;
   const count = stepCount(steps);
-  return <div ref={end}>
+  return <div>
     {mine?.words && <div data-working-words dir="auto" className="mb-2 [overflow-wrap:anywhere]"><MarkdownBody text={mine.words} task={null} variant="note" onFollow={followTask} /></div>}
-    {step ? <button type="button" data-working-steps aria-expanded={open} onClick={() => { pressed.current = true; setOpen(!open); }} className={STEPS_BUTTON}>
+    <div ref={block} className="scroll-mt-[max(3rem,calc(var(--pane-head,1.25rem)+1rem))]">
+    {step ? <button type="button" data-working-steps aria-expanded={open} onClick={() => setOpen(!open)} className={STEPS_BUTTON}>
       <WorkLine data-ask-thinking step={step} label={count === undefined ? undefined : p('now.step.count', { count })} className="min-w-0 flex-1 group-hover/steps:text-ink"
         end={<>{time}<Chevron open={open} /></>} /></button>
       : <WorkLine data-ask-thinking step={undefined} idle={t('coordinatorCard.thinking')} end={time} />}
     {open && step && <StepList steps={steps} className="mt-1" />}
-  </div>;
+  </div></div>;
 }
 /**
  * A line that opens a Run's steps under it: its whole width a press, a finger's height on a phone. The press overhangs
@@ -118,30 +113,38 @@ const STEPS_BUTTON = "group/steps flex w-full min-w-0 cursor-pointer items-cente
 function Chevron({ open }: { open: boolean }) {
   return <Icon name="down" className={cn("size-3.5 flex-none self-center text-muted transition-transform duration-(--motion-base) group-hover/steps:text-ink", open && "rotate-180")} />;
 }
-/** The steps are read after the press: once they are first drawn, their foot comes into sight as one place request. */
-function useListedInSight(read: unknown, end: RefObject<HTMLElement | null>) {
+/**
+ * The steps are read after the press: once first drawn, the line and the list under it come into sight as one place
+ * request, the list's head (the line, then "earlier") first. One that does not fit below where it is starts at the top.
+ */
+function useListedInSight(read: unknown, block: RefObject<HTMLElement | null>) {
   const listed = useRef(false);
   useLayoutEffect(() => {
     if (!read) { listed.current = false; return; }
-    if (listed.current || !end.current) return;
+    const element = block.current;
+    if (listed.current || !element) return;
     listed.current = true;
-    scrollThreadTo(end.current, end.current, { block: 'nearest' });
-  }, [read, end]);
+    const area = element.closest<HTMLElement>('[data-card-scroll]')?.getBoundingClientRect() ?? { top: 0, bottom: window.innerHeight };
+    const box = element.getBoundingClientRect();
+    if (box.top < area.top || box.height > area.bottom - area.top) scrollThreadTo(element, element, { block: 'start' });
+    else if (box.bottom > area.bottom) scrollThreadTo(element, element, { block: 'end' });
+  }, [read, block]);
 }
 
 /* Hallmark · component: an answered message's steps · genre: modern-minimal · theme: the app's own tokens · states:
  * folded (one quiet line, ⌄) · open (the line counts the steps, every step under it, ⌃) · reading · not readable */
 /**
  * The steps of the Run that answered, above its answer where the work line stood while it ran: one quiet line that opens
- * them as that line did, read only once opened. They open downward from it, where the reading starts, so nothing is
- * scrolled for them.
+ * them as that line did, read only once opened.
  */
 export function AnswerSteps({ run }: { run: string }) {
   const { t } = useTranslation('people');
   const [open, setOpen] = useState(false);
   const steps = useRunSteps(run, open);
+  const block = useRef<HTMLDivElement>(null);
+  useListedInSight(steps.listed, block);
   const count = stepCount(steps);
-  return <div data-answer-steps className="mb-2">
+  return <div ref={block} data-answer-steps className="mb-2 scroll-mt-[max(3rem,calc(var(--pane-head,1.25rem)+1rem))]">
     <button type="button" aria-expanded={open} onClick={() => setOpen(!open)} className={cn(STEPS_BUTTON, "text-muted hover:text-ink")}>
       <span className="min-w-0 flex-1 truncate">{count === undefined ? t('now.step.answered') : t('now.step.answeredCount', { count })}</span>
       <Chevron open={open} /></button>

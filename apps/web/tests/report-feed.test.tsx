@@ -668,7 +668,7 @@ test("opened, only the responsible person's steps are read and listed; everyone 
   const steps = (who: string) => [1, 2].map(n => ({ id: `${who}${n}`, at, tool: "Bash", kind: "command" as const, text: `${who} step ${n}`,
     more: 0, about: null, state: n === 2 ? "running" as const : "done" as const, result: null }));
   const asked: string[] = [];
-  runSteps.of = async run => { asked.push(run); return { from: 0, total: 2, steps: steps("lead").map((step, n) => ({ n, id: step.id, tool: step.tool,
+  runSteps.of = async run => { asked.push(run); return { total: 2, version: 2, complete: true, steps: steps("lead").map((step, n) => ({ n, id: step.id, tool: step.tool,
     kind: step.kind, text: step.text, more: 0, about: null, state: step.state })) }; };
   const data = screenData(tree({ placements: [workingPlacement("P1"), workingPlacement("P2")], runs: [
     run("R1", { state: "running", endedAt: null, activity: { ...note("lead words"), steps: steps("lead") } }),

@@ -112,7 +112,8 @@ export class CoordinatorConversation {
     if (!run) return null;
     const folder = runFolder(this.root, run.id), label = readRecentWork(folder), activity = readRunActivity(folder);
     const steps = activity?.steps ?? [], words = activity?.note?.text ?? null;
-    return label || steps.length || words ? { conversation: run.conversationId, turn: run.requestId, run: run.id, name: label?.name ?? null, count: label?.count ?? 0, steps, words } : null;
+    return label || steps.length || words ? { conversation: run.conversationId, turn: run.requestId, run: run.id, name: label?.name ?? null, count: label?.count ?? 0, steps,
+      stepEvents: activity?.stepEvents ?? 0, words } : null;
   }
   /** Startup alone calls this, before recovery can turn an unfinished Run into another answer. */
   async seedSeen(): Promise<void> {
