@@ -414,25 +414,35 @@ export const taskValuesViewSchema = z.object({ values: z.record(fieldIdSchema, z
   from: z.string().nullable(), context: z.string() }).strict();
 
 /**
- * The one reading of an answer's words against the question as it was asked (its `decide` items): each item is named
- * by a `<n>-<word>` label, its word the first word of one of its choices, `other` or `stop`. A label naming no item or
- * no choice of it is read as none; an item no label names is `unread`.
+ * The one reading of an answer's words against the question as it was asked (its `decide` items). An item is named by
+ * a `<n>-<word>` label at the start of a line (after a task mark `T3（…）` or `T3` there, as the screen writes it) or right
+ * after another label; its word is the first word of one of its choices, `other` or `stop`, with no closing
+ * punctuation. A label naming no choice, and an item no label names, are `unread`; `words` says whether words follow an
+ * item's label before the next label or line. Labels inside the words (a quote, a mention) are words.
  */
 export function readAnswerParts(decide: readonly FieldItem[], text: string): { items: AnswerPart[]; words: boolean } {
-  const labels = new Map<number, string>();
-  const rest = text.replace(/(^|\s)([1-9]\d{0,2})-(\S+)/g, (whole, space: string, n: string, word: string) => {
-    if (!labels.has(Number(n))) labels.set(Number(n), word);
-    return space;
-  });
-  const items = decide.map((item, at): AnswerPart => {
-    const n = at + 1, word = labels.get(n);
-    if (word === undefined) return { n, kind: 'unread' };
-    if (word.toLowerCase() === OTHER_WORD) return { n, kind: 'other' };
-    if (word.toLowerCase() === STOP_WORD) return { n, kind: 'stop' };
+  const labels = new Map<number, { word: string; words: boolean }>();
+  let rest = '';
+  for (const line of text.split(/\r?\n/)) {
+    let at = line.replace(/^\s*(?:T\d+(?:（[^\n]*?）)?\s+)?/, '');
+    for (let found = /^([1-9]\d{0,2})-(\S+?)[。．.、,，!！?？)）]*(?=\s|$)/.exec(at); found; found = /^([1-9]\d{0,2})-(\S+?)[。．.、,，!！?？)）]*(?=\s|$)/.exec(at)) {
+      at = at.slice(found[0].length);
+      const next = /\s[1-9]\d{0,2}-\S/.exec(at), said = next ? at.slice(0, next.index) : at;
+      if (!labels.has(Number(found[1]))) labels.set(Number(found[1]), { word: found[2]!, words: /\S/.test(said) });
+      rest += ' ' + said; at = next ? at.slice(next.index).trimStart() : '';
+    }
+    rest += ' ' + at;
+  }
+  const items = decide.map((item, index): AnswerPart => {
+    const n = index + 1, label = labels.get(n);
+    if (label === undefined) return { n, kind: 'unread', words: false };
+    const word = label.word, words = label.words;
+    if (word.toLowerCase() === OTHER_WORD) return { n, kind: 'other', words };
+    if (word.toLowerCase() === STOP_WORD) return { n, kind: 'stop', words };
     const choices = Array.isArray(item.decide_choices) ? item.decide_choices as FieldItem[] : [];
     const choice = choices.findIndex(each => choiceWord(String(each.decide_choice ?? '')) === word);
-    return choice === -1 ? { n, kind: 'unread' }
-      : { n, kind: 'choice', choice: choice + 1, recommended: !!String(choices[choice]!.decide_choice_recommended ?? '').trim() };
+    return choice === -1 ? { n, kind: 'unread', words }
+      : { n, kind: 'choice', choice: choice + 1, recommended: !!String(choices[choice]!.decide_choice_recommended ?? '').trim(), words };
   });
   return { items, words: /\S/.test(rest) };
 }

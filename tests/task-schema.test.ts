@@ -150,10 +150,12 @@ test('a later text member is led by its title, a list of texts under it; an empt
     { decide_choice: 'B', decide_choice_recommended: 'why' }] }] }).success, true);
 });
 
-test('an answer is read item by item against the question as asked: a word that names no choice and an item no label names are unread', () => {
+test('an answer is read item by item against the question as asked: labels lead a line or follow a label, never sit inside words', () => {
   const decide = [{ decide_question: 'Ship', decide_choices: [{ decide_choice: 'Now' }, { decide_choice: 'Later sometime', decide_choice_recommended: 'safer' }] },
     { decide_question: 'Name' }, { decide_question: 'Go on', decide_stop: 'Nothing ships' }];
-  assert.deepEqual(readAnswerParts(decide, '1-Later 3-stop'), { words: false, items: [
-    { n: 1, kind: 'choice', choice: 2, recommended: true }, { n: 2, kind: 'unread' }, { n: 3, kind: 'stop' }] });
-  assert.deepEqual(readAnswerParts(decide, 'Ship it 1-Soon').items[0], { n: 1, kind: 'unread' });
+  assert.deepEqual(readAnswerParts(decide, 'T3（Ship it） 1-Later。 2-other Call it Atlas\n3-stop'), { words: true, items: [
+    { n: 1, kind: 'choice', choice: 2, recommended: true, words: false }, { n: 2, kind: 'other', words: true }, { n: 3, kind: 'stop', words: false }] });
+  // A label quoted inside the words is words, and a word that names no choice is unread.
+  assert.deepEqual(readAnswerParts(decide, 'The 1-Later in the log was a quote; hold it').items[0], { n: 1, kind: 'unread', words: false });
+  assert.deepEqual(readAnswerParts(decide, '1-Soon').items[0], { n: 1, kind: 'unread', words: false });
 });

@@ -22,4 +22,4 @@ export const questionSchema = z.object({
   decide: z.array(z.record(z.string(), z.unknown())).min(1),
 }).strict();
 
-export { answerPartSchema, answerPartsSchema, type AnswerPart, type AnswerParts } from '@alpacawork/raw';
+export { answerPartSchema, answerPartsSchema, type AnswerPart, type AnswerParts } from '@alpacawork/raw/task-log-schema';

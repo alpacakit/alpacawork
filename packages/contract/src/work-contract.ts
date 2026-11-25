@@ -56,7 +56,8 @@ export type StepTimeSource = z.infer<typeof stepTimeSourceSchema>;
 /** A step's input with paths, digests, IDs and numbers replaced, and a digest of the whole input when it has more lines. */
 export const stepFingerprintSchema = z.object({ line: z.string().max(RUN_STEP_TEXT_LIMIT), body: z.string().regex(/^[0-9a-f]{16}$/).nullable() }).strict();
 export type StepFingerprint = z.infer<typeof stepFingerprintSchema>;
-export const stepOutputSchema = z.object({ chars: z.number().int().nonnegative(), digest: z.string().regex(/^[0-9a-f]{16}$/) }).strict();
+/** `whole`: the digest covers all of it; false when the agent cut what came back, so it covers the start alone. */
+export const stepOutputSchema = z.object({ chars: z.number().int().nonnegative(), digest: z.string().regex(/^[0-9a-f]{16}$/), whole: z.boolean() }).strict();
 export type StepOutput = z.infer<typeof stepOutputSchema>;
 /**
  * One line of a Run's step journal (RUN_FILES.steps), appended by the Run's manager as a step starts or ends and never
@@ -72,8 +73,6 @@ export const stepJournalEntrySchema = z.discriminatedUnion('event', [
     state: z.enum(['done', 'failed', 'unknown']), output: stepOutputSchema.nullable() }).strict(),
 ]);
 export type StepJournalEntry = z.infer<typeof stepJournalEntrySchema>;
-/** The most of a step journal read back: about 200 bytes a line, so some 80,000 step events. */
-export const STEP_JOURNAL_LIMIT = 16 * 1024 * 1024;
 /** How many steps one read of a Run's steps gives at most. */
 export const RUN_STEPS_PAGE_LIMIT = 200;
 /**

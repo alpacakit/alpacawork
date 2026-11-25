@@ -55,10 +55,12 @@ export const closesQuestion = (kind: string) => kind === 'answered' || kind === 
  * How one item of a question was answered, read from the answer's words when it came: `choice` (one of its choices,
  * `choice` its number from 1, `recommended` whether it was the one the asker recommended), `other` (none of them, with
  * the person's own words), `stop` (stop the task), or `unread` (no `<n>-<word>` names this item in the words).
+ * `words`: words follow the item's label.
  */
 export const answerPartSchema = z.discriminatedUnion('kind', [
-  z.object({ n: z.number().int().positive(), kind: z.literal('choice'), choice: z.number().int().positive(), recommended: z.boolean() }).strict(),
-  z.object({ n: z.number().int().positive(), kind: z.enum(['other', 'stop', 'unread']) }).strict(),
+  z.object({ n: z.number().int().positive(), kind: z.literal('choice'), choice: z.number().int().positive(), recommended: z.boolean(),
+    words: z.boolean() }).strict(),
+  z.object({ n: z.number().int().positive(), kind: z.enum(['other', 'stop', 'unread']), words: z.boolean() }).strict(),
 ]);
 export type AnswerPart = z.infer<typeof answerPartSchema>;
 /**
@@ -110,7 +112,7 @@ export const taskLogSchema = z.object({
   decide: z.array(z.record(z.string(), z.unknown())).min(1).optional(),
   /**
    * What an instruction of this Task is (request_labeled). A later label of the same instruction replaces an earlier
-   * one, a person's (or a coordinator's quoting the person) any AI's.
+   * one, and a person's any AI's.
    */
   label: instructionLabelSchema.optional(),
   /** An answer's items as read from its words when it came (contract readAnswerParts). */

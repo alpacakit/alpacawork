@@ -215,8 +215,12 @@ function questionDetail(source: ControlSource, task: SourceTask, questionId: str
     ...(answer === null ? {} : { answer, answerId: closing!.id, answeredAt: closing!.at,
       answerParts: closing!.answerParts ?? null }),
     // The instruction whose arrival withdrew it, sent in place of an answer.
-    ...(closing?.kind === 'question_withdrawn' ? { replacedBy: closing.originCauseId ?? null } : {}) };
+    ...(closing?.kind === 'question_withdrawn' ? { replacedBy: replacing(task.log, closing.originCauseId) } : {}) };
 }
+
+/** The instruction whose arrival withdrew a question (its cause, when that is an instruction of the Task); null otherwise. */
+const replacing = (log: readonly TaskLog[], cause: string | undefined): string | null =>
+  cause !== undefined && log.some(entry => entry.id === cause && (entry.kind === 'request_accepted' || entry.kind === 'review_sent_back')) ? cause : null;
 
 export function taskView(source: ControlSource, id: string, options: TaskViewOptions = {}) {
   const task = source.tasks.find(item => item.id === id);

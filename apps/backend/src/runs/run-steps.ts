@@ -90,7 +90,12 @@ export class RunStepIndex {
       step = { id, tool, kind: runStepKind(tool, toolName, event.command ?? null), ...(event.detail ?? { text: '', more: 0 }),
         about: event.about ?? null, state: 'running', start: at, end: null, line, parent, changed: 0, unsure: false };
       this.byId.set(id, this.steps.push(step) - 1);
-      if (parent !== null) this.inside.set(parent, (this.inside.get(parent) ?? 0) + 1);
+      if (parent !== null) {
+        this.inside.set(parent, (this.inside.get(parent) ?? 0) + 1);
+        // The parent's count of steps inside it changed: a list holding it takes it again.
+        const above = this.byId.get(parent);
+        if (above !== undefined) this.steps[above]!.changed = ++this.version;
+      }
     } else if (event.detail?.text) Object.assign(step, event.detail);
     if (kind === 'tool_end') {
       step.state = event.outcome?.unknown ? 'unknown' : event.outcome?.failed ? 'failed' : 'done'; step.end = at; step.unsure = false;
@@ -164,7 +169,10 @@ export class RunStepIndex {
     this.readTimes();
   }
 
-  /** The step journal's times, by the line and ID that name each step. */
+  /**
+   * The step journal's times, by the line and ID that name each step. The manager may write a time after this index
+   * read the step's line: a step whose times changed takes the next version, as any other change of it does.
+   */
   private readTimes(): void {
     const times = new Map<string, Pick<RunStepEntry, Timed>>();
     for (const entry of readStepJournal(this.folder)) {
@@ -172,6 +180,10 @@ export class RunStepIndex {
       if (entry.event === 'start') Object.assign(held, { startedAt: entry.at, startSource: entry.source, fingerprint: entry.fingerprint });
       else Object.assign(held, { endedAt: entry.at, endSource: entry.source, output: entry.output });
       times.set(name, held);
+    }
+    for (const step of this.steps) {
+      const name = `${step.line}\0${step.id}`;
+      if (JSON.stringify(times.get(name)) !== JSON.stringify(this.times.get(name))) step.changed = ++this.version;
     }
     this.times = times;
   }

@@ -555,3 +555,16 @@ test('step fingerprint: the same command with other paths, IDs and numbers reads
   assert.deepEqual(stepFingerprint('git show 3485f2a36:README.md'), { line: 'git show <hash>:README.md', body: null });
   assert.notDeepEqual(stepFingerprint('python3 - <<EOF\nprint(1)\nEOF'), stepFingerprint('python3 - <<EOF\nprint(2)\nEOF'));
 });
+
+test('a step time written after the index read its line comes with the next since, and a torn journal line loses nothing after it', async t => {
+  const path = folder(t);
+  write(path, [bash('one', 'ls')]);
+  const index = await read(path);
+  const first = index.range(undefined, 12);
+  assert.equal(first.steps[0]?.startedAt, null);
+  // The manager's journal ends in a line a crash cut short; the next entry still lands whole.
+  appendFileSync(join(path, 'steps.jsonl'), '{"event":"start","li');
+  new OutputActivityReader(AGENT_RUNTIME_ADAPTERS.claude, () => Date.parse('2026-11-26T02:00:00.000Z')).poll(path);
+  await index.update();
+  assert.deepEqual(index.since(first.version).steps.map(step => [step.id, step.startedAt]), [['one', '2026-11-26T02:00:00.000Z']]);
+});

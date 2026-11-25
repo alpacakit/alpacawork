@@ -46,14 +46,18 @@ function commitAt(cwd: string): string | null {
 
 /** What an agent of `adapter` working in `cwd` runs under now. */
 export function observeConditions(input: { adapter: string; cwd: string; version: string; release: string | null; home?: string }): RunConditions {
-  const folder = personalSkillsFolder(input.adapter, input.home ?? homedir());
-  let names: string[] = [];
-  try { names = readdirSync(folder).filter(name => !name.startsWith('.') && statSync(join(folder, name)).isDirectory()).sort(); } catch { names = []; }
+  const folders = [personalSkillsFolder(input.adapter, input.home ?? homedir()), join(input.cwd, '.claude/skills'), join(input.cwd, '.agents/skills')];
+  const skills = [...new Set(folders)].flatMap(folder => {
+    let names: string[];
+    try { names = readdirSync(folder).filter(name => !name.startsWith('.') && statSync(join(folder, name)).isDirectory()).sort(); }
+    catch { return []; }
+    return [{ folder, items: names.map(name => ({ name, digest: skillDigest(join(folder, name)) })) }];
+  });
   let source: string | null = null;
   try { source = input.release ? String(readPackageVersion(input.release).source ?? '') || null : null; } catch { source = null; }
   return { v: 1, observedAt: new Date().toISOString(), version: input.version, release: input.release, source,
     cwd: { path: input.cwd, commit: commitAt(input.cwd) },
-    skills: { folder, items: names.map(name => ({ name, digest: skillDigest(join(folder, name)) })) } };
+    skills };
 }
 
 /** Keeps what the Run ran under in its folder, once: a manager started again for the same Run leaves the first. */
@@ -80,8 +84,8 @@ export function conditionChanges(before: RunConditions, after: RunConditions): R
   const changes: RunConditionChange[] = [];
   const release = (c: RunConditions) => `${c.version}${c.source ? ` (${c.source})` : ''}`;
   if (release(before) !== release(after)) changes.push({ kind: 'release', name: null, before: release(before), after: release(after) });
-  const earlier = new Map(before.skills.items.map(item => [item.name, item.digest]));
-  const later = new Map(after.skills.items.map(item => [item.name, item.digest]));
+  const named = (c: RunConditions) => new Map(c.skills.flatMap(({ folder, items }) => items.map(item => [`${folder}/${item.name}`, item.digest] as const)));
+  const earlier = named(before), later = named(after);
   for (const name of [...new Set([...earlier.keys(), ...later.keys()])].sort()) {
     const was = earlier.get(name) ?? null, now = later.get(name) ?? null;
     if (was !== now || earlier.has(name) !== later.has(name)) changes.push({ kind: 'skill', name, before: was, after: now });
@@ -103,8 +107,8 @@ export function launchChanges(before: Pick<RunRecord, 'launch'>, after: Pick<Run
   return changes;
 }
 
-/** run conditions: what Task Run `run` ran under and what changed before it. */
-export function readConditionsView(root: string, run: RunId): RunConditionsView {
+/** run conditions: what Task Run `run` ran under and what changed before it, compared with Runs `readable` allows. */
+export function readConditionsView(root: string, run: RunId, readable: (run: RunId) => boolean): RunConditionsView {
   const store = RunStore.openReadable(root, { busyTimeoutMs: 0 });
   let record: RunRecord | null = null, placementRuns: RunRecord[] = [];
   try {
@@ -116,9 +120,10 @@ export function readConditionsView(root: string, run: RunId): RunConditionsView 
   let sinceEarlier: RunConditionsView['sinceEarlier'] = null;
   if (conditions) for (let n = runNumber(run) - 1; n > 0 && n >= runNumber(run) - EARLIER_LOOKBACK; n--) {
     const earlier = readConditions(runFolder(root, `R${n}` as RunId));
-    if (earlier) { sinceEarlier = { run: `R${n}` as RunId, changes: conditionChanges(earlier, conditions) }; break; }
+    if (earlier && readable(`R${n}` as RunId)) { sinceEarlier = { run: `R${n}` as RunId, changes: conditionChanges(earlier, conditions) }; break; }
   }
   const previous = placementRuns.filter(each => runNumber(each.id) < runNumber(run)).at(-1);
-  return { run, conditions, sinceEarlier,
+  const chosen = (key: string) => { const value = (record!.launch.values as Record<string, unknown>)[key]; return typeof value === 'string' ? value : null; };
+  return { run, launch: { agent: record.agent, model: chosen('model'), effort: chosen('effort') }, conditions, sinceEarlier,
     sincePlacement: previous ? { run: previous.id, changes: launchChanges(previous, record) } : null };
 }

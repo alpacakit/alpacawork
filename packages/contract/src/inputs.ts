@@ -6,7 +6,7 @@ import { projectColorSchema } from '@alpacawork/raw/project-settings';
 import { folderNameProblem } from './workspace-contract.js';
 import { parseDocument } from 'yaml';
 import { MAX_DOCUMENT } from '@alpacawork/raw/values';
-import { FIX_KINDS, INSTRUCTION_KINDS } from '@alpacawork/raw';
+import { FIX_KINDS, INSTRUCTION_KINDS } from '@alpacawork/raw/task-log-schema';
 import { descriptionSchema, reportTitleSchema, digestSchema, estimateMinutesSchema, instructionSchema,
   logIdSchema, quoteTextSchema, reportStateSchema, runIdSchema, taskIdSchema, projectIdSchema, taskKindSchema, taskStateSchema,
   titleSchema, urgentReasonSchema } from './fields.js';

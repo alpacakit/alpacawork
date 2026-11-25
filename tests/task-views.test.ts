@@ -212,18 +212,24 @@ test('task get lists open questions and --question gives one\'s full text as fix
         { kind: 'human' }, { kind: 'human' });
     const answered = (await cli(h.root, ['task', 'get', '--task', h.top.id, '--question', questionId])).json.question;
     assert.deepEqual([answered.kinds, answered.answerParts], [['choose', 'choose'], { from: 'user', words: true,
-        items: [{ n: 1, kind: 'choice', choice: 1, recommended: true }, { n: 2, kind: 'other' }] }]);
+        items: [{ n: 1, kind: 'choice', choice: 1, recommended: true, words: false }, { n: 2, kind: 'other', words: true }] }]);
 });
 test('an instruction keeps what its sender said it is, read back with task get --include labels', async (t) => {
     const h = await setup(t);
+    await h.commands.update({ id: h.top.id, values: { decide: [{ decide_kind: 'accept', decide_question: 'Merge the card?' }] }, expectedTaskHash: h.top.hash });
+    const questionId = await ask(h, h.top.id, 'Merge the card', 'The card is ready to merge');
     const placement = responsibleOf(h.root, h.top.id), opId = randomUUID();
     const sent = await new TaskRequestService(h.root).request({ task: h.top.id, body: 'The card sits too low; move it up and make it load faster',
-        opId, expectedTaskHash: h.top.hash, expectedPlacementRevision: placement.revision, instructionKind: 'fix', fixes: ['look', 'speed'] },
+        opId, expectedTaskHash: (await new ControlTaskStore(h.root).get(h.top.id)).hash, expectedPlacementRevision: placement.revision,
+        instructionKind: 'fix', fixes: ['look', 'speed'] },
         { kind: 'main', provider: 'claude', conversationId: 'c1' }, { kind: 'human' });
     assert.equal(sent.outcome.kind, 'request_accepted');
     const read = (await cli(h.root, ['task', 'get', '--task', h.top.id, '--include', 'labels'])).json;
     assert.deepEqual(read.labels.map(({ request, kind, fixes, by }: Record<string, unknown>) => ({ request, kind, fixes, by })),
         [{ request: opId, kind: 'fix', fixes: ['look', 'speed'], by: 'ai' }]);
+    // The question the instruction came instead of an answer to names it.
+    const withdrawn = (await cli(h.root, ['task', 'get', '--task', h.top.id, '--question', questionId])).json.question;
+    assert.deepEqual([withdrawn.state, withdrawn.kinds, withdrawn.replacedBy], ['withdrawn', ['accept'], opId]);
     // A label is a record for analysis, not a row of the History.
     assert.equal((await cli(h.root, ['task', 'get', '--task', h.top.id])).json.labels, undefined);
 });

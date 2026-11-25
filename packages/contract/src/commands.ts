@@ -22,7 +22,7 @@ import { z } from 'zod';
 import { coordinatorReplyGetInput } from './coordinator-contract.js';
 import { fieldGetResultSchema, fieldListResultSchema, fieldSetResultSchema, fieldDeleteResultSchema, PROJECT_SCHEMA, PROJECT_SUMMARY } from './task-schema.js';
 import { ESTIMATE_MINUTES, MAX_CONTROL_BODY, MAX_DETAIL_LENGTH, MAX_INSTRUCTION_BYTES } from '@alpacawork/raw/values';
-import { FIX_KINDS, INSTRUCTION_KINDS } from '@alpacawork/raw';
+import { FIX_KINDS, INSTRUCTION_KINDS } from '@alpacawork/raw/task-log-schema';
 import { digestSchema, REPORT_TITLE_GUIDE_WIDTH, REPORT_TITLE_MAX_WIDTH, reportStateSchema, runIdSchema, taskIdSchema,
   taskKindSchema, taskStateSchema } from './fields.js';
 import {
