@@ -6,7 +6,9 @@ import type { RunStep, RunStepDetail, RunStepEntry } from '@alpacawork/contract/
 import { StepList, WorkLine, WorkMark, takeIn, useRunSteps } from '../src/features/people/RunSteps';
 import { stylesheet } from './stylesheet';
 import { ApiError } from '../src/data/client';
-import { AnswerSteps } from '../src/features/coordinator/parts';
+import { TurnWork } from '../src/features/coordinator/parts';
+/** An answered turn whose Run took steps: its work opens from the pill above its answer. */
+const AnswerSteps = ({ run }: { run: string }) => <TurnWork turn={{ id: 'turn', at: '2026-11-01T00:00:00.000Z', status: 'succeeded', workedBy: run }} />;
 
 // The server's side: one Run's steps, each with the version it last changed at, and what each ran.
 const server = vi.hoisted(() => ({

@@ -75,15 +75,20 @@ export function Thinking({ turn }: { turn: { id: string; at: string } }) {
   return <Pulse>{useWorkingWords(turn)}</Pulse>;
 }
 
-/* Hallmark · component: the running turn's reply in the open conversation · genre: modern-minimal · theme: the app's own
- * tokens · states: nothing run yet (the mark, "Working on it…", the seconds) · a step (the mark, the step, the seconds, ⌄) ·
- * open (the line counts the steps, every step so far under it, ⌃) */
+/* Hallmark · component: a turn's work in the open conversation, from its run to its answer · genre: modern-minimal ·
+ * theme: the app's own tokens · states: at work with nothing run yet (the mark, "Working on it…", the seconds) · at work
+ * (the latest words, then the mark, the step, the seconds, ⌄) · at work, open (the line counts the steps, every step so
+ * far under it, ⌃) · answered (a small pill: the work's still mark, its words and ⌄ side by side) · answered, open (the
+ * pill counts the steps, the steps' box under it, then the answer) · reading · not readable */
 /**
- * What the running turn is doing, where the conversation is open: its latest words, then one line that says it all —
- * the moving mark, the latest step (or that it works, before any), and the seconds since the message. A press on the
- * line opens every step so far under it, oldest first, as History's working row does; another folds them.
+ * A turn's work, where the conversation is open, as one thing from its start to its answer. At work: its latest words,
+ * then one line that says it all (the moving mark, the latest step or that it works, the seconds since the message),
+ * which opens every step so far under it. Answered: one quiet pill, as wide as its words, in that line's place, above
+ * the answer. It is the same press and the same list throughout, so what was opened or closed, a step opened in it and
+ * the focus in it stay as they are when the answer comes; the list is read only while open, and once more when the work
+ * ends, so no step is left at work.
  */
-export function WorkingReply({ turn }: { turn: { id: string; at: string } }) {
+export function TurnWork({ turn }: { turn: Pick<CoordinatorTurn, 'id' | 'at' | 'status' | 'workedBy'> }) {
   const { t } = useTranslation('ui'), { t: p } = useTranslation('people');
   const store = useContext(WorkspaceContext);
   const work = useSyncExternalStore(store?.subscribe ?? noStore, () => store?.getState().info.coordinatorWork ?? null);
@@ -93,28 +98,35 @@ export function WorkingReply({ turn }: { turn: { id: string; at: string } }) {
   const offline = useConnection(state => state.offline);
   // The turn's work, as last received for it: the Run's work ends a moment before the turn's answer comes, and until the
   // answer takes its place the turn keeps saying what it did, so nothing under it is taken away and put back.
-  const live = work && work.conversation === conversation && work.turn === turn.id ? work : null;
-  const last = useRef(live);
-  if (live) last.current = live;
+  const received = work && work.conversation === conversation && work.turn === turn.id ? work : null;
+  const last = useRef(received);
+  if (received) last.current = received;
   const kept = last.current && last.current.conversation === conversation ? last.current : null;
-  const mine = offline ? null : live ?? kept;
-  const step = mine?.steps.at(-1);
-  // Brought up to date whenever any of its steps starts or ends, however many run at once.
+  const mine = offline ? null : received ?? kept;
+  const running = turn.status === 'running';
+  // At work, the Run is the one working on it; answered, the one that answered (the same Run, so the list stays).
+  const run = running ? mine?.run : turn.workedBy;
   // Whether there is a list is whether the Run has taken any step (tookSteps), as everywhere its steps are offered.
-  const worked = tookSteps(mine);
-  const steps = useRunSteps(mine?.run, open && worked, mine?.stepEvents ?? 0);
+  const worked = running ? tookSteps(mine) : !!turn.workedBy;
+  // Brought up to date whenever any of its steps starts or ends, however many run at once, and once more as it ends.
+  const steps = useRunSteps(run, open && worked, running ? mine?.stepEvents ?? 0 : 'ended');
   const block = useRef<HTMLDivElement>(null);
-  useListedInSight(steps.listed, block);
-  const time = <WorkSeconds at={turn.at} />;
+  // Opened after the answer, the pill goes to the top where it must move, so the answer's start stays in sight under it.
+  useListedInSight(steps.listed, block, !running);
   const count = stepCount(steps);
+  if (!running && !turn.workedBy) return null;
+  const toggle = () => setOpen(!open);
   return <div>
-    {mine?.words && <div data-working-words dir="auto" className="mb-2 [overflow-wrap:anywhere]"><MarkdownBody text={mine.words} task={null} variant="note" onFollow={followTask} /></div>}
+    {running && mine?.words && <div data-working-words dir="auto" className="mb-2 [overflow-wrap:anywhere]"><MarkdownBody text={mine.words} task={null} variant="note" onFollow={followTask} /></div>}
     {/* The work line beside the message, at the size of its other states and the answer's own line. */}
-    <div ref={block} className="scroll-mt-[max(3rem,calc(var(--pane-head,1.25rem)+1rem))] text-xs">
-    {worked ? <button type="button" data-working-steps aria-expanded={open} onClick={() => setOpen(!open)} className={STEPS_BUTTON}>
-      <WorkLine data-ask-thinking step={step} idle={t('coordinatorCard.thinking')} label={count === undefined ? undefined : p('now.step.count', { count })} className="min-w-0 flex-1 group-hover/steps:text-ink"
-        end={<>{time}<Chevron open={open} /></>} /></button>
-      : <WorkLine data-ask-thinking step={undefined} idle={t('coordinatorCard.thinking')} end={time} />}
+    <div ref={block} data-answer-steps={running ? undefined : ''} className={cn("scroll-mt-[max(3rem,calc(var(--pane-head,1.25rem)+1rem))] text-xs", !running && "mb-2")}>
+    {!worked ? <WorkLine data-ask-thinking step={undefined} idle={t('coordinatorCard.thinking')} end={<WorkSeconds at={turn.at} />} />
+      : <button type="button" data-turn-work-line data-working-steps={running ? '' : undefined} aria-expanded={open} onClick={toggle} className={running ? STEPS_BUTTON : PILL}>
+        {running ? <WorkLine data-ask-thinking step={mine?.steps.at(-1)} idle={t('coordinatorCard.thinking')} label={count === undefined ? undefined : p('now.step.count', { count })}
+          className="min-w-0 flex-1 group-hover/steps:text-ink" end={<><WorkSeconds at={turn.at} /><Chevron open={open} /></>} />
+        : <><Icon name="code" className="size-3.5 flex-none text-muted group-hover/steps:text-ink" />
+          <span className="min-w-0 truncate">{count === undefined ? p('now.step.answered') : p('now.step.answeredCount', { count })}</span>
+          <Chevron open={open} /></>}</button>}
     {open && worked && <StepList steps={steps} className={CHAT_LOG} />}
   </div></div>;
 }
@@ -123,6 +135,8 @@ export function WorkingReply({ turn }: { turn: { id: string; at: string } }) {
  * the line evenly, so its words stand where the line's words stand before it can be pressed (and where any other state
  * of a message is said).
  */
+/** The answered turn's way into its work: a pill as wide as its words, its arrow beside them. */
+const PILL = "group/steps inline-flex max-w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-full border border-line px-2.5 py-1 text-xs text-soft outline-none hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-ring aria-expanded:bg-hover aria-expanded:text-ink narrow:min-h-10 narrow:px-3";
 const STEPS_BUTTON = "group/steps flex w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-sm -my-1 py-1 text-left outline-none focus-visible:outline-2 focus-visible:outline-ring narrow:min-h-11 narrow:-my-[calc((--spacing(11)-1lh)/2)]";
 /** The conversation is short: its steps' box keeps the answer under it in sight, a step opened in it too. */
 const CHAT_LOG = "mt-1 max-h-[min(14rem,35vh)] narrow:max-h-[min(16rem,40vh)] has-[[data-run-step-open]]:max-h-[min(14rem,35vh)] narrow:has-[[data-run-step-open]]:max-h-[min(16rem,40vh)]";
@@ -145,32 +159,6 @@ function useListedInSight(read: unknown, block: RefObject<HTMLElement | null>, t
     if (box.top < area.top || box.height > area.bottom - area.top || (top && box.bottom > area.bottom)) scrollThreadTo(element, element, { block: 'start' });
     else if (box.bottom > area.bottom) scrollThreadTo(element, element, { block: 'end' });
   }, [read, block, top]);
-}
-
-/* Hallmark · component: an answered message's steps · genre: modern-minimal · theme: the app's own tokens · states:
- * folded (a small pill: the work's mark, its words and ⌄ side by side) · open (the pill counts the steps and turns ⌃, the
- * steps' box under it, then the answer) · reading · not readable */
-/**
- * The steps of the Run that answered, above its answer where the work line stood while it ran: one small pill, as
- * wide as its words, that opens them under it and closes them again, read only once opened. Its mark, words and
- * arrow are one press, so it reads as the answer's own way into its work.
- */
-export function AnswerSteps({ run }: { run: string }) {
-  const { t } = useTranslation('people');
-  const [open, setOpen] = useState(false);
-  const steps = useRunSteps(run, open);
-  const block = useRef<HTMLDivElement>(null);
-  // Opened, the pill goes to the top where it must move, so the answer's start stays in sight under the steps.
-  useListedInSight(steps.listed, block, true);
-  const count = stepCount(steps);
-  return <div ref={block} data-answer-steps className="mb-2 scroll-mt-[max(3rem,calc(var(--pane-head,1.25rem)+1rem))]">
-    <button type="button" aria-expanded={open} onClick={() => setOpen(!open)}
-      className="group/steps inline-flex max-w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-full border border-line px-2.5 py-1 text-xs text-soft outline-none hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-ring aria-expanded:bg-hover aria-expanded:text-ink narrow:min-h-10 narrow:px-3">
-      <Icon name="code" className="size-3.5 flex-none text-muted group-hover/steps:text-ink" />
-      <span className="min-w-0 truncate">{count === undefined ? t('now.step.answered') : t('now.step.answeredCount', { count })}</span>
-      <Chevron open={open} /></button>
-    {open && <StepList steps={steps} className={CHAT_LOG} />}
-  </div>;
 }
 
 /**
