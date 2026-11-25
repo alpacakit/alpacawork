@@ -39,7 +39,10 @@ export class ClaudeTranscripts {
 
   private async readSession(session: string): Promise<ConversationCalls> {
     const files = this.files(session);
+    const seen = new Set<string>();
     return readRecord(files, async book => { for (const file of files) for await (const line of recordLines(file)) {
+      // A message copied into another file (a resumed or forked conversation) keeps its uuid: it is read once.
+      if (typeof line.uuid === 'string') { if (seen.has(line.uuid)) continue; seen.add(line.uuid); }
       const at = recordTime(line.timestamp), message = line.message;
       const content = message && typeof message === 'object' ? (message as { content?: unknown }).content : undefined;
       if (!at || !Array.isArray(content)) continue;

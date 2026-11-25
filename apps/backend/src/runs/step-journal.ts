@@ -128,6 +128,8 @@ export class StepJournal {
     }
     if ((kind !== 'tool_start' && kind !== 'tool_end') || typeof id !== 'string' || !id || id.length > RUN_TOOL_ID_LIMIT) return null;
     if (kind === 'tool_start' && this.open.has(id)) return this.open.get(id)!;
+    // A start without a tool name starts no step (the index of steps does not list one), and leaves the step before it as it was.
+    if (kind === 'tool_start' && (typeof event.toolName !== 'string' || !event.toolName)) return null;
     if (kind === 'tool_start' && this.settled.has(id)) { this.unended.push([id, this.settled.get(id)!]); this.settled.delete(id); }
     if (kind === 'tool_end' && !this.open.has(id) && this.settled.has(id)) { this.open.set(id, this.settled.get(id)!); this.settled.delete(id); }
     // An end said again for a step already ended is that step's, as the index of steps reads it.

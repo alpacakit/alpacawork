@@ -592,3 +592,17 @@ test('an error notice while a command runs does not end it: its own later end is
   assert.deepEqual({ state: step?.state, endedAt: step?.endedAt, chars: step?.output?.chars },
     { state: 'done', endedAt: '2026-11-20T01:00:05.000Z', chars: 2 });
 });
+
+test('a start without a tool name after an error leaves the step before it to take its own end', async t => {
+  const path = folder(t);
+  let clock = Date.parse('2026-11-20T01:00:01.000Z');
+  const live = new OutputActivityReader(AGENT_RUNTIME_ADAPTERS.claude, () => clock);
+  write(path, [bash('a', 'pnpm test'), { type: 'error' }, { type: 'assistant', parent_tool_use_id: null,
+    message: { content: [{ type: 'tool_use', id: 'a', name: null, input: {} }] } }]);
+  live.poll(path);
+  clock += 4000;
+  write(path, [claudeEnd('a', 'ok')]);
+  live.finish(path, 'done');
+  const steps = (await read(path)).range(undefined, 12).steps;
+  assert.deepEqual(steps.map(({ id, endedAt, output }) => ({ id, endedAt, chars: output?.chars })), [{ id: 'a', endedAt: '2026-11-20T01:00:05.000Z', chars: 2 }]);
+});

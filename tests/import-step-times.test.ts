@@ -167,3 +167,17 @@ test('a step takes its call\'s one run within the Run\'s time to the millisecond
     { id: 'w', ...none }, { id: 'w', ...none }, { id: 'late', ...none },
   ]);
 });
+
+test('a message copied into another file is read once, so its end is not taken as a later call\'s', async t => {
+  const { path, homes } = home(t);
+  const session = '33333333-2222-4333-8444-555555555555', project = join(homes.claude, 'projects', '-work');
+  const copied = { uuid: 'm-end', ...said('2026-11-20T01:00:05.000Z', { type: 'tool_result', tool_use_id: 'a' }) };
+  lines(join(project, `${session}.jsonl`), [said('2026-11-20T01:00:01.000Z', { type: 'tool_use', id: 'a' }), copied,
+    // Its ID used again by the next Run, which the record never saw end.
+    said('2026-11-20T01:00:03.000Z', { type: 'tool_use', id: 'a' })]);
+  lines(join(project, session, 'subagents', 'agent-y.jsonl'), [copied]);
+  const folder = join(path, 'R6');
+  lines(join(folder, 'stdout.log'), [claudeStart('a')]);
+  await importRunSteps(folder, run('R6', 'claude', session, '2026-11-20T01:00:02.500Z', '2026-11-20T01:00:20Z'), transcriptReaders(homes), true);
+  assert.deepEqual(await times(folder, 'claude'), [{ id: 'a', startedAt: '2026-11-20T01:00:03.000Z', startSource: 'transcript', endedAt: null, endSource: null }]);
+});
