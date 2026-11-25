@@ -1,9 +1,9 @@
 {
   "breakdown": {
+    "all_other": "显示全部 {{count}} 行",
     "since": "自 {{date}} 起",
     "title": "明细",
-    "top": "只显示前几行",
-    "all_other": "显示全部 {{count}} 行"
+    "top": "只显示前几行"
   },
   "bucket": {
     "day": "按日",
@@ -14,6 +14,7 @@
     "week": "按周"
   },
   "chart": {
+    "binLabel": "{{day}}・{{name}} {{value}}",
     "fewShare": "{{accepted}} 个中 {{passed}} 个",
     "finished": "结束的任务",
     "finishedTip": "{{total}} 个：无需返工 {{passed}}・有返工 {{reworked}}・中止 {{stopped}}",
@@ -23,8 +24,7 @@
     "share": "无需返工的比例",
     "sharePercentTip": "验收的 {{accepted}} 个中 {{passed}} 个・{{share}}",
     "shareTip": "验收的 {{accepted}} 个中 {{passed}} 个",
-    "shareTipFew": "验收的 {{accepted}} 个中 {{passed}} 个（不足 10 个）",
-    "binLabel": "{{day}}・{{name}} {{value}}"
+    "shareTipFew": "验收的 {{accepted}} 个中 {{passed}} 个（不足 10 个）"
   },
   "colon": "：",
   "day": "{{day}}（{{weekday}}）",
@@ -87,10 +87,10 @@
     "close": "关闭",
     "day": "结束日",
     "empty": "没有任务",
+    "more_other": "显示其余 {{count}} 个",
     "outcome": "结果",
     "task": "任务",
-    "title": "{{title}} {{n}} {{unit}}",
-    "more_other": "显示其余 {{count}} 个"
+    "title": "{{title}} {{n}} {{unit}}"
   },
   "look": {
     "label": "显示",
@@ -120,6 +120,9 @@
   "range": "{{from}}～{{to}}",
   "same": "±0",
   "sep": "・",
+  "table": {
+    "head": "{{name}}（{{unit}}）"
+  },
   "tasks": {
     "accepted": "已验收",
     "by": {
@@ -156,11 +159,15 @@
     "you": "轮到你"
   },
   "unit": {
+    "conversations_other": "个",
     "hours": "小时",
     "join": "{{value}} {{unit}}",
     "joinTight": "{{value}}{{unit}}",
     "minutes": "分钟",
+    "people_other": "人",
     "points": " 个百分点",
+    "prs_other": "个",
+    "questions_other": "次",
     "scales": [
       {
         "at": 100000000,
@@ -175,11 +182,7 @@
     ],
     "taskCount_other": "个任务",
     "tasks_other": "个",
-    "times_other": "次",
-    "prs_other": "个",
-    "people_other": "人",
-    "questions_other": "次",
-    "conversations_other": "个"
+    "times_other": "次"
   },
   "until": {
     "lead": "耗时（中位数）",
@@ -252,8 +255,5 @@
     "finished_other": "已结束 {{count}} 个",
     "list": "任务列表",
     "passedOf_other": "{{count}} 个中 {{passed}} 个"
-  },
-  "table": {
-    "head": "{{name}}（{{unit}}）"
   }
 }

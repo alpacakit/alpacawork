@@ -1,10 +1,10 @@
 {
   "breakdown": {
+    "all_one": "Show all {{count}} rows",
+    "all_other": "Show all {{count}} rows",
     "since": "Since {{date}}",
     "title": "Breakdown",
-    "top": "Show top rows",
-    "all_one": "Show all {{count}} rows",
-    "all_other": "Show all {{count}} rows"
+    "top": "Show top rows"
   },
   "bucket": {
     "day": "Daily",
@@ -16,6 +16,7 @@
     "week": "Weekly"
   },
   "chart": {
+    "binLabel": "{{day}} · {{name}} {{value}}",
     "fewShare": "{{passed}} of {{accepted}}",
     "finished": "Finished tasks",
     "finishedTip": "{{total}}: no fixes {{passed}} · needed fixes {{reworked}} · stopped {{stopped}}",
@@ -25,8 +26,7 @@
     "share": "No-fix rate",
     "sharePercentTip": "{{passed}} of {{accepted}} accepted · {{share}}",
     "shareTip": "{{passed}} of {{accepted}} accepted",
-    "shareTipFew": "{{passed}} of {{accepted}} accepted (fewer than 10)",
-    "binLabel": "{{day}} · {{name}} {{value}}"
+    "shareTipFew": "{{passed}} of {{accepted}} accepted (fewer than 10)"
   },
   "colon": ": ",
   "day": "{{weekday}} {{day}}",
@@ -91,11 +91,11 @@
     "close": "Close",
     "day": "Finished",
     "empty": "No tasks",
+    "more_one": "Show {{count}} more",
+    "more_other": "Show {{count}} more",
     "outcome": "Outcome",
     "task": "Task",
-    "title": "{{title}} {{n}} {{unit}}",
-    "more_one": "Show {{count}} more",
-    "more_other": "Show {{count}} more"
+    "title": "{{title}} {{n}} {{unit}}"
   },
   "look": {
     "label": "View",
@@ -127,6 +127,9 @@
   "range": "{{from}} – {{to}}",
   "same": "±0",
   "sep": " · ",
+  "table": {
+    "head": "{{name}} ({{unit}})"
+  },
   "tasks": {
     "accepted": "Accepted",
     "by": {
@@ -164,11 +167,19 @@
     "you": "Your turn"
   },
   "unit": {
+    "conversations_one": "",
+    "conversations_other": "",
     "hours": "h",
     "join": "{{value}} {{unit}}",
     "joinTight": "{{value}}{{unit}}",
     "minutes": "min",
+    "people_one": "",
+    "people_other": "",
     "points": " pt",
+    "prs_one": "",
+    "prs_other": "",
+    "questions_one": "",
+    "questions_other": "",
     "scales": [
       {
         "at": 1000000000,
@@ -186,20 +197,12 @@
         "unit": "K"
       }
     ],
+    "taskCount_one": "",
+    "taskCount_other": "",
     "tasks_one": "",
     "tasks_other": "",
     "times_one": "",
-    "times_other": "",
-    "taskCount_one": "",
-    "taskCount_other": "",
-    "prs_one": "",
-    "prs_other": "",
-    "people_one": "",
-    "people_other": "",
-    "questions_one": "",
-    "questions_other": "",
-    "conversations_one": "",
-    "conversations_other": ""
+    "times_other": ""
   },
   "until": {
     "lead": "Time taken (median)",
@@ -275,8 +278,5 @@
     "list": "Task list",
     "passedOf_one": "{{passed}} of {{count}}",
     "passedOf_other": "{{passed}} of {{count}}"
-  },
-  "table": {
-    "head": "{{name}} ({{unit}})"
   }
 }

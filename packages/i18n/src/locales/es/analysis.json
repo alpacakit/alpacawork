@@ -1,11 +1,11 @@
 {
   "breakdown": {
-    "since": "Desde el {{date}}",
-    "title": "Desglose",
-    "top": "Mostrar solo las primeras",
     "all_one": "Mostrar las {{count}} filas",
     "all_many": "Mostrar las {{count}} filas",
-    "all_other": "Mostrar las {{count}} filas"
+    "all_other": "Mostrar las {{count}} filas",
+    "since": "Desde el {{date}}",
+    "title": "Desglose",
+    "top": "Mostrar solo las primeras"
   },
   "bucket": {
     "day": "Por día",
@@ -18,6 +18,7 @@
     "week": "Por semana"
   },
   "chart": {
+    "binLabel": "{{day}} · {{name}} {{value}}",
     "fewShare": "{{passed}} de {{accepted}}",
     "finished": "Tareas terminadas",
     "finishedTip": "{{total}}: sin correcciones {{passed}} · necesitaron correcciones {{reworked}} · detenidas {{stopped}}",
@@ -27,8 +28,7 @@
     "share": "Tasa sin correcciones",
     "sharePercentTip": "{{passed}} de {{accepted}} aceptadas · {{share}}",
     "shareTip": "{{passed}} de {{accepted}} aceptadas",
-    "shareTipFew": "{{passed}} de {{accepted}} aceptadas (menos de 10)",
-    "binLabel": "{{day}} · {{name}} {{value}}"
+    "shareTipFew": "{{passed}} de {{accepted}} aceptadas (menos de 10)"
   },
   "colon": ": ",
   "day": "{{weekday}} {{day}}",
@@ -95,12 +95,12 @@
     "close": "Cerrar",
     "day": "Terminada",
     "empty": "No hay tareas",
-    "outcome": "Resultado",
-    "task": "Tarea",
-    "title": "{{title}} {{n}} {{unit}}",
     "more_one": "Mostrar {{count}} más",
     "more_many": "Mostrar {{count}} más",
-    "more_other": "Mostrar {{count}} más"
+    "more_other": "Mostrar {{count}} más",
+    "outcome": "Resultado",
+    "task": "Tarea",
+    "title": "{{title}} {{n}} {{unit}}"
   },
   "look": {
     "label": "Vista",
@@ -134,6 +134,9 @@
   "range": "{{from}} – {{to}}",
   "same": "±0",
   "sep": " · ",
+  "table": {
+    "head": "{{name}} ({{unit}})"
+  },
   "tasks": {
     "accepted": "Aceptadas",
     "by": {
@@ -172,11 +175,23 @@
     "you": "Tu turno"
   },
   "unit": {
+    "conversations_one": "",
+    "conversations_many": "",
+    "conversations_other": "",
     "hours": "h",
     "join": "{{value}} {{unit}}",
     "joinTight": "{{value}} {{unit}}",
     "minutes": "min",
+    "people_one": "",
+    "people_many": "",
+    "people_other": "",
     "points": " pt",
+    "prs_one": "",
+    "prs_many": "",
+    "prs_other": "",
+    "questions_one": "",
+    "questions_many": "",
+    "questions_other": "",
     "scales": [
       {
         "at": 1000000000,
@@ -194,27 +209,15 @@
         "unit": "mil"
       }
     ],
+    "taskCount_one": "",
+    "taskCount_many": "",
+    "taskCount_other": "",
     "tasks_one": "",
     "tasks_many": "",
     "tasks_other": "",
     "times_one": "",
     "times_many": "",
-    "times_other": "",
-    "taskCount_one": "",
-    "taskCount_many": "",
-    "taskCount_other": "",
-    "prs_one": "",
-    "prs_many": "",
-    "prs_other": "",
-    "people_one": "",
-    "people_many": "",
-    "people_other": "",
-    "questions_one": "",
-    "questions_many": "",
-    "questions_other": "",
-    "conversations_one": "",
-    "conversations_many": "",
-    "conversations_other": ""
+    "times_other": ""
   },
   "until": {
     "lead": "Tiempo (mediana)",
@@ -293,8 +296,5 @@
     "passedOf_one": "{{passed}} de {{count}}",
     "passedOf_many": "{{passed}} de {{count}}",
     "passedOf_other": "{{passed}} de {{count}}"
-  },
-  "table": {
-    "head": "{{name}} ({{unit}})"
   }
 }

@@ -1,9 +1,9 @@
 {
   "breakdown": {
+    "all_other": "すべて表示（{{count}}行）",
     "since": "{{date}}から",
     "title": "内訳",
-    "top": "上位だけ表示",
-    "all_other": "すべて表示（{{count}}行）"
+    "top": "上位だけ表示"
   },
   "bucket": {
     "day": "日ごと",
@@ -14,6 +14,7 @@
     "week": "週ごと"
   },
   "chart": {
+    "binLabel": "{{day}}・{{name}} {{value}}",
     "fewShare": "{{accepted}}件のうち {{passed}}件",
     "finished": "終わったタスク",
     "finishedTip": "{{total}}件：手直しなし {{passed}}・手直しあり {{reworked}}・中止 {{stopped}}",
@@ -23,8 +24,7 @@
     "share": "手直しなしの割合",
     "sharePercentTip": "受け入れた {{accepted}}件のうち {{passed}}件・{{share}}",
     "shareTip": "受け入れた {{accepted}}件のうち {{passed}}件",
-    "shareTipFew": "受け入れた {{accepted}}件のうち {{passed}}件（10件未満）",
-    "binLabel": "{{day}}・{{name}} {{value}}"
+    "shareTipFew": "受け入れた {{accepted}}件のうち {{passed}}件（10件未満）"
   },
   "colon": "：",
   "day": "{{day}}（{{weekday}}）",
@@ -87,10 +87,10 @@
     "close": "閉じる",
     "day": "終わった日",
     "empty": "タスクはありません",
+    "more_other": "残り {{count}}件を表示",
     "outcome": "結果",
     "task": "タスク",
-    "title": "{{title}} {{n}}{{unit}}",
-    "more_other": "残り {{count}}件を表示"
+    "title": "{{title}} {{n}}{{unit}}"
   },
   "look": {
     "label": "表示",
@@ -120,6 +120,9 @@
   "range": "{{from}}〜{{to}}",
   "same": "±0",
   "sep": "・",
+  "table": {
+    "head": "{{name}}（{{unit}}）"
+  },
   "tasks": {
     "accepted": "受け入れた",
     "by": {
@@ -156,11 +159,15 @@
     "you": "あなたの番"
   },
   "unit": {
+    "conversations_other": "件",
     "hours": "時間",
     "join": "{{value}}{{unit}}",
     "joinTight": "{{value}}{{unit}}",
     "minutes": "分",
+    "people_other": "人",
     "points": "pt",
+    "prs_other": "件",
+    "questions_other": "回",
     "scales": [
       {
         "at": 100000000,
@@ -175,11 +182,7 @@
     ],
     "taskCount_other": "タスク",
     "tasks_other": "件",
-    "times_other": "回",
-    "prs_other": "件",
-    "people_other": "人",
-    "questions_other": "回",
-    "conversations_other": "件"
+    "times_other": "回"
   },
   "until": {
     "lead": "かかった時間（中央値）",
@@ -252,8 +255,5 @@
     "finished_other": "終わった {{count}}件",
     "list": "タスクの一覧",
     "passedOf_other": "{{count}}件のうち{{passed}}件"
-  },
-  "table": {
-    "head": "{{name}}（{{unit}}）"
   }
 }
