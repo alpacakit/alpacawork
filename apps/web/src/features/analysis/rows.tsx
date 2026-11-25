@@ -157,7 +157,11 @@ const LegendRoom = memo(function LegendRoom({ say, names }: { say: RowSay; names
 
 /** How wide words stand: a full-width letter (Japanese, Chinese) as two. */
 const breadth = (words: string) => [...words].reduce((sum, letter) => sum + (/[\u2e80-\uffef]/.test(letter) ? 2 : 1), 0);
-const widest = (all: string[]) => all.reduce((most, words) => breadth(words) > breadth(most) ? words : most, "");
+const widest = (all: string[]) => {
+  let most = "", room = 0;
+  for (const words of all) { const each = breadth(words); if (each > room) { most = words; room = each; } }
+  return most;
+};
 /** A row's legend made of the widest words each of its lines takes over its days (`names`): its room. */
 export function legendRoom(say: RowSay, names: string[]): { day: string; say: RowSay } {
   const days = names.map((_, at) => at);
@@ -324,6 +328,9 @@ export function ChartGroup({ bins, span, today, bucket, rows, open, children }: 
   const { i18n } = useTranslation();
   const names = useMemo(() => bins.map(bin => binName(bin, today)), [bins, today, i18n.language]);
   const dayName = (at: number) => names[at]!;
+  // A row's room (legendRoom) is made once for its days and words, not again at each day a finger steps to.
+  const rooms = useMemo(() => new WeakMap<RowSay, ReturnType<typeof legendRoom>>(), [names]);
+  const roomOf = (say: RowSay) => { let room = rooms.get(say); if (!room) rooms.set(say, room = legendRoom(say, names)); return room; };
   const openDay = (list: (bin: Bin) => DayList) => { if (!shown) return; remember(shown.at, shown.row); close(); open(list(bins[shown.at]!)); };
   // What the day chosen says, read out as it changes (the keys move it a day at a time).
   const said = shown ? [dayName(shown.at), rows[shown.row]!.name, rows[shown.row]!.total(shown.at),
@@ -336,7 +343,7 @@ export function ChartGroup({ bins, span, today, bucket, rows, open, children }: 
       <div className="relative">{children}</div>
       {!narrow && <Columns layer="front" />}
     </div>
-    {narrow && shown?.box && <DayWindow day={dayName(shown.at)} say={rows[shown.row]!} room={legendRoom(rows[shown.row]!, names)} at={shown.at} box={shown.box}
+    {narrow && shown?.box && <DayWindow day={dayName(shown.at)} say={rows[shown.row]!} room={roomOf(rows[shown.row]!)} at={shown.at} box={shown.box}
       onList={listOf(shown.at, shown.row) ? () => press(shown.at, shown.row) : null}
       onPart={openDay}
       // The window steps to the day before or after, as if that day were pressed.
