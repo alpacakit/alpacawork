@@ -339,3 +339,27 @@ test('a structured result past the outcome reader\'s line limit leaves the Run s
   assert.ok(detail!.output!.text.startsWith('[\n  {\n    "id": 0,'));
   assert.ok(detail!.output!.omitted > 0);
 });
+
+test('a result nested 2,800 arrays deep leaves the Run succeeded with its reply, and its step read with what was left out', async t => {
+  const h = setup(t);
+  const result = join(h.area, 'result.txt');
+  const b = h.start(['--json', '-o', result]);
+  b.send('deep', JSON.stringify({ deepResult: true }));
+  await b.until(events => events.some(event => event.type === 'turn.completed'), 'turn completed');
+  b.child.stdin.end();
+  assert.equal(await b.exited, 0, b.stderr());
+  const lines = b.events().map(event => JSON.stringify(event));
+  assert.ok(lines.every(line => Buffer.byteLength(line) <= BRIDGE_LINE_BYTES));
+  assert.equal(readFileSync(result, 'utf8'), 'reply turn-1');
+  writeFileSync(join(h.area, RUN_FILES.stdout), lines.join('\n') + '\n');
+  writeFileSync(join(h.area, RUN_FILES.resultTemp), readFileSync(result));
+  assert.deepEqual(AGENT_RUNTIME_ADAPTERS.codex.read({ mode: 'start', session: null }, h.area, { code: 0, signal: null }).outcome,
+    { state: 'succeeded', session: 'thread-new', result: 'reply turn-1' });
+  const index = new RunStepIndex(h.area, AGENT_RUNTIME_ADAPTERS.codex);
+  await index.update();
+  const step = index.range(undefined, 12).steps.find(each => each.tool === 'db.tree')!;
+  assert.equal(step.state, 'done');
+  const detail = await index.detail(step.n);
+  assert.ok(detail!.output!.text.startsWith('[\n  [\n'));
+  assert.ok(detail!.output!.omitted > 0);
+});

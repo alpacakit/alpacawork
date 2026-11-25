@@ -56,66 +56,133 @@ const BRIDGE_ITEM_FIELDS = ['id', 'text', 'command', 'cwd', 'status', 'exitCode'
   'receiverThreadIds', 'path'] as const;
 /** How large one line a bridge writes may grow, whatever it holds: well under the 2 MiB a Run's outcome reader takes. */
 export const BRIDGE_LINE_BYTES = 1024 * 1024;
-/** The shortest a text is cut to while a line is too long: names and IDs stay whole. */
-const SHORTEST_TEXT = 64;
-type Clipped = Record<string, number>;
-/** Every text in `value` cut to `limit` characters, the code points each lost counted in `clipped` by its path. */
-function clipTexts(value: unknown, path: string, limit: number, clipped: Clipped): unknown {
-  if (typeof value === 'string') {
-    if (value.length <= limit) return value;
-    const kept = clipRunText(value, limit);
-    let left = 0;
-    for (const _ of value.slice(kept.length)) left++;
-    clipped[path] = (clipped[path] ?? 0) + left;
-    return kept;
+
+/** JSON text of any value, however deep: the native writer, else one that keeps its own stack (it never calls itself). */
+export function jsonText(value: unknown, indent = 2): string {
+  try { return JSON.stringify(value, null, indent) ?? ''; } catch { /* too deep for the native writer */ }
+  const out: string[] = [];
+  const stack: { entries: [string | null, unknown][]; at: number; close: string }[] = [];
+  const open = (each: unknown) => {
+    if (each !== null && typeof each === 'object') {
+      const array = Array.isArray(each);
+      out.push(array ? '[' : '{');
+      stack.push({ entries: array ? (each as unknown[]).map(item => [null, item]) : Object.entries(each as object), at: 0, close: array ? ']' : '}' });
+    } else out.push(JSON.stringify(each) ?? 'null');
+  };
+  open(value);
+  while (stack.length) {
+    const frame = stack.at(-1)!;
+    if (frame.at === frame.entries.length) { out.push(frame.close); stack.pop(); continue; }
+    const [key, each] = frame.entries[frame.at]!;
+    if (frame.at++) out.push(',');
+    if (key !== null) out.push(`${JSON.stringify(key)}:`);
+    open(each);
   }
-  if (Array.isArray(value)) return value.map((each, at) => clipTexts(each, `${path}.${at}`, limit, clipped));
-  if (value !== null && typeof value === 'object')
-    return Object.fromEntries(Object.entries(value).map(([key, each]) => [key, clipTexts(each, path ? `${path}.${key}` : key, limit, clipped)]));
-  return value;
+  return out.join('');
 }
-const lineBytes = (value: unknown) => new TextEncoder().encode(JSON.stringify(value)).length;
-/** What was cut said where the reading looks for it: an item's `clipped` by path, a tool event's text by its `omitted`. */
-function sayClipped(event: Record<string, unknown>, clipped: Clipped): Record<string, unknown> {
-  const cut = (prefix: string) => Object.entries(clipped).filter(([path]) => path === prefix || path.startsWith(`${prefix}.`));
-  const said = { ...event };
-  const item = said.item as Record<string, unknown> | undefined;
-  if (item && typeof item === 'object') {
-    const own = Object.fromEntries(cut('item').map(([path, count]) => [path.slice('item.'.length), count]));
-    if (Object.keys(own).length) said.item = { ...item, clipped: { ...item.clipped as Clipped | undefined, ...own } };
+/** A file change said as a person reads it: what was done to which path (and where it moved), then its diff. */
+export function fileChangeText(change: Record<string, unknown>): string {
+  const kind = change.kind !== null && typeof change.kind === 'object' ? change.kind as Record<string, unknown> : {};
+  const done = typeof change.kind === 'string' ? change.kind : typeof kind.type === 'string' ? kind.type : 'change';
+  const moved = typeof kind.move_path === 'string' ? ` → ${kind.move_path}` : '';
+  return [`${done}: ${String(change.path)}${moved}`, typeof change.diff === 'string' && change.diff ? change.diff : ''].filter(Boolean).join('\n');
+}
+const record = (value: unknown): Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+const texts = (value: unknown) => Array.isArray(value)
+  ? value.map(record).filter(block => block.type === 'text' || block.type === 'inputText').flatMap(block => typeof block.text === 'string' ? [block.text] : []).join('\n')
+  : '';
+/**
+ * The fields of an item a person reads (what it ran, got back or changed), and how each is said as text: the same
+ * text the step shows opened, whether the field arrives as text or as structure. Every other field says what the step
+ * is and how it went (its ID, type, state, exit code, a file's path and kind) and is never cut or changed.
+ */
+export const ITEM_READABLE: Record<string, (value: unknown) => string> = {
+  aggregatedOutput: value => typeof value === 'string' ? value : jsonText(value),
+  command: value => typeof value === 'string' ? value : jsonText(value),
+  prompt: value => typeof value === 'string' ? value : jsonText(value),
+  query: value => typeof value === 'string' ? value : jsonText(value),
+  text: value => typeof value === 'string' ? value : jsonText(value),
+  arguments: value => typeof value === 'string' ? value : jsonText(value),
+  action: value => typeof value === 'string' ? value : jsonText(value),
+  changes: value => typeof value === 'string' ? value : (Array.isArray(value) ? value : []).map(record).map(fileChangeText).join('\n\n'),
+  result: value => {
+    if (typeof value === 'string') return value;
+    const result = record(value);
+    return texts(value) || texts(result.content) || (result.structuredContent === undefined || result.structuredContent === null ? ''
+      : jsonText(result.structuredContent));
+  },
+  contentItems: value => typeof value === 'string' ? value : texts(value) || jsonText(value),
+  error: value => typeof value === 'string' ? value : typeof record(value).message === 'string' ? record(value).message as string : jsonText(value),
+};
+const utf8 = new TextEncoder();
+/** Room kept for the counts of what was cut, one per readable field at most. */
+const CLIPPED_ROOM = 1024;
+/** The bytes `text` takes once written as a JSON string. */
+const writtenBytes = (text: string) => utf8.encode(JSON.stringify(text)).length;
+/** `text` cut from its end to at most `bytes` as written (and the step text limit), and the code points it lost. */
+function cutText(text: string, bytes: number): { text: string; lost: number } {
+  let keep = Math.min(text.length, RUN_STEP_FULL_TEXT_LIMIT);
+  if (writtenBytes(text.slice(0, keep)) > bytes) {
+    let low = 0, high = keep;
+    while (low < high) {
+      const mid = Math.ceil((low + high) / 2);
+      if (writtenBytes(text.slice(0, mid)) <= bytes) low = mid; else high = mid - 1;
+    }
+    keep = low;
   }
-  for (const key of ['input', 'output']) {
-    const text = said[key] as { text: string; omitted: number } | undefined;
-    const lost = cut(`${key}.text`).reduce((sum, [, count]) => sum + count, 0);
-    if (text && lost) said[key] = { ...text, omitted: text.omitted + lost };
-  }
-  return said;
+  const kept = clipRunText(text, keep);
+  let lost = 0;
+  for (const _ of text.slice(kept.length)) lost++;
+  return { text: kept, lost };
 }
 /**
  * A line a bridge writes, kept under BRIDGE_LINE_BYTES whatever it holds, so no line voids a Run's outcome. One that
- * fits is written as it is. Else every text is cut shorter, halved each time, down to SHORTEST_TEXT; while it is still
- * too long, an item's structured fields, the largest first, are put as their JSON text and cut the same way. What was
- * cut is said by `sayClipped`, so a step opened says how much it left out.
+ * fits is written as it is. Else what a person reads is said as text (ITEM_READABLE; a tool event's input and output
+ * already are), what says what the step is and how it went is kept whole, and the room left is shared among the texts,
+ * each cut from its end; how much each lost goes with that field alone (an item's `clipped`, a text's `omitted`). A
+ * change list keeps each file's path and kind as they were, its text going in `changesText`; a result keeps whether it
+ * was an error in `resultIsError`.
  */
 export function boundBridgeEvent(event: BridgeEvent): BridgeEvent {
-  if (lineBytes(event) <= BRIDGE_LINE_BYTES) return event;
-  let source = event as Record<string, unknown>;
-  const fit = () => {
-    for (let limit = RUN_STEP_FULL_TEXT_LIMIT; ; limit = Math.max(SHORTEST_TEXT, Math.floor(limit / 2))) {
-      const clipped: Clipped = {};
-      const said = sayClipped(clipTexts(source, '', limit, clipped) as Record<string, unknown>, clipped);
-      if (lineBytes(said) <= BRIDGE_LINE_BYTES || limit === SHORTEST_TEXT) return said;
+  let line: string | null;
+  try { line = JSON.stringify(event); } catch { line = null; }
+  if (line !== null && utf8.encode(line).length <= BRIDGE_LINE_BYTES) return event;
+  const said = { ...event } as Record<string, unknown>;
+  // Each text to cut: where it is put back, how much room it needs, and where its loss is told.
+  const parts: { text: string; put: (text: string, lost: number) => void }[] = [];
+  const item = record(said.item), clipped: Record<string, number> = {};
+  let kept: Record<string, unknown> | null = null;
+  if (said.item !== undefined) {
+    kept = { ...item };
+    for (const [field, readable] of Object.entries(ITEM_READABLE)) {
+      if (!(field in item) || item[field] === undefined) continue;
+      const name = field === 'changes' ? 'changesText' : field;
+      if (field === 'changes' && Array.isArray(item.changes))
+        kept.changes = item.changes.map(record).map(change => ({ path: change.path, kind: change.kind }));
+      else delete kept[field];
+      if (field === 'result' && record(item.result).isError === true) kept.resultIsError = true;
+      const into = kept;
+      parts.push({ text: readable(item[field]), put: (text, lost) => { into[name] = text; if (lost) clipped[name] = lost; else delete clipped[name]; } });
     }
-  };
-  let said = fit();
-  const item = source.item as Record<string, unknown> | undefined;
-  const structured = item ? Object.entries(item).filter(([, value]) => value !== null && typeof value === 'object')
-    .sort(([, a], [, b]) => lineBytes(b) - lineBytes(a)).map(([key]) => key) : [];
-  for (const key of structured) {
-    if (lineBytes(said) <= BRIDGE_LINE_BYTES) break;
-    source = { ...source, item: { ...source.item as Record<string, unknown>, [key]: JSON.stringify((source.item as Record<string, unknown>)[key]) } };
-    said = fit();
+    said.item = kept;
   }
+  for (const key of ['input', 'output']) {
+    const value = said[key] as { text: string; omitted: number } | undefined;
+    if (value && typeof value.text === 'string')
+      parts.push({ text: value.text, put: (text, lost) => { said[key] = { text, omitted: value.omitted + lost }; } });
+  }
+  // The room the texts may share: the line with every text empty is what is never cut (the clipped counts' room kept).
+  for (const part of parts) part.put('', 0);
+  const fixed = utf8.encode(JSON.stringify(said)).length + CLIPPED_ROOM;
+  let room = Math.max(0, BRIDGE_LINE_BYTES - fixed);
+  const order = parts.map((part, at) => ({ part, at, bytes: writtenBytes(part.text) })).sort((a, b) => a.bytes - b.bytes);
+  order.forEach(({ part, bytes }, at) => {
+    const share = Math.floor(room / (order.length - at));
+    const { text, lost } = cutText(part.text, Math.min(bytes, share));
+    part.put(text, lost);
+    room -= writtenBytes(text);
+  });
+  if (kept && Object.keys(clipped).length) kept.clipped = clipped;
   return said as BridgeEvent;
 }
 /** A provider item as it crosses the bridge: its type (snake case) and the fields the step reading takes, as given. */

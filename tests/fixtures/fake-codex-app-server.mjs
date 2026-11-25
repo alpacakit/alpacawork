@@ -33,6 +33,13 @@ async function run(id, plan) {
   // `bigResult`: a tool's structured result whose line, whole, would pass the outcome reader's 2 MiB.
   if (plan.bigResult) notify('item/completed', { item: { type: 'mcpToolCall', id: `t-${id}`, server: 'db', tool: 'rows', status: 'completed',
     arguments: { table: 'invoices' }, error: null, result: { content: [], structuredContent: Array.from({ length: 2300 }, (_, n) => ({ id: n, text: 'x'.repeat(1024) })) } } });
+  // `deepResult`: a valid result about 1.1 MB long, nested 2,800 arrays deep.
+  if (plan.deepResult) {
+    let deep = 'x'.repeat(1_100_000);
+    for (let level = 0; level < 2800; level++) deep = [deep];
+    notify('item/completed', { item: { type: 'mcpToolCall', id: `d-${id}`, server: 'db', tool: 'tree', status: 'completed', arguments: {}, error: null,
+      result: { content: [], structuredContent: deep } } });
+  }
   notify('item/completed', { item: { type: 'agentMessage', id: `m-${id}`, text: `reply ${id}`, phase: 'final_answer' } });
   if (!plan.noUsage) notify('thread/tokenUsage/updated', { tokenUsage: { total: { inputTokens: 10 * turns, cachedInputTokens: 4, cacheWriteInputTokens: 1, outputTokens: 2, reasoningOutputTokens: 0 } } });
   // `fail`: true, or Codex's own error kind (codexErrorInfo) to report with the failure.

@@ -305,11 +305,52 @@ test('a Run of words alone counts no step and lists none', async t => {
   assert.deepEqual([tookSteps(readRunActivity(path)), (await read(path)).total], [false, 0]);
 });
 
-test('a structured field no cutting of texts can shrink is said as its JSON text, cut, and what was cut is counted', () => {
+test('a structured result too long for the line is said as the text a step shows, cut, its cut count with it alone', () => {
   const numbers = Array.from({ length: 300_000 }, (_, n) => 10_000 + n);
   const event = boundBridgeEvent({ type: 'item.completed', item: boundaryItem('mcp_tool_call', { id: 't1', server: 'db', tool: 'rows', status: 'completed',
     result: { content: [], structuredContent: numbers } }) }) as { item: Record<string, unknown> };
   assert.ok(Buffer.byteLength(JSON.stringify(event)) <= BRIDGE_LINE_BYTES);
   assert.equal(typeof event.item.result, 'string');
-  assert.equal((event.item.result as string).length + clippedUnder(event.item, ['result']), JSON.stringify({ content: [], structuredContent: numbers }).length);
+  assert.equal((event.item.result as string).length + clippedUnder(event.item, ['result']), JSON.stringify(numbers, null, 2).length);
+});
+
+test('a structure nested past what a writer that calls itself takes is said as its JSON text without failing', () => {
+  let deep: unknown = 'end';
+  for (let level = 0; level < 200_000; level++) deep = [deep];
+  const event = boundBridgeEvent({ type: 'item.completed', item: { type: 'mcp_tool_call', id: 't1', status: 'completed',
+    result: { content: [], structuredContent: deep } } }) as { item: Record<string, unknown> };
+  assert.ok(Buffer.byteLength(JSON.stringify(event)) <= BRIDGE_LINE_BYTES);
+  assert.ok((event.item.result as string).startsWith('[[[['));
+  assert.ok(clippedUnder(event.item, ['result']) > 0);
+});
+
+test('an edit of eleven thousand files keeps every path and kind, and opens to the first files and their diffs, its cut count on its text', async t => {
+  const path = folder(t);
+  const changes = Array.from({ length: 11_000 }, (_, n) => ({ path: `/src/file-${n}.ts`, kind: { type: 'update', move_path: null },
+    diff: `@@ -1 +1 @@\n-old ${n}\n+new ${n}\n` + 'x'.repeat(120) }));
+  const event = boundBridgeEvent({ type: 'item.completed', item: boundaryItem('file_change', { id: 'f1', changes, status: 'completed' }) }) as
+    { item: Record<string, unknown> };
+  assert.ok(Buffer.byteLength(JSON.stringify(event)) <= BRIDGE_LINE_BYTES);
+  assert.deepEqual((event.item.changes as unknown[]).length, 11_000);
+  assert.deepEqual((event.item.changes as unknown[])[10_999], { path: '/src/file-10999.ts', kind: { type: 'update', move_path: null } });
+  writeFileSync(join(path, 'stdout.log'), JSON.stringify(event) + '\n');
+  const index = await read(path, 'codex'), detail = await index.detail(0);
+  assert.ok(detail!.input.text.startsWith('update: /src/file-0.ts\n@@ -1 +1 @@\n-old 0\n+new 0'));
+  assert.equal(detail!.input.omitted, clippedUnder(event.item, ['changesText']));
+  assert.ok(detail!.input.omitted > 0);
+});
+
+test('a long step ID, a failure told by isError alone, and a short error beside a cut field each stay as they were', async t => {
+  const path = folder(t);
+  const id = 'call_' + 'a'.repeat(105);
+  const huge = { table: 'x'.repeat(2 * 1024 * 1024) };
+  const started = boundBridgeEvent({ type: 'item.started', item: boundaryItem('mcp_tool_call', { id, server: 'db', tool: 'rows', status: 'inProgress', arguments: huge }) });
+  const ended = boundBridgeEvent({ type: 'item.completed', item: boundaryItem('mcp_tool_call', { id, server: 'db', tool: 'rows', status: 'completed',
+    arguments: huge, error: { message: 'short failure' }, result: { isError: true, content: [], structuredContent: null } }) });
+  writeFileSync(join(path, 'stdout.log'), [started, ended].map(row => JSON.stringify(row)).join('\n') + '\n');
+  const index = await read(path, 'codex'), steps = index.range(undefined, 12).steps;
+  assert.deepEqual(steps.map(step => [step.id, step.state]), [[id, 'failed']]);
+  const detail = await index.detail(0);
+  assert.deepEqual(detail!.output, { text: 'short failure', omitted: 0 });
+  assert.ok(detail!.input.omitted > 0);
 });

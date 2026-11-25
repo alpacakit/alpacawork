@@ -1,5 +1,5 @@
 /** Translate native Claude and common bridge stdout events for the activity projection. */
-import { bridgeToolEventSchema, clippedUnder } from '@alpacawork/contract/agent-bridge';
+import { ITEM_READABLE, bridgeToolEventSchema, clippedUnder } from '@alpacawork/contract/agent-bridge';
 import { RUN_NOTE_LIMIT, inputDocument, previewRunLine, previewToolInput, toolInputDocument, toolResultText, type RunStepText } from '@alpacawork/contract/run';
 import type { ActivityEvent, StepCall } from '../../runs/activity-events.js';
 import { commandOf } from '../../runs/shell-command.js';
@@ -42,15 +42,9 @@ const whole = (text: string): RunStepText => ({ text, omitted: 0 });
 /** A tool call's input as given: the tool's name and its fields, as written in the record. */
 const toolCall = (tool: unknown, raw: unknown): Pick<ActivityEvent, 'detail' | 'about' | 'call'> =>
   ({ ...previewToolInput(tool, raw), call: { tool: typeof tool === 'string' ? tool : '', input: raw } });
-/** A file change as Codex records it: what was done to which path, then its diff. */
-function fileChange(change: Record<string, unknown>): string {
-  const kind = object(change.kind), done = typeof change.kind === 'string' ? change.kind : typeof kind.type === 'string' ? kind.type : 'change';
-  const moved = typeof kind.move_path === 'string' ? ` → ${kind.move_path}` : '';
-  return [`${done}: ${String(change.path)}${moved}`, typeof change.diff === 'string' && change.diff ? change.diff : ''].filter(Boolean).join('\n');
-}
 /** The fields of a Codex item that say what it asked, by its type (what it got back and its state are not its input). */
 const ITEM_INPUT: Record<string, readonly string[]> = {
-  command_execution: ['command', 'cwd'], web_search: ['query', 'action'], file_change: ['changes'],
+  command_execution: ['command', 'cwd'], web_search: ['query', 'action'], file_change: ['changes', 'changesText'],
   collab_agent_tool_call: ['prompt', 'tool', 'model', 'receiverThreadIds'], image_view: ['path'],
 };
 const changedPaths = (changes: unknown) => (Array.isArray(changes) ? changes : []).map(object).filter(change => typeof change.path === 'string');
@@ -83,7 +77,8 @@ export function stepInputDocument(call: StepCall): string | undefined {
       const query = firstText(input.query, object(input.action).url);
       return inputDocument({ ...query === undefined ? {} : { main: query }, fields: Object.fromEntries(Object.entries(input).filter(([key]) => key !== 'query')) });
     }
-    case 'codex:file_change': return changedPaths(input.changes).map(fileChange).join('\n\n');
+    // As the bridge said it when its line was too long (changesText), else from the change list (the same text).
+    case 'codex:file_change': return typeof input.changesText === 'string' ? input.changesText : ITEM_READABLE.changes!(input.changes);
     case 'codex:collab_agent_tool_call': {
       const { prompt, ...fields } = input;
       return inputDocument({ ...typeof prompt === 'string' ? { main: prompt } : {}, fields });
@@ -120,20 +115,17 @@ export function joinStepCalls(start: StepCall | undefined, end: StepCall | undef
 /** How many characters the bridge cut from a call's input as it stands. */
 export const callOmitted = (call: StepCall): number => Object.values(call.clipped ?? {}).reduce((sum, count) => sum + count, 0);
 
-/** What a structured result says when it gives no text. */
-const structured = (value: unknown): string | undefined => {
-  if (value === null || value === undefined) return undefined;
-  try { return JSON.stringify(value, null, 2); } catch { return undefined; }
-};
+/** Where what a step got back is read, in order: the first that says something is shown, its own cut count with it. */
+const OUTPUT_FIELDS = ['aggregatedOutput', 'result', 'contentItems', 'error'] as const;
 function bridgeOutcome(item: Record<string, unknown>): NonNullable<ActivityEvent['outcome']> {
   const result = object(item.result);
-  const output = firstText(item.aggregatedOutput, toolResultText(item.result), toolResultText(result.content),
-    toolResultText(item.contentItems), object(item.error).message) ?? structured(result.structuredContent);
+  const said = OUTPUT_FIELDS.map(field => ({ field, text: item[field] === undefined || item[field] === null ? '' : ITEM_READABLE[field]!(item[field]) }))
+    .find(each => each.text !== '');
   return {
-    result: previewRunLine(output),
-    ...output === undefined ? {} : { output: { text: output, omitted: clippedUnder(item, ['aggregatedOutput', 'result', 'contentItems', 'error']) } },
+    result: previewRunLine(said?.text),
+    ...said ? { output: { text: said.text, omitted: clippedUnder(item, [said.field]) } } : {},
     failed: item.status === 'failed' || item.status === 'declined' || item.success === false ||
-      result.isError === true || (typeof item.exitCode === 'number' && item.exitCode !== 0),
+      result.isError === true || item.resultIsError === true || (typeof item.exitCode === 'number' && item.exitCode !== 0),
   };
 }
 
