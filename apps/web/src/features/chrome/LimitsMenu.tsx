@@ -52,9 +52,10 @@ function AgentBlock({ agent, now, shown, instead }: { agent: AgentLimits; now: n
       <h3 className="m-0 text-sm font-semibold">{name}</h3>
       {/* Whose limits these are: the account the agent is signed in as, cut to the menu's width (whole in the tooltip). */}
       {agent.account && <span data-limit-account className="min-w-0 max-w-full truncate text-xs text-muted" title={agent.account}>{agent.account}</span>}
-      {note && <p className="m-0 text-sm text-muted">{note}</p>}
-      {/* Work went on to this agent because the ones before it in the stack are spent. */}
+      {/* Work went on to this agent because the ones before it in the stack are spent. On the name's line, ahead of a note
+          that wraps under it. */}
       {instead && <span data-limit-instead className="ml-auto self-center rounded-full bg-working/15 px-2 py-0.5 text-xs text-working">{t("limits.instead")}</span>}
+      {note && <p className="m-0 text-sm text-muted">{note}</p>}
     </div>
     {!note && <ul className="m-0 flex list-none flex-col gap-5 p-0 text-sm">{agent.windows.map((window, at) =>
       <WindowRow key={at} window={window} now={now} scoped={besideModelWindow(window, agent.windows)} shown={window === shown} />)}</ul>}
