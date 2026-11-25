@@ -259,8 +259,9 @@ function DayLegend({ say, at, day }: { say: RowSay; at: number; day: string }) {
     <div className="text-xs whitespace-nowrap text-muted"><b className="font-semibold text-ink">{day}</b><span className="ms-2">{say.name}</span></div>
     <b className="block text-xl font-semibold tabular-nums">{say.total(at)}</b>
     <Parts items={parts.map(part => ({ ...part, value: <b className="font-semibold tabular-nums">{part.value}</b> }))}
-      line={say.line && { name: say.line.name, value: <b className="font-semibold tabular-nums">{say.line.value(at)}</b>,
-        gap: <span className="text-soft">{say.line.base(at)}</span> }} />
+      line={say.line && { name: say.line.name, value: <b className="font-semibold tabular-nums">{say.line.value(at)}</b> }} />
+    {/* The line's base under it, within the column (it may be long: "fewer than ten accepted"). */}
+    {say.line && <div className="mt-0.5 ps-6 text-xs text-soft">{say.line.base(at)}</div>}
   </div>;
 }
 
