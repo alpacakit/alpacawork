@@ -66,7 +66,7 @@ Besides the file for your role, read the following according to the situation.
 | Record (including urgent notes) | `task comment` |
 | Read the returns and notices that arrived | `task returns` |
 | Assign, hand over or release an agent | `agent assign`, `agent handover`, `agent release` |
-| List the unfinished Runs (`queued`, `running`, `needs_review`) | `run list` |
+| List unfinished Runs | `run list` |
 | Read a Run's result or stop a Run | `run get`, `run stop` |
 | Read or change personal settings (such as the language for the user) | `settings get`, `settings set` |
 | Read the fields a task writes (ID, maximum length, how to write) before writing values | `field get` |
@@ -88,10 +88,10 @@ Besides the file for your role, read the following according to the situation.
 
 - Always fetch alpacawork records (values, log, Run results, reports) with alpacawork commands. Do not build paths and read directly under the workspace's `.alpacawork/` (the database or the Run folders), because you would get the location or the shape of the contents wrong.
 - A read result is partial when it contains `errors`, or when it has omissions (`omitted`) or is cut off at a limit. Do not read missing information (for example an empty list of Runs) as "none" or "not running"; treat it as unverified.
-- The Run list of `task get --runs <count>` is `runs` at the top level of the response, not `task.runs`. The count you give covers only the latest Runs of that task itself. To find which Runs are still unfinished in a task and the tasks below it, read `run list --under <ID>` once instead of reading each task.
+- The Run list of `task get --runs <count>` is `runs` at the top level of the response, not `task.runs`. The count you give covers only the latest Runs of that task itself; for the unfinished Runs of a task and the tasks below it, read `run list --under <ID>` once.
 - Other conversations can also read the latest version and write. With a write, pass the hash you read (and the revision when required). It is the mark that you "read the latest and decided on it". If the write is refused for a conflict (`conflict`), read again and decide again. Do not just attach a new hash without reading again.
-- The reply to a write is also a read: it carries the task as the write left it. For your next write on the same task, use its `task.hash`, and after `agent assign` or `agent handover` its `agent.placement.revision`, without reading the task again; this is how a request follows an assignment. A Run starting or ending also changes the task's hash, so after `task request` the reply's hash holds only until its Run starts. Read again only when the reply did not arrive ("When a save is uncertain" below), when a write was refused for a conflict, when a Run may have started or ended on the task since the reply, or when the next write needs something the reply does not carry, such as the runtime and head of a placement that already has Runs before you send it a request.
-- The reply to `task request` settles whether the request was accepted: `outcome.kind` is `request_accepted`, `outcome.request.runId` is the Run it will be delivered in, and `outcome.request.deliveryState` says whether that Run waits. Acceptance is not a start. To tell whether that Run has started, read once and find it by its ID (`run list --under <task>` while it is unfinished, or `runs[]` in `task get --task <task> --runs <count>`): `queued` has not started. A `run get` result that is `pending` says only that there is no reply yet; it tells neither that the Run started nor that it finished.
+- A write's reply carries the task as the write left it: take the next write's hash (and, after `agent assign`, the placement revision) from it, as the first request after an assignment does. Read again if the reply did not arrive, after a conflict, once a Run may have started or ended on the task (either changes the hash), and before a request to a placement that already has Runs ([request.md](references/request.md)).
+- `request_accepted` from `task request` means accepted, not started. Whether its Run (`outcome.request.runId`) started takes one read (`run list` or `task get --runs`; `queued` has not), and a `pending` result from `run get` tells neither.
 
 ## When a save is uncertain
 
