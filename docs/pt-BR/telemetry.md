@@ -48,10 +48,12 @@ Também não é enviado nada enquanto a variável de ambiente `ALPACAWORK_TELEME
 
 ## Ver o que é enviado
 
-- Tela: “Ver o que é enviado”, abaixo da chave de dados de uso em Configurações → Geral, mostra o relatório de hoje até o momento (o que será enviado amanhã), exatamente como ele será enviado. Só há conteúdo ali enquanto o envio está ativado. O que aparece ali ainda não foi enviado; portanto, se você parar o envio, não será enviado.
-- Comando: `alpacawork telemetry show` mostra os dados de hoje até o momento, os relatórios de dias anteriores ainda não enviados, as suas cópias dos relatórios já enviados e a lista de nomes e valores que podem ser enviados. A lista é mostrada mesmo antes de você escolher enviar.
+- Tela: “Ver o que é enviado”, abaixo da chave de dados de uso em Configurações → Geral, mostra o rascunho de hoje, os relatórios pendentes e as solicitações feitas pelo alpacawork. Cada tentativa mostra o destino, o conteúdo exato e o resultado, quando conhecido. Isso inclui novas tentativas de envio e solicitações de exclusão feitas pelo aplicativo.
+- Comando: `alpacawork telemetry show` mostra o mesmo histórico e a lista de nomes e valores que podem ser enviados.
 
-Os dois mostram JSON. Os comandos `alpacawork telemetry` só funcionam quando uma pessoa os digita em um terminal neste PC.
+Cada tentativa é registrada antes do envio e fica neste PC por 13 semanas, mesmo que você desative o envio ou solicite a exclusão de dados no receptor. Se a resposta não pôde ser registrada, o histórico mostra que o resultado é desconhecido.
+
+Os comandos `alpacawork telemetry` só funcionam quando uma pessoa os digita em um terminal neste PC.
 
 ## Excluir o que foi enviado
 

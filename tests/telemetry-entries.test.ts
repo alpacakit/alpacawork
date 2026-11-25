@@ -16,12 +16,12 @@ test('local telemetry refuses Run credentials and has no opt-in command; HTTP au
   assert.equal(telemetryNode.children!.some(node => node.name === 'on'), false);
   const app = new Hono();
   const touched: string[] = [];
-  const service = { status: () => { touched.push('status'); return {}; }, show: () => { touched.push('show'); return {}; },
+  const service = { status: () => { touched.push('status'); return {}; }, history: () => { touched.push('history'); return {}; },
     choose: () => { touched.push('choose'); return {}; }, mark: () => touched.push('mark'),
     deleteSent: () => { touched.push('delete'); return {}; } } as unknown as TelemetryService;
   app.onError(() => new Response('person required', { status: 403 }));
   installTelemetryRoutes(app, service, () => { throw new Error('person required'); });
-  for (const [method, path] of [['GET', 'status'], ['GET', 'show'], ['GET', 'preview'], ['POST', 'choice'], ['POST', 'use'], ['POST', 'delete']]) {
+  for (const [method, path] of [['GET', 'status'], ['GET', 'history'], ['GET', 'preview'], ['POST', 'choice'], ['POST', 'use'], ['POST', 'delete']]) {
     const response = await app.request(`/api/telemetry/${path}`, { method, ...(method === 'POST' ? { body: 'invalid JSON' } : {}) });
     assert.equal(response.status, 403);
   }

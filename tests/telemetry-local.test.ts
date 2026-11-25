@@ -1,9 +1,9 @@
 /** Rules, not UI: every write uses an isolated synthetic state directory. */
 import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
-import { mkdtempSync, rmSync, existsSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, existsSync, readFileSync, readdirSync, renameSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, relative, resolve } from 'node:path';
 import { stringify } from 'yaml';
 import { openControlDatabase } from '@alpacawork/db';
 import { defaultAgentSetting } from '@alpacawork/contract';
@@ -12,7 +12,8 @@ import { createOriginal, copyWorkspace, removeWorkspace } from '../scripts/dev-f
 import { fixtureAgentSetting } from './helpers/agent-stub.ts';
 import { telemetryGate, type GateFacts, type Consent } from '../apps/backend/test-dist/telemetry/consent.js';
 import { TelemetryService } from '../apps/backend/test-dist/telemetry/service.js';
-import { TelemetryQueue, retryAt } from '../apps/backend/test-dist/telemetry/queue.js';
+import { retryAt } from '../apps/backend/test-dist/telemetry/queue.js';
+import { installTelemetryRoutes } from '../apps/backend/test-dist/telemetry/routes.js';
 import { boundedEvents, buildDayReport, reportFromWorkspace, type Envelope } from '../apps/backend/test-dist/telemetry/report.js';
 import { emptyMarks } from '../apps/backend/test-dist/telemetry/marks.js';
 import { callerVia, countCliWrites, countedCommand, writeOp } from '../apps/backend/test-dist/telemetry/server-writes.js';
@@ -20,7 +21,8 @@ import { Hono } from '../apps/backend/node_modules/hono/dist/index.js';
 import { commandCatalog } from '@alpacawork/contract/commands';
 import { writeJson } from '../apps/backend/test-dist/telemetry/files.js';
 import { dayRange, deadline, sizeBucket, telemetryEventKey, TELEMETRY_CONSENT_VERSION, TELEMETRY_DAY_MS, TELEMETRY_ENDPOINT,
-  TELEMETRY_EVENT_ATTRIBUTES, TELEMETRY_MAX_COUNT, TELEMETRY_MAX_EVENTS, TELEMETRY_OPS } from '@alpacawork/contract/telemetry';
+  telemetryHistorySchema, TELEMETRY_DELETE_URL, TELEMETRY_EVENT_ATTRIBUTES, TELEMETRY_MAX_COUNT, TELEMETRY_MAX_EVENTS, TELEMETRY_OPS,
+  type TelemetryAttempt } from '@alpacawork/contract/telemetry';
 
 const at = Date.parse('2026-11-03T12:00:00.000Z'), day = '2026-11-03';
 const ID = '3f2b9c4e-8a1d-4f6b-9c2e-7d5a1b3c9e01';
@@ -82,36 +84,167 @@ test('the number is a random UUID made once when sending is first chosen, kept t
   });
 });
 
-test('queue freezes reports, classifies replies, respects retry-after, and expires seven days after the day', async t => {
-  const root = isolated(t), queue = new TelemetryQueue(root);
-  let now = at, calls = 0;
-  const runtime = { endpoint: TELEMETRY_ENDPOINT, now: () => now, allowed: () => true,
-    fetch: (async (url, init) => {
-      calls++; assert.deepEqual(JSON.parse(String(init?.body)), report);
-      // The request is the report and nothing beside it: no cookie, no other header, nowhere but the receiver.
-      assert.deepEqual([url, init?.headers, init?.credentials, init?.redirect], [TELEMETRY_ENDPOINT, { 'content-type': 'application/json', 'user-agent': 'alpacawork-telemetry' }, 'omit', 'error']);
-      return new Response(null, { status: 503, headers: { 'retry-after': '7200' } });
-    }) as typeof fetch };
-  assert.equal(queue.enqueue(report, at), true); assert.equal(queue.enqueue({ ...report, version: '0.4.0' }, at), false);
-  await queue.send({ ...runtime, allowed: () => false }); assert.equal(calls, 0);
-  await queue.send(runtime); assert.equal(queue.queued()[0]!.value.nextAttempt, at + 7_200_000);
+test('the screen can read every request before transport, including retries and a lost response', async t => {
+  const root = isolated(t), paths = { consent: join(root, 'consent.json'), state: join(root, 'state') };
+  const app = new Hono();
+  const history = async () => {
+    const response = await app.request('/api/telemetry/history');
+    assert.equal(response.status, 200);
+    return telemetryHistorySchema.parse(await response.json());
+  };
+  let now = at, status: number | undefined = 503;
+  const requests: { request: Request; recorded: TelemetryAttempt | undefined }[] = [];
+  const telemetry = service(undefined, paths, () => now, async (url, init) => {
+    requests.push({ request: new Request(url, init), recorded: (await history()).log[0] });
+    if (status === undefined) throw new Error('Response lost');
+    return new Response(null, { status, headers: { 'retry-after': '7200' } });
+  });
+  installTelemetryRoutes(app, telemetry, () => {});
+  writeJson(paths.consent, consent);
+  const { queue } = telemetry;
+  assert.equal(queue.enqueue(report, at), true);
+  assert.equal(queue.enqueue({ ...report, version: '0.4.0' }, at), false);
+  assert.deepEqual((await history()).queue, [{ day, notBefore: at, report }]);
+
+  await telemetry.send();
+  assert.equal(queue.queued()[0]!.value.nextAttempt, at + 7_200_000);
   now += 7_200_000;
-  await queue.send({ ...runtime, fetch: (async () => new Response(null, { status: 202 })) as typeof fetch });
-  assert.equal(queue.queued().length, 0); assert.equal((queue.sent()[0] as { outcome: string }).outcome, 'accepted');
+  status = undefined;
+  await telemetry.send();
+  assert.equal(queue.queued()[0]!.value.nextAttempt, now + 10_800_000);
+  status = 202;
+  await telemetry.send();
+  assert.equal(requests.length, 2);
+  now += 10_800_000;
+  await telemetry.send();
+  assert.equal(queue.queued().length, 0);
   assert.equal(queue.has(day), true);
-  for (const status of [400, 410, 413, 429, 500]) {
-    const q = new TelemetryQueue(join(root, String(status))); q.enqueue(report, at);
-    await q.send({ ...runtime, fetch: (async () => new Response(null, { status })) as typeof fetch });
-    assert.equal(q.queued().length, status < 429 ? 0 : 1);
+  assert.equal(telemetry.status().lastSentAt, new Date(now).toISOString());
+
+  // A restart after recording the response can find the old queue file still present.
+  writeJson(join(paths.state, 'queue', 'day-' + day + '.json'), { report, notBefore: at, nextAttempt: at, createdAt: at, attempts: 0 });
+  assert.deepEqual((await history()).queue, []);
+  await telemetry.send();
+  assert.equal(requests.length, 3);
+  assert.equal(queue.queued().length, 0);
+
+  now += TELEMETRY_DAY_MS;
+  assert.equal(queue.enqueue({ ...report, day: '2026-11-04' }, now), true);
+  status = 400;
+  await telemetry.send();
+  assert.equal(queue.queued().length, 0);
+  now++;
+  status = 204;
+  await telemetry.deleteSent();
+  telemetry.choose('off', 'screen');
+
+  const { log, state } = await history();
+  assert.equal(state, 'off');
+  assert.deepEqual(telemetry.show().log, log);
+  assert.deepEqual(log.map(attempt => [attempt.outcome, attempt.status]), [
+    ['accepted', 204], ['rejected', 400], ['accepted', 202], ['unknown', undefined], ['retry', 503],
+  ]);
+  assert.deepEqual(log.map(attempt => attempt.at), log.map(attempt => attempt.at).sort().reverse());
+  assert.equal(requests.length, log.length);
+  for (const [i, { request, recorded }] of requests.entries()) {
+    const attempt = log.at(-1 - i)!;
+    assert.ok(recorded);
+    const { status: _status, ...requestFields } = attempt;
+    assert.deepEqual(recorded, { ...requestFields, outcome: 'unknown' },
+      'the outgoing request must already be visible with its response unknown');
+    assert.deepEqual([attempt.method, attempt.url], [request.method, request.url]);
+    assert.equal(request.redirect, 'error');
+    assert.equal(request.credentials, 'omit');
+    if (attempt.kind === 'report') {
+      assert.deepEqual(Buffer.from(attempt.body), Buffer.from(await request.arrayBuffer()));
+      assert.equal(attempt.url, TELEMETRY_ENDPOINT);
+      assert.equal(request.headers.get('content-type'), 'application/json');
+    } else {
+      assert.equal(request.body, null);
+      assert.equal(attempt.url, TELEMETRY_ENDPOINT + '/' + ID);
+    }
+  }
+  const reports = log.filter(attempt => attempt.kind === 'report').slice(1);
+  assert.equal(reports.length, 3);
+  assert.deepEqual(reports.map(attempt => attempt.body), Array(3).fill(reports[0]!.body));
+  assert.deepEqual(JSON.parse(reports[0]!.body), report);
+
+  now = at + 13 * 7 * TELEMETRY_DAY_MS;
+  await telemetry.tick();
+  assert.deepEqual((await history()).log, log.slice(0, -1));
+});
+
+test('queue stops on terminal errors and expires seven days after the reported day', async t => {
+  const root = isolated(t), consentPath = join(root, 'consent.json');
+  let now = at, calls = 0;
+  const paths = (name: string) => ({ consent: consentPath, state: join(root, name) });
+  writeJson(consentPath, consent);
+  for (const status of [410, 413, 429]) {
+    const telemetry = service(undefined, paths(String(status)), () => now, async () => new Response(null, { status }));
+    telemetry.queue.enqueue(report, at);
+    await telemetry.send();
+    assert.equal(telemetry.queue.queued().length, status < 429 ? 0 : 1);
   }
   assert.equal(deadline(day), dayRange(day).end + 7 * TELEMETRY_DAY_MS);
-  const expires = new TelemetryQueue(join(root, 'expires')); expires.enqueue(report, at); now = deadline(day);
-  calls = 0; await expires.send(runtime); assert.equal(calls, 0); assert.equal(expires.queued().length, 0);
+  const expires = service(undefined, paths('expires'), () => now, async () => { calls++; throw new Error('Expired'); });
+  expires.queue.enqueue(report, at); now = deadline(day);
+  await expires.send(); assert.equal(calls, 0); assert.equal(expires.queue.queued().length, 0);
   assert.equal(retryAt(4, at, null), at + 86_400_000);
   // A week's report left from the earlier format is dropped, never sent.
-  const old = new TelemetryQueue(join(root, 'old'));
+  const { queue: old } = service(undefined, paths('old'), () => now);
   writeJson(join(root, 'old/queue/week-2026-W45.json'), { report: {}, notBefore: 0, nextAttempt: 0, createdAt: 0, attempts: 0 });
   assert.deepEqual(old.queued(), []); assert.equal(existsSync(join(root, 'old/queue/week-2026-W45.json')), false);
+});
+
+test('storage failures prevent an unrecorded request and preserve uncertain attempts', async t => {
+  const root = isolated(t), paths = { consent: join(root, 'consent.json'), state: join(root, 'state') };
+  const log = join(paths.state, 'log'), backup = join(paths.state, 'log-backup');
+  let calls = 0;
+  const telemetry = service(undefined, paths, () => at, async () => {
+    calls++;
+    renameSync(log, backup);
+    writeFileSync(log, 'blocks update');
+    return new Response(null, { status: 202 });
+  });
+  writeJson(paths.consent, consent);
+  telemetry.queue.enqueue(report, at);
+  writeFileSync(log, 'blocks creation');
+  await assert.rejects(telemetry.send(), { code: 'ENOTDIR' });
+  await assert.rejects(telemetry.deleteSent(), { reason: { kind: 'telemetry_delete_failed' } });
+  assert.equal(calls, 0);
+  rmSync(log);
+  telemetry.queue.enqueue(report, at);
+  try { await assert.rejects(telemetry.send(), { code: 'EEXIST' }); }
+  finally {
+    if (existsSync(backup)) { rmSync(log, { force: true }); renameSync(backup, log); }
+  }
+  assert.equal(calls, 1);
+  const restarted = service(undefined, paths, () => at);
+  assert.deepEqual(restarted.history().log.map(attempt => [attempt.outcome, attempt.status]), [['unknown', undefined]]);
+  assert.equal(restarted.history().queue.length, 1);
+});
+
+test('production telemetry destinations are owned by the outbox', () => {
+  const root = resolve(import.meta.dirname, '..');
+  const contract = 'packages/contract/src/telemetry.ts', outbox = 'apps/backend/src/telemetry/outbox.ts';
+  const deletePage = 'apps/web/src/features/telemetry/Telemetry.tsx';
+  const host = new URL(TELEMETRY_ENDPOINT).hostname;
+  const unexpected: string[] = [];
+  for (const area of ['apps', 'packages']) {
+    for (const project of readdirSync(join(root, area), { withFileTypes: true })) {
+      const src = join(root, area, project.name, 'src');
+      if (!project.isDirectory() || !existsSync(src)) continue;
+      for (const entry of readdirSync(src, { recursive: true, withFileTypes: true })) {
+        if (!entry.isFile() || !/\.[cm]?[jt]sx?$/u.test(entry.name)) continue;
+        const path = join(entry.parentPath, entry.name), file = relative(root, path);
+        if (file === contract || file === outbox) continue;
+        const source = readFileSync(path, 'utf8');
+        const checked = file === deletePage ? source.replaceAll(TELEMETRY_DELETE_URL, '') : source;
+        if (checked.includes('TELEMETRY_ENDPOINT') || checked.includes(host)) unexpected.push(file);
+      }
+    }
+  }
+  assert.deepEqual(unexpected, []);
 });
 
 test('without screen consent, or with any blocked gate, no service path records or sends', async t => {
@@ -129,7 +262,7 @@ test('without screen consent, or with any blocked gate, no service path records 
     assert.deepEqual(telemetry.marks.snapshot(day, consent.decidedAt), emptyMarks(consent.decidedAt));
     assert.equal(telemetry.preview(), null);
     await telemetry.send(); await telemetry.tick(); await telemetry.close();
-    assert.equal(calls, 0, JSON.stringify(patch)); assert.equal(telemetry.queue.sent().length, 0);
+    assert.equal(calls, 0, JSON.stringify(patch)); assert.equal(telemetry.history().log.length, 0);
   }
 });
 
@@ -163,6 +296,9 @@ test('deleting asks the receiver to delete this number\'s reports, drops unsent 
   assert.equal(telemetry.queue.queued().length, 0);
   status = 404; await telemetry.deleteSent();
   status = 503; await assert.rejects(telemetry.deleteSent(), { code: PROBLEM_CODE.unavailable, reason: { kind: 'telemetry_delete_failed' } });
+  assert.deepEqual(telemetry.history().log.map(attempt => [attempt.status, attempt.outcome]).sort(), [
+    [204, 'accepted'], [404, 'accepted'], [503, 'retry'],
+  ]);
 });
 
 test('a day\'s report counts its events with their attributes, the effort of its Runs by agent, and only the consented part', t => {
@@ -411,7 +547,7 @@ test('screen preview includes pending use, stays read-only and never queues or s
   // The typical (median) and the slowest of the day's three page openings.
   assert.deepEqual(telemetry.preview()!.times, { open: ['0.25-0.5s', '2-5s'] });
   assert.deepEqual(telemetry.queue.queued(), queued); assert.equal(telemetry.store.digest(), digest);
-  assert.equal(existsSync(join(paths.state, 'marks')), false); assert.equal(existsSync(join(paths.state, 'sent')), false);
+  assert.equal(existsSync(join(paths.state, 'marks')), false); assert.equal(existsSync(join(paths.state, 'log')), false);
   assert.equal(calls, 0);
   telemetry.choose('off', 'screen'); assert.equal(telemetry.preview(), null);
   assert.throws(() => telemetry.choose('on', 'cli'), /cannot be enabled/);

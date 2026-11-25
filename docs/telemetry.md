@@ -48,10 +48,12 @@ Nothing is sent either while the environment variable `ALPACAWORK_TELEMETRY_DISA
 
 ## See what is sent
 
-- Screen: "See what's sent" under the usage data switch in Settings → General shows today's report so far (the one sent tomorrow), exactly as it will be sent. It shows content only while sending is on. What appears there hasn't been sent yet, so if you stop sending, it won't be.
-- Command: `alpacawork telemetry show` shows today's data so far, earlier days' reports not yet sent, your copies of reports already sent, and the list of names and values that can be sent. The list is shown even before you choose to send.
+- Screen: "See what's sent" under the usage data switch in Settings → General shows today's draft, reports waiting to send, and the requests made by alpacawork. Each attempt records the destination, the exact content, and the result if known, including retries and in-app deletion requests.
+- Command: `alpacawork telemetry show` shows the same history and the list of names and values that can be sent.
 
-Both show JSON. The `alpacawork telemetry` commands work only when a person types them in a terminal on this PC.
+Each attempt is recorded before sending and remains on this PC for 13 weeks, even if you turn sending off or ask to delete data at the receiver. If the response could not be recorded, the history shows that the outcome is unknown.
+
+The `alpacawork telemetry` commands work only when a person types them in a terminal on this PC.
 
 ## Delete what was sent
 
