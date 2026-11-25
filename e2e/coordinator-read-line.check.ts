@@ -275,7 +275,8 @@ test.describe('explicit sends and incoming answers share the reading position', 
     await expect(scroller(page).locator('[data-coordinator-turn]').filter({ hasText: 'OWN-LATEST' }).locator('[data-ask-answer]')).toHaveCount(1);
     await page.waitForTimeout(300);
     expect(Math.abs(await scroller(page).evaluate(element => element.scrollTop) - reading)).toBeLessThan(2);
-    // Latest readers follow a new reply's full height, including completion after its running placeholder.
+    // Latest readers follow the reply in place of its running placeholder, as far as what they asked at the top: the
+    // reply comes into sight from its start, under what it answers.
     await scroller(page).evaluate(element => { element.scrollTop = element.scrollHeight; });
     const gate = join(runtime.root, 'position-answer-now');
     await send(page, runtime, `wait:${gate}`);
@@ -283,7 +284,9 @@ test.describe('explicit sends and incoming answers share the reading position', 
     await expect.poll(() => endGap(page)).toBeLessThan(2);
     writeFileSync(gate, '');
     await answered(page, runtime, 5);
-    await expect.poll(() => endGap(page)).toBeLessThan(2);
+    const latest = scroller(page).locator('[data-coordinator-turn]').last();
+    await expect(latest.locator('[data-sent-message]')).toBeInViewport();
+    await expect(latest.locator('[data-ask-answer]')).toBeInViewport();
     await info.attach('send-and-reading-position', { body: JSON.stringify({ latestBeforeAnswer, reading }), contentType: 'application/json' });
     await fold(page);
     const closedAt = await page.evaluate(() => scrollY);
