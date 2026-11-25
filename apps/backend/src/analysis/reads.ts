@@ -236,8 +236,10 @@ function matchingProject(facts: AnalysisFacts, project: string | null, ownProjec
  */
 const ZONES_KEPT = 3, SCOPES_KEPT = 4;
 /** One unit's part of a zone's days: kept with the unit, so facts that change only other units date only theirs again. */
-type UnitDays = { project: string; dated: DatedUnit | null; first: number; launches: DatedLaunch[] };
-type ZoneDays = { units: UnitDays[]; launches: (DatedLaunch & { project: string })[] };
+type UnitDays = { project: string; dated: DatedUnit | null; first: number; launches: ZoneLaunch[] };
+type ZoneDays = { units: UnitDays[]; launches: ZoneLaunch[] };
+/** A launch in a zone's days, with its unit's project (the same object in the unit's days and the zone's). */
+type ZoneLaunch = DatedLaunch & { project: string };
 /** A scope's units and launches; its day sums are made when a read first needs them (`dailyOf`). */
 type ScopeView = { units: DatedUnit[]; launches: DatedLaunch[]; first: number; daily?: Promise<DailyUsage>;
   byDimension: Map<string, Promise<DimensionDays[]>> };
@@ -272,12 +274,12 @@ async function zoneDays(facts: AnalysisFacts, kept: WeakMap<Unit, UnitDays>, dat
       }
       for (const run of unit.launches) {
         days.first = Math.min(days.first, run.started);
-        days.launches.push({ root: unit.node.id, slot, run, day: date(run.started) });
+        days.launches.push({ root: unit.node.id, slot, run, day: date(run.started), project });
       }
       kept.set(unit, days);
     }
     zone.units.push(days);
-    for (const launch of days.launches) zone.launches.push({ ...launch, project: days.project });
+    for (const launch of days.launches) zone.launches.push(launch);
     if (slices.due) await slices.pause();
   }
   return zone;
