@@ -33,8 +33,9 @@ export function Seg<K extends string>({ label, items, value, onChange, onAgain, 
   /** Those that cannot be chosen now (a number with no value): drawn faint, out of reach. */
   disabled?: readonly K[];
 }) {
-  // Where it does not fit (a phone, a longer language) it scrolls sideways inside itself, as the app's tab rows do.
-  return <div role="group" aria-label={label} className={cn("relative flex max-w-full min-w-0 flex-none items-center gap-0.5 overflow-x-auto [scrollbar-width:none]", className)}>
+  // It stays within the width it has: where its choices do not fit on one line (a narrow phone, a longer language) they
+  // go on to the next, and the chosen one's ground follows (TabMarker places it by its line too). Nothing scrolls sideways.
+  return <div role="group" aria-label={label} className={cn("relative flex max-w-full min-w-0 flex-none flex-wrap items-center gap-x-0.5 gap-y-1", className)}>
     <TabMarker current='[aria-current="true"]' />
     {items.map(([key, name]) => <button key={key} type="button" aria-current={key === value ? "true" : undefined}
       disabled={disabled?.includes(key)}
@@ -121,7 +122,7 @@ export function Num({ label, square, kind, value, previous, length, onOpen, afte
 export function ChartHead() {
   const { t } = useTranslation("analysis");
   const { bucket, grow } = useChoices();
-  return <div className="mt-14 flex items-center justify-between gap-4 narrow:mt-10">
+  return <div className="mt-14 flex flex-wrap items-center justify-between gap-x-4 gap-y-3 narrow:mt-10">
     {/* A way to a place on the page, not a way into tasks (no ›): pressed, the rules come into view and take the focus. */}
     <a href={`#${RULES}`} onClick={event => { event.preventDefault(); toRules(); }}
       className="-ms-1 rounded-sm px-1 text-base whitespace-nowrap text-muted decoration-ink underline-offset-4 hover:bg-hover hover:text-ink hover:underline">

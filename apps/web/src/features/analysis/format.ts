@@ -72,6 +72,15 @@ const countWord = (kind: keyof typeof COUNT_WORD, count: number) => word("unit.c
 export const unitOf = (kind: "tasks" | "times" | "prs" | "conversations" | "people" | "questions" | "hours") =>
   kind === "hours" ? word("unit.hours") : countWord(kind, 2);
 export const format = (kind: Kind, value: number) => text(parts(kind, value));
+/**
+ * A number already written with its unit ("9,622万", "1.5 h", "55,3 mil M"), parted again into the number and what
+ * follows it, so the unit can be drawn at the body's step beside a large number. Words with no number stay whole.
+ */
+export function splitFigure(written: string): { value: string; unit: string } {
+  // The number ends on a digit (its groups and places inside it), so a space before a unit is not the number's.
+  const match = /^([+\u2212-]?\d(?:[\d.,\u00a0\u202f\u2009 ]*\d)?)\s*(.*)$/.exec(written);
+  return match ? { value: match[1]!, unit: match[2]! } : { value: written, unit: "" };
+}
 
 /** A time of one task: minutes under an hour as it rounds (59.6 minutes is an hour), else hours. */
 export function duration(ms: number): string {

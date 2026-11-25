@@ -1,6 +1,6 @@
 import { beforeAll, expect, test } from "vitest";
 import { i18n, startI18n } from "@alpacawork/i18n";
-import { comparison, delta, duration, format, parts, share, shareDelta, tokenColumn } from "../src/features/analysis/format";
+import { comparison, delta, duration, format, parts, share, shareDelta, splitFigure, tokenColumn } from "../src/features/analysis/format";
 import { holdsAll } from "../src/features/analysis/BreakdownTable";
 import { listHeading, showsDays } from "../src/features/analysis/lists";
 import { head } from "../src/features/analysis/TasksLook";
@@ -293,4 +293,13 @@ test("a row keeps the room of one legend made of the widest words each of its li
   expect(room.say.line!.value(0)).toBe("1.5万");
   // A full-width letter stands as two: the longest words to the eye, not by their count of letters.
   expect(room.say.line!.base(0)).toBe("受け入れたタスクが10件未満");
+});
+
+test("a number written with its unit parts again into the number and the unit, so the unit is drawn at the body's step", () => {
+  expect(splitFigure("9,622万")).toEqual({ value: "9,622", unit: "万" });
+  expect(splitFigure("1,623 h")).toEqual({ value: "1,623", unit: "h" });
+  expect(splitFigure("55,3mil M")).toEqual({ value: "55,3", unit: "mil M" });
+  expect(splitFigure("2.5時間")).toEqual({ value: "2.5", unit: "時間" });
+  expect(splitFigure("430")).toEqual({ value: "430", unit: "" });
+  expect(splitFigure("—")).toEqual({ value: "—", unit: "" });
 });
