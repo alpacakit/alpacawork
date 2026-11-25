@@ -146,7 +146,7 @@
     "usage": "AI 使用量"
   },
   "outcome": {
-    "none": "进行中",
+    "none": "未完成",
     "passed": "无需返工",
     "reworked": "有返工",
     "stopped": "中止"
@@ -294,13 +294,13 @@
     "children": "子任务",
     "conversations": "新会话",
     "duringWork": "工作中的指示",
+    "empty": "此任务没有可用的分析数据。",
     "inputCache": "输入＋缓存",
     "marks": {
       "instruction": "指示",
       "sendBack": "退回"
     },
     "models": "模型",
-    "open": "打开任务",
     "sendBacks": "退回",
     "skills": "技能",
     "stopped": "{{at}} 中止",

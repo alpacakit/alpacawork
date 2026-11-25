@@ -286,7 +286,7 @@ const settling = new WeakMap<Element, Animation>();
  * seen; `find` gives the copy's own of what a selector finds in the surface (the copy keeps few of the attributes that
  * find things).
  */
-export function crossfade(surface: HTMLElement | null, { content, ready }: { content: string; ready: (copy: HTMLElement, find: (selector: string) => HTMLElement | null) => void }) {
+export function crossfade(surface: HTMLElement | null, { content, ready, turn }: { content: string; turn?: 1 | -1; ready: (copy: HTMLElement, find: (selector: string) => HTMLElement | null) => void }) {
   if (!canAnimate(surface)) return;
   const timing = { duration: duration("base"), easing: easing("in-out"), fill: "forwards" } as const;
   const opacity = getComputedStyle(surface).opacity || 1, shift = distance("shift");
@@ -306,10 +306,14 @@ export function crossfade(surface: HTMLElement | null, { content, ready }: { con
   const fade = copy.animate([{ opacity }, { opacity: 0 }], timing);
   const left = find(content), live = surface.querySelector<HTMLElement>(content);
   if (shift && left && live) {
-    // The copy's from where it was seen (a move it was still making is held in it), the live one afresh: one move each.
-    left.animate([{ translate: left.style.translate || "0 0" }, { translate: `0 ${shift}px` }], timing);
+    // Analysis turns the reading column; the live header and resize handles stay in place.
+    const bend = turn ? `perspective(900px) rotateY(${turn * 65}deg)` : "";
+    const straight = "perspective(900px) rotateY(0)";
+    left.animate(turn ? [{ transform: straight }, { transform: bend }]
+      : [{ translate: left.style.translate || "0 0" }, { translate: `0 ${shift}px` }], timing);
     settling.get(live)?.cancel();
-    const settle = live.animate([{ translate: `0 ${shift}px` }, { translate: "0 0" }], { ...timing, fill: "none" });
+    const settle = live.animate(turn ? [{ transform: `perspective(900px) rotateY(${-turn * 65}deg)` }, { transform: straight }]
+      : [{ translate: `0 ${shift}px` }, { translate: "0 0" }], { ...timing, fill: "none" });
     settling.set(live, settle);
     void settle.finished.then(() => { if (settling.get(live) === settle) settling.delete(live); }, () => {});
   }

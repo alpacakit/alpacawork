@@ -1,4 +1,6 @@
 import { projectRows } from './fixture/list-rows.ts';
+import { patchTask } from './fixture/task-state.ts';
+import { SAMPLE_NOW } from './fixture/sample.ts';
 import type { Locator, Page } from "@playwright/test";
 import { expect, keepShot, open, settleMotion, test, touch, openAbout, openReference } from "./fixtures.ts";
 
@@ -152,4 +154,42 @@ test("a sheet pulled down from the whole screen keeps its top edge while the fin
   expect(await edge()).not.toBe("rgba(0, 0, 0, 0)");
   await session.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
   await session.detach();
+});
+
+test.describe("the task's analysis", () => {
+  test.use({ runtimePrepare: async ({}, use) => {
+    await use(root => {
+      projectRows(root, ["T113"]);
+      patchTask(root, "T113", { state: "done", userRequested: true, logs: [{
+        id: "a3b272b4-8bcc-4008-8165-8f5625c91642", kind: "reported", at: SAMPLE_NOW,
+        actor: { kind: "human" }, fromState: "doing", toState: "done", title: "Finished", description: null,
+      }] });
+    });
+  } });
+
+  test("an analysis list row opens a task in the same resizable sheet as its details", async ({ page, runtime }) => {
+    await open(page, runtime);
+    const list = new URL(page.url());
+    list.searchParams.set("face", "analysis");
+    list.searchParams.set("span", "all");
+    list.searchParams.set("list", "finished");
+    await page.goto(list.href);
+    const analysisRow = page.locator('[data-unit-row="T113"]');
+    await analysisRow.tap();
+    const flip = reader(page).locator("[data-reader-turn]");
+    await expect(reader(page).locator("[data-task-analysis]")).toBeVisible();
+    const surface = await reader(page).elementHandle();
+    await reader(page).locator("[data-reader-grow]").tap();
+    await expect(sheet(page)).toHaveAttribute("data-whole", "true");
+    await flip.tap();
+    await expect(shown(page)).toHaveText("T113");
+    await expect(reader(page).locator("[data-task-analysis]")).toHaveCount(0);
+    expect(await reader(page).evaluate((element, original) => element === original, surface)).toBe(true);
+    await expect(sheet(page)).toHaveAttribute("data-whole", "true");
+    await page.goBack();
+    await expect(reader(page).locator("[data-task-analysis]")).toBeVisible();
+    await reader(page).locator("[data-reader-back]").tap();
+    await expect(reader(page)).toHaveCount(0);
+    await expect(analysisRow).toBeFocused();
+  });
 });

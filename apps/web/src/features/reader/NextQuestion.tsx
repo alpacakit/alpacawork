@@ -41,14 +41,14 @@ export function useReaderReads() {
   const client = useQueryClient();
   const workspace = useWorkspaceStore();
   useEffect(() => useViewStore.subscribe((view, before) => {
-    const id = view.reader.open ? view.selected : null;
+    const id = view.reader.open && view.reader.pane !== "analysis" ? view.selected : null;
     if (!id || id === before.selected && before.reader.open && view.reader.pane === before.reader.pane) return;
     if (!readerHasTask(client, workspace.getState(), id)) return;
     readScheduler(client)?.opened(id, view.reader.pane === "task");
   }), [client, workspace]);
   const waiting = useWaiting();
   const selected = useViewStore(state => state.selected);
-  const open = useViewStore(state => state.reader.open);
+  const open = useViewStore(state => state.reader.open && state.reader.pane !== "analysis");
   const { order } = useSitting();
   const list = useListNavigation();
   const inTurn = open && !!selected && waiting.some(task => task.id === selected);

@@ -7,6 +7,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { useTranslation } from "react-i18next";
 import { ResizeEdge } from "@/components/ui/resize-edge";
 import { closeReaderStep, isTurnSequenceNavigation } from "@/state/history-step";
+import { useReaderBehind } from "@/state/reader-position";
 import { ReaderPeopleContext, useHomeList, useReaderPeople, useReadState, useTaskDetail, useReaderTask, useWorkspaceInfo } from "@/data/queries";
 import type { Task, TaskDetail } from "@/data/types";
 import { historyWindowRefused, moveHistoryToLatest } from "@/data/history-resource";
@@ -21,9 +22,10 @@ import { VIEW_BESIDE_WIDTH } from "./viewer/viewer-layout";
 import { ResponsibleSection } from "@/features/forms/ResponsibleInputs";
 import { MoveSection } from "@/features/forms/MoveInputs";
 import { HoldKey } from "./HoldKey";
-import { TaskActions } from "./TaskActions";
-import { FrameButtons, ReaderHeader, readerHeadBox, ReaderTitle } from "./ReaderHeader";
+import { ReaderSheetClose, TaskActions } from "./TaskActions";
+import { FrameButtons, ReaderBack, ReaderHeader, readerHeadBox, ReaderTitle } from "./ReaderHeader";
 import { ContextPage, ReportFeed } from "./ReportFeed";
+import { TaskAnalysis } from "@/features/analysis/TaskAnalysis";
 import { COLUMN, looksWide } from "./reading-column";
 import { FilesTab } from "./files/FilesTab";
 import { MarkdownBody } from "./MarkdownBody";
@@ -74,10 +76,14 @@ export function Reader({ mode, overlapping = false, canDock = mode === "docked" 
   const task = useReaderTask(selected);
   const completed = useDeckEmptied(task?.id);
   const open = reader.open && !!task;
+  const awaited = useViewStore(readerShows);
+  const visible = awaited !== null;
   const openingInput = useDialogStore(state => state.dialog?.kind === "input" && state.dialog.taskId === selected ? state.dialog : null);
   const { titleRef, formRef } = useFocusOnOpen(open, openingInput);
   const pane = reader.pane;
-  useAnswerCueLifetime(open ? task!.id : null, pane);
+  const analysis = pane === "analysis";
+  const detailsOpen = open && !analysis;
+  useAnswerCueLifetime(detailsOpen ? task!.id : null, pane);
   // The folder or file the files pane shows: with the task and the pane, the reader's place.
   const shownPath = pane === "files" && filePath && filePath.taskId === task?.id ? filePath.path || null : null;
   // Each opening on a task is a card of its own: an answer started on an earlier one does not move this one.
@@ -89,7 +95,7 @@ export function Reader({ mode, overlapping = false, canDock = mode === "docked" 
   const card = useMemo(() => reader.open && selected ? { taskId: selected } : null, [reader.open, selected, cardVersion]);
   const sitting = <ReaderSitting key="sitting" card={card} taskId={task?.id} byHand={!reader.turnSequence} />;
   // The row shows the header at once; the about and files panes wait for the opened view (body, log, files, requests).
-  const { detail, failure, refreshing, query: view, assessment, fetching, viewSettled, presentation, retry: retryRead } = useTaskDetail(open ? task : undefined, pane === "task");
+  const { detail, failure, refreshing, query: view, assessment, fetching, viewSettled, presentation, retry: retryRead } = useTaskDetail(detailsOpen ? task : undefined, pane === "task");
   // The reports do not wait for it: a held History is drawn with the row, and what only the view says (its questions,
   // its review band, its images) joins it when the view arrives.
   const root = useWorkspaceInfo((info) => info.root);
@@ -107,10 +113,10 @@ export function Reader({ mode, overlapping = false, canDock = mode === "docked" 
   const readReady = useReadReady();
   // Navigation may precede the personal checkpoint. A currently visible, qualified reader owns that later observation.
   // A task opened from the screen takes its time until its content shows.
-  useEffect(() => { if (open && !hidden && detail && detail.id === task!.id) endTime('task', task!.id); }, [open, hidden, detail?.id, task?.id]);
+  useEffect(() => { if (detailsOpen && !hidden && detail && detail.id === task!.id) endTime('task', task!.id); }, [detailsOpen, hidden, detail?.id, task?.id]);
   useEffect(() => {
-    if (open && readReady && !hidden && assessment.project && detail) void markRead(task!.id);
-  }, [open, readReady, hidden, assessment.project, detail?.id, task?.id]);
+    if (detailsOpen && readReady && !hidden && assessment.project && detail) void markRead(task!.id);
+  }, [detailsOpen, readReady, hidden, assessment.project, detail?.id, task?.id]);
   const dim = useWaited(!assessment.display && fetching);
   // When the wait for what the reader shows began: this opening, of this task, on this pane. Its placeholders, one
   // taking over from another as the reads move on (RegionSkeleton), keep this one time.
@@ -133,15 +139,15 @@ export function Reader({ mode, overlapping = false, canDock = mode === "docked" 
     `${open}/${task?.id}/${pane}/${shownPath ?? ""}`, placing);
   const { retry: retryReading, noteScroll } = useReaderRestoration(content, open, task?.id, pane, shownPath, detail?.id, viewSettled, resetHeader, setScrolled, placing);
   useReaderReportPosition(content, open && pane === "task" ? task!.id : null, placing, rebaseHeader);
-  useWheelBack(box, open);
+  useWheelBack(box, visible);
   // It comes in when a press opened it; a reader the URL, Back or Forward opened is simply there (readerOpenedByPress).
   // Closed, it goes back the way it came. A phone's sheet comes and goes by itself (TaskSheet).
   usePanelGoing(box, mode === "sheet" ? null : (now, before) => before.reader.open && !now.reader.open, mode === "overlay" ? "below" : "side", [mode]);
-  const wasOpen = useRef(open);
+  const wasOpen = useRef(visible);
   useLayoutEffect(() => {
-    if (open && !wasOpen.current && readerOpenedByPress() && mode !== "sheet") appear(box.current, mode === "overlay" ? "below" : "side");
-    wasOpen.current = open;
-  }, [open]);
+    if (visible && !wasOpen.current && readerOpenedByPress() && mode !== "sheet") appear(box.current, mode === "overlay" ? "below" : "side");
+    wasOpen.current = visible;
+  }, [visible]);
   // Another task shown in the open reader (a row pressed, a reference followed, Back), in a window or a phone's sheet: the
   // reader stays, what it showed dissolves into what it shows now, its reading column moving a little in the same turn
   // (crossfade). Another pane of the same task (a tab chosen) is the same turn under the head: the title and its tabs
@@ -152,7 +158,10 @@ export function Reader({ mode, overlapping = false, canDock = mode === "docked" 
   useEffect(() => useViewStore.subscribe((view, before) => {
     if (!view.reader.open || !before.reader.open || cardFlying()) return;
     if (view.selected !== before.selected) crossfade(box.current, { content: "[data-reader-content]", ready: unnameReader });
-    else if (view.reader.pane !== before.reader.pane) crossfade(box.current, { content: "[data-reading-column]", ready: (copy, find) => {
+    else if (view.reader.pane !== before.reader.pane) crossfade(box.current, {
+      content: "[data-reading-column]",
+      turn: view.reader.pane === "analysis" ? 1 : before.reader.pane === "analysis" ? -1 : undefined,
+      ready: (copy, find) => {
       // Only what was read is drawn, on the reader's own ground over all of the pane chosen; it is cut where the live
       // title and tabs stand once that pane is drawn at its own place (scrolled back up, they come down into view), so
       // they always show, the tab's grey sliding along them.
@@ -170,19 +179,21 @@ export function Reader({ mode, overlapping = false, canDock = mode === "docked" 
       requestAnimationFrame(cut);
     } });
   }), []);
-  // The URL's task still being looked up: the reader stands where it stood, waiting for it (`AwaitedSurface`).
-  const awaited = useViewStore(readerShows);
   const follow = useCallback((id: string) => openTask(id, { reader: true }), [openTask]);
   // Kept while `follow` is: the viewer reads its document again only when what it read changes.
   const renderProse = useCallback((words: string) => <MarkdownBody text={words} task={null} onFollow={follow} />, [follow]);
   // The same keyed panel survives moving through a task still being looked up.
   const shownTask = useRef(task);
   if (task) shownTask.current = task;
-  const family = reader.open && shownTask.current && <ReaderPanel key="related" task={shownTask.current} onFollow={follow} />;
+  const family = reader.open && !analysis && shownTask.current && <ReaderPanel key="related" task={shownTask.current} onFollow={follow} />;
+  const whole = reader.whole === true;
+  const frame = { mode, whole, overlapping, box };
   if (!open || !task) return <>
     {awaited && <ReadRetryContext value={retryReading}>
     <ReaderCardContext value={null}>
-    <ReaderPeopleContext value={people}><ReaderFrame sheet={mode === "sheet"} whole={reader.whole === true}><AwaitedSurface address={awaited} mode={mode} canDock={canDock} /></ReaderFrame></ReaderPeopleContext>
+    <ReaderPeopleContext value={people}><ReaderFrame {...frame} awaiting={awaited}>
+      <AwaitedContent address={awaited} mode={mode} canDock={canDock} analysis={analysis} />
+    </ReaderFrame></ReaderPeopleContext>
     </ReaderCardContext>
     </ReadRetryContext>}{family}{sitting}</>;
 
@@ -197,41 +208,31 @@ export function Reader({ mode, overlapping = false, canDock = mode === "docked" 
   const header = <ReaderHeader task={task} mode={mode} canDock={canDock} onFollow={follow} walking={walking} pane={pane} ruled={scrolled} />;
   // Why the user's turn came, answered here: Continue and Retry go to the coordinator; Stop reports directly.
   const turn = titleTurn(task);
-  const notes = turn && <p className="my-type-close text-sm text-turn"><TurnReason turn={turn} task={task} cause={failureCause(task, people)} /></p>;
-  const whole = reader.whole === true;
+  const notes = !analysis && turn && <p className="my-type-close text-sm text-turn"><TurnReason turn={turn} task={task} cause={failureCause(task, people)} /></p>;
   // What it shows being read again flows along the rule under the task's head (title and tabs), standing in for
   // that rule as the screen's line does for the feed. It goes with the rule when that is scrolled away; each task's
   // reads are its own. Only over what the pane shows read: while its placeholder stands, that says the wait instead.
   const shownRead = !(presentation.kind === "written" && !detail) && (pane === "task" ? !!reports && history.assessment.display : !!detail);
   const reading = shownRead && <ReadingLine key={task.id} reading={refreshing} className="absolute inset-x-0 top-full z-1" />;
   const surface = <>
-    <ReaderOperationStatus />
-    <aside
-      ref={box}
-      aria-label={t("reader.label")}
-      data-reader-mode={mode}
-      data-held={task.state === "held" || undefined}
-      data-reader-over-list={mode !== "docked" || overlapping ? "" : undefined}
-      // Whole on a phone, as the overlay, it keeps the keyboard.
-      onKeyDown={mode === "overlay" || sheet && whole ? keepFocusInside : undefined}
-      className={readerBox(mode)}
-    >
-      <EmptyDeck taskId={task.id} />
+      {!analysis && <EmptyDeck taskId={task.id} />}
       {/* The completed card covers this whole region: keep its DOM and layout, but expose only the visible surface. */}
-      <div className="contents" inert={completed} aria-hidden={completed || undefined}>
+      <div className="contents" inert={!analysis && completed} aria-hidden={!analysis && completed || undefined}>
       {canDock && <WidthHandle label={t("reader.resize")} taskId={task.id} />}
       <div ref={readArea} className="reader-reading relative flex min-h-0 flex-1 flex-col">
         <div ref={headerLayer} data-reader-header="shown" data-input-view={task.id} className="reader-heading relative flex-none bg-lit">
           <StandingGrip />{header}
-          <ResponsibleSection task={task} /><MoveSection task={task} />
+          {!analysis && <><ResponsibleSection task={task} /><MoveSection task={task} /></>}
         </div>
       {/* Under the head: the reports, and a diff or a file the URL names over them while the reader takes the screen (UrlViewer). */}
       <div className="relative flex min-h-0 flex-1 flex-col">
       <div ref={content} data-reader-content style={{ touchAction: swipeable ? "pan-y pinch-zoom" : undefined }} onScroll={(event) => { setScrolled(event.currentTarget.scrollTop > 0); noteScroll(event.currentTarget.scrollTop); }} className={`reader-content min-h-0 flex-1 overflow-auto px-4 py-2 text-base [overflow-wrap:anywhere] [overflow-anchor:none] narrow:px-3`}>
         {/* Every pane stands under the task's title and its tabs (ReaderEntries), which scroll with it. */}
         <div data-head-title className={`relative -mx-4 -mt-2 mb-2 border-b border-rule pb-1 narrow:-mx-3 narrow:px-3 ${COLUMN.title}`}>
-          <ReaderTitle task={task} titleRef={titleRef} /><ReaderEntries task={task} detail={detail} pane={pane} /><ReaderPanelSlot />{notes}{reading}</div>
-        <div data-reading-column={wide ? "wide" : ""} data-held-hidden={hidden || undefined} inert={hidden} aria-hidden={hidden || undefined}
+          <ReaderTitle task={task} titleRef={titleRef} />
+          {!analysis && <><ReaderEntries task={task} detail={detail} pane={pane} /><ReaderPanelSlot />{notes}{reading}</>}</div>
+        {analysis ? <div data-reading-column className={COLUMN.body}><TaskAnalysis key={task.id} taskId={task.id} hasTitle /></div>
+        : <div data-reading-column={wide ? "wide" : ""} data-held-hidden={hidden || undefined} inert={hidden} aria-hidden={hidden || undefined}
           className={cn(!wide && COLUMN.body, hidden && "invisible", dim && "opacity-50")}>
         {/* A History read back too far to read again whole keeps what it showed, and offers its newest events instead. */}
         {pane === "task" && historyWindowRefused(history.error) && <Message data-read-failure tone="error" size="line" title={problemText(history.error)}
@@ -249,7 +250,7 @@ export function Reader({ mode, overlapping = false, canDock = mode === "docked" 
           : pane === "about" ? <ContextPage task={ready} onFollow={follow} />
             : <ReportFeed key={task.id} task={ready} people={people} onFollow={follow} waitFrom={waitFrom} />}
         </>}</Loadable>}
-        </div>
+        </div>}
       </div>
       {/* A diff or a file the URL names: over the page on a phone; on a computer right of the docked reader, which moves
           to the screen's left for it, or over the reports while the reader takes the whole screen. */}
@@ -257,17 +258,18 @@ export function Reader({ mode, overlapping = false, canDock = mode === "docked" 
       <ReaderMoves box={box} mode={mode} />
       </div>
       </div>
-      {!completed && <HoldKey task={task} />}
+      {!analysis && !completed && <HoldKey task={task} />}
       {/* The reader owns Change state and Done, drawn in the conversation's row over its input. */}
-      <TaskActions task={task} phone={sheet} />
+      {!analysis && <TaskActions task={task} phone={sheet} />}
       </div>
-    </aside>
-    <ReaderSwipe key={task.id} task={task} box={box} reading={readArea} content={content} className={readerBox(mode)} enabled={swipeable} />
   </>;
   return <>
     <ReadRetryContext value={retryReading}>
     <ReaderCardContext value={card}>
-    <ReaderPeopleContext value={people}><ReaderFrame sheet={sheet} whole={whole}><OpeningForm value={formRef}>{surface}</OpeningForm></ReaderFrame></ReaderPeopleContext>
+    <ReaderPeopleContext value={people}><ReaderFrame {...frame} held={task.state === "held"}
+      swipe={<ReaderSwipe key={task.id} task={task} box={box} reading={readArea} content={content} className={readerBox(mode)} enabled={swipeable} />}>
+      <OpeningForm value={formRef}>{surface}</OpeningForm>
+    </ReaderFrame></ReaderPeopleContext>
     </ReaderCardContext>
     </ReadRetryContext>
     {family}
@@ -294,24 +296,32 @@ function ReaderSitting({ card, taskId, byHand }: { card: ReaderCard | null; task
  * keeps its height, grip and whole screen; a computer's window its width, edge and full width; × and Esc close it), and
  * the task's shape until it comes (`AwaitedLookup`). Nothing of the task shown before stays.
  */
-function AwaitedSurface({ address, mode, canDock }: { address: string; mode: ReaderMode; canDock: boolean }) {
+function AwaitedContent({ address, mode, canDock, analysis }: { address: string; mode: ReaderMode; canDock: boolean; analysis: boolean }) {
   const { t } = useTranslation("reader");
   const sheet = useSheetControl();
   const offline = useConnection((state) => state.offline);
-  return <aside aria-label={t("reader.label")} data-reader-mode={mode} data-reader-awaiting={address}
-    onKeyDown={mode === "overlay" || sheet?.whole ? keepFocusInside : undefined} className={readerBox(mode)}>
+  const analysisList = useViewStore(state => !!state.analysis?.list);
+  const behind = useReaderBehind();
+  const head = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    if (analysis && readerOpenedByPress())
+      head.current?.querySelector<HTMLElement>("[data-reader-back], [data-reader-turn]")?.focus({ preventScroll: true });
+  }, [address, analysis]);
+  return <>
     {canDock && <WidthHandle label={t("reader.resize")} taskId={null} />}
     <StandingGrip />
-    <header {...sheet?.grip} className={`${readerHeadBox(mode)} border-rule`}>
-      <div data-reader-head-row className="flex min-w-0 items-center justify-end text-xs text-muted">
-        <FrameButtons canDock={canDock} />
+    <header ref={head} {...sheet?.grip} className={`${readerHeadBox(mode)} @container/reader border-rule`}>
+      <div data-reader-head-row className="flex min-w-0 items-center text-xs text-muted">
+        {(behind || analysisList) && <ReaderBack toList={!behind} />}
+        <span className="me-auto">{analysis && address}</span>
+        <FrameButtons canDock={canDock} turn={address.startsWith("T") ? (analysis ? "analysis" : "task") : undefined} />
       </div>
     </header>
-    <div className="min-h-0 flex-1 overflow-auto px-4 py-2 narrow:px-3">
-      <div data-reading-column className={COLUMN.body}><ReaderPanelSlot />{!offline ? <AwaitedLookup address={address} reason={{ kind: "task_lookup_unavailable" }} skeleton={<RegionSkeleton shape="reports" />} />
-        : <ReadNote kind="absent" />}</div>
+    <div data-reader-content className="min-h-0 flex-1 overflow-auto px-4 py-2 narrow:px-3">
+      <div data-reading-column className={COLUMN.body}>{analysis ? <TaskAnalysis taskId={address} hasTitle={false} /> : <><ReaderPanelSlot />{!offline ? <AwaitedLookup address={address} reason={{ kind: "task_lookup_unavailable" }} skeleton={<RegionSkeleton shape="reports" />} />
+        : <ReadNote kind="absent" />}</>}</div>
     </div>
-  </aside>;
+  </>;
 }
 
 /**
@@ -319,12 +329,26 @@ function AwaitedSurface({ address, mode, canDock }: { address: string; mode: Rea
  * A finger sliding it away, or a press on nothing behind it, closes it as × does. On a wider screen the frame is no box
  * of its own, so the window is the same element at every width.
  */
-function ReaderFrame({ sheet, whole, children }: { sheet: boolean; whole: boolean; children: ReactNode }) {
+function ReaderFrame({ mode, whole, overlapping, box, awaiting, held, swipe, children }: {
+  mode: ReaderMode; whole: boolean; overlapping: boolean; box: RefObject<HTMLElement | null>;
+  awaiting?: string; held?: boolean; swipe?: ReactNode; children: ReactNode;
+}) {
+  const { t } = useTranslation("reader");
+  const sheet = mode === "sheet";
   const setWhole = useViewStore((state) => state.setReaderWhole);
   const control = useSheetMotion({ whole, onWhole: setWhole, onAway: closeReaderStep, rising: readerOpenedByPress(), on: sheet });
   useCloseOnPressBehind(sheet && !whole, control.frame, closeReaderStep);
   return <SheetControlContext value={sheet ? { ...control, whole } : null}>
-    <SheetFrame control={control} whole={whole} layer={20} on={sheet}>{children}</SheetFrame>
+    <SheetFrame control={control} whole={whole} layer={20} on={sheet}>
+      <ReaderOperationStatus />
+      <aside ref={box} aria-label={t("reader.label")} data-reader-mode={mode} data-reader-awaiting={awaiting}
+        data-held={held || undefined} data-reader-over-list={mode !== "docked" || overlapping ? "" : undefined}
+        onKeyDown={mode === "overlay" || sheet && whole ? keepFocusInside : undefined} className={readerBox(mode)}>
+        {children}
+        {sheet && <ReaderSheetClose />}
+      </aside>
+      {swipe}
+    </SheetFrame>
   </SheetControlContext>;
 }
 

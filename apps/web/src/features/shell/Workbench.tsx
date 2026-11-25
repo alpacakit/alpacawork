@@ -1,14 +1,12 @@
 import { useDirectWriteRecovery } from "@/features/reader/recovery";
 import { TelemetryReaskDialog } from "@/features/telemetry/ReaskDialog";
-import { useCallback, useContext, useDeferredValue, useEffect, useLayoutEffect, useState, useRef, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
+import { useDeferredValue, useEffect, useLayoutEffect, useState, useRef, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { later } from "@/lib/later";
 import { AnalysisView, loadAnalysisLayers } from "@/features/analysis/AnalysisView";
-import { readerHasTask, useEveryTaskIndex, useListPlace } from "@/data/queries";
-import { subscribeReads } from "@/data/read-model";
-import { useQueryClient } from "@tanstack/react-query";
-import { useFrameSelector, WorkspaceContext } from "@/data/workspace-store";
+import { useEveryTaskIndex, useListPlace } from "@/data/queries";
+import { useFrameSelector } from "@/data/workspace-store";
 import { Loadable } from "@/components/ui/loadable";
 import { RegionSkeleton } from "@/components/ui/skeleton";
 import { NoProjects } from "@/features/archive/NoProjects";
@@ -16,8 +14,9 @@ import { openSettings, useDialogStore } from "@/state/dialog-store";
 import { AwaitedLookup } from "@/features/reader/AwaitedLookup";
 import { useOpenFromNotification } from "@/data/push";
 import { useUrlBootstrap } from "@/state/bootstrap";
+import { closeReaderStep } from "@/state/history-step";
 import { useInputMode } from "@/state/input-mode";
-import { awaitedTask, isSearchShown, shownInReader, useNarrow, useViewStore } from "@/state/view-store";
+import { isSearchShown, readerShows, shownInReader, useNarrow, useViewStore } from "@/state/view-store";
 import { AppBar } from "@/features/chrome/AppBar";
 import { useProjectShortcuts } from "@/features/chrome/ProjectMenu";
 import { SearchResults } from "@/features/chrome/SearchResults";
@@ -99,7 +98,7 @@ export function Workbench() {
   const place = useDeferredValue(useListPlace());
   const ready = useFrameSelector((data) => data !== null);
   useEffect(() => { if (ready) later(() => void loadAnalysisLayers().catch(() => {})); }, [ready]);
-  const readerOpen = useReaderOpen();
+  const readerOpen = useViewStore(state => readerShows(state) !== null) || !ready && !!urlValue("task");
   const full = useViewStore((state) => state.readerFull);
   // A diff or a file read on a computer stands right of the reader, which moves to the screen's left over the list
   // (UrlViewer); where that room is narrower than its least width, the reader takes the whole screen and it stands over
@@ -162,6 +161,8 @@ export function Workbench() {
               : place === "no-projects" ? <div className="flex-1"><BarRoom /><NoProjects onOpenArchive={() => openSettings("projects")} onCreateProject={() => useDialogStore.getState().openProject()} /></div>
               : <TimeTree />}
           </div>
+          {analysis && readerOpen && !covered && <div aria-hidden className="fixed inset-x-0 top-(--bar-h) bottom-0 z-(--layer-reader)"
+            onClick={narrow ? undefined : closeReaderStep} />}
           <Reader mode={mode} overlapping={overlapping} canDock={canDock} />
         </>}</IndexRegions>
       </main>
@@ -171,27 +172,6 @@ export function Workbench() {
       {ready && <GuideBalloon />}
     </PageFrame></ListNavigationProvider>
   );
-}
-
-/**
- * Whether the reader stands, not on which task: moving it to another task redraws the reader and the list's ring, never
- * the page. It stands by the rule the reader draws its task by (readerHasTask): the page and the reader never disagree
- * on it, so the reader keeps its width while what it shows is read again. A task the URL names that is still being
- * looked up has the reader standing, waiting for it.
- */
-function useReaderOpen() {
-  const frame = useContext(WorkspaceContext);
-  const client = useQueryClient();
-  const subscribe = useCallback((changed: () => void) => {
-    const stopView = useViewStore.subscribe(changed), stopFrame = frame?.subscribe(changed), stopReads = subscribeReads(client, changed);
-    return () => { stopView(); stopFrame?.(); stopReads(); };
-  }, [frame, client]);
-  return useSyncExternalStore(subscribe, () => {
-    const data = frame?.getState(), view = useViewStore.getState();
-    if (!data) return !!urlValue("task");
-    const selected = shownInReader(view);
-    return awaitedTask(view) !== null || selected !== null && readerHasTask(client, data, selected);
-  });
 }
 
 /** The page's geometry changes synchronously with every requested width. Its children keep their own data

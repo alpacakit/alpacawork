@@ -256,6 +256,7 @@
     "back": "Back",
     "close": "Close details",
     "closeShort": "Close",
+    "details": "Details",
     "dock": "Restore details width",
     "full": "Show details full screen",
     "insert": "Add {{id}} to the input box",

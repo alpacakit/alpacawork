@@ -8,7 +8,7 @@ import { analysisMoved, analysisSurfaces, analysisValues, belowLayer, listOnAnsw
 import { axisLabels } from "../src/features/analysis/charts";
 import { dayIntent, inSpanOf, legendRoom, lineDots, lineTop, spanMost } from "../src/features/analysis/rows";
 import { tipAround, tipBeside, tipPlace } from "../src/features/analysis/parts";
-import { isStep, surfacesOf } from "../src/state/history-step";
+import { belowSurface, isStep, surfacesOf } from "../src/state/history-step";
 import type { Navigation } from "../src/state/view-store";
 
 beforeAll(async () => { startI18n(); await i18n.changeLanguage("ja"); });
@@ -116,14 +116,14 @@ test("a share the server withholds (under ten accepted) is never written, nor is
 });
 
 const place = (url: string) => readAnalysis(new URLSearchParams(url));
-const navigation = (analysis: AnalysisPlace | null, task: string | null = null): Navigation => ({ project: null, task, taskAddress: null, full: false,
-  pane: "task", path: null, query: "", image: null, view: null, event: null, analysis });
+const navigation = (analysis: AnalysisPlace | null, task: string | null = null, pane: Navigation["pane"] = "task"): Navigation => ({ project: null, task, taskAddress: null, full: false,
+  pane, path: null, query: "", image: null, view: null, event: null, analysis });
 const step = (from: string, to: string) => isStep(navigation(place(from)), navigation(place(to)), new URL(`http://x/?${from}`), new URL(`http://x/?${to}`));
 
 test("the analysis's place survives its URL, with the defaults left out", () => {
-  const shown = place("face=analysis&look=usage&span=2026-11-01~2026-11-30&list=used&measure=runMs&group=model&member=opus(high)&unit=T12")!;
+  const shown = place("face=analysis&look=usage&span=2026-11-01~2026-11-30&list=used&measure=runMs&group=model&member=opus(high)")!;
   expect(shown).toEqual({ look: "usage", span: { from: "2026-11-01", to: "2026-11-30" },
-    list: { set: "used", value: "runMs", group: "model", member: "opus(high)", days: null }, unit: "T12", card: null });
+    list: { set: "used", value: "runMs", group: "model", member: "opus(high)", days: null }, card: null });
   // A list opened from a chart's bin keeps that bin's days.
   const bin = place("face=analysis&list=finished&bin=2026-11-09~2026-11-15")!;
   expect(bin.list).toMatchObject({ set: "finished", days: { from: "2026-11-09", to: "2026-11-15" } });
@@ -139,20 +139,24 @@ test("the analysis's place survives its URL, with the defaults left out", () => 
   expect(place("face=analysis&card=7d~2026-13-18")!.card).toEqual({ length: "7d", end: null });
 });
 
-test("Back undoes one step at a time: a span chosen, the list opened, a task's values opened; another look is not a step", () => {
+test("Back undoes a task panel over the analysis list and each face is a place in that panel", () => {
   const list = "face=analysis&span=today&list=passed&measure=lead";
   expect(step("", "face=analysis")).toBe(true);
   expect(step("face=analysis", "face=analysis&span=28d")).toBe(true);
   expect(step("face=analysis", "face=analysis&look=usage")).toBe(false);
   expect(step("face=analysis&span=today", list)).toBe(true);
-  expect(step(list, `${list}&unit=T5`)).toBe(true);
-  expect(surfacesOf(`?${list}&unit=T5`)).toHaveLength(2);
-  // Opening the task from its values leaves the analysis for the reader: a step, which Back undoes.
-  expect(isStep(navigation(place(`${list}&unit=T5`)), navigation(null, "T5"), new URL(`http://x/?${list}&unit=T5`), new URL("http://x/?task=T5"))).toBe(true);
-  // Closing a layer takes away it and those over it.
-  const open = place(`${list}&unit=T5`)!;
-  expect(belowLayer(open, 1)).toMatchObject({ list: open.list, unit: null });
-  expect(belowLayer(open, 0)).toMatchObject({ list: null, unit: null, span: { period: "today" } });
+  const open = place(list)!;
+  const rear = new URL(`http://x/?${list}&task=T5&tab=analysis`);
+  const front = new URL(`http://x/?${list}&task=T5`);
+  const taskAnalysis = navigation(open, "T5", "analysis");
+  expect(isStep(navigation(open), taskAnalysis, new URL(`http://x/?${list}`), rear)).toBe(true);
+  expect(isStep(taskAnalysis, navigation(open, "T5"), rear, front)).toBe(true);
+  expect(surfacesOf(rear.search)).toEqual(surfacesOf(front.search));
+  expect(surfacesOf(front.search)).toHaveLength(2);
+  expect(belowSurface(taskAnalysis, 1)).toMatchObject({ analysis: open, task: null });
+  expect(belowSurface(taskAnalysis, 0)).toMatchObject({ analysis: { list: null, span: { period: "today" } }, task: null });
+  const file = "task:T5:work/report.md";
+  expect(belowSurface({ ...navigation(open, "T5"), view: file }, 2)).toMatchObject({ analysis: open, task: "T5", view: null });
   expect(analysisSurfaces(belowLayer(open, 0))).toEqual([]);
   expect(analysisMoved(open, { ...open, look: "usage" })).toBe(false);
   // The card is a layer as well: opening it is a step; another span on it, or a reload, keeps it as it is.

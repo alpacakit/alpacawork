@@ -23,9 +23,9 @@ export const gathering = (state: { query: string }) => !!state.query;
 /** The search row stands while asked for and always while a search is set; pressing its button closes what stands. */
 export const isSearchShown = (state: { searchOpen: boolean; query: string }) => state.searchOpen || gathering(state);
 /**
- * The reader's report column or file sheet.
+ * The reader's details panes and its analysis face.
  */
-export type ReaderPane = "task" | "files" | "about";
+export type ReaderPane = "task" | "files" | "about" | "analysis";
 
 /**
  * What the URL shows. A task it names that is still being looked up is kept as the URL names it
@@ -34,7 +34,7 @@ export type ReaderPane = "task" | "files" | "about";
 export type Navigation = { project: string | null; task: string | null; taskAddress: string | null; full: boolean; pane: ReaderPane; path: string | null; query: string; image: string | null;
   /** A file read over the reader in the viewer (viewer-target.ts: a Task's file, or one of its code locations): a surface as `image` is. */
   view: string | null; event: string | null; turnSequence?: boolean;
-  /** The analysis face and what is open on it; null on the list of tasks. While it is shown no task is open. */
+  /** The analysis face and what is open on it; null on the list of tasks. */
   analysis: AnalysisPlace | null };
 /** The task the navigation's reader shows, known or waited for. */
 export const readerOn = (navigation: Navigation) => navigation.task ?? navigation.taskAddress;
@@ -127,8 +127,6 @@ type ViewState = {
   analysis: AnalysisPlace | null;
   /** Shows the analysis at a place, closing the task open; null goes back to the list of tasks. */
   showAnalysis: (place: AnalysisPlace | null) => void;
-  /** A task opened from the analysis: the list of tasks, with that task open. */
-  openFromAnalysis: (id: string) => void;
   /** Apply a validated URL as one transition, without the side effects of the individual navigation actions. */
   applyNavigation: (navigation: Navigation) => void;
 };
@@ -248,8 +246,10 @@ export const useViewStore = create<ViewState>((set, get) => ({
   // The move on to the next question after an answer acts on the reader that took the answer.
   openTask: intent((id, { pane = "task", reader = false, whole, returnTo, turnSequence = false, event, } = {}) => {
     // Pressing the task already shown is no opening to wait for.
-    if (!(get().reader.open && get().selected === id)) startTime('task', id);
-    markRead(id);
+    if (pane !== "analysis") {
+      if (!(get().reader.open && get().selected === id)) startTime('task', id);
+      markRead(id);
+    }
     if (reader) { endReaderInput(id); openedByPress = true; }
     set((state) => {
       // The task the reader shows, on the pane it shows, is no move: the row open in it stays open, and a walk
@@ -298,15 +298,16 @@ export const useViewStore = create<ViewState>((set, get) => ({
   analysis: null,
   // Coming to the analysis closes the task open and ends a search, as the search's own button does: the analysis takes
   // the list's place. A search begun on it goes back to the list, where its results are (setQuery).
-  showAnalysis: intent((analysis) => set((state) => !analysis ? { analysis }
-    : { analysis, searchOpen: false, query: "", ...state.query ? queryEdit(state) : {},
-      ...state.reader.open ? { selected: null, ...NO_SURFACE, event: null, reader: closedReader(state.reader) } : {} })),
-  openFromAnalysis: intent((id) => { set({ analysis: null }); get().openTask(id, { reader: true, pane: "task" }); }),
+  showAnalysis: intent((analysis) => set((state) => ({
+    analysis,
+    ...analysis ? { searchOpen: false, query: "", ...state.query ? queryEdit(state) : {} } : {},
+    ...state.reader.open && (state.analysis || analysis) ? { selected: null, ...NO_SURFACE, event: null, reader: closedReader(state.reader) } : {},
+  }))),
   /** The URL shown into the store (state/bootstrap.ts): the only other writer of what the URL holds. */
   applyNavigation: (navigation) => {
     const { project, task, taskAddress, full, pane, path, query, image, view, event, turnSequence, analysis } = navigation;
     endReaderInput(task); openedByPress = false;
-    if (task) markRead(task);
+    if (task && pane !== "analysis") markRead(task);
     // The reader shows the task the URL names, or waits for it while it is looked up (`awaitedTask`).
     const shown = readerOn(navigation);
     const returnFocus = !shown && get().reader.open ? readerFocusReturn() : null;

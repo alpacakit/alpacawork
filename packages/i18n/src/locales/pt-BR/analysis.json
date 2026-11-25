@@ -164,7 +164,7 @@
     "usage": "Uso de IA"
   },
   "outcome": {
-    "none": "Em andamento",
+    "none": "Não concluída",
     "passed": "Sem correções",
     "reworked": "Precisou de correções",
     "stopped": "Interrompida"
@@ -335,13 +335,13 @@
     "children": "Subtarefas",
     "conversations": "Conversas novas",
     "duringWork": "Instruções durante o trabalho",
+    "empty": "Não há análise disponível para esta tarefa.",
     "inputCache": "Entrada + cache",
     "marks": {
       "instruction": "Instrução",
       "sendBack": "Devolução"
     },
     "models": "Modelo",
-    "open": "Abrir a tarefa",
     "sendBacks": "Devoluções",
     "skills": "Skills",
     "stopped": "Interrompida {{at}}",

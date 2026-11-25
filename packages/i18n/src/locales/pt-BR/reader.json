@@ -270,6 +270,7 @@
     "back": "Voltar",
     "close": "Fechar detalhes",
     "closeShort": "Fechar",
+    "details": "Detalhes",
     "dock": "Restaurar a largura dos detalhes",
     "full": "Mostrar detalhes em tela cheia",
     "insert": "Adicionar {{id}} ao campo de mensagem",

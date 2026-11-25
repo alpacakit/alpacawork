@@ -242,6 +242,7 @@
     "back": "返回",
     "close": "关闭详情",
     "closeShort": "关闭",
+    "details": "详情",
     "dock": "恢复详情宽度",
     "full": "全屏显示详情",
     "insert": "将 {{id}} 添加到输入框",

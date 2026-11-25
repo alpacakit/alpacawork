@@ -270,6 +270,7 @@
     "back": "Atrás",
     "close": "Cerrar detalles",
     "closeShort": "Cerrar",
+    "details": "Detalles",
     "dock": "Restaurar el ancho de los detalles",
     "full": "Mostrar los detalles en pantalla completa",
     "insert": "Añadir {{id}} al cuadro de texto",

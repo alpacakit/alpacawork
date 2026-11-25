@@ -214,14 +214,14 @@ test("the last thing done says the day: a day the pointer left waiting gives way
   const surface = document.createElement("button");
   let chain: Element[] = [];
   const open = () => {
-    useViewStore.setState({ analysis: { look: "usage", span: { period: "7d" }, list, unit: null, card: null } });
+    useViewStore.setState({ analysis: { look: "usage", span: { period: "7d" }, list, card: null } });
     chain = openerChain(document.activeElement);
     document.body.append(surface); surface.focus();
   };
   const closeList = () => {
     const inside = document.activeElement === surface;
     surface.remove();
-    act(() => { useViewStore.setState({ analysis: { look: "usage", span: { period: "7d" }, list: null, unit: null, card: null } }); });
+    act(() => { useViewStore.setState({ analysis: { look: "usage", span: { period: "7d" }, list: null, card: null } }); });
     if (inside) giveFocusBack(chain);
     act(() => { dispatchEvent(new PopStateEvent("popstate")); vi.advanceTimersByTime(50); });
   };
@@ -323,16 +323,15 @@ test("back from one task to its list, the focus is on that task's row again", as
   vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
     const url = String(input);
     if (url.includes("analysis/list")) return new Response(JSON.stringify(today(3)), { status: 200 });
-    // One task's values never come: the list and the row are what this is about.
-    if (url.includes("analysis/task")) return new Promise<Response>(() => {});
     return new Response("{}", { status: 200 });
   });
   const list: AnalysisPlace = { ...analysisHome("tasks", { period: "today" }), list: { set: "finished", value: null, group: null, member: null, days: null } };
   const days = { from: "2026-11-24", to: "2026-11-24" };
   const view = render(<TestWorkspace data={screenData()}><Layers place={list} project={null} days={days} /></TestWorkspace>);
   await vi.waitFor(() => expect(view.container.ownerDocument.querySelector('[data-unit-row="T2"]')).not.toBeNull());
-  view.rerender(<TestWorkspace data={screenData()}><Layers place={{ ...list, unit: "T2" }} project={null} days={days} /></TestWorkspace>);
-  view.rerender(<TestWorkspace data={screenData()}><Layers place={list} project={null} days={days} /></TestWorkspace>);
+  fireEvent.click(view.container.querySelector('[data-unit-row="T2"]')!);
+  expect(useViewStore.getState().reader.pane).toBe("analysis");
+  act(() => { useViewStore.getState().closeReader(); });
   await vi.waitFor(() => expect(document.activeElement?.getAttribute("data-unit-row")).toBe("T2"));
   view.unmount();
 });
