@@ -1290,12 +1290,12 @@ test("a rail mark's colour says what its record did, never which way it went, an
   expect(tone({ kind: "dialogue" })).toBe("quiet");
 });
 
-test("a compaction's row is named and shows its fill before and after as rings; a new conversation's is its name alone", async () => {
+test("a compaction's row shows its fill before and after as rings; a new conversation's says why in one sentence", async () => {
   await inEnglish();
   const owner = { kind: "owner", profileKey: "claude", modelId: "opus", effort: "high" } as const;
   const data = screenData(tree({ tasks: [dto()], history: { T1: historyFixture([
     { id: "R1@2026-11-26T00:00:00.000Z", kind: "conversation", author: owner, conversation: { change: "compacted", beforeTokens: 610_000, afterTokens: 140_000, windowTokens: 1_000_000 } },
-    { id: "R2:new", kind: "conversation", author: owner, conversation: { change: "new" } }]) } }));
+    { id: "R2:new", kind: "conversation", author: owner, conversation: { change: "new", because: "handoff", report: "Filters reviewed" } }]) } }));
   render(<TestWorkspace data={data}><ReportFeed task={data.tasks[0]!} people={data.people} onFollow={() => {}} /></TestWorkspace>);
   const kinds = await waitFor(() => {
     const named = [...document.querySelectorAll<HTMLElement>("[data-row-kind]")].map(kind => kind.textContent);
@@ -1306,7 +1306,8 @@ test("a compaction's row is named and shows its fill before and after as rings; 
   const fill = document.querySelector<HTMLElement>("[data-compaction-fill]")!;
   expect(fill.textContent).toBe("61%14%");
   expect(fill.querySelectorAll("svg")).toHaveLength(3);
-  expect(document.querySelectorAll("[data-row-words]")).toHaveLength(1);
+  const words = [...document.querySelectorAll<HTMLElement>("[data-row-words]")].map(row => row.textContent);
+  expect(words).toContain("The responsible switched to a new conversation after “Filters reviewed”");
 });
 
 test("the context meter counts, with History's marks, only what happened to the task's conversations", async () => {
@@ -1316,7 +1317,7 @@ test("the context meter counts, with History's marks, only what happened to the 
     context={{ usedTokens: 140_000, windowTokens: 1_000_000, windowFrom: "reported", compacted: false, observedAt: "2026-11-26T00:00:00.000Z" }} />);
   fireEvent.click(document.querySelector<HTMLElement>("[data-context-meter]")!);
   const counts = await waitFor(() => document.querySelector<HTMLElement>("[data-conversation-counts]")!);
-  expect([...counts.children].map(each => [each.getAttribute("aria-label"), each.textContent])).toEqual([["2 compactions", "2"]]);
+  expect([...counts.children].map(each => each.textContent)).toEqual(["2 compactions"]);
 });
 
 test("a stop the AI stack carried on goes to the AI that took over, closed and open alike", async () => {

@@ -231,8 +231,12 @@ export function recordEvents(context: ReturnType<typeof prepareHistory>, task: C
   }
   // What happened to its agents' conversations: a Run starting one anew, and each compaction a Run's agent said. Their
   // IDs are their own (a Run's ID is its failure's row), and stay when older compactions leave the Run's record.
-  for (const run of newConversationStarts([...runs.values()]))
-    events.push({ ...event(`${run.id}:new`, 'conversation', run.startedAt!, '', ''), conversation: { change: 'new' }, ...ranHere(run) });
+  const reportTitle = (id: string | undefined) => id === undefined ? undefined : task.log.find(entry => entry.id === id)?.title ?? undefined;
+  for (const run of newConversationStarts([...runs.values()])) {
+    const why = run.newConversation, report = reportTitle(why?.report);
+    events.push({ ...event(`${run.id}:new`, 'conversation', run.startedAt!, '', ''),
+      conversation: { change: 'new', ...why ? { because: why.because } : {}, ...report ? { report } : {} }, ...ranHere(run) });
+  }
   for (const run of runs.values()) for (const { at, ...fill } of run.compactions ?? [])
     events.push({ ...event(`${run.id}@${at}`, 'conversation', at, '', ''), conversation: { change: 'compacted', ...fill }, ...ranHere(run) });
   for (const dialogue of context.dialoguesByTask.get(task.id) ?? [])

@@ -392,6 +392,13 @@
         "urgent": "Urgente",
         "withdrawn": "Retirada"
       },
+      "newBecause": {
+        "another_ai": "Empezó de nuevo porque otra IA tomó el trabajo",
+        "asked": "La solicitud pidió una conversación nueva",
+        "handoff": "El responsable pasó a una conversación nueva en una pausa del trabajo",
+        "handoffAt": "El responsable pasó a una conversación nueva después de «{{report}}»",
+        "unresumable": "Empezó de nuevo porque no se pudo retomar la conversación anterior"
+      },
       "older": "Mostrar anteriores ({{n}})",
       "openTask": "Abrir “{{task}}”",
       "own": "{{who}}:",

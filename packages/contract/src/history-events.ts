@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { dependencyChangeSchema, TASK_LOG_KINDS, type TaskLog } from '@alpacawork/raw/task-log-schema';
 import { TASK_ID_PATTERN } from '@alpacawork/raw/task-id';
 import { runIdSchema, taskIdSchema, taskStateSchema } from './fields.js';
-import { runCompactionSchema } from './run-contract.js';
+import { NEW_CONVERSATION_REASONS, runCompactionSchema } from './run-contract.js';
 import { isFinished } from './finished-branch.js';
 import { RETURN_OUTCOMES } from './return-outcomes.js';
 import { runErrorCauseSchema } from './run-failure.js';
@@ -98,7 +98,8 @@ export const historyEventSchema = z.object({
    * it was compacted (one of a Run's compactions), with the fill before and after when the agent said it.
    */
   conversation: z.discriminatedUnion('change', [
-    z.object({ change: z.literal('new') }).strict(),
+    // Why, when the Run that started it says (its newConversation), with the title of the report that prepared it.
+    z.object({ change: z.literal('new'), because: z.enum(NEW_CONVERSATION_REASONS).optional(), report: z.string().optional() }).strict(),
     runCompactionSchema.omit({ at: true }).extend({ change: z.literal('compacted') }).strict(),
   ]).optional(),
 }).strict().refine(event => (event.open !== undefined) === (event.kind === 'question' || event.kind === 'review'),

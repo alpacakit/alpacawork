@@ -357,6 +357,13 @@
         "urgent": "紧急",
         "withdrawn": "已撤回"
       },
+      "newBecause": {
+        "another_ai": "因为换用了其他 AI，开始了新的对话",
+        "asked": "请求指定了新的对话",
+        "handoff": "负责人在工作的节点切换到了新的对话",
+        "handoffAt": "负责人在“{{report}}”之后切换到了新的对话",
+        "unresumable": "因为无法继续之前的对话，开始了新的对话"
+      },
       "older": "显示更早的 {{n}} 条",
       "openTask": "打开“{{task}}”",
       "own": "{{who}}：",

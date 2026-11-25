@@ -181,6 +181,14 @@ export const runCompactionSchema = z.object({
   windowTokens: z.number().int().positive().safe().nullable(),
 }).strict();
 export type RunCompaction = z.infer<typeof runCompactionSchema>;
+/**
+ * Why a Run started its conversation anew where its placement had one, as the request that made it decided: the
+ * responsible's report prepared it (`report`: that report's log entry), the sender asked for a new one, another AI took
+ * the work, or the last conversation could not be resumed.
+ */
+export const NEW_CONVERSATION_REASONS = ['handoff', 'asked', 'another_ai', 'unresumable'] as const;
+export const newConversationSchema = z.object({ because: z.enum(NEW_CONVERSATION_REASONS), report: z.string().min(1).optional() }).strict();
+export type NewConversation = z.infer<typeof newConversationSchema>;
 /** A Task's Run (its owner's or a worker's, at a placement of the Task), apart from its checks so a coordinator Run extends it. */
 const taskRunObject = z.object({
   id: runIdSchema,
@@ -208,6 +216,8 @@ const taskRunObject = z.object({
   stop_requested: z.boolean(),
   exit: z.object({ code: z.number().int().nullable(), signal: z.string().nullable() }).strict().nullable(),
   usage: runUsageSchema.nullable(),
+  /** Why it started its conversation anew (newConversationSchema); absent on a conversation's first Run or one it resumes. */
+  newConversation: newConversationSchema.optional(),
   /** The compactions of its conversation while it ran, oldest first. */
   compactions: z.array(runCompactionSchema).max(RUN_COMPACTION_LIMIT).optional(),
   created_at: z.iso.datetime({ offset: true }),

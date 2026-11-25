@@ -52,8 +52,8 @@ export function ContextMeter({ context, press, conversations }: { context: Conte
       {figure.waiting && <p className="m-0 mt-2 text-xs text-muted">{t("context.compacted")}</p>}
       {figure.open && <p className="m-0 mt-2 text-xs text-muted">{t("context.setWindow")}</p>}
       {/* How often this Task's conversations were started anew and compacted, with History's marks for them. */}
-      {counts.length > 0 && <div data-conversation-counts className="mt-2 flex gap-3 text-xs tabular-nums">{counts.map(({ icon, words, count }) =>
-        <span key={icon} title={words} aria-label={words} className="inline-flex items-center gap-1"><Icon name={icon} className="size-3.5 text-muted" />{count}</span>)}</div>}
+      {counts.length > 0 && <div data-conversation-counts className="mt-2 flex flex-wrap gap-x-3 gap-y-1 border-t border-rule pt-2 text-xs tabular-nums">{counts.map(({ icon, words }) =>
+        <span key={icon} className="inline-flex items-center gap-1"><Icon name={icon} className="size-3.5 text-working" />{words}</span>)}</div>}
     </PopoverContent>
   </Popover>;
 }

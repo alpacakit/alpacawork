@@ -574,7 +574,7 @@ function RecordRow({ row, line, open, onToggle, task, gallery, onFollow }: Recor
   const names = useContext(AgentNames);
   const words = same ? t("reportFeed.row.sameTitle")
     : report.carriedOn ? carriedOnWords(report, names, t, ui)
-    : report.conversation ? conversationFill(report.conversation, locale)
+    : report.conversation ? conversationFill(report.conversation, t, locale)
     : report.changed ? t("reportFeed.row.changedTo", { state: stateWords(report.changed) })
     : report.cause ? causeReason(report.cause, ui)
     : report.kind === "error" || report.kind === "run_end" ? t(`history.reasons.${report.text}`, { defaultValue: t("history.reasons.unknown") })
@@ -768,7 +768,7 @@ function RowName({ row, kindWord, open }: { row: HistoryRow; kindWord: string; o
   // smaller than the line, so there they never made it taller.
   return <span data-row-name className="col-start-2 row-start-1 flex min-w-0 items-baseline gap-x-1 whitespace-nowrap py-px narrow:gap-x-0.5 narrow:py-0 text-xs text-soft group-hover/row:text-ink group-data-lit/row:text-ink">
     <span data-row-said className="sr-only">{said}</span>
-    <span data-row-kind className={`flex-none ${urgent ? "font-semibold text-turn" : ""}`}>{kindWord}</span>
+    <span data-row-kind className={`flex-none ${urgent ? "font-semibold text-turn" : row.report.conversation ? "font-medium text-working" : ""}`}>{kindWord}</span>
     {row.older.length > 0 && <span data-row-times className="flex-none tabular-nums">{t("reportFeed.row.times", { n: row.older.length + 1 })}</span>}
     {/* On a phone the tags are a step smaller than the words beside them, so two long agents stay whole on one line. */}
     {/* Cut across only: cut all round, a phone's tight small line cut the agents' g and p off below. */}
@@ -875,17 +875,20 @@ function rowEnds(row: HistoryRow): HistoryRow["name"] {
   return carriedOn && recipient && "ends" in row.name
     ? { ends: [row.name.ends[0], { ...row.name.ends[0], agent: carriedOnAgent(recipient) }] } : row.name;
 }
-/** A conversation row's rail mark: a new conversation's, or a compaction's. Quiet: nothing waits on anyone. */
-const CONVERSATION_MARK = { new: { kind: "anew", tone: "quiet" }, compacted: { kind: "compacted", tone: "quiet" } } as const satisfies
+/** A conversation row's rail mark: a new conversation's, or a compaction's, in the colour of work going on (the meter's). */
+const CONVERSATION_MARK = { new: { kind: "anew", tone: "working" }, compacted: { kind: "compacted", tone: "working" } } as const satisfies
   Record<NonNullable<ReportEvent["conversation"]>["change"], NonNullable<ReportEvent["mark"]>>;
 /** A conversation row is named by what happened to the conversation; its rail mark is the same picture. */
 const CONVERSATION_KIND = { new: "conversationNew", compacted: "compacted" } as const;
 /**
  * A compaction's row shows how full the conversation was before and after, as the context meter draws it (the ring and
- * its figure); nothing when its agent did not say. A new conversation's row needs no words under its name.
+ * its figure); nothing when its agent did not say. A new conversation's row says in one sentence why it started anew,
+ * when the Run that started it says.
  */
-function conversationFill(conversation: NonNullable<ReportEvent["conversation"]>, language: string): ReactNode {
-  if (conversation.change === "new") return null;
+function conversationFill(conversation: NonNullable<ReportEvent["conversation"]>, t: TFunction<"reader">, language: string): ReactNode {
+  if (conversation.change === "new") return !conversation.because ? null : conversation.because === "handoff"
+    ? conversation.report ? t("reportFeed.row.newBecause.handoffAt", { report: conversation.report }) : t("reportFeed.row.newBecause.handoff")
+    : t(`reportFeed.row.newBecause.${conversation.because}`);
   const { beforeTokens: before, afterTokens: after, windowTokens: window } = conversation;
   if (before === null || after === null) return null;
   const figure = (tokens: number) => {
@@ -1032,10 +1035,6 @@ function WorkingPerson({ run, task, onFollow, open, lead, others }: { run: Contr
         reason: beforeCause ? limitName(beforeCause, ui) : t("reportFeed.row.carriedOn.limit") })}</span>}
       </span>
       {/* Every working line ends its first line with the same meter, so the figures stand in one column. */}
-      {/* A Run that compacted its conversation says so beside its meter, with the meter's own mark for it. */}
-      {!!run.compactions?.length && <span data-working-compacted title={say("context.compactions", { count: run.compactions.length })}
-        aria-label={say("context.compactions", { count: run.compactions.length })} className="flex flex-none items-center self-center text-muted">
-        <Icon name="reload" className="size-3.5" /></span>}
       {run.activity?.context && <span className="flex-none self-center"><ContextMeter context={run.activity.context} press conversations={task.conversations ?? undefined} /></span>}</span>
     {!words ? null : !lead ? <div data-working-note dir="auto" className={`${cell} ${NOTE} text-sm block text-ink`}><MarkdownBody text={words} task={task} onFollow={onFollow} report variant="note" /></div>
       : <LeadNote open={open} words={words} task={task} onFollow={onFollow} className={cell} />}

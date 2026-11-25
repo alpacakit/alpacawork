@@ -19,7 +19,7 @@ import { parseRow, parseRuntimeRow, storeReads, transactionReads, type RunSnapsh
   type StoredReturn, type StoredPlacement, type TransactionReads } from './reads.js';
 
 export type CreateRunFields = Pick<RunRecord, 'task' | 'agent' | 'role' | 'resumes' | 'continues' | 'session' | 'caller' | 'cwd' | 'launch'> &
-  Pick<RunRecord, 'placementId' | 'requestId' | 'attempt' | 'firstRunId'>;
+  Pick<RunRecord, 'placementId' | 'requestId' | 'attempt' | 'firstRunId' | 'newConversation'>;
 export type NewRequest = Omit<StoredRequest, 'runId' | 'aboutRunId'> & {
   aboutRunId?: RunId | null;
   aiStack?: readonly AiRow[];
