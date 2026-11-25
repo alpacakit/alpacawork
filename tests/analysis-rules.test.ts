@@ -7,6 +7,7 @@ import { clocks, firstConversations, launchOf, prLinks, shareOf, taskOutcome, us
   type RunEvidence } from '@alpacawork/backend/test-dist/analysis/rules.js';
 import { runUsageMs } from '@alpacawork/contract';
 import { TallyParser } from '@alpacawork/backend/test-dist/agents/adapters/tally.js';
+import { warmAnalysisWhenIdle } from '@alpacawork/backend/test-dist/analysis/reads.js';
 
 const epoch = Date.parse('2026-03-08T05:00:00Z');
 const stamp = (offset: number) => new Date(epoch + offset).toISOString();
@@ -224,4 +225,22 @@ test('Claude and bridge tally skill reads in compound shell commands', () => {
     }
     assert.deepEqual({ ...parser.finish('complete').skills }, expected, adapter);
   }
+});
+
+test('serve reads the analysis ahead once, when it is quiet, and not after it closes', t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  let warmed = 0, quiet = false;
+  const stop = warmAnalysisWhenIdle({ warm: () => { warmed++; } }, () => quiet);
+  t.mock.timers.tick(3000);
+  assert.equal(warmed, 0);
+  quiet = true;
+  t.mock.timers.tick(1000);
+  assert.equal(warmed, 1);
+  t.mock.timers.tick(60_000);
+  assert.equal(warmed, 1);
+  stop();
+  const closed = warmAnalysisWhenIdle({ warm: () => { warmed++; } }, () => true);
+  closed();
+  t.mock.timers.tick(60_000);
+  assert.equal(warmed, 1);
 });

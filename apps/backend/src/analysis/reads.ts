@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { performance } from 'node:perf_hooks';
 import type { DatabaseSync } from 'node:sqlite';
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 import { sumRunUsage } from '@alpacawork/contract';
@@ -469,8 +470,38 @@ export class AnalysisReader {
     return apply(new ScopedAnalysis(facts, readScope ?? input.project ?? null, readScope, input.timeZone ?? this.timeZone,
       Date.now(), this.tallySince, this.tallies));
   }
+  /**
+   * Reads ahead what the first analysis read would wait for: the facts, and the days of the face it opens on (every
+   * project, the last 7 days by day). Serve calls it once, in a quiet moment after it starts (warmAnalysisWhenIdle).
+   */
+  warm() {
+    const person = { kind: 'human' } as const;
+    this.tasks({ period: '7d', bucket: 'day' }, person);
+    this.usage({ period: '7d', bucket: 'day' }, person);
+  }
   tasks(input: AnalysisTasksInput, caller: Caller) { return this.scoped(input, caller, view => view.tasks(input)); }
   usage(input: AnalysisUsageInput, caller: Caller) { return this.scoped(input, caller, view => view.usage(input)); }
   list(input: AnalysisListInput, caller: Caller) { return this.scoped(input, caller, view => view.list(input)); }
   task(input: AnalysisTaskInput, caller: Caller) { return this.scoped(input, caller, view => view.task(input.task)); }
+}
+
+const WARM_CHECK_MS = 1000, WARM_BUSY = 0.5, WARM_CHECKS = 30;
+/**
+ * Calls `warm` once serve has a quiet second (its event loop busy under half of it and `quiet()` true), checking each
+ * second; after 30 checks it warms anyway. The work blocks as a first read would, but at a moment nobody waits on.
+ * Returns a stop for serve's close.
+ */
+export function warmAnalysisWhenIdle(reader: Pick<AnalysisReader, 'warm'>, quiet: () => boolean) {
+  let timer: ReturnType<typeof setTimeout> | undefined, checks = 0;
+  const check = (since = performance.eventLoopUtilization()) => {
+    timer = setTimeout(() => {
+      timer = undefined;
+      const busy = performance.eventLoopUtilization(since).utilization;
+      if (++checks < WARM_CHECKS && (busy > WARM_BUSY || !quiet())) return check();
+      try { reader.warm(); }
+      catch (error) { console.error('Analysis could not read ahead', error); }
+    }, WARM_CHECK_MS);
+  };
+  check();
+  return () => { if (timer) clearTimeout(timer); };
 }
