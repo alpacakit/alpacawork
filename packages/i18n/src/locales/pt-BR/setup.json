@@ -27,6 +27,7 @@
     "title": "Agentes para suas tarefas"
   },
   "back": "Voltar",
+  "beta": "Beta",
   "changedElsewhere": "Alterado em outra tela. Mostrando a configuração atual.",
   "consent": {
     "body": "Os dados de uso incluem a versão, o sistema operacional e contagens de uso dos recursos. Conversas, conteúdo das tarefas, nomes de arquivos e o nome do PC nunca são enviados. Nada é enviado até você ir para a próxima etapa, e o alpacawork funciona do mesmo jeito com esta opção desativada. Você pode mudar isso a qualquer momento em Configurações.",
@@ -92,6 +93,10 @@
       "alpacawork-betterquality": {
         "title": "Conferido por outra IA antes de você ver",
         "what": "Exceto em trabalhos leves, antes de pedirem a sua revisão, uma IA diferente da que fez o trabalho confere o resultado, e o que ela aponta é corrigido. Isso consome mais tempo e mais tokens."
+      },
+      "alpacawork-modelpickoptimization": {
+        "title": "Modelos mais baratos, aos poucos",
+        "what": "O trabalho que passa por revisão é testado primeiro com um modelo mais leve ou com menos esforço. Se a revisão não pedir mudanças grandes, o relatório propõe levar a regra de modelos da política do projeto para o lado mais leve."
       },
       "askmeclearly": {
         "title": "Perguntas e relatórios mais curtos e fáceis de ler",

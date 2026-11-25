@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { SKILL_OFFERS, skillInstallRequestSchema, type SkillJob, type SkillName, type SkillStatus, type SkillsResponse } from '@alpacawork/contract';
 import { Problem, PROBLEM_CODE, parseInput, redactSecrets, hasCode } from '@alpacawork/core';
 import { serverText, type ServerLocale } from '@alpacawork/i18n/server';
-import { InstalledSkillsStore } from '@alpacawork/core/installed-skills';
+import { BUNDLED_SKILL_NAMES, InstalledSkillsStore } from '@alpacawork/core/installed-skills';
 import { appRoot } from '../app-paths.js';
 import { installationSkillsRoot } from './setup.js';
 import { ManagedSkillsWriter } from './skills.js';
@@ -80,13 +80,15 @@ export class FirstRunSkills {
             job.items[at] = { name, state: 'failed', reason: 'link_conflict', detail: 'The Claude Code skill path contains other content. It was preserved.' }; continue;
           }
           if (!this.installed(name)) {
-            if (name === 'alpacawork-betterquality' && (!session.current?.receipt.skills.some(skill => skill.name === 'alpacawork') ||
+            // An offer this release carries is copied from it, after the alpacawork skill it adds to.
+            const bundled = BUNDLED_SKILL_NAMES.find(each => each === name);
+            if (bundled && (!session.current?.receipt.skills.some(skill => skill.name === 'alpacawork') ||
               !statSync(join(this.root, 'alpacawork/SKILL.md'), { throwIfNoEntry: false })?.isFile())) {
               const t = serverText(this.input.locale?.() ?? defaultUiLocale);
               job.items[at] = { name, state: 'failed', reason: 'other', detail: t('server:setup.skills.baseMissing') }; continue;
             }
-            if (name === 'alpacawork-betterquality') await new ManagedSkillsWriter({ root: this.root }).install({ version: 2,
-              operationId: randomUUID(), release: this.input.release ?? appRoot(import.meta.url), intent: { place: [name], remove: [] } }, session);
+            if (bundled) await new ManagedSkillsWriter({ root: this.root }).install({ version: 2,
+              operationId: randomUUID(), release: this.input.release ?? appRoot(import.meta.url), intent: { place: [bundled], remove: [] } }, session);
             else {
               await (this.input.run ?? runFirstRunCommand)('npx', skillInstallCommand(name), { env: this.env, signal: this.abort.signal, timeout: 90_000 });
             }
