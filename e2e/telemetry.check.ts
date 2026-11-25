@@ -84,10 +84,11 @@ test('usage data is chosen in Settings, never by a dialog on the page; the switc
     await page.setViewportSize({ width: 1440, height: 900 });
     const queued = service.queue.queued();
     await page.getByRole('button', { name: '送信内容を表示', exact: true }).click();
-    const preview = page.locator('[data-telemetry-preview]');
-    await expect(preview.locator('pre')).toContainText('"events"');
-    await expect(preview.locator('pre')).toContainText(id);
-    await expect(preview).toContainText('この番号で送信済みのデータを削除できます。');
+    const preview = page.locator('[data-telemetry-history]');
+    await preview.locator('[data-telemetry-upcoming] summary').first().click();
+    await expect(preview.locator('[data-telemetry-upcoming] pre').first()).toContainText('"events"');
+    await expect(preview.locator('[data-telemetry-upcoming] pre').first()).toContainText(id);
+    await expect(preview.locator('[data-telemetry-id]')).toHaveText(id);
     expect(service.queue.queued()).toEqual(queued);
     await shot('settings-preview-ja-pc');
     await page.setViewportSize({ width: 390, height: 844 }); await shot('settings-preview-ja-phone');

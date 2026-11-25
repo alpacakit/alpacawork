@@ -30,7 +30,6 @@ export function installTelemetryRoutes(api: Hono, service: TelemetryService, req
     c.header('Cache-Control', 'no-store');
     return c.json(service.history());
   });
-  api.get('/api/telemetry/preview', c => { requirePerson(c.req.raw); return c.json({ state: service.gate().state, next: service.preview() }); });
   api.post('/api/telemetry/choice', async c => {
     requirePerson(c.req.raw);
     const input = parseInput(choiceInput, await json(c.req.raw));

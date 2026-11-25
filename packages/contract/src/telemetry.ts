@@ -264,7 +264,6 @@ export const telemetryStatusSchema = z.object({
   id: telemetryIdSchema.nullable(),
 });
 export type TelemetryStatus = z.infer<typeof telemetryStatusSchema>;
-export const telemetryPreviewSchema = z.object({ state: telemetryStatusSchema.shape.state, next: dayReportSchema.nullable() });
 
 const telemetryAttemptFields = {
   at: z.iso.datetime(),
@@ -278,7 +277,7 @@ export const telemetryAttemptSchema = z.discriminatedUnion('kind', [
 ]);
 export type TelemetryAttempt = z.infer<typeof telemetryAttemptSchema>;
 
-export const telemetryHistorySchema = telemetryPreviewSchema.extend({
+export const telemetryHistorySchema = z.object({ state: telemetryStatusSchema.shape.state, next: dayReportSchema.nullable(),
   queue: z.array(z.strictObject({ day: telemetryDaySchema, notBefore: z.number().finite(), report: dayReportSchema })),
   log: z.array(telemetryAttemptSchema),
 });
