@@ -95,8 +95,8 @@ const DIALOG_MS = 10 * 60_000;
 let shown: ChildProcess | null = null;
 
 /**
- * This PC's own window for choosing a folder, for a person whose screen is on this PC (`local`: opened at a loopback
- * name; the public name may be another device). It opens at the folder written, else where listing starts, and
+ * This PC's own window for choosing a folder, for a person whose screen is on this PC (`local`: this server's own page
+ * opened at a loopback name). It is a read, so a chooser left open holds no write behind it. It opens at the folder written, else where listing starts, and
  * answers when the person chooses or cancels; `signal` (the screen gone) closes it.
  */
 export async function chooseFolder(root: string, input: { path?: string; title: string }, at: { local: boolean; signal?: AbortSignal },

@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import fs from 'node:fs/promises';
 import { syncBuiltinESMExports } from 'node:module';
 import { join } from 'node:path';
-import { Problem, errorBody } from '@alpacawork/core';
+import { Problem, errorBody, platform } from '@alpacawork/core';
 import { chooseFolder, makeFolder } from '@alpacawork/backend/test-dist/control/folders.js';
 
 function fixture(t: TestContext) {
@@ -120,3 +120,16 @@ test('this PC\'s chooser: only for a screen on this PC, opened at the folder wri
   setTimeout(() => gone.abort(), 50);
   assert.deepEqual(await waiting, { path: null });
 });
+
+test('Linux shows GNOME\'s or KDE\'s chooser only with a display, and tells a cancel from a display it cannot open',
+  { skip: process.platform !== 'linux' }, t => {
+    const h = fixture(t);
+    writeFileSync(join(h.base, 'zenity'), '#!/bin/sh\n');
+    chmodSync(join(h.base, 'zenity'), 0o755);
+    assert.equal(platform.folderDialog(h.code, 'Choose', { PATH: h.base }), null);
+    const dialog = platform.folderDialog(h.code, 'Choose', { PATH: h.base, DISPLAY: ':0' })!;
+    assert.equal(dialog.command, join(h.base, 'zenity'));
+    assert.equal(dialog.cancelled(1, 'Gtk-Message: GtkDialog mapped without a transient parent.\n'), true);
+    assert.equal(dialog.cancelled(1, '(zenity:1): Gtk-WARNING **: Failed to open display\n'), false);
+    assert.equal(dialog.cancelled(255, ''), false);
+  });

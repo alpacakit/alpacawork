@@ -68,7 +68,10 @@ export interface Context {
    * and a project's code location is published under one derived from it (`locationOperation`).
    */
   opId?: string;
-  /** The request came to a loopback name, so its screen is on this PC (the public name may be another device). */
+  /**
+   * The request is this server's own page asking, opened at a loopback name, so its person is at this PC: the public
+   * name may be another device, and another site open in the same browser asks cross-site (Fetch Metadata).
+   */
   local?: boolean;
   /** Aborted when the request's connection is gone. */
   signal?: AbortSignal;
@@ -307,7 +310,7 @@ export const foldersNode = defineEntryNode({ name: 'folders',
       async (root, input) => makeFolder(root, input)), SCREEN)] }),
   defineEntryNode({ name: 'choose', description: 'Show this PC\'s own folder chooser to a person at this PC and answer the folder chosen',
     endpoints: [withAct(endpoint('choose', [optionalText('path', 'Folder to open at (absolute or ~/…)'),
-      textParameter('title', 'Title of the chooser')], 'POST', chooseFolderInput,
+      textParameter('title', 'Title of the chooser')], 'GET', chooseFolderInput,
       async (root, input, context) => chooseFolder(root, input, { local: context.local === true, signal: context.signal })), SCREEN)] })] });
 
 export type JsonCommandName = Exclude<CommandName, `task/file/${string}` | 'task/attachment/put'>;

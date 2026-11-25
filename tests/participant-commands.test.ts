@@ -163,20 +163,24 @@ test('this PC\'s folders are listed for a person, never for a Run', async t => {
   assert.equal((await make(`Alpacawork-Run ${h.run.id}:${h.token}`)).status, 403, 'a Run never reaches mkdir');
 });
 
-test('this PC\'s own folder chooser is never shown to a screen opened at the public name', async t => {
+test('this PC\'s own folder chooser is shown only to this server\'s own page opened on this PC', async t => {
   const h = await setup(t), server = await startServer(h.root, 0, { publicHost: 'pc.example.ts.net' });
-  // Closed before setup's own cleanup removes the workspace, which the closing server still writes to.
-  const answer = await new Promise<{ status: number; text: string }>((done, reject) => {
-    const sent = request(new URL('/api/workspace/folders/choose', server.url), { method: 'POST', headers: {
-      host: 'pc.example.ts.net', origin: 'https://pc.example.ts.net', 'content-type': 'application/json' } }, response => {
+  const ask = (headers: Record<string, string>) => new Promise<{ status: number; reason?: string }>((done, reject) => {
+    const sent = request(new URL('/api/workspace/folders/choose?title=Choose', server.url), { headers }, response => {
       let text = '';
-      response.on('data', chunk => { text += chunk; }).on('end', () => done({ status: response.statusCode!, text }));
+      response.on('data', chunk => { text += chunk; })
+        .on('end', () => done({ status: response.statusCode!, reason: JSON.parse(text).error?.reason?.kind }));
     });
     sent.on('error', reject);
-    sent.end(JSON.stringify({ title: 'Choose' }));
-  }).finally(() => server.close());
-  assert.equal(answer.status, 403, answer.text);
-  assert.equal(JSON.parse(answer.text).error.reason.kind, 'folder_chooser_only_on_this_pc');
+    sent.end();
+  });
+  // Closed before setup's own cleanup removes the workspace, which the closing server still writes to.
+  try {
+    // The public name may be another device; another site open in a browser on this PC asks cross-site.
+    for (const headers of [{ host: 'pc.example.ts.net', 'sec-fetch-site': 'same-origin' },
+      { host: new URL(server.url).host, 'sec-fetch-site': 'cross-site' }, { host: new URL(server.url).host }])
+      assert.deepEqual(await ask(headers), { status: 403, reason: 'folder_chooser_only_on_this_pc' }, JSON.stringify(headers));
+  } finally { await server.close(); }
 });
 
 const fetch = commandFetchWith(fetchBuffered);
