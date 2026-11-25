@@ -40,7 +40,7 @@ Para mudar sua escolha depois, use a chave “Enviar dados de uso para ajudar a 
 
 Quando você para, os dados ainda não enviados são excluídos sem serem enviados. Os dados já enviados não são excluídos só por você parar (“Excluir o que foi enviado”, abaixo).
 
-Se você atualizar para uma versão que acrescenta um tipo de informação ao que é enviado, ou muda como é enviado, uma janela pergunta de novo ao abrir a tela, somente se você tinha escolhido enviar. A janela lista os campos acrescentados. Nada é enviado até você responder. Cada tipo de informação é um campo do relatório (por exemplo `shape.tasks`); sua escolha registra os campos que cobria, então um campo acrescentado depois sempre é perguntado.
+Se você atualizar para uma versão que acrescenta um tipo de informação ao que é enviado, ou muda como é enviado, uma janela pede sua concordância de novo ao abrir a tela, somente se você tinha escolhido enviar. A janela lista os campos acrescentados. Nada é enviado até você responder. Cada tipo de informação é um campo do relatório (por exemplo `shape.tasks`); sua escolha registra os campos que cobria, então um campo acrescentado depois sempre é perguntado.
 
 Em alguns casos, como quando o alpacawork é executado em CI ou dentro de um contêiner, nada é enviado mesmo que você tenha escolhido enviar. Nesses casos, a chave não pode ser alterada, e o motivo aparece abaixo dela.
 

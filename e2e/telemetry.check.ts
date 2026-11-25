@@ -127,7 +127,7 @@ test('usage data is chosen in Settings, never by a dialog on the page; the switc
     await page.setViewportSize({ width: 1440, height: 900 }); await shot('settings-reask-ja-pc');
     await page.setViewportSize({ width: 390, height: 844 }); await shot('settings-reask-ja-phone');
     await page.setViewportSize({ width: 1440, height: 900 });
-    await reask.getByRole('button', { name: '送る', exact: true }).click();
+    await reask.getByRole('button', { name: '同意する', exact: true }).click();
     await expect(reask).toHaveCount(0); expect(service.status().state).toBe('on');
     await openSettings();
 
@@ -147,7 +147,7 @@ test('usage data is chosen in Settings, never by a dialog on the page; the switc
     writeJson(service.store.paths.consent, { version: 1, choice: 'on', consentVersion: 0, decidedAt: new Date(at).toISOString(), decidedBy: 'screen' });
     await page.keyboard.press('Escape');
     await page.reload(); await expect(page.locator('[data-section]').first()).toBeVisible();
-    await expect(reask).toContainText('送る情報か送り方が変わりました。');
+    await expect(reask).toContainText('送信する情報か送り方が変わりました。');
     await page.keyboard.press('Escape');
     await expect(page.getByRole('dialog')).toHaveCount(0); expect(service.status().state).toBe('needs_reask');
     expect(network).toBe(0);
