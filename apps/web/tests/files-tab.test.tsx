@@ -85,6 +85,16 @@ test("images in no set are named Other only beside a set; alone they are just th
   expect(screen.getByText(i18n.t("reader:files.otherMedia"))).toBeTruthy();
 });
 
+test("a set of versions shows one time, its newest; a picture in no set shows its own", () => {
+  const data = screenData(tree({ tasks: [dto()] }));
+  const at = (name: string, minute: number) => ({ ...file(name), at: `2026-10-03T00:${String(minute).padStart(2, "0")}:00.000Z` });
+  const files = [at("shots/card-light.png", 1), at("shots/card-dark.png", 2), at("shots/a.png", 3)];
+  const task = { ...data.tasks[0]!, values: valuesView({}), body: "", logs: [], files, requestHeads: [], extractRows: {}, reply: undefined } as TaskDetail;
+  render(<TestWorkspace data={data}><FilesTab task={task} path="" /></TestWorkspace>);
+  expect([...document.querySelectorAll("section time")].map(time => time.getAttribute("datetime")))
+    .toEqual(["2026-10-03T00:03:00.000Z", "2026-10-03T00:02:00.000Z"]);
+});
+
 test("the file sheet gives every visible image one slide with set and version captions", () => {
   sheet(["shots/chart.png", "shots/home-desktop-light.png", "shots/home-desktop-dark.png", "shots/home-mobile-light.png"]);
   fireEvent.click(screen.getByRole("button", { name: "home-desktop-light.png" }));

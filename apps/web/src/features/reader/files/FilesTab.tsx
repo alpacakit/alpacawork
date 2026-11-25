@@ -113,6 +113,8 @@ function Sheet({ task, folder, onOpen }: { task: TaskDetail; folder: string; onO
           {/* Loose media need a heading only when shown beside another set. */}
           {!(set.single && sets.length === 1) && <span className="min-w-0 truncate text-md font-medium">{set.single ? t("files.otherMedia") : set.label}</span>}
           {relative(set.folder) && relative(set.folder) !== `${set.label}/` && <span className="truncate text-sm text-muted">{relative(set.folder)}</span>}
+          {/* A set's versions are written together, so the set has one time; loose pictures each show their own. */}
+          {!set.single && <span className="ml-auto flex-none pr-1 text-sm text-muted"><WrittenAt at={newestAt(set)} /></span>}
         </div>
         <ul className="m-0 flex list-none gap-2 overflow-x-auto p-0 pb-1">
           {set.items.map(item => <li key={item.file.name} className="flex-none">
@@ -122,6 +124,7 @@ function Sheet({ task, folder, onOpen }: { task: TaskDetail; folder: string; onO
                 <Thumb task={task} file={item.file} className="h-full w-auto max-w-60 min-w-12" />
               </span>
               <span className="max-w-40 truncate text-xs text-muted">{set.single ? baseName(item.file.name) : versionOf(item, set, t)}</span>
+              {set.single && <span className="-mt-1 text-xs text-muted"><FileMeta file={item.file} /></span>}
             </button>
           </li>)}
         </ul>
@@ -189,9 +192,18 @@ function MediaRow({ task, item, path, onOpen }: { task: TaskDetail; item: Listed
 
 /** The time a file was written, or why it cannot be read. */
 function FileMeta({ file }: { file: TaskFile }) {
-  const { t, i18n } = useTranslation("reader");
-  return file.readable === false ? <span className="text-warn">{t("ruleTab.readFailed")}</span> : <>{formatLogTime(file.at, i18n.language)}</>;
+  const { t } = useTranslation("reader");
+  return file.readable === false ? <span className="text-warn">{t("ruleTab.readFailed")}</span> : <WrittenAt at={file.at} />;
 }
+
+/** A time a file was written, as the rows show it. */
+function WrittenAt({ at }: { at: string }) {
+  const { i18n } = useTranslation("reader");
+  return <time dateTime={at}>{formatLogTime(at, i18n.language)}</time>;
+}
+
+/** When a set was last written: its newest version's time. */
+const newestAt = (set: MediaSet) => set.items.reduce((newest, item) => Date.parse(item.file.at) > Date.parse(newest) ? item.file.at : newest, set.items[0]!.file.at);
 
 /** A picture of a file, or a quiet placeholder when it cannot be shown here. */
 function Thumb({ task, file, className }: { task: TaskDetail; file: TaskFile; className?: string }) {
