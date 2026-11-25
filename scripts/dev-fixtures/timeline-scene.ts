@@ -127,7 +127,7 @@ try {
   };
   /** A question: its summary (`text`) and what it asks, by default the title with the summary as its note. */
   const ask = (n: number, who: Who, title: string, text: string, to: number | null,
-    decide: Record<string, unknown>[] = [{ decide_question: title, decide_note: text }]) =>
+    decide: Record<string, unknown>[] = [{ decide_kind: 'choose', decide_question: title, decide_note: text }]) =>
     log(n, { id: logId(), kind: 'asked', at: at(), title, description: text, actor: actor(who), fromState: null, toState: null, askedTo: to === null ? null : `T${to}`,
       decide, ...(typeof who === 'object' && lastRun.has(who.placement) ? { runId: lastRun.get(who.placement) } : {}) });
   const answer = (n: number, who: Who, question: string, text: string) => {
@@ -191,7 +191,7 @@ try {
   // The same words over different bodies, which stay two rows, and the same words over the same body, which are one.
   report(104, as(104), 'Wording updated', 'Shortened the headings.', { from: 'doing', to: 'done' });
   report(104, as(104), 'Wording updated', 'Aligned the polite wording in the body.', { from: 'doing', to: 'done' });
-  ask(102, as(102), 'How many failure reasons should we show', 'Choose how to display failure reasons.', null, [{ decide_question: 'Failure reason display', decide_choices: [
+  ask(102, as(102), 'How many failure reasons should we show', 'Choose how to display failure reasons.', null, [{ decide_kind: 'choose', decide_question: 'Failure reason display', decide_choices: [
     { decide_choice: 'All', decide_choice_detail: 'Show all five reasons separately.' },
     { decide_choice: 'Top three', decide_choice_detail: 'Show the top three separately and group the rest as “other”.', decide_choice_recommended: 'They account for over 80%.' }] }]);
   report(101, as(101), 'Waiting for failure guidance', 'Continue the remaining screens after the guidance is finalized.', { from: 'doing', to: 'held' });

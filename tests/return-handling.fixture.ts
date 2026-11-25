@@ -44,7 +44,7 @@ export async function handlingFixture(t: { after(cleanup: () => void): unknown }
   const commands = new ControlTaskCommands(root, { kind: 'human' });
   // A question asks its Task's decide value.
   const task = (await commands.create({ parentId: project, userRequested: false,
-    tasks: [{ title: 'Owner', values: { decide: [{ decide_question: 'Please decide' }] } }] })).tasks[0]!;
+    tasks: [{ title: 'Owner', values: { decide: [{ decide_kind: 'choose', decide_question: 'Please decide' }] } }] })).tasks[0]!;
   const current = async () => new ControlTaskStore(root).get(task.id);
   const owner = await assignResponsible(root, task, 'fake');
   const worker = (await new PlacementCommands(root).placeMember({ taskId: task.id, profileKey: 'fake',

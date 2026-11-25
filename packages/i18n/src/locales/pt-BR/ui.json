@@ -212,6 +212,10 @@
     "decide_choices": {
       "title": "Opções"
     },
+    "decide_kind": {
+      "hint": "`accept` quando pergunta se um resultado que você fez pode ser aceito (mesclar, adotar, publicar); `choose` quando pede para escolher entre opções. Obrigatório ao perguntar.",
+      "title": "Tipo"
+    },
     "decide_note": {
       "hint": "Premissas em comum, links para prévias e quando as coisas param. Não repita as descrições das opções nem as notas de revisão.",
       "title": "Nota"

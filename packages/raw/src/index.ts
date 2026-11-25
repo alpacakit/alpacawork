@@ -5,4 +5,4 @@ export * from './task-enums.js';
 export * from './values.js';
 export * from './questions.js';
 export * from './conversation-context.js';
-export { speaksForUser } from './task-log-schema.js';
+export { speaksForUser, answerPartSchema, answerPartsSchema, type AnswerPart, type AnswerParts } from './task-log-schema.js';

@@ -9,6 +9,8 @@ export type StepCall = { tool: string; input: unknown; clipped?: Record<string, 
 export type ActivityEvent = {
   at: string; kind: RunActivity['kind']; toolName?: unknown; id?: unknown;
   command?: NonNullable<RunActivity['doing']>['command']; text?: unknown;
+  /** The tool call of the agent's own sub-agent this step ran in, when it ran in one. */
+  parent?: string;
   /** A display name when the bridge uses a generic name for its rounded label. */
   stepTool?: unknown;
   /** The tool input and the agent's description. Some tools report their input only on completion. */

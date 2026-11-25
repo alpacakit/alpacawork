@@ -58,7 +58,7 @@ export async function runningRuns() {
   type Owned = { id: string; placementId: string; runId: string; run: Parameters<TaskRequestService['request']>[2] };
   /** A Task whose owner's Run exists: a top one on the user's request, or a child of `from` on its owner's. */
   const task = async (title: string, from?: Owned, go = true): Promise<Owned> => {
-    const made = (await commands.create({ parentId: from?.id ?? project, userRequested: !from, tasks: [{ title, values: { decide: [{ decide_question: 'Which one?', decide_note: 'A or B.' }] } }] })).tasks[0]!;
+    const made = (await commands.create({ parentId: from?.id ?? project, userRequested: !from, tasks: [{ title, values: { decide: [{ decide_kind: 'choose', decide_question: 'Which one?', decide_note: 'A or B.' }] } }] })).tasks[0]!;
     const owner = await assignResponsible(root, await current(made.id), 'fake');
     const input = { task: made.id, body: 'Work', opId: randomUUID(), expectedTaskHash: (await current(made.id)).hash, expectedPlacementRevision: owner.revision };
     const runId = accepted(await (from ? requests.request(input, { kind: 'placement', placementId: from.placementId }, from.run) : requests.request(input, person, person)));

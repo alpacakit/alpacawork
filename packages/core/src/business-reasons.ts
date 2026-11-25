@@ -401,6 +401,7 @@ export const businessReasonOptions = [
   z.object({ kind: z.literal('operation_id_has_different_input') }).strict(),
   z.object({ kind: z.literal('operation_id_belongs_another_operation') }).strict(),
   z.object({ kind: z.literal('no_question_in_decide_value_write_full_question_before_asking') }).strict(),
+  z.object({ kind: z.literal('question_kind_missing'), n: z.string() }).strict(),
   z.object({ kind: z.literal('responsible_placement_requires_configured_launch_profile') }).strict(),
   z.object({ kind: z.literal('project_cannot_have_responsible_or_member') }).strict(),
   z.object({ kind: z.literal('responsible_placement_revision_changed') }).strict(),

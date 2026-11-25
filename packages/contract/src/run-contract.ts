@@ -13,7 +13,7 @@ export const runNumber = (id: RunId): number => Number(id.slice(1));
 export const compareRunIds = (a: { id: RunId }, b: { id: RunId }): number => runNumber(a.id) - runNumber(b.id);
 /** Raw logs and temporary launch files belonging to one Run. */
 export const RUN_FILES = {
-  promptTemp: 'prompt.tmp', resultTemp: 'result.tmp', stdout: 'stdout.log', stderr: 'stderr.log', activity: 'activity.json', recentWork: 'recent-work.json', tally: 'tally.json', managerLog: 'manager.log', managerLock: 'manager.lock',
+  promptTemp: 'prompt.tmp', resultTemp: 'result.tmp', stdout: 'stdout.log', stderr: 'stderr.log', activity: 'activity.json', steps: 'steps.jsonl', recentWork: 'recent-work.json', tally: 'tally.json', managerLog: 'manager.log', managerLock: 'manager.lock',
 } as const;
 export const RUN_RESULT_LIMIT = 1024 * 1024;
 /** What became of a Run's final reply: `pending` until it ends, `present` with the text, otherwise why there is none. */
@@ -27,6 +27,8 @@ export { runStepSchema, runStepsSchema, runStepKindSchema, RUN_STEP_LIMIT, RUN_S
   RUN_TOOL_NAME_LIMIT, RUN_NOTE_LIMIT, type RunStep, type RunStepKind, type RunStepLine } from './work-contract.js';
 export { runStepsPageSchema, runStepEntrySchema, runStepDetailSchema, runStepTextSchema, RUN_STEPS_PAGE_LIMIT,
   RUN_STEP_FULL_TEXT_LIMIT, type RunStepsPage, type RunStepEntry, type RunStepDetail, type RunStepText } from './work-contract.js';
+export { stepJournalEntrySchema, stepTimeSourceSchema, stepFingerprintSchema, stepOutputSchema, STEP_JOURNAL_LIMIT,
+  type StepJournalEntry, type StepTimeSource, type StepFingerprint, type StepOutput } from './work-contract.js';
 export { clipRunText, previewRunLine, previewToolInput, toolInputText, toolInputDocument, toolInputParts, inputDocument, fullRunText, toolResultText, toolArgumentText, type InputParts } from './work-preview.js';
 import { runWorkSchema, runStepsSchema, RUN_NOTE_LIMIT, RUN_TOOL_NAME_LIMIT } from './work-contract.js';
 export const runActivitySchema = z.object({

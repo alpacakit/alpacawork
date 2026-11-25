@@ -233,6 +233,12 @@ export const agentHandoverInput = z.object({ task: taskIdSchema, agent: nonempty
 export const agentReleaseInput = agentHandoverInput.extend({ expectedResponsibleRevision: revision.optional() });
 
 export const runGetInput = z.object({ run: runIdSchema, kind: runFileKindSchema.optional() });
+/**
+ * run steps: a Run's steps with when each started and ended, `from` on (the latest `limit` without `from`); with
+ * `step`, what that one step ran and got back instead.
+ */
+export const runStepsInput = z.object({ run: runIdSchema, from: z.number().int().nonnegative().optional(),
+  limit: z.number().int().positive().max(200).optional(), step: z.number().int().nonnegative().optional() });
 /** run stop stops one Run; a Task with its subtree stops by task report --state stopped. */
 export const runStopInput = z.object({ run: runIdSchema, ...writeRecordShape });
 /**

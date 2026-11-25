@@ -207,9 +207,14 @@ function questionDetail(source: ControlSource, task: SourceTask, questionId: str
     return text;
   };
   const answer = question.closing?.kind === 'answered' ? fixed(question.closing.id) : null;
-  const snapshot = source.questions;
+  const snapshot = source.questions, closing = question.closing;
   return { ...questionView(snapshot.get(task.id)!, question, snapshot), text: questionText(question.asked.decide),
-    ...(answer === null ? {} : { answer, answerId: question.closing!.id, answeredAt: question.closing!.at }) };
+    // What each item asks (decide_kind; null where the asker did not say, as before it was asked for).
+    kinds: question.asked.decide!.map(item => typeof item.decide_kind === 'string' ? item.decide_kind : null),
+    ...(answer === null ? {} : { answer, answerId: closing!.id, answeredAt: closing!.at,
+      answerParts: closing!.answerParts ?? null }),
+    // The instruction whose arrival withdrew it, sent in place of an answer.
+    ...(closing?.kind === 'question_withdrawn' ? { replacedBy: closing.originCauseId ?? null } : {}) };
 }
 
 export function taskView(source: ControlSource, id: string, options: TaskViewOptions = {}) {

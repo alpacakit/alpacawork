@@ -28,7 +28,7 @@ type RequestDTO = ControlTreeDTO['requests'][number];
 /** A log entry, a plain report unless given; a question asks its title unless the test says what (`decide`). */
 const entry = (id: string, at: string, fields: Partial<Log> = {}): Log => ({ id, kind: 'reported', at, title: null,
   description: null, actor: { kind: 'human' }, fromState: null, toState: null,
-  ...(fields.kind === 'asked' ? { decide: [{ decide_question: fields.title ?? 'Question' }] } : {}), ...fields });
+  ...(fields.kind === 'asked' ? { decide: [{ decide_kind: 'choose', decide_question: fields.title ?? 'Question' }] } : {}), ...fields });
 const placement = { kind: 'placement', placementId: 'P1' } as const;
 /** The user's ball, as the tree sends it: each reason with the detail it carries. */
 const userBall = (reason: Extract<Ball, { holder: 'user' }>['reason'], key: string, at: string): Ball => ({ holder: 'user',
@@ -237,10 +237,10 @@ test('a row names its oldest open question; the view carries the Task\'s questio
   const child = tree.tasks.find(task => task.id === h.child.id)!;
   const at = (minute: number) => `2026-10-07T09:0${minute}:00.000Z`;
   const decide = {
-    Lq1: [{ decide_question: 'First?' }],
-    Lq2: [{ decide_question: 'Second?', decide_choices: [{ decide_choice: 'A', decide_choice_recommended: 'Faster' },
-      { decide_choice: 'B', decide_choice_detail: 'Slower' }], decide_note: 'Either works', decide_stop: 'Nothing ships' }, { decide_question: 'And when?' }],
-    Lq3: [{ decide_question: 'Third?', decide_note: 'Why' }],
+    Lq1: [{ decide_kind: 'choose', decide_question: 'First?' }],
+    Lq2: [{ decide_kind: 'choose', decide_question: 'Second?', decide_choices: [{ decide_choice: 'A', decide_choice_recommended: 'Faster' },
+      { decide_choice: 'B', decide_choice_detail: 'Slower' }], decide_note: 'Either works', decide_stop: 'Nothing ships' }, { decide_kind: 'choose', decide_question: 'And when?' }],
+    Lq3: [{ decide_kind: 'choose', decide_question: 'Third?', decide_note: 'Why' }],
   };
   const asked = (id: keyof typeof decide, minute: number, title: string, askedTo: string | null) =>
     entry(id, at(minute), { kind: 'asked', actor: placement, askedTo, title, description: `About ${title}`, decide: decide[id] });
@@ -250,7 +250,7 @@ test('a row names its oldest open question; the view carries the Task\'s questio
     balls: { ...tree.balls, [child.id]: userBall('question', 'Lq2', at(2)) } };
   const feed = snapshotReads();
   // The Task's values say something else by now: the view's questions are what their records fixed, not the values.
-  feed.update(h.screen({ ...working, taskValues: { ...working.taskValues, [child.id]: { decide: [{ decide_question: 'Rewritten since' }] } } }));
+  feed.update(h.screen({ ...working, taskValues: { ...working.taskValues, [child.id]: { decide: [{ decide_kind: 'choose', decide_question: 'Rewritten since' }] } } }));
   const row = feed.row(child.id);
   assert.equal(row.question, 'Second?');
   assert.deepEqual(feed.view(child.id).questions, [

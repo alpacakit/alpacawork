@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   applyValues, canonicalValues, catalogProblems, DEFAULT_SCHEMA, fieldCatalog, hardLimit, OTHER_WORD, questionText, renderContext, renderItems, schemaOf,
-  schemaProblems, sizeNote, STOP_WORD, SYSTEM_FIELDS, PROJECT_SCHEMA, valuesJsonSchema, type FieldDef, type TaskValues,
+  readAnswerParts, schemaProblems, sizeNote, STOP_WORD, SYSTEM_FIELDS, PROJECT_SCHEMA, valuesJsonSchema, type FieldDef, type TaskValues,
 } from '@alpacawork/contract';
 import { toIssues } from '@alpacawork/core';
 
@@ -35,13 +35,13 @@ test('the issues of a refused write (the public error shape) name the value they
   assert.deepEqual(paths({ goal: 'x'.repeat(79) }), ['goal']);
   assert.deepEqual(paths({ pr: Array(21).fill('u') }), ['pr']);
   assert.deepEqual(paths({ decide: [{ decide_choices: [] }] }), ['decide.0.decide_question']);
-  assert.deepEqual(paths({ decide: [{ decide_question: 'q', other: 1 }] }), ['decide.0']);
+  assert.deepEqual(paths({ decide: [{ decide_kind: 'choose', decide_question: 'q', other: 1 }] }), ['decide.0']);
 });
 
 test('a question\'s choices hold together: first words of their own, none the app keeps, at most one recommended; only the name is needed', () => {
   const choice = (name: string, more: Record<string, string> = {}) => ({ decide_choice: name, ...more });
   const issues = (...choices: unknown[]) => {
-    const parsed = check({ decide: [{ decide_question: 'q', decide_choices: choices }] });
+    const parsed = check({ decide: [{ decide_kind: 'choose', decide_question: 'q', decide_choices: choices }] });
     return parsed.success ? [] : toIssues(parsed.error.issues).map(issue => [issue.path, issue.message]);
   };
   // A choice is its name alone, or with its description and why it is recommended.
@@ -63,8 +63,8 @@ test('a question\'s choices hold together: first words of their own, none the ap
   assert.deepEqual(issues(choice('A 案', { decide_choice_recommended: '早い' }), choice('B'), choice('C', { decide_choice_recommended: '安い' })),
     [['decide.0.decide_choices.2.decide_choice_recommended', 'Only one choice of a question is recommended; "A 案" already is']]);
   // Each question is checked on its own: the same first word or a recommendation in another question is no clash.
-  assert.equal(check({ decide: [{ decide_question: 'q1', decide_choices: [choice('A', { decide_choice_recommended: 'x' })] },
-    { decide_question: 'q2', decide_choices: [choice('A', { decide_choice_recommended: 'y' })], decide_stop: 'Nothing ships' }] }).success, true);
+  assert.equal(check({ decide: [{ decide_kind: 'choose', decide_question: 'q1', decide_choices: [choice('A', { decide_choice_recommended: 'x' })] },
+    { decide_kind: 'choose', decide_question: 'q2', decide_choices: [choice('A', { decide_choice_recommended: 'y' })], decide_stop: 'Nothing ships' }] }).success, true);
 });
 
 test('the JSON Schema a writer reads carries each field title and how to write it on the field', () => {
@@ -98,13 +98,13 @@ test('one size per field: the words a writer reads and the most a write holds (a
 
 test('values read in schema order, every field under its own heading, lists one item a line, and questions in the fixed question form', () => {
   const values: TaskValues = { notes: '一段目\n\n二段目', goal: 'g', conditions: ['c1', 'c2'],
-    decide: [{ decide_question: 'どれにするか', decide_choices: [
+    decide: [{ decide_kind: 'choose', decide_question: 'どれにするか', decide_choices: [
       { decide_choice: 'A 案', decide_choice_detail: '一行\n\n二行', decide_choice_recommended: '早い' },
       { decide_choice: 'B 案' }, { decide_choice: 'C 案', decide_choice_recommended: '安い' }],
-    decide_note: '共通の前提\n二行目', decide_stop: 'ここで止める\n何も残らない' }, { decide_question: '次' }, { decide_question: '止めるか', decide_stop: '止める' }] };
+    decide_note: '共通の前提\n二行目', decide_stop: 'ここで止める\n何も残らない' }, { decide_kind: 'choose', decide_question: '次' }, { decide_kind: 'choose', decide_question: '止めるか', decide_stop: '止める' }] };
   // A question's and a choice's first text (the note, the description) read as written; a later one is led by its title.
   const questions = ['### 1 どれにするか', '#### A 案', '一行', '', '二行', 'Recommended: 早い', '#### B 案', '#### C 案', 'Recommended: 安い', '',
-    '共通の前提\n二行目', '', 'Stop: ここで止める\n何も残らない', '', '### 2 次', '', '### 3 止めるか', 'Stop: 止める'];
+    '共通の前提\n二行目', '', 'Stop: ここで止める\n何も残らない', '', 'Kind: choose', '', '### 2 次', 'Kind: choose', '', '### 3 止めるか', 'Stop: 止める', 'Kind: choose'];
   assert.equal(renderContext(DEFAULT_SCHEMA, values, catalog), [
     '## Goal', 'g', '', '## Done conditions', '- c1', '- c2', '',
     '## Questions', ...questions, '',
@@ -146,6 +146,14 @@ test('a later text member is led by its title, a list of texts under it; an empt
   const catalog = fieldCatalog([def('risk', { type: 'schema', maxChars: null, members: ['name', 'body', 'steps'] }), def('name'), def('body'),
     def('steps', { many: true, maxItems: 5 })]);
   assert.equal(renderItems(catalog.get('risk')!, { name: 'N', body: 'B\n\nB2', steps: ['x', 'y'] }, catalog), '### N\nB\n\nB2\nSTEPS:\n- x\n- y');
-  assert.equal(check({ decide: [{ decide_question: 'q', decide_choices: [{ decide_choice: 'A', decide_choice_recommended: ' ' },
+  assert.equal(check({ decide: [{ decide_kind: 'choose', decide_question: 'q', decide_choices: [{ decide_choice: 'A', decide_choice_recommended: ' ' },
     { decide_choice: 'B', decide_choice_recommended: 'why' }] }] }).success, true);
+});
+
+test('an answer is read item by item against the question as asked: a word that names no choice and an item no label names are unread', () => {
+  const decide = [{ decide_question: 'Ship', decide_choices: [{ decide_choice: 'Now' }, { decide_choice: 'Later sometime', decide_choice_recommended: 'safer' }] },
+    { decide_question: 'Name' }, { decide_question: 'Go on', decide_stop: 'Nothing ships' }];
+  assert.deepEqual(readAnswerParts(decide, '1-Later 3-stop'), { words: false, items: [
+    { n: 1, kind: 'choice', choice: 2, recommended: true }, { n: 2, kind: 'unread' }, { n: 3, kind: 'stop' }] });
+  assert.deepEqual(readAnswerParts(decide, 'Ship it 1-Soon').items[0], { n: 1, kind: 'unread' });
 });

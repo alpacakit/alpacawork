@@ -14,7 +14,7 @@ import { taskReportInput } from '@alpacawork/contract/inputs';
 
 type Fixture = Awaited<ReturnType<typeof handlingFixture>>;
 const snapshot = { conclusion: 'Preserve the fixed result', remaining: ['Wait for the next group'],
-  decide: [{ decide_question: 'Which group?', decide_choices: [{ decide_choice: 'Next', decide_choice_detail: 'Proceed' }] }],
+  decide: [{ decide_kind: 'choose', decide_question: 'Which group?', decide_choices: [{ decide_choice: 'Next', decide_choice_detail: 'Proceed' }] }],
   notes: 'The reasoning is in the fixed artifact.' };
 const caller = (h: Fixture, runId: string) => ({ kind: 'run' as const, runId, placementId: h.owner.id,
   taskId: h.task.id, role: 'owner' as const, responsible: true });
@@ -86,7 +86,7 @@ test('W2 child question uses the same prepared handoff while other work remains 
   for (const nextConversation of [true, false]) {
     const h = await handlingFixture(t), first = await h.human(); await h.start(first.runId);
     const child = (await h.commands.create({ parentId: h.task.id, userRequested: false,
-      tasks: [{ title: 'Child', values: { decide: [{ decide_question: 'Child choice?' }] } }] })).tasks[0];
+      tasks: [{ title: 'Child', values: { decide: [{ decide_kind: 'choose', decide_question: 'Child choice?' }] } }] })).tasks[0];
     const tasks = new ControlTaskStore(h.root), owner = await assignResponsible(h.root, child, 'fake');
     const request = (await new TaskRequestService(h.root).request({ task: child.id, body: 'Investigate', opId: randomUUID(),
       expectedTaskHash: (await tasks.get(child.id)).hash, expectedPlacementRevision: owner.revision },

@@ -47,6 +47,33 @@ export const runStepTextSchema = z.object({ text: z.string().max(RUN_STEP_FULL_T
   /** Files of a change list left out after those `text` says (a list too long to carry whole). */
   omittedFiles: z.number().int().positive().optional() }).strict();
 export type RunStepText = z.infer<typeof runStepTextSchema>;
+/**
+ * Where a step's time came from: `row`, the agent's own output line said it; `read`, the Run's manager read the line
+ * at that time (within its poll interval of when it was written).
+ */
+export const stepTimeSourceSchema = z.enum(['row', 'read']);
+export type StepTimeSource = z.infer<typeof stepTimeSourceSchema>;
+/** A step's input with paths, digests, IDs and numbers replaced, and a digest of the whole input when it has more lines. */
+export const stepFingerprintSchema = z.object({ line: z.string().max(RUN_STEP_TEXT_LIMIT), body: z.string().regex(/^[0-9a-f]{16}$/).nullable() }).strict();
+export type StepFingerprint = z.infer<typeof stepFingerprintSchema>;
+export const stepOutputSchema = z.object({ chars: z.number().int().nonnegative(), digest: z.string().regex(/^[0-9a-f]{16}$/) }).strict();
+export type StepOutput = z.infer<typeof stepOutputSchema>;
+/**
+ * One line of a Run's step journal (RUN_FILES.steps), appended by the Run's manager as a step starts or ends and never
+ * rewritten. `line` is the number (from 0) of the output line that started the step: with `id` it names the step, so
+ * the manager reading the output again appends nothing it already holds.
+ */
+export const stepJournalEntrySchema = z.discriminatedUnion('event', [
+  z.object({ event: z.literal('start'), line: z.number().int().nonnegative(), id: z.string().min(1).max(RUN_TOOL_ID_LIMIT),
+    at: z.iso.datetime({ offset: true }), source: stepTimeSourceSchema, fingerprint: stepFingerprintSchema.nullable(),
+    parent: z.string().min(1).max(RUN_TOOL_ID_LIMIT).nullable() }).strict(),
+  z.object({ event: z.literal('end'), line: z.number().int().nonnegative(), id: z.string().min(1).max(RUN_TOOL_ID_LIMIT),
+    at: z.iso.datetime({ offset: true }), source: stepTimeSourceSchema,
+    state: z.enum(['done', 'failed', 'unknown']), output: stepOutputSchema.nullable() }).strict(),
+]);
+export type StepJournalEntry = z.infer<typeof stepJournalEntrySchema>;
+/** The most of a step journal read back: about 200 bytes a line, so some 80,000 step events. */
+export const STEP_JOURNAL_LIMIT = 16 * 1024 * 1024;
 /** How many steps one read of a Run's steps gives at most. */
 export const RUN_STEPS_PAGE_LIMIT = 200;
 /**
@@ -60,6 +87,20 @@ export const runStepEntrySchema = z.object({
   state: z.enum(['running', 'done', 'failed', 'unknown']),
   /** The index's version when this step last changed: of two answers about it, the higher is the newer. */
   changed: z.number().int().nonnegative(),
+  /**
+   * When it started and ended, as its Run's step journal kept them while it ran (null where the journal holds none: a
+   * Run from before the journal, or an end not yet seen), and where each time came from.
+   */
+  startedAt: z.iso.datetime({ offset: true }).nullable(), startSource: stepTimeSourceSchema.nullable(),
+  endedAt: z.iso.datetime({ offset: true }).nullable(), endSource: stepTimeSourceSchema.nullable(),
+  /** What it ran with the parts that change from run to run replaced (stepFingerprint), so repeats read as one. */
+  fingerprint: stepFingerprintSchema.nullable(),
+  /** What came back: its size in characters and a digest of it, so a read that got the same answer again shows. */
+  output: stepOutputSchema.nullable(),
+  /** The step of the agent's own sub-agent that ran it (its tool call ID); null for the agent's own steps. */
+  parent: z.string().max(RUN_TOOL_ID_LIMIT).nullable(),
+  /** For a step that ran a sub-agent: how many steps the sub-agent took. */
+  subagentSteps: z.number().int().nonnegative(),
 }).strict();
 export type RunStepEntry = z.infer<typeof runStepEntrySchema>;
 /**

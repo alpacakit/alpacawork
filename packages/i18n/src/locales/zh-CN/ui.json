@@ -196,6 +196,10 @@
     "decide_choices": {
       "title": "选项"
     },
+    "decide_kind": {
+      "hint": "询问自己做出的成果能否接受（合并、采用、发布）时写 `accept`；请对方在几个方案中选择时写 `choose`。提问时必填。",
+      "title": "类型"
+    },
     "decide_note": {
       "hint": "写共同的前提、示例的链接和停止的时间。不要重复选项的说明或检查记录。",
       "title": "补充"

@@ -7,6 +7,7 @@
  */
 import { z } from 'zod';
 import type { FieldItem, FieldValue, TaskValues } from '@alpacawork/raw';
+import type { AnswerPart } from './questions.js';
 
 export const FIELD_TYPES = ['text', 'schema'] as const;
 export type FieldType = (typeof FIELD_TYPES)[number];
@@ -47,7 +48,7 @@ export type FieldDef = z.infer<typeof fieldDefSchema>;
 /** The fields the app reads by ID: always in every schema, never deleted, their IDs and types fixed. */
 export const SYSTEM_FIELDS = ['decide', 'user_instructions', 'conclusion', 'notes'] as const;
 /** The question's parts: they live inside the question (decide), never on their own in a schema. */
-const QUESTION_PARTS = ['decide_question', 'decide_choices', 'decide_choice', 'decide_choice_detail', 'decide_choice_recommended',
+const QUESTION_PARTS = ['decide_question', 'decide_kind', 'decide_choices', 'decide_choice', 'decide_choice_detail', 'decide_choice_recommended',
   'decide_note', 'decide_stop'];
 export const isSystemField = (id: string) => (SYSTEM_FIELDS as readonly string[]).includes(id);
 /**
@@ -88,9 +89,10 @@ export const DEFAULT_FIELDS: readonly FieldDef[] = [
   text('artifact', 'Deliverables', 100, 'One per deliverable: `[name](location) — what it is, revision`. The location is a relative path inside the task folder, an absolute path for code, otherwise a URL or a branch and commit. Put the description of the contents in the linked file. Attach a diff as `![diff](changes.patch)` only when the user decides by reading the wording itself.', 8),
   text('pr', 'PR (MR)', 100, 'Only when a PR (MR) was opened: one URL per PR.', 15),
   { id: 'decide', title: 'Questions', type: 'schema', many: true, required: false, maxChars: null, maxItems: 7,
-    members: ['decide_question', 'decide_choices', 'decide_note', 'decide_stop'],
+    members: ['decide_question', 'decide_choices', 'decide_note', 'decide_stop', 'decide_kind'],
     hint: 'Write only when something needs deciding. One question at a time: what to decide, the choices (name and description) and a note. Numbers follow the order. The first word of a choice’s name (up to its first space) becomes its answer button and answer word; do not repeat it within a question, and do not start a name with `stop` or `other`, which the app keeps. The answer arrives as `<number>-<first word of the name>` with any words added; `<number>-other` says none of the choices, with what to do instead. Clear it with null once answered.' },
   text('decide_question', 'What to decide', 60, 'One sentence on what to choose. Background goes in the note.'),
+  text('decide_kind', 'Kind', 6, '`accept` when it asks whether a result you made can be taken (merged, adopted, released); `choose` when it asks the reader to pick among options. Required when asking.'),
   { id: 'decide_choices', title: 'Choices', type: 'schema', many: true, required: false, maxChars: null, maxItems: 3,
     members: ['decide_choice', 'decide_choice_detail', 'decide_choice_recommended'], hint: '' },
   text('decide_choice', 'Name', 20),
@@ -215,6 +217,12 @@ export const choiceWord = (name: string) => name.trim().split(/\s+/)[0]!;
  * none of its choices. They identify an answer whatever language the screen shows the two under.
  */
 export const STOP_WORD = 'stop', OTHER_WORD = 'other';
+/**
+ * What a question asks (`decide_kind`), said by whoever asks it: `accept`, whether a result they made can be taken;
+ * `choose`, which of several options to take. Counting how often a result is taken as first made rests on it.
+ */
+export const QUESTION_KINDS = ['accept', 'choose'] as const;
+export type QuestionKind = typeof QUESTION_KINDS[number];
 const KEPT_WORDS: Readonly<Record<string, string>> = {
   [STOP_WORD]: 'write the option to stop the task in decide_stop, not as a choice',
   [OTHER_WORD]: 'answering with none of the choices is always offered',
@@ -246,6 +254,7 @@ function valueShape(def: FieldDef, catalog: FieldCatalog): z.ZodType {
       const member = fieldOf(catalog, id), shape = valueShape(member, catalog);
       return [id, described(member, index === 0 ? (shape as z.ZodString).regex(/\S/, 'Required') : shape.optional())];
     }))).strict();
+  if (def.id === 'decide_kind') return z.enum(QUESTION_KINDS);
   if (!def.many) return one;
   const list = z.array(one).max(hardLimit(def.maxItems!), over(def.maxItems!, 'items'));
   return def.id === 'decide_choices' ? list.superRefine(checkChoices) : list;
@@ -403,3 +412,27 @@ export const fieldDeleteResultSchema = z.object({ field: fieldIdSchema, values: 
  */
 export const taskValuesViewSchema = z.object({ values: z.record(fieldIdSchema, z.unknown()), fields: z.array(fieldIdSchema),
   from: z.string().nullable(), context: z.string() }).strict();
+
+/**
+ * The one reading of an answer's words against the question as it was asked (its `decide` items): each item is named
+ * by a `<n>-<word>` label, its word the first word of one of its choices, `other` or `stop`. A label naming no item or
+ * no choice of it is read as none; an item no label names is `unread`.
+ */
+export function readAnswerParts(decide: readonly FieldItem[], text: string): { items: AnswerPart[]; words: boolean } {
+  const labels = new Map<number, string>();
+  const rest = text.replace(/(^|\s)([1-9]\d{0,2})-(\S+)/g, (whole, space: string, n: string, word: string) => {
+    if (!labels.has(Number(n))) labels.set(Number(n), word);
+    return space;
+  });
+  const items = decide.map((item, at): AnswerPart => {
+    const n = at + 1, word = labels.get(n);
+    if (word === undefined) return { n, kind: 'unread' };
+    if (word.toLowerCase() === OTHER_WORD) return { n, kind: 'other' };
+    if (word.toLowerCase() === STOP_WORD) return { n, kind: 'stop' };
+    const choices = Array.isArray(item.decide_choices) ? item.decide_choices as FieldItem[] : [];
+    const choice = choices.findIndex(each => choiceWord(String(each.decide_choice ?? '')) === word);
+    return choice === -1 ? { n, kind: 'unread' }
+      : { n, kind: 'choice', choice: choice + 1, recommended: !!String(choices[choice]!.decide_choice_recommended ?? '').trim() };
+  });
+  return { items, words: /\S/.test(rest) };
+}

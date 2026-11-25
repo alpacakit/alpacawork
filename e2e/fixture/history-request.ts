@@ -87,7 +87,7 @@ export function seedHistoryRequest(root: string, supplements = 85) {
       description: supplements > 85 ? `Do not remove this comment. Read ${historyReferenceId}.` : 'Do not remove this comment', actor: { kind: 'human' } });
     add({ ...common, id: 'screen-question', kind: 'asked', title: 'Choose an approach', description: 'Choose A or B',
       actor: { kind: 'placement', placementId: review.placement_id }, askedTo: null,
-      decide: [{ decide_question: 'Choose an approach', decide_choices: [{ decide_choice: 'A' }, { decide_choice: 'B' }] }] });
+      decide: [{ decide_kind: 'choose', decide_question: 'Choose an approach', decide_choices: [{ decide_choice: 'A' }, { decide_choice: 'B' }] }] });
     add({ ...common, id: 'screen-answer', kind: 'answered', title: 'Choose A', description: 'Keep this answer',
       actor: { kind: 'human' }, questionId: 'screen-question' }, 'Keep this answer');
     db.prepare('INSERT INTO task_log_question(log_id,question_log_id) VALUES(?,?)').run('screen-answer', 'screen-question');

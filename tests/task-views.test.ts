@@ -23,6 +23,7 @@ import { ControlTaskCommands } from '@alpacawork/backend/test-dist/control/task-
 import { ControlTaskStore } from '@alpacawork/backend/test-dist/control/task-store.js';
 import { TaskReportService } from '@alpacawork/backend/test-dist/control/report.js';
 import { RequestService } from '@alpacawork/backend/test-dist/control/requests.js';
+import { TaskRequestService } from '@alpacawork/backend/test-dist/control/task-request.js';
 import type { Caller } from '@alpacawork/backend/test-dist/control/authorize.js';
 import { readControlSource, readTaskView, readTaskListView, taskListView, taskView } from '@alpacawork/backend/test-dist/control/task-views.js';
 import { RunStore } from '@alpacawork/runs';
@@ -182,15 +183,15 @@ test('task get returns the Task with its kind, project, mark, questions and revi
 });
 test('task get lists open questions and --question gives one\'s full text as fixed when asked; another Task\'s is not found', async (t) => {
     const h = await setup(t);
-    const values = { conclusion: 'Waiting for a selection', notes: 'Choose a color.', decide: [{ decide_question: 'Color',
+    const values = { conclusion: 'Waiting for a selection', notes: 'Choose a color.', decide: [{ decide_kind: 'choose', decide_question: 'Color',
         decide_choices: [{ decide_choice: 'Red', decide_choice_detail: 'Stands out', decide_choice_recommended: 'Reads at a glance' },
             { decide_choice: 'Blue', decide_choice_detail: 'Calm' }, { decide_choice: 'Green' }],
-        decide_note: 'All pass contrast', decide_stop: 'The button stays grey' }, { decide_question: 'Label' }] };
+        decide_note: 'All pass contrast', decide_stop: 'The button stays grey' }, { decide_kind: 'choose', decide_question: 'Label' }] };
     await h.commands.update({ id: h.top.id, values, expectedTaskHash: h.top.hash });
     const questionId = await ask(h, h.top.id, 'Which colour', 'Pick the colour of the button');
     // The text an agent reads: the note as written, the recommendation and what stopping means led by what they are.
     const text = ['### 1 Color', '#### Red', 'Stands out', 'Recommended: Reads at a glance', '#### Blue', 'Calm', '#### Green', '',
-        'All pass contrast', '', 'Stop: The button stays grey', '', '### 2 Label'].join('\n');
+        'All pass contrast', '', 'Stop: The button stays grey', '', 'Kind: choose', '', '### 2 Label', 'Kind: choose'].join('\n');
     const asked = (await cli(h.root, ['task', 'get', '--task', h.top.id])).json;
     // Top's requester is the user: the question asks the user, in short; its full text comes only when asked for.
     assert.deepEqual(asked.questions.map((question: { id: string; destination: {kind:string}; title: string; summary: string }) =>
@@ -206,6 +207,18 @@ test('task get lists open questions and --question gives one\'s full text as fix
     assert.equal(other.code, 2);
     assert.equal(other.error.error.code, 'not_found');
     assert.equal((await fetch(new URL(`/api/commands/task/get?task=${h.child.id}&question=${questionId}`, await url(h.root)))).status, 404);
+    // An answer is kept with what it said item by item, read when it came: the recommended choice, and none with words.
+    await new TaskRequestService(h.root).request({ task: h.top.id, answers: questionId, body: '1-Red\n2-other Say "Go"', opId: randomUUID() },
+        { kind: 'human' }, { kind: 'human' });
+    const answered = (await cli(h.root, ['task', 'get', '--task', h.top.id, '--question', questionId])).json.question;
+    assert.deepEqual([answered.kinds, answered.answerParts], [['choose', 'choose'], { from: 'user', words: true,
+        items: [{ n: 1, kind: 'choice', choice: 1, recommended: true }, { n: 2, kind: 'other' }] }]);
+});
+test('a question is refused until each of its items says what it asks', async (t) => {
+    const h = await setup(t);
+    await h.commands.update({ id: h.top.id, values: { decide: [{ decide_question: 'Color' }] }, expectedTaskHash: h.top.hash });
+    await assert.rejects(ask(h, h.top.id, 'Which colour', 'Pick the colour'), (error: { reason?: { kind: string } }) =>
+        error.reason?.kind === 'question_kind_missing');
 });
 test('task get --include usage adds own and all descendant Run totals only on request', async (t) => {
     const h = await setup(t);
@@ -507,7 +520,7 @@ test('task list validates opt-in scopes and positive limits through the CLI', as
 
 test('task list searches canonical history text, requests and results, never Run prompts', async t => {
     const h = await setup(t);
-    await h.commands.update({ id: h.child.id, values: { decide: [{ decide_question: 'fixed-question-only', decide_choices: [
+    await h.commands.update({ id: h.child.id, values: { decide: [{ decide_kind: 'choose', decide_question: 'fixed-question-only', decide_choices: [
         { decide_choice: 'Keep', decide_choice_detail: 'Nothing moves\nfixed-detail-only stays', decide_choice_recommended: 'fixed-reason-only' }],
     decide_stop: 'fixed-stop-only' }], notes: 'Original body' }, expectedTaskHash: h.child.hash });
     const question = await ask(h, h.child.id, 'old SEARCHMARK title', 'old SEARCHMARK description');

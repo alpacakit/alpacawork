@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { RunStepIndex, RUN_STEPS_LINE_LIMIT } from '@alpacawork/backend/test-dist/runs/run-steps.js';
 import { OutputActivityReader, readRunActivity } from '@alpacawork/backend/test-dist/runs/activity.js';
+import { stepFingerprint } from '@alpacawork/backend/test-dist/runs/step-journal.js';
 import { AGENT_RUNTIME_ADAPTERS } from '@alpacawork/backend/test-dist/agents/registry.js';
 import { BRIDGE_LINE_BYTES, OUTCOME_LINE_BYTES, boundBridgeEvent, boundaryItem, clippedUnder } from '@alpacawork/contract/agent-bridge';
 import { RUN_STEP_FULL_TEXT_LIMIT, fullRunText, runStepsPageSchema, runStepDetailSchema, toolInputDocument, tookSteps } from '@alpacawork/contract/run';
@@ -520,4 +521,37 @@ test('a file whose name holds a line break, its heading cut partway, counts as h
   assert.ok(detail!.input.text.endsWith('add: /dir\nna'));
   assert.ok(!detail!.input.text.includes(second));
   assert.equal(detail!.input.omittedFiles, 1);
+});
+
+test('step times: kept as each step starts and ends, never replaced when the output is read again, and listed with the steps', async t => {
+  const path = folder(t);
+  let clock = Date.parse('2026-11-26T01:00:00.000Z');
+  const live = new OutputActivityReader(AGENT_RUNTIME_ADAPTERS.claude, () => clock);
+  write(path, [bash('one', 'cat <<EOF > /tmp/a.txt\nhello\nEOF')]);
+  live.poll(path);
+  clock += 4000;
+  write(path, [claudeEnd('one', 'ok'), { ...claudeStart('sub', { prompt: 'look' }, 'Task') },
+    { ...bash('inner', 'ls'), parent_tool_use_id: 'sub' }, { ...claudeEnd('inner', 'a'), timestamp: '2026-11-26T01:00:05.500Z' }]);
+  live.poll(path);
+  // The same output read again from its start, later (a new manager): nothing it already kept changes.
+  clock += 60_000;
+  new OutputActivityReader(AGENT_RUNTIME_ADAPTERS.claude, () => clock).finish(path, 'done');
+  const steps = (await read(path)).range(undefined, 12).steps;
+  assert.equal(runStepsPageSchema.safeParse({ steps, total: 3, version: 0, complete: true, generation: 0 }).success, true);
+  assert.deepEqual(steps.map(({ id, startedAt, startSource, endedAt, endSource, parent, subagentSteps }) =>
+    ({ id, startedAt, startSource, endedAt, endSource, parent, subagentSteps })), [
+    { id: 'one', startedAt: '2026-11-26T01:00:00.000Z', startSource: 'read', endedAt: '2026-11-26T01:00:04.000Z', endSource: 'read', parent: null, subagentSteps: 0 },
+    { id: 'sub', startedAt: '2026-11-26T01:00:04.000Z', startSource: 'read', endedAt: '2026-11-26T01:01:04.000Z', endSource: 'read', parent: null, subagentSteps: 1 },
+    { id: 'inner', startedAt: '2026-11-26T01:00:04.000Z', startSource: 'read', endedAt: '2026-11-26T01:00:05.500Z', endSource: 'row', parent: 'sub', subagentSteps: 0 },
+  ]);
+  assert.deepEqual(steps[0]?.fingerprint, { line: 'cat <<EOF > <path>', body: steps[0]?.fingerprint?.body });
+  assert.match(steps[0]?.fingerprint?.body ?? '', /^[0-9a-f]{16}$/);
+  assert.equal(steps[0]?.output?.chars, 2);
+});
+
+test('step fingerprint: the same command with other paths, IDs and numbers reads as one; another body does not', () => {
+  const one = stepFingerprint('alpacawork task get --task T1093 --runs 3 > /tmp/x-1.json');
+  assert.deepEqual(one, stepFingerprint('alpacawork task get --task T42 --runs 10 > /home/a/out.json'));
+  assert.deepEqual(stepFingerprint('git show 3485f2a36:README.md'), { line: 'git show <hash>:README.md', body: null });
+  assert.notDeepEqual(stepFingerprint('python3 - <<EOF\nprint(1)\nEOF'), stepFingerprint('python3 - <<EOF\nprint(2)\nEOF'));
 });

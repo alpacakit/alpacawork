@@ -37,6 +37,24 @@ export const speaksForUser = (actor: TaskActor) =>
   actor.kind === 'human' || actor.kind === 'main';
 /** Whether a log of this kind closes the question it names: its answer, its withdrawal or its expiry. */
 export const closesQuestion = (kind: string) => kind === 'answered' || kind === 'question_withdrawn' || kind === 'question_expired';
+/**
+ * How one item of a question was answered, read from the answer's words when it came: `choice` (one of its choices,
+ * `choice` its number from 1, `recommended` whether it was the one the asker recommended), `other` (none of them, with
+ * the person's own words), `stop` (stop the task), or `unread` (no `<n>-<word>` names this item in the words).
+ */
+export const answerPartSchema = z.discriminatedUnion('kind', [
+  z.object({ n: z.number().int().positive(), kind: z.literal('choice'), choice: z.number().int().positive(), recommended: z.boolean() }).strict(),
+  z.object({ n: z.number().int().positive(), kind: z.enum(['other', 'stop', 'unread']) }).strict(),
+]);
+export type AnswerPart = z.infer<typeof answerPartSchema>;
+/**
+ * What an answer said, item by item, and whose words it was read from: `user`, the person's own (their answer on the
+ * screen, or a person answering); `relay`, the words a coordinator or a Task sent as the answer. `words`: the answer
+ * holds words beyond its `<n>-<word>` labels.
+ */
+export const answerPartsSchema = z.object({ from: z.enum(['user', 'relay']), items: z.array(answerPartSchema).min(1), words: z.boolean() }).strict();
+export type AnswerParts = z.infer<typeof answerPartsSchema>;
+
 export const taskLogSchema = z.object({
   id: nonempty(128), kind: z.enum(TASK_LOG_KINDS), at: timestamp,
   title: z.string().min(1).nullable(), description: nonempty(MAX_DETAIL_LENGTH).nullable(),
@@ -76,6 +94,8 @@ export const taskLogSchema = z.object({
   askedTo: taskId.nullable().optional(),
   /** The question as it was asked: the asking Task's `decide` value, fixed here when it asked. */
   decide: z.array(z.record(z.string(), z.unknown())).min(1).optional(),
+  /** An answer's items as read from its words when it came (contract readAnswerParts). */
+  answerParts: answerPartsSchema.optional(),
   /** The 'asked' log an answer or a withdrawal closes. */
   questionId: nonempty(128).optional(),
   closureReason: z.literal('destination_invalid').optional(),
@@ -92,6 +112,7 @@ export const taskLogSchema = z.object({
   if (entry.kind === 'dependencies_changed' && (entry.fromState !== null || entry.toState !== null))
     issue('toState', 'A dependency change keeps the state');
   if (entry.changedFields && entry.kind !== 'body_updated') issue('changedFields', 'Only body_updated records changed fields');
+  if (entry.answerParts && entry.kind !== 'answered') issue('answerParts', 'Only an answer carries its parts');
   if (entry.answers !== undefined && entry.kind !== 'request_accepted') issue('answers', 'Only an instruction answers a closed question');
   if (entry.checkpoint && (!['reported', 'asked'].includes(entry.kind) || !entry.runId || entry.actor.kind !== 'placement'))
     issue('checkpoint', 'A checkpoint belongs to an owner report or question');

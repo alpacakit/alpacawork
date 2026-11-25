@@ -3,7 +3,7 @@ import type { TaskValues } from '@alpacawork/contract';
 
 export const descriptiveQuestion: TaskValues = {
   decide: [{
-    decide_question: 'Include the illustrated cover in the fictional plant catalog?',
+    decide_kind: 'choose', decide_question: 'Include the illustrated cover in the fictional plant catalog?',
     decide_choices: [
       { decide_choice: 'Include Illustrated cover',
         decide_choice_detail: 'The cover shows an imaginary plant and an editable caption. Include it after the sample review. The printed colors are unverified.',
@@ -17,7 +17,7 @@ export const descriptiveQuestion: TaskValues = {
 /** A question that offers stopping the Task: its one choice, and what stopping means (`decide_stop`). */
 export const completionQuestion: TaskValues = {
   decide: [{
-    decide_question: 'Accept the investigation results and complete this Task?',
+    decide_kind: 'choose', decide_question: 'Accept the investigation results and complete this Task?',
     decide_choices: [
       { decide_choice: 'Accept Finalize results',
         decide_choice_detail: 'Accept the results that satisfy the investigation criteria and complete this Task.',

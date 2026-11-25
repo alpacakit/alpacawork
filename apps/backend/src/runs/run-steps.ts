@@ -15,6 +15,7 @@
  */
 import { open, type FileHandle } from 'node:fs/promises';
 import { join } from 'node:path';
+import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 import { RUN_FILES, RUN_STEPS_PAGE_LIMIT, RUN_TOOL_ID_LIMIT, RUN_TOOL_NAME_LIMIT, clipRunText, fullRunText,
   type RunStepDetail, type RunStepEntry, type RunStepLine, type RunStepText, type RunStepsPage } from '@alpacawork/contract/run';
 import type { AgentAdapter } from '../agents/adapters/types.js';
@@ -22,6 +23,10 @@ import type { ActivityEvent } from './activity-events.js';
 import { runStepKind } from './recent-work.js';
 import { STEP_LINE_LIMIT } from './readers/jsonl.js';
 import { callOmitted, hiddenFiles, joinStepCalls, stepInputDocument } from '../agents/adapters/activity.js';
+import { readStepJournal } from './step-journal.js';
+import { RunStore } from '@alpacawork/runs';
+import { isRunMoving, runFolder } from '@alpacawork/contract/run';
+import { runtimeAdapter } from '../agents/registry.js';
 
 /**
  * The longest output line read as one row: the live activity's (STEP_LINE_LIMIT), so the steps listed are the steps it
@@ -30,8 +35,12 @@ import { callOmitted, hiddenFiles, joinStepCalls, stepInputDocument } from '../a
 export const RUN_STEPS_LINE_LIMIT = STEP_LINE_LIMIT;
 const CHUNK = 1024 * 1024;
 type Settled = 'done' | 'failed';
-type Step = Omit<RunStepEntry, 'n'> & { start: number; end: number | null;
+type Step = Omit<RunStepEntry, 'n' | Timed | 'subagentSteps'> & { start: number; end: number | null;
+  /** The number (from 0) of the output line that started it: with its ID, how the step journal names it. */ line: number;
   /** A line that could not be read came while it ran. */ unsure: boolean };
+/** What of a step only its Run's step journal knows. */
+type Timed = 'startedAt' | 'startSource' | 'endedAt' | 'endSource' | 'fingerprint' | 'output';
+const untimed: Pick<RunStepEntry, Timed> = { startedAt: null, startSource: null, endedAt: null, endSource: null, fingerprint: null, output: null };
 
 const name = (value: unknown) => typeof value === 'string' ? clipRunText(value, RUN_TOOL_NAME_LIMIT) || null : null;
 const parse = (line: Buffer): unknown => {
@@ -51,7 +60,13 @@ export class RunStepIndex {
   private readonly steps: Step[] = [];
   /** The step a tool call's ID names now: an ID used again after its step ended starts another. */
   private readonly byId = new Map<string, number>();
+  /** How many steps each sub-agent's step (by its tool call ID) took. */
+  private readonly inside = new Map<string, number>();
+  /** The step journal's times, by the line and ID that name each step, as last read. */
+  private times = new Map<string, Pick<RunStepEntry, Timed>>();
   private offset = 0;
+  /** The number of the output line that starts at `offset`. */
+  private lines = 0;
   private file: string | null = null;
   private version = 0;
   /** Which reading of the output from its start this is (nextGeneration): a list of another is not this one's. */
@@ -61,7 +76,7 @@ export class RunStepIndex {
 
   constructor(private readonly folder: string, private readonly adapter: AgentAdapter) {}
 
-  private observe(event: ActivityEvent, at: number): void {
+  private observe(event: ActivityEvent, at: number, line: number): void {
     const { kind, id } = event;
     if (kind === 'result' || kind === 'error') { this.settle(kind === 'result' ? 'done' : 'failed'); return; }
     if ((kind !== 'tool_start' && kind !== 'tool_end') || typeof id !== 'string' || !id || id.length > RUN_TOOL_ID_LIMIT) return;
@@ -71,9 +86,11 @@ export class RunStepIndex {
       const toolName = name(event.toolName);
       if (!toolName) return;
       const tool = name(event.stepTool) ?? toolName;
+      const parent = typeof event.parent === 'string' && event.parent ? event.parent : null;
       step = { id, tool, kind: runStepKind(tool, toolName, event.command ?? null), ...(event.detail ?? { text: '', more: 0 }),
-        about: event.about ?? null, state: 'running', start: at, end: null, changed: 0, unsure: false };
+        about: event.about ?? null, state: 'running', start: at, end: null, line, parent, changed: 0, unsure: false };
       this.byId.set(id, this.steps.push(step) - 1);
+      if (parent !== null) this.inside.set(parent, (this.inside.get(parent) ?? 0) + 1);
     } else if (event.detail?.text) Object.assign(step, event.detail);
     if (kind === 'tool_end') {
       step.state = event.outcome?.unknown ? 'unknown' : event.outcome?.failed ? 'failed' : 'done'; step.end = at; step.unsure = false;
@@ -94,10 +111,10 @@ export class RunStepIndex {
     for (const step of this.steps) if (step.state === 'running') step.unsure = true;
   }
 
-  private accept(line: Buffer, at: number): void {
+  private accept(line: Buffer, at: number, number: number): void {
     const value = parse(line);
     if (value === undefined) { this.unreadable(); return; }
-    for (const event of this.adapter.activity(value, new Date().toISOString())) this.observe(event, at);
+    for (const event of this.adapter.activity(value, new Date().toISOString())) this.observe(event, at, number);
   }
 
   /**
@@ -114,10 +131,11 @@ export class RunStepIndex {
       const stat = await handle.stat(), file = `${stat.dev}:${stat.ino}`;
       if (file !== this.file || stat.size < this.offset) {
         // Read again from the start, its versions going on, so a list holding the old ones takes every step again.
-        this.steps.length = 0; this.byId.clear(); this.offset = 0; this.file = file; this.generation = nextGeneration();
+        this.steps.length = 0; this.byId.clear(); this.inside.clear(); this.offset = 0; this.lines = 0; this.file = file;
+        this.generation = nextGeneration();
       }
       const chunk = Buffer.alloc(CHUNK);
-      let pending: Buffer[] = [], pendingLength = 0, lineStart = this.offset, position = this.offset, dropping = false;
+      let pending: Buffer[] = [], pendingLength = 0, lineStart = this.offset, position = this.offset, dropping = false, lines = this.lines;
       for (;;) {
         const { bytesRead } = await handle.read(chunk, 0, CHUNK, position);
         if (!bytesRead) break;
@@ -125,9 +143,9 @@ export class RunStepIndex {
         let from = 0;
         for (let end = bytes.indexOf(10); end !== -1; end = bytes.indexOf(10, from)) {
           const part = bytes.subarray(from, end);
-          if (!dropping && pendingLength + part.length <= RUN_STEPS_LINE_LIMIT) this.accept(Buffer.concat([...pending, part]), lineStart);
+          if (!dropping && pendingLength + part.length <= RUN_STEPS_LINE_LIMIT) this.accept(Buffer.concat([...pending, part]), lineStart, lines);
           else this.unreadable();
-          pending = []; pendingLength = 0; dropping = false;
+          pending = []; pendingLength = 0; dropping = false; lines++;
           lineStart = position + end + 1; from = end + 1;
         }
         const rest = bytes.subarray(from);
@@ -136,20 +154,33 @@ export class RunStepIndex {
         position += bytesRead;
       }
       if (this.ended && (pendingLength || dropping)) {
-        if (dropping) this.unreadable(); else this.accept(Buffer.concat(pending), lineStart);
-        lineStart = position;
+        if (dropping) this.unreadable(); else this.accept(Buffer.concat(pending), lineStart, lines);
+        lineStart = position; lines++;
       }
       // While the Run goes on, an unfinished last line is read again next time, once it is whole.
-      this.offset = lineStart;
+      this.offset = lineStart; this.lines = lines;
     } finally { await handle.close(); }
     if (this.ended) this.settle(this.ended);
+    this.readTimes();
+  }
+
+  /** The step journal's times, by the line and ID that name each step. */
+  private readTimes(): void {
+    const times = new Map<string, Pick<RunStepEntry, Timed>>();
+    for (const entry of readStepJournal(this.folder)) {
+      const name = `${entry.line}\0${entry.id}`, held = times.get(name) ?? { ...untimed };
+      if (entry.event === 'start') Object.assign(held, { startedAt: entry.at, startSource: entry.source, fingerprint: entry.fingerprint });
+      else Object.assign(held, { endedAt: entry.at, endSource: entry.source, output: entry.output });
+      times.set(name, held);
+    }
+    this.times = times;
   }
 
   get total(): number { return this.steps.length; }
 
   private entry = (step: Step, n: number): RunStepEntry => {
-    const { start: _start, end: _end, unsure: _unsure, ...rest } = step;
-    return { n, ...rest };
+    const { start: _start, end: _end, unsure: _unsure, line, ...rest } = step;
+    return { n, ...rest, ...this.times.get(`${line}\0${step.id}`) ?? untimed, subagentSteps: this.inside.get(step.id) ?? 0 };
   };
 
   /** Steps `from` on, at most `limit` (the latest `limit` when `from` is not given). */
@@ -236,4 +267,16 @@ export function runStepIndex(folder: string, adapterId: string, adapter: AgentAd
   const read = held.reading.catch(() => undefined).then(() => index.update(ended)).then(() => index);
   held.reading = read;
   return read;
+}
+
+/** Task Run `run`'s index of steps brought up to date (null for a Run whose agent this server cannot read), as its record says it went. */
+export async function readRunStepIndex(root: string, run: string): Promise<RunStepIndex | null> {
+  const store = RunStore.openReadable(root, { busyTimeoutMs: 0 });
+  let record;
+  try { record = store?.runtimeGet(run); } finally { store?.close(); }
+  if (!record || record.role === 'coordinator') throw new Problem(PROBLEM_CODE.notFound, 'Run does not exist', { run }, { reason: { kind: 'run_does_not_exist' } });
+  const adapter = runtimeAdapter(record.launch.adapter);
+  if (!adapter) return null;
+  return runStepIndex(runFolder(root, record.id), record.launch.adapter, adapter,
+    isRunMoving(record.state) ? null : record.state === 'succeeded' ? 'done' : 'failed');
 }

@@ -299,6 +299,7 @@
       "no_migrations_packaged": "移行処理が同梱されていません。既存のデータベースは保持されています",
       "no_project_active_use_id": "有効なプロジェクトがありません。--{{option}} <ID>で指定してください",
       "no_question_in_decide_value_write_full_question_before_asking": "タスクの「質問」（decide）の値に中身がありません。問いの全文を書いてから送信してください",
+      "question_kind_missing": "タスクの「質問」（decide）の {{n}} 問目に種類がありません。decide_kind に accept か choose を書いてから送信してください",
       "no_runs_stop": "停止するRunがありません",
       "not_for_run_while_own_task_held": "自分のタスクが保留中のRunは{{action}}を実行できません",
       "nothing_unfinished_goes_below_finished_task": "{{task}}は{{state}}です。終了したタスクの下に未完了のものは置けません",

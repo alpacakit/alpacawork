@@ -184,7 +184,7 @@ test("a Task's failure goes to whoever asked for its work, read from the same fa
 
 
 test('B05: a failed child reaches the user only when its requester has an open user question and no queued or running Run', () => {
-  const question = entry('L-parent-user', 5, { kind: 'asked', askedTo: null, title: 'Cannot repair child', decide: [{ decide_question: 'Cannot repair child' }] });
+  const question = entry('L-parent-user', 5, { kind: 'asked', askedTo: null, title: 'Cannot repair child', decide: [{ decide_kind: 'choose', decide_question: 'Cannot repair child' }] });
   for (const state of ['succeeded', 'queued', 'running'] as const) {
     const records = [{ ...finished[0], state, ended_at: state === 'succeeded' ? finished[0].ended_at : null }];
     const source = read({ state: 'doing', baseState: 'doing', log: [...reported.slice(0, 2), question] }, false, records).source;
