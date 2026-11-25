@@ -22,7 +22,8 @@
     "share": "手直しなしの割合",
     "sharePercentTip": "受け入れた {{accepted}}件のうち {{passed}}件・{{share}}",
     "shareTip": "受け入れた {{accepted}}件のうち {{passed}}件",
-    "shareTipFew": "受け入れた {{accepted}}件のうち {{passed}}件（10件未満）"
+    "shareTipFew": "受け入れた {{accepted}}件のうち {{passed}}件（10件未満）",
+    "keys": "左右の矢印キーで日を選び、Enter でその日のタスクの一覧"
   },
   "colon": "：",
   "day": "{{day}}（{{weekday}}）",

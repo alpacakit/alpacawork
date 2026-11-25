@@ -65,18 +65,27 @@ export function Parts({ items = [], line }: { items?: { color: string; name: str
 
 /**
  * A row of the grid: a rule above it, its name and numbers on the left, its chart on the right. On a computer, while a
- * day of its chart (`row`, its number in the group) is pointed at, the left says that day in place of the span: it is
- * the chart's legend. The span's numbers keep their room, so nothing below moves, and come back when the pointer goes.
+ * day of its chart (`row`, its number in the group) is pointed at or chosen from the keys, the left says that day in
+ * place of the span: it is the chart's legend, and its parts open that day's tasks. The span's numbers keep their room,
+ * so nothing below moves. The day stays while the pointer or the focus is within the row (straight from the chart to
+ * its legend), and goes when they leave it.
  */
 export function Row({ row, left, children, className }: { row?: number; left: ReactNode; children?: ReactNode; className?: string }) {
   const group = useContext(GroupContext);
   const day = group && !group.narrow && row !== undefined && group.pointed?.row === row ? group.pointed.at : null;
-  return <div className={cn(GRID, "border-t border-rule py-4 narrow:py-3.5", className)}>
-    <div className={cn(LEFT, "relative min-w-0")}>
-      <div className={cn(day !== null && "invisible")}>{left}</div>
-      {day !== null && <DayLegend say={group!.rows[row!]!} at={day} day={group!.dayName(day)} />}
-    </div>
+  const leave = (to: EventTarget | null) => {
+    if (day === null || to instanceof Node && (self.current?.contains(to) || to instanceof Element && to.closest("[data-day-column]"))) return;
+    group!.point(null);
+  };
+  const self = useRef<HTMLDivElement>(null);
+  return <div ref={self} data-row={row} className={cn(GRID, "border-t border-rule py-4 narrow:py-3.5", className)}
+    onMouseLeave={event => leave(event.relatedTarget)} onBlur={event => leave(event.relatedTarget)}>
+    <div className={cn(LEFT, "min-w-0", day !== null && "invisible")}>{left}</div>
     {children && <div className={cn(RIGHT, "narrow:mt-3")}>{children}</div>}
+    {/* After the chart, so the keys go from the chart to its day's parts; drawn over the left's room. */}
+    {day !== null && <div className="relative col-span-3 col-start-1 row-start-1 min-w-0">
+      <DayLegend say={group!.rows[row!]!} at={day} day={group!.dayName(day)} onList={list => group!.openDay(list)} />
+    </div>}
   </div>;
 }
 
@@ -102,7 +111,7 @@ type Box = { left: number; right: number; top: number; bottom: number };
 /** The day pointed at, its row, and (under a finger) the box of the bin pressed, the window's place. */
 type Pointed = { at: number; row: number; box: Box | null };
 type GroupState = { bins: Bin[]; span: Days; bucket: Bucket; rows: RowSay[]; hovered: number | null; narrow: boolean;
-  pointed: Pointed | null; dayName: (at: number) => string;
+  pointed: Pointed | null; dayName: (at: number) => string; openDay: (list: (bin: Bin) => DayList) => void;
   point: (at: number | null, row?: number, box?: Box) => void; press: (at: number, row: number, part?: number) => void };
 const GroupContext = createContext<GroupState | null>(null);
 
@@ -148,7 +157,13 @@ export function ChartGroup({ bins, span, today, bucket, rows, open, children }: 
   };
   const shown = pointed && bins[pointed.at] && rows[pointed.row] ? pointed : null;
   const dayName = (at: number) => binName(bins[at]!, today);
-  return <GroupContext value={{ bins, span, bucket, rows, hovered: shown?.at ?? null, narrow, pointed: shown, dayName, point, press }}>
+  const openDay = (list: (bin: Bin) => DayList) => { if (!shown) return; close(); open(list(bins[shown.at]!)); };
+  // What the day chosen says, read out as it changes (the keys move it a day at a time).
+  const said = shown ? [dayName(shown.at), rows[shown.row]!.name, rows[shown.row]!.total(shown.at),
+    ...(rows[shown.row]!.parts?.(shown.at) ?? []).map(part => `${part.name} ${part.value}`),
+    ...rows[shown.row]!.line ? [`${rows[shown.row]!.line!.name} ${rows[shown.row]!.line!.value(shown.at)}`] : []].join(", ") : "";
+  return <GroupContext value={{ bins, span, bucket, rows, hovered: shown?.at ?? null, narrow, pointed: shown, dayName, openDay, point, press }}>
+    {!narrow && <span aria-live="polite" className="sr-only">{said}</span>}
     <div className="relative" onMouseLeave={narrow ? undefined : close}>
       {!narrow && <Columns layer="back" />}
       <div className="relative">{children}</div>
@@ -156,7 +171,7 @@ export function ChartGroup({ bins, span, today, bucket, rows, open, children }: 
     </div>
     {narrow && shown?.box && <DayWindow day={dayName(shown.at)} say={rows[shown.row]!} at={shown.at} box={shown.box}
       onList={listOf(shown.at, shown.row) ? () => press(shown.at, shown.row) : null}
-      onPart={list => { close(); open(list(bins[shown.at]!)); }}
+      onPart={openDay}
       // The window steps to the day before or after, as if that day were pressed.
       onStep={step => { const box = shown.box!, width = box.right - box.left, next = shown.at + step;
         if (bins[next]) point(next, shown.row, { ...box, left: box.left + step * width, right: box.right + step * width }); }}
@@ -180,8 +195,11 @@ function under(x: number, y: number, self: Element) {
 function Columns({ layer }: { layer: "back" | "front" }) {
   const group = useGroup();
   return <div aria-hidden={layer === "back"} className={cn(GRID, "pointer-events-none absolute inset-0", layer === "front" && "z-1")}>
-    {/* Leaving the day columns (for the numbers on the left) lets go of the day. */}
-    <div className="col-span-9 col-start-4 grid auto-cols-[minmax(0,1fr)] grid-flow-col" onMouseLeave={layer === "front" ? () => group.point(null) : undefined}>
+    {/* Leaving the day columns lets go of the day, unless for the same row (its legend, on the left). */}
+    <div className="col-span-9 col-start-4 grid auto-cols-[minmax(0,1fr)] grid-flow-col" onMouseLeave={layer === "front" ? event => {
+      const row = group.pointed?.row, to = event.relatedTarget;
+      if (!(to instanceof Element && row !== undefined && to.closest(`[data-row="${row}"]`))) group.point(null);
+    } : undefined}>
       {group.bins.map((bin, at) => layer === "back"
         ? <i key={bin.from} className={cn("block", group.hovered === at ? "bg-rule" : lit(bin, group.span) && "bg-span-band")} />
         : <span key={bin.from} data-day-column="" className="pointer-events-auto cursor-pointer"
@@ -249,19 +267,35 @@ function DayWindow({ day, say, at, box, onList, onPart, onStep, first, last }: {
 }
 
 /**
- * The left of a row while one of its days is pointed at (a computer's): the day and the row's name, its total large,
- * its parts with their colours and shares, and its per-task line with its base. Laid over the span's numbers, which
- * keep their room.
+ * The left of a row while one of its days is pointed at or chosen (a computer's): the day and the row's name, its total
+ * large, its parts with their colours and shares, each with tasks a way into that part's tasks of the day, and its
+ * per-task line with its base. Laid over the span's numbers, which keep their room; within the column at any width
+ * (its names wrap, its type is a step smaller than the span's).
  */
-function DayLegend({ say, at, day }: { say: RowSay; at: number; day: string }) {
+function DayLegend({ say, at, day, onList }: { say: RowSay; at: number; day: string; onList: (list: (bin: Bin) => DayList) => void }) {
   const parts = say.parts?.(at) ?? [];
-  return <div data-day-legend="" className="absolute inset-x-0 top-0">
-    <div className="text-xs whitespace-nowrap text-muted"><b className="font-semibold text-ink">{day}</b><span className="ms-2">{say.name}</span></div>
+  const cells = "grid w-full grid-cols-[minmax(0,1fr)_auto_auto] items-baseline gap-x-3";
+  return <div data-day-legend="" className="absolute inset-x-0 top-0 text-sm">
+    <div className="text-xs text-muted"><b className="me-2 font-semibold text-ink">{day}</b>{say.name}</div>
     <b className="block text-xl font-semibold tabular-nums">{say.total(at)}</b>
-    <Parts items={parts.map(part => ({ ...part, value: <b className="font-semibold tabular-nums">{part.value}</b> }))}
-      line={say.line && { name: say.line.name, value: <b className="font-semibold tabular-nums">{say.line.value(at)}</b> }} />
-    {/* The line's base under it, within the column (it may be long: "fewer than ten accepted"). */}
-    {say.line && <div className="mt-0.5 ps-6 text-xs text-soft">{say.line.base(at)}</div>}
+    {parts.length > 0 && <div className="mt-1.5 -mx-1.5">
+      {parts.map(part => {
+        const inner = <>
+          <span className="flex min-w-0 items-baseline text-muted">{part.color && <i aria-hidden className={cn("me-2 inline-block size-2 flex-none self-center rounded-xs", part.color)} />}{part.name}</span>
+          <b className={cn("font-semibold whitespace-nowrap tabular-nums", part.list && "underline decoration-lit-line underline-offset-4 group-hover/part:decoration-ink")}>{part.value}</b>
+          <span className="flex items-center gap-0.5 text-xs whitespace-nowrap text-soft tabular-nums">{part.share ?? ""}{part.list && <Icon name="right" className="size-3" />}</span>
+        </>;
+        const row = cn(cells, "group/part rounded-sm px-1.5 py-0.5 text-start");
+        return part.list ? <button key={part.name} type="button" onClick={() => onList(part.list!)} className={cn(row, "hover:bg-hover")}>{inner}</button>
+          : <div key={part.name} className={row}>{inner}</div>;
+      })}
+    </div>}
+    {say.line && <div className={cn(cells, "mt-1.5")}>
+      <span className="flex min-w-0 items-baseline text-muted"><LineMark />{say.line.name}</span>
+      <b className="font-semibold whitespace-nowrap tabular-nums">{say.line.value(at)}</b><span />
+      {/* The line's base under it, within the column (it may be long: "fewer than ten accepted"). */}
+      <span className="col-span-3 ps-6 text-xs text-soft">{say.line.base(at)}</span>
+    </div>}
   </div>;
 }
 
@@ -280,6 +314,8 @@ export function useScale(largest: number, unit: number, unitName: string, wholeO
   return { top, label: unitName ? t(unit === 1 ? "unit.join" : "unit.joinTight", { value: written, unit: unitName }) : written };
 }
 
+/** The span's last bin: where the keys start in a chart. */
+const lastLit = (bins: Bin[], span: Days) => { for (let at = bins.length - 1; at >= 0; at--) if (lit(bins[at]!, span)) return at; return Math.max(0, bins.length - 1); };
 /** Whether a bin meets the chosen span at all (a week or month it falls inside, partly or whole). */
 const lit = (bin: Bin, span: Days) => bin.from <= span.to && bin.to >= span.from;
 /**
@@ -293,7 +329,22 @@ export const inSpanOf = (bins: Bin[], span: Days) => (at: number) => !!bins[at] 
 
 /** The frame every chart is drawn in: its height, the bars' mark over its top left, the line's over its top right. */
 function Frame({ row, scale, lineScale, height, children }: { row: number; scale: Scale; lineScale?: string; height: string; children: ReactNode }) {
-  return <div data-chart-row={row} className="pt-4 narrow:pt-4.5">
+  const group = useGroup();
+  const { t } = useTranslation("analysis");
+  // On a computer a chart takes the focus once: the arrows move its day (its legend says it), Enter opens that day's
+  // tasks, Escape lets go. It starts on the day last chosen in it, or the span's last.
+  const keys = group.narrow ? {} : {
+    tabIndex: 0, role: "group", "aria-label": `${group.rows[row]?.name ?? ""}${t("sep")}${t("chart.keys")}`,
+    onFocus: () => { if (group.pointed?.row !== row) group.point(lastLit(group.bins, group.span), row); },
+    onKeyDown: (event: React.KeyboardEvent) => {
+      const at = group.pointed?.row === row ? group.pointed.at : lastLit(group.bins, group.span), last = group.bins.length - 1;
+      const to = { ArrowLeft: at - 1, ArrowRight: at + 1, Home: 0, End: last }[event.key];
+      if (to !== undefined) { event.preventDefault(); group.point(Math.max(0, Math.min(last, to)), row); }
+      else if (event.key === "Enter") { event.preventDefault(); group.press(at, row); }
+      else if (event.key === "Escape" && group.pointed) { event.preventDefault(); group.point(null); }
+    },
+  };
+  return <div data-chart-row={row} {...keys} className="rounded-xs pt-4 outline-offset-2 focus-visible:outline-2 focus-visible:outline-ink narrow:pt-4.5">
     <div className={cn("relative", height)}>
       <span aria-hidden className="absolute bottom-full start-0 text-xs whitespace-nowrap text-soft">{scale.label}</span>
       {/* The line's scale: only the value its top stands for, as quiet as the bars' (the line is named on the left). */}

@@ -24,7 +24,8 @@
     "share": "Share with no fixes",
     "sharePercentTip": "{{passed}} of {{accepted}} accepted · {{share}}",
     "shareTip": "{{passed}} of {{accepted}} accepted",
-    "shareTipFew": "{{passed}} of {{accepted}} accepted (fewer than 10)"
+    "shareTipFew": "{{passed}} of {{accepted}} accepted (fewer than 10)",
+    "keys": "Use the left and right arrow keys to choose a day, and Enter to list its tasks"
   },
   "colon": ": ",
   "day": "{{weekday}} {{day}}",

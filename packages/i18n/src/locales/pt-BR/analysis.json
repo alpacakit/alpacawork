@@ -26,7 +26,8 @@
     "share": "Parcela sem correções",
     "sharePercentTip": "{{passed}} de {{accepted}} aceitas · {{share}}",
     "shareTip": "{{passed}} de {{accepted}} aceitas",
-    "shareTipFew": "{{passed}} de {{accepted}} aceitas (menos de 10)"
+    "shareTipFew": "{{passed}} de {{accepted}} aceitas (menos de 10)",
+    "keys": "Escolha um dia com as setas para a esquerda e a direita e pressione Enter para ver as tarefas dele"
   },
   "colon": ": ",
   "day": "{{weekday}} {{day}}",

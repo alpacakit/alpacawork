@@ -22,7 +22,8 @@
     "share": "无需返工的比例",
     "sharePercentTip": "验收的 {{accepted}} 个中 {{passed}} 个・{{share}}",
     "shareTip": "验收的 {{accepted}} 个中 {{passed}} 个",
-    "shareTipFew": "验收的 {{accepted}} 个中 {{passed}} 个（不足 10 个）"
+    "shareTipFew": "验收的 {{accepted}} 个中 {{passed}} 个（不足 10 个）",
+    "keys": "用左右方向键选择日期，按 Enter 查看当天的任务"
   },
   "colon": "：",
   "day": "{{day}}（{{weekday}}）",

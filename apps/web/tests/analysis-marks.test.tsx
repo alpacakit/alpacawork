@@ -157,3 +157,39 @@ test("on a computer the pointed row's left says the day and comes back; a press 
   delete (document as { elementsFromPoint?: unknown }).elementsFromPoint;
   view.unmount();
 });
+
+test("a chart takes the keys: the arrows choose the day its legend says, Enter opens that day; from the chart straight to its legend the day stays and its parts open that day's", () => {
+  const bins = Array.from({ length: 10 }, (_, at) => ({ from: `2026-11-${String(at + 1).padStart(2, "0")}`, to: `2026-11-${String(at + 1).padStart(2, "0")}`, complete: true }));
+  const opened = vi.fn();
+  const day = (bin: { from: string; to: string }) => ({ from: bin.from, to: bin.to });
+  const rows = [{ name: "終わったタスク", total: (at: number) => `${at}件`, list: (bin: { from: string; to: string }) => ({ set: "finished" as const, value: null, ...day(bin) }),
+    parts: (at: number) => [{ color: "bg-reworked", name: "手直しあり", value: `${at}件`, list: (bin: { from: string; to: string }) => ({ set: "reworked" as const, value: "lead" as const, ...day(bin) }) }] }];
+  const view = render(<div>
+    <ChartGroup bins={bins} span={{ from: "2026-11-01", to: "2026-11-07" }} today="2026-11-30" bucket="day" rows={rows} open={opened}>
+      <Row row={0} left={<span>期間の数</span>}><BarChart row={0} height="h-16" scale={{ top: 40, label: "40件" }} values={at => [["bg-reworked", at + 1, 0]]} /></Row>
+    </ChartGroup>
+    <button type="button">外</button>
+  </div>);
+  const legend = () => view.container.querySelector("[data-day-legend]");
+  const chart = view.container.querySelector<HTMLElement>("[data-chart-row]")!;
+  // The keys: the chart starts on the span's last day, the arrows move it, Enter opens it.
+  fireEvent.focus(chart);
+  expect(legend()?.textContent).toContain("11/7");
+  fireEvent.keyDown(chart, { key: "ArrowRight" });
+  expect(legend()?.textContent).toContain("11/8");
+  fireEvent.keyDown(chart, { key: "Enter" });
+  expect(opened).toHaveBeenLastCalledWith({ set: "finished", value: null, from: "2026-11-08", to: "2026-11-08" });
+  // The pointer: from a column straight to the row's left, the day stays; a part there opens that part's tasks of the day.
+  const columns = view.container.querySelectorAll("[data-day-column]");
+  fireEvent.mouseMove(columns[2]!, { clientX: 10, clientY: 10 });
+  const left = view.container.querySelector("[data-row='0']")!.firstElementChild!;
+  fireEvent.mouseLeave(columns[2]!.parentElement!, { relatedTarget: left });
+  expect(legend()?.textContent).toContain("11/3");
+  fireEvent.click(view.getByRole("button", { name: /手直しあり/ }));
+  expect(opened).toHaveBeenLastCalledWith({ set: "reworked", value: "lead", from: "2026-11-03", to: "2026-11-03" });
+  // Leaving the row lets go of the day.
+  fireEvent.mouseMove(columns[2]!, { clientX: 10, clientY: 10 });
+  fireEvent.mouseLeave(view.container.querySelector("[data-row='0']")!, { relatedTarget: view.getByRole("button", { name: "外" }) });
+  expect(legend()).toBeNull();
+  view.unmount();
+});
