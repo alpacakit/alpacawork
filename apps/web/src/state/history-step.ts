@@ -130,6 +130,22 @@ function closeReaderAt(depth: number) {
 export const closeReaderStep = () => closeReaderAt(0);
 export const closeTopReader = () => closeReaderAt(analysisSurfaces(useViewStore.getState().analysis).length);
 
+/**
+ * Back to the list of tasks from the analysis (the face switch's Use). Come to the analysis from a step of the list in
+ * the project still chosen, the browser goes back to that step: the list is as it was left, its task panel open, and
+ * that panel's × closes it as before. Else, and where the browser cannot go there, the analysis closes where it is.
+ */
+export function showList() {
+  navigate(() => {
+    const { analysis, listStep, project } = useViewStore.getState();
+    // Pressed again on its way there, it is there already.
+    if (!analysis) return;
+    const here = () => useViewStore.getState().showAnalysis(null);
+    if (listStep && listStep.project === project) traverse(listStep.key, undefined, here);
+    else here();
+  });
+}
+
 /** A layer of the analysis closed: it and those over it. */
 export function closeAnalysisLayer(depth: number) {
   navigate(() => closeSurface(depth, () => {

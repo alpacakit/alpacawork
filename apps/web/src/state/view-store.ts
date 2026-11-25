@@ -2,7 +2,7 @@ import { startTime } from '@/features/telemetry/count';
 import { useSyncExternalStore } from "react";
 import { create } from "zustand";
 import { fileOpening } from "@/domain/task-files";
-import { navigate } from "@/lib/history";
+import { currentStepKey, navigate } from "@/lib/history";
 import { useDialogStore } from "./dialog-store";
 import { markRead } from "./read-store";
 import { fitReaderWidth, readerWidth } from "./screen-settings";
@@ -127,6 +127,8 @@ type ViewState = {
   analysis: AnalysisPlace | null;
   /** Shows the analysis at a place, closing the task open; null goes back to the list of tasks. */
   showAnalysis: (place: AnalysisPlace | null) => void;
+  /** The step of the list this page came to the analysis from, and its project: Use goes back to it (`showList`). */
+  listStep: { key: string; project: string | null } | null;
   /** Apply a validated URL as one transition, without the side effects of the individual navigation actions. */
   applyNavigation: (navigation: Navigation) => void;
 };
@@ -296,10 +298,12 @@ export const useViewStore = create<ViewState>((set, get) => ({
   }),
   setFilePath: intent((taskId, path) => set({ filePath: { taskId, path } }), true),
   analysis: null,
+  listStep: null,
   // Coming to the analysis closes the task open and ends a search, as the search's own button does: the analysis takes
   // the list's place. A search begun on it goes back to the list, where its results are (setQuery).
   showAnalysis: intent((analysis) => set((state) => ({
     analysis,
+    ...analysis && !state.analysis ? { listStep: (key => key ? { key, project: state.project } : null)(currentStepKey()) } : {},
     ...analysis ? { searchOpen: false, query: "", ...state.query ? queryEdit(state) : {} } : {},
     ...state.reader.open && (state.analysis || analysis) ? { selected: null, ...NO_SURFACE, event: null, reader: closedReader(state.reader) } : {},
   }))),
@@ -317,6 +321,8 @@ export const useViewStore = create<ViewState>((set, get) => ({
       return {
         // A URL with no task says nothing of the reader's width (full belongs to the task): going back to the list from
         // a task opened full keeps it for the next one, as closing it does.
+        // The list shown by a URL is where Use would go back to no more (`listStep`).
+        ...!analysis ? { listStep: null } : {},
         project, query, analysis, readerFull: shown ? full : state.readerFull, navigationReady: true, queryEditedBeforeNavigation: false,
         selected: task, image, view, event,
         reader: { ...state.reader, open: !!shown, address: task ? null : taskAddress, pane, returnTo: shown === state.selected ? state.reader.returnTo : null, turnSequence,
