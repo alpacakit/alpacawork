@@ -585,6 +585,7 @@
     "more": "Más información",
     "notSending": "No se muestra nada porque no se están enviando datos de uso.",
     "nothingSent": "Todavía no se ha enviado nada.",
+    "olderReport": "Informe en un formato anterior",
     "outcome": {
       "accepted": "Recibido",
       "rejected": "No aceptado",

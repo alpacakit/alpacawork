@@ -571,6 +571,7 @@
     "more": "詳細",
     "notSending": "送信していないため、表示する内容はありません。",
     "nothingSent": "まだ何も送っていません。",
+    "olderReport": "以前の形の報告",
     "outcome": {
       "accepted": "届きました",
       "rejected": "受け付けられませんでした",

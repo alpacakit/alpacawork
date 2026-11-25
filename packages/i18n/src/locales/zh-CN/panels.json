@@ -571,6 +571,7 @@
     "more": "了解详情",
     "notSending": "未发送使用数据，因此没有可显示的内容。",
     "nothingSent": "尚未发送任何内容。",
+    "olderReport": "旧格式的报告",
     "outcome": {
       "accepted": "已送达",
       "rejected": "未被接受",

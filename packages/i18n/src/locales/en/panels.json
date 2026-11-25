@@ -578,6 +578,7 @@
     "more": "Learn more",
     "notSending": "Nothing is shown because usage data is not being sent.",
     "nothingSent": "Nothing has been sent yet.",
+    "olderReport": "Report in an earlier format",
     "outcome": {
       "accepted": "Received",
       "rejected": "Not accepted",

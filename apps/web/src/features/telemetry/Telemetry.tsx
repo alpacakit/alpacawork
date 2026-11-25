@@ -67,9 +67,9 @@ function HistoryDialog({ id, onClose }: { id: string | null; onClose: () => void
             <h3 className="m-0 mb-1 text-base font-semibold">{t('telemetry.sentLog')}</h3>
             {data.log.length ? <ul className="m-0 list-none border-b border-line p-0" data-telemetry-log>
               {data.log.map(entry => <SentRow key={`${entry.at}-${entry.url}`} when={time.format(new Date(entry.at))}
-                what={entry.kind === 'delete' ? t('telemetry.deleteRequest') : t('telemetry.reportOf', { day: entry.day ? dayName(entry.day, i18n.language) : '?' })}
+                what={entry.kind === 'delete' ? t('telemetry.deleteRequest') : entry.day ? t('telemetry.reportOf', { day: dayName(entry.day, i18n.language) }) : t('telemetry.olderReport')}
                 outcome={t(`telemetry.outcome.${entry.kind === 'delete' && entry.outcome === 'accepted' ? 'deleted' : entry.outcome}`)}
-                request={`${entry.method} ${entry.url}`} body={entry.body} />)}
+                request={`${entry.method} ${entry.url}`} body={entry.kind === 'report' ? entry.body : undefined} />)}
             </ul> : <p className="m-0 text-sm text-muted">{t('telemetry.nothingSent')}</p>}
             {id && <p className="m-0 mt-6 flex flex-wrap items-baseline gap-x-4 text-sm">
               <span className="text-muted">{t('telemetry.idLabel')}</span><code data-telemetry-id className="select-all">{id}</code>
