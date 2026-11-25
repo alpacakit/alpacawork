@@ -9,6 +9,7 @@ export const BACKEND_ENTRIES = {
   'run-manager': 'run-manager',
   'receiver/read-thread-worker': 'receiver/read-thread-worker',
   'analysis/tally-worker': 'analysis/tally-worker',
+  'runs/import-step-times-entry': 'runs/import-step-times-entry',
   'receiver/workspace-file-worker': 'receiver/workspace-file-worker',
   'storage-format': 'storage-format',
   'schema-manifest': 'schema-manifest',
