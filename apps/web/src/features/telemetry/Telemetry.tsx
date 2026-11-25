@@ -29,12 +29,12 @@ function dayName(day: string, language: string): string {
 }
 
 /** One request or report, folded to its line; opened, it shows the request and the body exactly as sent or to be sent. */
-function SentRow({ when, what, outcome, request, body }: { when: string; what: string; outcome: string; request?: string; body?: string }) {
+function SentRow({ when, what, outcome, request, body }: { when?: string; what: string; outcome: string; request?: string; body?: string }) {
   return <li className="border-t border-line">
     <details className="group">
       <DisclosureSummary className="flex min-h-10 flex-wrap items-center gap-x-4 py-2 text-base">
         <Caret className="group-open:rotate-90" />
-        <span className="tabular-nums">{when}</span><span>{what}</span><span className="text-muted">{outcome}</span>
+        {when && <span className="tabular-nums">{when}</span>}<span>{what}</span><span className="text-muted">{outcome}</span>
       </DisclosureSummary>
       <pre className="m-0 mb-3 max-h-[50vh] overflow-auto rounded-sm bg-lit p-3 text-xs">{[request, body === undefined ? undefined : sentText(body)].filter(Boolean).join('\n\n')}</pre>
     </details>
@@ -59,9 +59,9 @@ function HistoryDialog({ id, onClose }: { id: string | null; onClose: () => void
           : <>
             <h3 className="m-0 mb-1 text-base font-semibold">{t('telemetry.upcoming')}</h3>
             {data.next || data.queue.length ? <ul className="m-0 mb-6 list-none border-b border-line p-0" data-telemetry-upcoming>
-              {data.next && <SentRow when={t('telemetry.today', { day: dayName(data.next.day, i18n.language) })} what={t('telemetry.counting')}
-                outcome={t('telemetry.sendsNextDay')} body={json(data.next)} />}
-              {data.queue.map(item => <SentRow key={item.day} when={dayName(item.day, i18n.language)} what={t('telemetry.reportOf', { day: dayName(item.day, i18n.language) })}
+              {data.next && <SentRow what={t('telemetry.today', { day: dayName(data.next.day, i18n.language) })}
+                outcome={t('telemetry.counting')} body={json(data.next)} />}
+              {data.queue.map(item => <SentRow key={item.day} what={t('telemetry.reportOf', { day: dayName(item.day, i18n.language) })}
                 outcome={t('telemetry.waiting')} body={json(item.report)} />)}
             </ul> : <p className="m-0 mb-6 text-sm text-muted">{data.state === 'on' ? t('telemetry.empty') : t('telemetry.notSending')}</p>}
             <h3 className="m-0 mb-1 text-base font-semibold">{t('telemetry.sentLog')}</h3>
