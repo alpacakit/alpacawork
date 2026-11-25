@@ -10,6 +10,7 @@ import { TodayMarks } from "../src/features/analysis/FaceSwitch";
 import { FRESH_AFTER_MS } from "../src/features/analysis/data";
 import { queryClient } from "../src/data/query-client";
 import { useViewStore } from "../src/state/view-store";
+import { giveFocusBack, openerChain } from "../src/lib/focus-return";
 import { screenData, TestWorkspace } from "./fixtures";
 
 beforeAll(async () => { startI18n(); await i18n.changeLanguage("ja"); });
@@ -207,21 +208,42 @@ test("the last thing done says the day: a day the pointer left waiting gives way
   const rows = [{ name: "トークン", total: (at: number) => `${at}`, list: (bin: { from: string; to: string }) => ({ set: "used" as const, value: "tokens" as const, ...day(bin) }),
     parts: (at: number) => [{ color: "", name: "出力", value: `${at}`, list: (bin: { from: string; to: string }) => ({ set: "used" as const, value: "output" as const, ...day(bin) }) }] }];
   const list = { set: "used", value: "output", group: null, member: null } as const;
-  // Opening a list is what the look does: the place says it, and closing it takes it away.
-  const open = () => useViewStore.setState({ analysis: { look: "usage", span: { period: "7d" }, list, unit: null } });
-  const view = render(<ChartGroup bins={bins} span={{ from: "2026-11-01", to: "2026-11-07" }} today="2026-11-30" bucket="day" rows={rows} open={open}>
-    <Row row={0} left={<span>期間の数</span>}><BarChart row={0} height="h-16" scale={{ top: 40, label: "40" }} values={at => [["", at + 1]]} /></Row>
-  </ChartGroup>);
+  // The list's window as Layers is: it takes the focus as it opens and, closing, gives it back to what opened it
+  // (only when the focus was in it or is gone). Closing is a step of the history, which lets go of a day.
+  const surface = document.createElement("button");
+  let chain: Element[] = [];
+  const open = () => {
+    useViewStore.setState({ analysis: { look: "usage", span: { period: "7d" }, list, unit: null } });
+    chain = openerChain(document.activeElement);
+    document.body.append(surface); surface.focus();
+  };
+  const closeList = () => {
+    const inside = document.activeElement === surface;
+    surface.remove();
+    act(() => { useViewStore.setState({ analysis: { look: "usage", span: { period: "7d" }, list: null, unit: null } }); });
+    if (inside) giveFocusBack(chain);
+    act(() => { dispatchEvent(new PopStateEvent("popstate")); vi.advanceTimersByTime(50); });
+  };
+  const view = render(<div><button type="button">月ごと</button>
+    <ChartGroup bins={bins} span={{ from: "2026-11-01", to: "2026-11-07" }} today="2026-11-30" bucket="day" rows={rows} open={open}>
+      <Row row={0} left={<span>期間の数</span>}><BarChart row={0} height="h-16" scale={{ top: 40, label: "40" }} values={at => [["", at + 1]]} /></Row>
+    </ChartGroup></div>);
   const legend = () => view.container.querySelector("[data-day-legend]");
   const chart = view.container.querySelector<HTMLElement>("[data-chart-row]")!;
   const columns = view.container.querySelectorAll("[data-day-column]");
-  // A quick move left leaves a day waiting; Home before it is shown wins, and the waiting day never comes.
+  const outside = view.getByRole("button", { name: "月ごと" });
+  // A quick move left leaves a day waiting; a key wins over it, in the chart or anywhere else on the screen.
   fireEvent.mouseMove(columns[8]!, { clientX: 800, clientY: 10 });
   fireEvent.mouseMove(columns[7]!, { clientX: 700, clientY: 10 });
   chart.focus();
   fireEvent.keyDown(chart, { key: "Home" });
   act(() => { vi.advanceTimersByTime(500); });
   expect(legend()?.textContent).toContain("11/1");
+  fireEvent.mouseMove(columns[8]!, { clientX: 800, clientY: 10 });
+  fireEvent.mouseMove(columns[7]!, { clientX: 700, clientY: 10 });
+  fireEvent.keyDown(outside, { key: "Tab" });
+  act(() => { vi.advanceTimersByTime(500); });
+  expect(legend()?.textContent).toContain("11/9");
   // Escape on a part of the legend: the span's numbers again, and the focus on the chart.
   const part = view.getByRole("button", { name: /出力/ });
   part.focus();
@@ -233,18 +255,30 @@ test("the last thing done says the day: a day the pointer left waiting gives way
   view.getByRole("button", { name: /出力/ }).focus();
   fireEvent.click(view.getByRole("button", { name: /出力/ }));
   expect(legend()).toBeNull();
-  act(() => { useViewStore.setState({ analysis: { look: "usage", span: { period: "7d" }, list: null, unit: null } }); });
-  // Closing is a step of the history, which lets go of a day: the day comes back after it.
-  act(() => { dispatchEvent(new PopStateEvent("popstate")); vi.advanceTimersByTime(50); });
+  closeList();
   expect(legend()?.textContent).toContain("11/10");
   expect(document.activeElement?.textContent).toContain("出力");
-  // From the chart (Enter): closed, the focus is on the chart.
-  chart.focus();
-  fireEvent.keyDown(chart, { key: "Enter" });
-  // The list's window takes the focus while it is open.
-  chart.blur();
-  act(() => { useViewStore.setState({ analysis: { look: "usage", span: { period: "7d" }, list: null, unit: null } }); });
+  // Opened with the pointer while the focus was elsewhere: closed, the focus is on the chart that opened it.
+  outside.focus();
+  document.elementsFromPoint = () => [chart];
+  fireEvent.click(columns[3]!, { clientX: 10, clientY: 10 });
+  delete (document as { elementsFromPoint?: unknown }).elementsFromPoint;
+  closeList();
   expect(document.activeElement).toBe(chart);
+  // The person moved the focus out of the list before closing it: it stays where they put it.
+  fireEvent.keyDown(chart, { key: "End" });
+  fireEvent.keyDown(chart, { key: "Enter" });
+  outside.focus();
+  closeList();
+  expect(document.activeElement).toBe(outside);
+  expect(legend()).toBeNull();
+  fireEvent.keyDown(chart, { key: "End" });
+  view.getByRole("button", { name: /出力/ }).focus();
+  fireEvent.click(view.getByRole("button", { name: /出力/ }));
+  outside.focus();
+  closeList();
+  expect(document.activeElement).toBe(outside);
+  expect(legend()).toBeNull();
   view.unmount();
   useViewStore.setState({ analysis: null });
 });

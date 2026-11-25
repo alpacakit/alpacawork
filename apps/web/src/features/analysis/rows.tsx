@@ -1,4 +1,4 @@
-import { createContext, memo, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, memo, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { useNarrow, useViewStore } from "@/state/view-store";
@@ -85,7 +85,7 @@ export function Row({ row, left, children, className }: { row?: number; left: Re
         shown), so pointing at a day never makes the row taller nor runs it into the next. */}
     <div className={cn(LEFT, "col-start-1 row-start-1 grid min-w-0")}>
       <div className={cn("col-start-1 row-start-1 min-w-0", day !== null && "invisible")}>{left}</div>
-      {group && !group.narrow && row !== undefined && group.rows[row] && <LegendRoom say={group.rows[row]!} days={group.bins.map((_, at) => group.dayName(at))} />}
+      {group && !group.narrow && row !== undefined && group.rows[row] && <LegendRoom say={group.rows[row]!} names={group.names} />}
     </div>
     {children && <div className={cn(RIGHT, "col-start-4 row-start-1 narrow:mt-3")}>{children}</div>}
     {/* After the chart, so the keys go from the chart to its day's parts; drawn over the left's room. Escape there
@@ -98,13 +98,25 @@ export function Row({ row, left, children, className }: { row?: number; left: Re
 }
 
 /**
- * Every day's legend of a row, unseen and out of reach, in the left's place: the room the row keeps (the tallest of
- * them). Drawn again only when the row's days or what it says change, not as a day is pointed at.
+ * The room a row keeps: its legend for each shape a day of it can take, unseen and out of reach, in the left's place
+ * (the tallest of them). Days whose words differ only in their digits (of one width) take the same room, so one of
+ * each is enough. Drawn when the row's days or what it says change, never as a day is chosen.
  */
-const LegendRoom = memo(function LegendRoom({ say, days }: { say: RowSay; days: string[] }) {
-  return days.map((day, at) => <div key={at} aria-hidden inert className="invisible col-start-1 row-start-1 min-w-0">
-    <DayLegend still say={say} at={at} day={day} onList={() => {}} /></div>);
-}, (a, b) => a.say === b.say && a.days.join() === b.days.join());
+const LegendRoom = memo(function LegendRoom({ say, names }: { say: RowSay; names: string[] }) {
+  return legendShapes(say, names).map(at => <div key={at} aria-hidden inert className="invisible col-start-1 row-start-1 min-w-0">
+    <DayLegend still say={say} at={at} day={names[at]!} onList={() => {}} /></div>);
+}, (a, b) => a.say === b.say && a.names === b.names);
+
+/** One day of each shape a row's legend takes: its words with every digit the same (digits are of one width). */
+export function legendShapes(say: RowSay, names: string[]) {
+  const seen = new Map<string, number>();
+  names.forEach((name, at) => {
+    const words = [name, say.total(at), ...(say.parts?.(at) ?? []).map(part => `${part.name}:${part.value}:${part.share ?? ""}:${part.list ? ">" : ""}`),
+      say.line ? `${say.line.value(at)}:${say.line.base(at)}` : ""].join("|").replace(/\d/g, "0");
+    if (!seen.has(words)) seen.set(words, at);
+  });
+  return [...seen.values()];
+}
 
 /** A row's name, in the small grey type of every name. */
 export const RowName = ({ children }: { children: ReactNode }) => <div className="text-xs text-muted">{children}</div>;
@@ -128,7 +140,7 @@ type Box = { left: number; right: number; top: number; bottom: number };
 /** The day pointed at, its row, and (under a finger) the box of the bin pressed, the window's place. */
 type Pointed = { at: number; row: number; box: Box | null };
 type GroupState = { bins: Bin[]; span: Days; bucket: Bucket; rows: RowSay[]; hovered: number | null; narrow: boolean;
-  pointed: Pointed | null; dayName: (at: number) => string; openDay: (list: (bin: Bin) => DayList) => void;
+  pointed: Pointed | null; dayName: (at: number) => string; names: string[]; openDay: (list: (bin: Bin) => DayList) => void;
   /** Shows a day (null: none) at once, dropping a day waiting to be shown. */
   point: (at: number | null, row?: number, box?: Box) => void;
   /** Shows a day after a moment (the pointer passing on its way to the legend), unless anything else comes first. */
@@ -150,10 +162,15 @@ export function ChartGroup({ bins, span, today, bucket, rows, open, children }: 
   const [pointed, setPointed] = useState<Pointed | null>(null);
   const narrow = useNarrow();
   const binName = useBinName();
-  // The one place that says which day is shown. The last thing done wins: a day waiting for the pointer (`pointSoon`)
-  // is dropped by any other change, a key, a move of the focus or a scroll.
+  // The one place that says which day is shown. The last thing done wins, on the whole screen: a day waiting for the
+  // pointer (`pointSoon`) is dropped by any other change here and by any input that is not the pointer's anywhere (a
+  // key, a move of the focus, a scroll or a wheel), and by another span or step of time.
   const waiting = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const cancel = () => { if (waiting.current) clearTimeout(waiting.current); waiting.current = null; };
+  const cancel = () => {
+    if (!waiting.current) return;
+    clearTimeout(waiting.current); waiting.current = null;
+    for (const kind of OTHER_INPUT) removeEventListener(kind, cancel, true);
+  };
   useEffect(() => cancel, []);
   const show = (at: number | null, row = -1, box?: Box) => setPointed(previous => {
     if (at === null) return null;
@@ -162,12 +179,17 @@ export function ChartGroup({ bins, span, today, bucket, rows, open, children }: 
     return previous && previous.at === at && previous.row === next ? previous : { at, row: next, box: box ?? null };
   });
   const point = (at: number | null, row = -1, box?: Box) => { cancel(); show(at, row, box); };
-  const pointSoon = (at: number, row: number) => { cancel(); waiting.current = setTimeout(() => { waiting.current = null; show(at, row); }, INTENT_MS); };
+  const pointSoon = (at: number, row: number) => {
+    cancel();
+    waiting.current = setTimeout(() => { cancel(); show(at, row); }, INTENT_MS);
+    for (const kind of OTHER_INPUT) addEventListener(kind, cancel, true);
+  };
   const close = () => point(null);
   useLayoutEffect(() => subscribeStep(close), []);
   // The days are other days now (another step of time, another span of record): what was pointed at is gone.
   const days = `${bucket}:${bins.length}:${bins[0]?.from ?? ""}`;
   useLayoutEffect(close, [days]);
+  useLayoutEffect(cancel, [span.from, span.to]);
   useEffect(() => {
     if (!pointed) return;
     addEventListener("scroll", close, true);
@@ -178,30 +200,42 @@ export function ChartGroup({ bins, span, today, bucket, rows, open, children }: 
   }, [pointed, narrow]);
   const self = useRef<HTMLDivElement>(null);
   const chartOf = (row: number) => self.current?.querySelector<HTMLElement>(`[data-row="${row}"] [data-chart-row]`) ?? null;
-  // A list opened from a chart or its legend gives the focus back there as it closes, as every window does to what
-  // opened it: to the chart, or to the same part of the same day's legend (the day shown again).
-  const opener = useRef<{ at: number; row: number; part: number | null } | null>(null), refocus = useRef<{ row: number; part: number } | null>(null);
+  // A list gives the focus back to what opened it, as every window does (Layers: only when the focus was in it or is
+  // gone, never taking it from where the person moved it). What opens a list from here is a chart: it takes the focus
+  // as the list opens (pressed with the pointer too), so the focus comes back to it; given back to it, the focus goes
+  // on to what in it opened the list, the same part of the same day's legend (the day shown again). On a phone nothing
+  // of it is left to take the focus: the day's window opens again with the focus on what opened the list.
+  type Opener = { at: number; row: number; part: number | "list" | null; box: Box | null };
+  const opener = useRef<Opener | null>(null), refocus = useRef<Opener | null>(null);
   const remember = (at: number, row: number) => {
-    const from = document.activeElement;
-    const inside = from instanceof HTMLElement && !!self.current?.contains(from);
-    const part = inside ? (from as HTMLElement).closest<HTMLElement>("[data-part-index]")?.dataset.partIndex : undefined;
-    opener.current = inside ? { at, row, part: part === undefined ? null : Number(part) } : null;
+    const from = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const part = from?.closest<HTMLElement>("[data-part-index]")?.dataset.partIndex, list = !!from?.closest("[data-window-list]");
+    const ours = !!from && (!!self.current?.contains(from) || !!from.closest("[data-day-window]"));
+    opener.current = { at, row, part: ours && part !== undefined ? Number(part) : ours && list ? "list" : null, box: shown?.box ?? null };
+    if (!narrow) chartOf(row)?.focus({ preventScroll: true });
   };
   const layerOpen = useViewStore(state => !!(state.analysis?.list || state.analysis?.unit));
   useLayoutEffect(() => {
     const back = opener.current;
     if (layerOpen || !back) return;
     opener.current = null;
-    if (back.part === null) { chartOf(back.row)?.focus({ preventScroll: true }); return; }
-    // The step that closed the list lets go of the day as every step does; the day comes back after it.
-    const frame = requestAnimationFrame(() => { refocus.current = { row: back.row, part: back.part! }; point(back.at, back.row); });
+    // After the step that closed the list (a step lets go of the day) and after the focus was given back.
+    const frame = requestAnimationFrame(() => {
+      const active = document.activeElement;
+      const given = narrow ? !active || active === document.body : active === chartOf(back.row);
+      if (!given || back.part === null) return;
+      refocus.current = back;
+      point(back.at, back.row, back.box ?? undefined);
+    });
     return () => cancelAnimationFrame(frame);
   }, [layerOpen]);
   useLayoutEffect(() => {
     const back = refocus.current;
     if (!back) return;
     refocus.current = null;
-    self.current?.querySelector<HTMLElement>(`[data-row="${back.row}"] [data-day-legend] [data-part-index="${back.part}"]`)?.focus({ preventScroll: true });
+    const within = narrow ? "[data-day-window]" : `[data-row="${back.row}"] [data-day-legend]`;
+    const target = back.part === "list" ? "[data-window-list]" : `[data-part-index="${back.part}"]`;
+    document.querySelector<HTMLElement>(`${within} ${target}`)?.focus({ preventScroll: true });
   }, [pointed]);
   const listOf = (at: number, row: number) => rows[row]?.list?.(bins[at]!, at) ?? null;
   // A part of a stacked bar opens that part's tasks of the day; elsewhere the column opens the row's.
@@ -211,13 +245,16 @@ export function ChartGroup({ bins, span, today, bucket, rows, open, children }: 
     if (list) { remember(at, row); close(); open(list); }
   };
   const shown = pointed && bins[pointed.at] && rows[pointed.row] ? pointed : null;
-  const dayName = (at: number) => binName(bins[at]!, today);
+  // The days' names, made when the days change (not as a day is chosen).
+  const { i18n } = useTranslation();
+  const names = useMemo(() => bins.map(bin => binName(bin, today)), [bins, today, i18n.language]);
+  const dayName = (at: number) => names[at]!;
   const openDay = (list: (bin: Bin) => DayList) => { if (!shown) return; remember(shown.at, shown.row); close(); open(list(bins[shown.at]!)); };
   // What the day chosen says, read out as it changes (the keys move it a day at a time).
   const said = shown ? [dayName(shown.at), rows[shown.row]!.name, rows[shown.row]!.total(shown.at),
     ...(rows[shown.row]!.parts?.(shown.at) ?? []).map(part => `${part.name} ${part.value}`),
     ...rows[shown.row]!.line ? [`${rows[shown.row]!.line!.name} ${rows[shown.row]!.line!.value(shown.at)}`] : []].join(", ") : "";
-  return <GroupContext value={{ bins, span, bucket, rows, hovered: shown?.at ?? null, narrow, pointed: shown, dayName, openDay, point, pointSoon, cancel, press, chartOf }}>
+  return <GroupContext value={{ bins, span, bucket, rows, hovered: shown?.at ?? null, narrow, pointed: shown, dayName, names, openDay, point, pointSoon, cancel, press, chartOf }}>
     {!narrow && <span aria-live="polite" className="sr-only">{said}</span>}
     <div ref={self} className="relative" onMouseLeave={narrow ? undefined : close} onKeyDownCapture={cancel} onFocusCapture={cancel}>
       {!narrow && <Columns layer="back" />}
@@ -290,6 +327,8 @@ export function dayIntent(from: Trace | null, to: Trace) {
   // later); a small one (over a column's edge) is taken at once.
   return gap > 100 ? (-dx > 4 ? "wait" : "now") : -dx / Math.max(1, gap) > 0.5 ? "wait" : "now";
 }
+/** The inputs that are not the pointer's: any of them drops a day the pointer left waiting. */
+const OTHER_INPUT = ["keydown", "focusin", "scroll", "wheel"] as const;
 /** How long a day passed on the way to the legend waits before it is taken (the pointer stopped over it). */
 const INTENT_MS = 120;
 
@@ -337,7 +376,7 @@ function DayWindow({ day, say, at, box, onList, onPart, onStep, first, last }: {
           <span className="flex items-center justify-end gap-0.5 whitespace-nowrap text-soft tabular-nums">{part.share ?? ""}{part.list && <Icon name="right" className="size-3" />}</span>
         </>;
         const row = "group/part col-span-3 grid grid-cols-subgrid items-center rounded-sm px-1.5 py-1.5";
-        return part.list ? <button key={part.name} type="button" onClick={() => onPart(part.list!)} className={cn(row, "text-start hover:bg-hover")}>{cells}</button>
+        return part.list ? <button key={part.name} type="button" data-part-index={parts.indexOf(part)} onClick={() => onPart(part.list!)} className={cn(row, "text-start hover:bg-hover")}>{cells}</button>
           : <div key={part.name} className={row}>{cells}</div>;
       })}
     </div>}
@@ -346,7 +385,7 @@ function DayWindow({ day, say, at, box, onList, onPart, onStep, first, last }: {
         <b className="font-semibold text-ink tabular-nums">{say.line.value(at)}</b></div>
       <div className="ps-5 text-soft">{say.line.base(at)}</div>
     </div>}
-    {onList && <button type="button" onClick={onList} className="mt-2 flex w-full items-center gap-1 border-t border-rule pt-2 text-muted hover:text-ink">{t("window.list")}<Icon name="right" className="size-3" /></button>}
+    {onList && <button type="button" data-window-list="" onClick={onList} className="mt-2 flex w-full items-center gap-1 border-t border-rule pt-2 text-muted hover:text-ink">{t("window.list")}<Icon name="right" className="size-3" /></button>}
   </div>;
 }
 

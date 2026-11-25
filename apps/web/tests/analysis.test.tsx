@@ -3,7 +3,7 @@ import { i18n, startI18n } from "@alpacawork/i18n";
 import { comparison, delta, parts, share, shareDelta } from "../src/features/analysis/format";
 import { analysisMoved, analysisSurfaces, analysisValues, belowLayer, listOnAnswer, readAnalysis, settleSpan, spanQuery, stepChosen, type AnalysisPlace } from "../src/features/analysis/place";
 import { axisLabels } from "../src/features/analysis/charts";
-import { dayIntent, inSpanOf, lineDots, lineTop, spanMost } from "../src/features/analysis/rows";
+import { dayIntent, inSpanOf, legendShapes, lineDots, lineTop, spanMost } from "../src/features/analysis/rows";
 import { tipAround, tipBeside, tipPlace } from "../src/features/analysis/parts";
 import { isStep, surfacesOf } from "../src/state/history-step";
 import type { Navigation } from "../src/state/view-store";
@@ -209,4 +209,16 @@ test("a day the pointer passes going left fast, on its way to the row's legend, 
   expect(dayIntent(at(800, 100, 0), at(790, 100, 400))).toBe("wait");
   // A small move from rest (over a column's edge) is taken at once.
   expect(dayIntent(at(800, 100, 0), at(798, 100, 400))).toBe("now");
+});
+
+test("a row keeps room for one legend of each shape its days take, not one a day: three years of days come to a handful", () => {
+  const names = Array.from({ length: 1096 }, (_, at) => `${at % 12 + 1}/${at % 28 + 1}（${"月火水木金土日"[at % 7]}）`);
+  const say = { name: "トークン", total: (at: number) => `${(at * 37) % 900}万`,
+    parts: (at: number) => [{ color: "", name: "出力", value: `${at % 90}万` }],
+    line: { name: "1件あたり", value: (at: number) => at % 5 ? `${at % 9}万` : "—", base: (at: number) => at % 5 ? `終わった ${at % 30}件` : "終わった 0件" } };
+  const shapes = legendShapes(say, names);
+  expect(shapes.length).toBeLessThan(100);
+  // Words that differ, not only digits, each keep a room of their own.
+  const lines = new Set(shapes.map(at => say.line.value(at) === "—"));
+  expect(lines).toEqual(new Set([true, false]));
 });
