@@ -24,15 +24,15 @@ const failure = { state: 'error', baseState: 'error', userRequested: true } as c
 const accessExamples: Readonly<Record<string, readonly Example[]>> = {
   deploy: [{label:'Local deployment (Run acts on its own Task)',action:{name:'release'}}],
   'project.shelf': [{ label: 'Project catalog', action: { name: 'screen' } }],
-  'task.get': readUp, 'task.returns': readUp, 'run.get': readUp, 'field.get': readUp,
+  'task.get': readUp, 'task.returns': readUp, 'run.get': readUp, 'run.steps': readUp, 'run.conditions': readUp, 'field.get': readUp,
   'field.list': [{ label: 'Read field definitions', action: { name: 'field.list' } }],
   'field.set': [{ label: 'Add or change a field definition', action: { name: 'field.set' } }],
   'field.delete': [{ label: 'Delete a field definition', action: { name: 'field.delete' } }],
   'field.use': [{ label: 'Project fields (Task here means the project)', action: { name: 'field.use' },
     task: { kind: 'project', id: 'T1', parentId: null, project: 'T1' } }],
   'task.file-get': readUp,
-  'analysis.tasks': readTree, 'analysis.usage': readTree, 'analysis.list': readTree, 'analysis.task': readTree,
-  'task.list': readTree,
+  'analysis.tasks': readTree, 'analysis.usage': readTree, 'analysis.list': readTree, 'analysis.task': readTree, 'analysis.breakdown': readTree,
+  'task.list': readTree, 'run.list': readTree,
   'task.file-put': file, 'task.attachment-put': file, 'task.attachment-remove': file, 'task.attachment-move': file,
   'task.new': [
     example('task.new', '--no-from-user (Task here means --parent)', { fromUser: false }),
@@ -177,6 +177,8 @@ export function accessHelp(command: string): string {
   if (command === 'task.update') lines.push('  Every changed field must be allowed.');
   if (command.startsWith('analysis.')) lines.push("  A Run's analysis is restricted to its own project.");
   if (command === 'task.list') lines.push('  A Run\'s tree is restricted to its own project.');
+  if (command === 'run.list') lines.push('  A Run lists only its own project\'s Task Runs, and its --under must be in that project. ' +
+    'A person or the coordinator lists the whole workspace, the coordinator conversation\'s Runs included unless --under is given.');
   if (command === 'deploy' || command.startsWith('release.') || ['workspace.init', 'workspace.serve', 'workspace.maintenance'].includes(command))
     lines.push('  ' + localCaller.help);
   return `\nAccess (server authorization; user approval and state rules still apply):\n${lines.join('\n')}`;

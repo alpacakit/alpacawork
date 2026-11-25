@@ -25,11 +25,11 @@ function cli(path: string[], backend = false, script?: string) {
 }
 const ordinary = commandCatalog.cliCommands.map(spec => [...spec.words]);
 
-test('all 47 ordinary and 8 backend operation helps expose access without connecting or authorizing', () => {
+test('all 51 ordinary and 8 backend operation helps expose access without connecting or authorizing', () => {
   const client = [...ordinary, ['server', 'show'], ['server', 'set'], ['server', 'unset'], ['run', 'stop-local']];
   const backend = [...['init', 'serve', 'maintenance'].map(name => ['workspace', name]),
     ...['build', 'rollback', 'prune', 'status'].map(name => ['release', name]), ['deploy']];
-  assert.equal(client.length, 47);
+  assert.equal(client.length, 51);
   assert.equal(backend.length, 8);
   // One process per program: what a help prints comes from its path, and its real start is the entry below.
   const helps = (entry: string, paths: string[][]) => JSON.parse(cli([], false, `

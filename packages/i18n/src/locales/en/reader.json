@@ -114,6 +114,7 @@
     "media": "Images, videos and audio",
     "onlyWork": "No deliverables yet.",
     "onlyWorkHint": "The agents’ working files are in Work files.",
+    "otherIn": "Other in {{folder}}",
     "otherMedia": "Other media",
     "path": "Path",
     "unavailable": "Could not display file: {{name}}",

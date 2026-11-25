@@ -13,7 +13,7 @@ import { commandPath, commandPrefix } from './command-path.js';
 import { errorEntrySchema, problemReasonSchema } from './problem.js';
 import { personalSettingsResponseSchema } from './personal-settings.js';
 import { RESOLUTION_REASONS, RETURN_OUTCOMES } from './return-outcomes.js';
-import { stopResponseSchema, runStepsPageSchema, runStepDetailSchema, runConditionsViewSchema } from './run-contract.js';
+import { agentNameSchema, runReasonSchema, runRoleSchema, runStateSchema, stopResponseSchema, runStepsPageSchema, runStepDetailSchema, runConditionsViewSchema } from './run-contract.js';
 import { beforeRestoreOperationSchema, unknownAfterRestoreOperationSchema } from './recovery.js';
 import { attachmentResultSchema, placementSchema, startOrderSchema, taskLifecycleSchema, projectShelfInfoSchema, projectShelfSchema, taskPlanResultSchema, taskWriteResultSchema, taskReportResultSchema,
   taskRequestResultSchema, taskPlacementResultSchema, taskGetRunSchema, controlRunFilesSchema, workspaceUrlSchema } from './control-contract.js';
@@ -28,7 +28,7 @@ import { digestSchema, REPORT_TITLE_GUIDE_WIDTH, REPORT_TITLE_MAX_WIDTH, reportS
 import {
   dependencySetInput, dependencyClearInput, taskReturnsInput, taskListInput, taskGetInput, taskCreateInput, taskUpdateInput, taskReportInput,
   taskRequestInput, taskCommentInput, taskMoveInput, taskLifecycleInput, agentAssignInput,
-  agentHandoverInput, agentReleaseInput, runGetInput, runStepsInput, runConditionsInput, runStopInput,
+  agentHandoverInput, agentReleaseInput, runGetInput, runListInput, runStepsInput, runConditionsInput, runStopInput,
   fieldSetInput, configSetShape, emptyInput, personSettingsSetShape, fieldGetInput, fieldDeleteInput, fieldUseInput,
   fieldUseRules, taskGetIncludes, type InputRule,
   ruleHelp, taskListRules, taskCreateRules, taskUpdateRules, taskReportRules, taskRequestRules, agentAssignRules,
@@ -67,7 +67,7 @@ const groups: Readonly<Record<string, string>> = {
   'task file': 'Files in a Task folder',
   'task attachment': 'Files attached to a request',
   agent: 'The responsible and the members placed on a Task',
-  run: 'Run results and stopping',
+  run: 'Unfinished Runs, Run results and stopping',
   coordinator: 'Coordinator conversation references',
   'coordinator reply': 'Answers referenced by the current Run’s messages',
   field: 'The fields Tasks write: read a Task\'s, choose a project\'s, define the ones every project shares',
@@ -87,7 +87,7 @@ const text = option('text'), number = option('number'), boolean = option('boolea
 const list = (key: string, description: string) =>
   option('list')(key, description, { cliDetail: 'Repeatable or comma-separated.' });
 const file = (key: string, max: number, description: string, jsonFile?: true): CommandOption =>
-  ({ key, description, cliDetail: 'Use an absolute UTF-8 file path or - for stdin.', kind: 'file', max, jsonFile });
+  ({ key, description, cliDetail: 'Use an absolute path to a regular UTF-8 file (a pipe such as /dev/fd/N is refused), or - for stdin (one option per command).', kind: 'file', max, jsonFile });
 const help = (...lines: string[]) => `\n${lines.join('\n')}`;
 /** What one compaction costs, wherever a command can ask for it. */
 const COMPACTION_COST = 'Each compaction spends tokens: the model reads the conversation (about its current size, up to the context ' +
@@ -143,8 +143,10 @@ export const attachmentInput = z.object({ task: taskIdSchema, requestId: z.strin
 export const attachmentMoveInput = z.object({ task: taskIdSchema, from: z.string().min(1), to: z.string().min(1) });
 
 const taskId = text('task', 'Task ID (T<number>) or project ID (P<number>)');
-const expectedTaskHash = text('expectedTaskHash', 'Current Task SHA-256 hash (task get)');
-const placementRevision = number('expectedPlacementRevision', 'Current placement revision (task get)');
+const expectedTaskHash = text('expectedTaskHash', 'The Task\'s current hash: task.hash in task get or in the reply to the last write on this Task; ' +
+  'one that has since changed (another write, or a Run starting or ending on the Task) is refused as conflict');
+const placementRevision = number('expectedPlacementRevision', 'The placement\'s current revision: agents[].revision in task get, ' +
+  'or agent.placement.revision in the reply to the agent write that last changed it');
 const quote = text('quote', 'Record the user’s words. The quote grants no permission.');
 const sourceRequest = text('sourceRequest', 'Screen message ID this write records; its own or a message delivered to the current Run');
 const fromUser = boolean('fromUser', 'Whether the user asked for this Task; only directly below a project, never a child Task');
@@ -217,6 +219,19 @@ const taskListResultSchema = z.object({
       kind: z.enum(['id', 'title', 'values', 'history', 'runs', 'files', 'work']),
       excerpt: z.string(), otherMatches: z.number().int().nonnegative(),
     }).optional(),
+  }).strict()),
+  errors: z.array(errorEntrySchema), omitted: z.number().int().positive().optional(), cursor: z.string().optional(),
+}).strict();
+
+/** run list: one page of unfinished Runs, what was read, and when. */
+const runListResultSchema = z.object({
+  observedAt: z.iso.datetime({ offset: true }),
+  scope: z.object({ project: taskIdSchema.nullable(), under: taskIdSchema.nullable(), coordinatorRuns: z.boolean() }).strict(),
+  runs: z.array(z.object({
+    id: runIdSchema, task: taskIdSchema.nullable(), project: taskIdSchema.nullable(), placementId: z.string().nullable(),
+    role: runRoleSchema, agent: agentNameSchema, state: runStateSchema, reason: runReasonSchema.nullable(),
+    stopRequested: z.boolean(), createdAt: z.iso.datetime({ offset: true }), startedAt: z.iso.datetime({ offset: true }).nullable(),
+    parentRun: runIdSchema.nullable(),
   }).strict()),
   errors: z.array(errorEntrySchema), omitted: z.number().int().positive().optional(), cursor: z.string().optional(),
 }).strict();
@@ -333,7 +348,7 @@ const definitions = {
       'A placement with no Run uses its initial choices unless --new-conversation is set. Other new conversations use first candidates.'),
     json('aiStack', 'AI rows to use before the server stack, as JSON: [{"agent":"claude","values":{"model":"opus"}},"stop"]'),
     quote, sourceRequest, expectedTaskHash, placementRevision,
-    text('expectedHeadRun', 'The target placement conversation head from task get agents.headRunId'),
+    text('expectedHeadRun', 'The target placement\'s conversation head: agents[].headRunId in task get'),
     text('instructionKind', `What the instruction is, kept for analysis: ${INSTRUCTION_KINDS.join(', ')}`),
     list('fixes', `For a fix, what was wrong with the result (one or more): ${FIX_KINDS.join(', ')}`),
   ], { rules: taskRequestRules, output: taskRequestResultSchema, help: help(
@@ -432,6 +447,21 @@ const definitions = {
     'Run of the same placement (model, effort, command)', runConditionsInput, [text('run', 'Run ID')],
     { output: runConditionsViewSchema, help: help('A Run from before conditions were kept has null conditions; a change is read only between two Runs that kept them.',
       'A project policy change is a body_updated record of the project (task get --task <project> --log <count>).') }),
+  'run/list': command('read', 'List the unfinished Runs (queued, running, needs_review), whatever state their Task is in',
+    runListInput, [
+      text('under', 'Only the Runs of this Task and the Tasks below it'),
+      number('limit', 'Maximum Runs per page (default 100)', { queryCount: true }),
+      text('cursor', 'Cursor from the previous page, for the same --under'),
+    ], { output: runListResultSchema, help: help(
+      'Unfinished is what finishing or archiving a Task and an update wait for. A Task\'s state, hold, archive or shelf hides none of its Runs.',
+      'parentRun is the Run whose request started the Run (null for a person\'s or the coordinator\'s). Stopping a Run also stops the Runs under it. ' +
+        'stopRequested: a stop was asked and the Run has not ended yet. The Run that calls run list is listed too.',
+      'scope is what was read: project null is the whole workspace, else that project\'s Task Runs only; ' +
+        'coordinatorRuns says whether the coordinator conversation\'s Runs were included.',
+      'Each page is read at its own observedAt and continues after the last Run returned: a Run that ends between pages is not shown again, ' +
+        'and one created later comes on a later page. A read failure is an error, never an empty list.',
+      'An update also waits for ended Runs whose input or output is not yet settled and for stops not yet delivered. ' +
+        'This list does not show those, so an update can still report Runs remaining while it is empty.') }),
   'run/stop': command('write', 'Stop a Run; task report --state stopped stops a Task with its subtree', runStopInput,
     [text('run', 'Run ID'), quote, sourceRequest], { output: stopResponseSchema }),
   'field/get': command('read', 'Read the shape of the values a Task writes, as JSON Schema: its fields in order, each with ' +
