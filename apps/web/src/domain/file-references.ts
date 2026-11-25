@@ -1,4 +1,4 @@
-import { decodeEntities, htmlNodes, htmlPieces, inlineNodes, markdownDocument, type InlineContent, type InlineNode } from "./markdown";
+import { decodeEntities, htmlNodes, htmlPieces, inlineNodes, listTexts, markdownDocument, type InlineContent, type InlineNode } from "./markdown";
 import { BARE_PATH, localTarget, managedFileTarget, type LocalTarget } from "./local-path";
 import type { TaskFile } from "./task-files";
 import { bareUrls } from "./web-link";
@@ -102,7 +102,7 @@ export function fileReferences(text: string, scope: ReferenceScope): FileReferen
   for (const block of markdownDocument(text).blocks) {
     if (block.type === "heading" || block.type === "p") inline(block.text);
     else if (block.type === "quote") block.paragraphs.forEach(inline);
-    else if (block.type === "list") block.items.forEach(inline);
+    else if (block.type === "list") listTexts(block).forEach(inline);
     else if (block.type === "table") block.rows.flat().forEach(inline);
     // An HTML block is drawn in pieces where it closes a fold an earlier block left open, each as written.
     else if (block.type === "html") for (const piece of htmlPieces(block.text)) walk(htmlNodes(piece.text), { asWritten: true, inLink: false });

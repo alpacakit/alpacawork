@@ -1,6 +1,6 @@
 import { openView } from "./viewer/Viewer";
 import { Message } from "@/components/ui/message";
-import { markdownDocument, markdownMediumId, type InlineContent } from "@/domain/markdown";
+import { markdownDocument, markdownMediumId, type InlineContent, type List } from "@/domain/markdown";
 import { CodeBlock } from "./CodeBlock";
 import { CELL_FLOOR, TableFrame } from "./TableFrame";
 import type { DiffSource } from "./diff/DiffSummary";
@@ -116,6 +116,7 @@ export { parseMarkdown } from "@/domain/markdown";
  * screenshot from the panel, in dark the ground does.
  * The time note (`note`) is the same in small.
  */
+const BULLETS = ["list-disc", "list-[circle]", "list-[square]"];
 const FLOW = {
   page: {
     root: "text-base",
@@ -216,6 +217,18 @@ export function MarkdownBody({ text, task, onFollow, underTitle = false, sourceF
     else openViewer(from, images, active);
   };
   const inline = (value: InlineContent, mediaBlockSpace?: string, html?: { inners: Inners }) => <InlineMarkdown content={value} html={html} mediaKey={key} galleryReportKey={galleryReportKey} task={task} onFollow={onFollow} sourceFile={sourceFile} report={report} variant={variant} files={files} mediaBlockSpace={mediaBlockSpace} />;
+  // A list under an item stands under the item's text, its bullets in the next shape (disc, circle, square) as GitHub draws them.
+  const list = (block: List<InlineContent>, className: string, depth = 0): ReactNode => {
+    const Tag = block.ordered ? "ol" : "ul";
+    return <Tag start={block.ordered ? block.start : undefined} className={cn(className, flow.list, block.ordered ? "list-decimal" : BULLETS[Math.min(depth, 2)])}>
+      {block.items.map((item, j) => <li key={j}>
+        {inline(item.text)}
+        {item.children.map((child, k) => child.type === "p"
+          ? <p key={k} className="mt-type-close">{inline(child.text)}</p>
+          : <Fragment key={k}>{list(child, "mt-type-close", depth + 1)}</Fragment>)}
+      </li>)}
+    </Tag>;
+  };
   const blocks = document.blocks;
   const first = blocks[0];
   const shown = underTitle && first?.type === "heading" && first.text.text.trim() === task?.title.trim() ? blocks.slice(1) : blocks;
@@ -278,13 +291,9 @@ export function MarkdownBody({ text, task, onFollow, underTitle = false, sourceF
               </blockquote>
             );
           case "list":
-            return (
-              block.ordered ? <ol key={i} start={block.start} className={cn(space, flow.prose, flow.list, "list-decimal")}>
-                {block.items.map((item, j) => <li key={j}>{inline(item)}</li>)}
-              </ol> : <ul key={i} className={cn(space, flow.prose, flow.list, "list-disc")}>
-                {block.items.map((item, j) => <li key={j}>{inline(item)}</li>)}
-              </ul>
-            );
+            return <Fragment key={i}>{list(block, cn(space, flow.prose))}</Fragment>;
+          case "rule":
+            return <hr key={i} className={cn(space, flow.prose, "border-0 border-t border-line")} />;
           case "table":
             return <TableFrame key={i} className={space}>
               <table className={cn("w-auto border-collapse", flow.table)}>
