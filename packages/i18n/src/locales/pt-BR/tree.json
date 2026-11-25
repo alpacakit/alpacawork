@@ -91,10 +91,8 @@
       "unknown": "Motivo desconhecido"
     },
     "facts": {
-      "heading": "Tempo desta tarefa",
-      "own": "Trabalho, sozinha",
-      "since": "Neste estado",
-      "subtree": "Trabalho, com subtarefas"
+      "own": "Só esta tarefa",
+      "since": "Neste estado"
     },
     "length": {
       "days_one": "{{count}}d",

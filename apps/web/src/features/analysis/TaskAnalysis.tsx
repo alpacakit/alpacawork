@@ -1,4 +1,6 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
+import type { Task } from "@/data/types";
+import { useTaskTimes } from "@/features/tree/RowStatus";
 import { useTranslation } from "react-i18next";
 import { RegionSkeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/data/client";
@@ -11,9 +13,9 @@ import type { UnitValues } from "./contract";
 const OUTCOME = { passed: "bg-done", reworked: "bg-reworked", stopped: "bg-stopped" } as const;
 
 /** One task: its time drawn as the list draws time (the AI at work, your turn, paused), what you sent as marks, then its values, only those that are not zero. */
-export function TaskAnalysis({ taskId, title = false, work }: { taskId: string; title?: boolean;
-  /** The times the task's row says (how long agents worked, how long in its state), over the AI's use. */
-  work?: ReactNode }) {
+export function TaskAnalysis({ taskId, title = false, live }: { taskId: string; title?: boolean;
+  /** The times the task's row says (`useTaskTimes`): the task's own run time beside the whole's, its time in its state with its times. */
+  live?: ReturnType<typeof useTaskTimes> }) {
   const { t } = useTranslation("analysis");
   const [root, setRoot] = useState<HTMLDivElement | null>(null);
   const query = useUnitValues(taskId);
@@ -23,12 +25,14 @@ export function TaskAnalysis({ taskId, title = false, work }: { taskId: string; 
   const heading = (title || row && row.id !== taskId) && row && <h3 dir="auto" className="mb-1 text-heading font-semibold">
     {row.id !== taskId && <span className="me-2 text-muted">{row.id}</span>}{row.title}
   </h3>;
-  if (query.error instanceof ApiError && query.error.code === "not_found") return <>{heading}<p className="text-muted">{t("values.empty")}</p>{work}</>;
+  if (query.error instanceof ApiError && query.error.code === "not_found") return <>{heading}<p className="text-muted">{t("values.empty")}</p></>;
   if (!values || !row) return <>{heading}<ReadPart set={{ data: null, current: false, reads: [query] }}
-    skeleton={<RegionSkeleton shape="analysisTask" />}>{() => null}</ReadPart>{work}</>;
+    skeleton={<RegionSkeleton shape="analysisTask" />}>{() => null}</ReadPart></>;
   const you = values.time.review + values.time.answer;
   const lead = row.outcome && row.outcome !== "stopped" && row.finishedAt ? Date.parse(row.finishedAt) - Date.parse(row.requestedAt) : null;
   const usage = values.usage;
+  // The row's times belong to the task shown, so they join only its own values (a task under another shows its top's).
+  const mine = row.id === taskId ? live : undefined;
   // The models' output in one step, the largest's (one column reads alike).
   const output = tokenColumn(values.models.map(model => model.output));
   // What took a task out of "no fixes" (more than one review, a send-back, an instruction in review or after acceptance)
@@ -42,6 +46,8 @@ export function TaskAnalysis({ taskId, title = false, work }: { taskId: string; 
   const used = ([
     [t("usage.launches"), usage.launches && format("times", usage.launches)],
     [t("usage.runMs"), usage.runMs && duration(usage.runMs)],
+    // Of the whole's run time, the task's own, where tasks under it worked too.
+    [t("tree:status.facts.own"), mine && values.children && mine.own !== null && duration(mine.own)],
     [t("values.conversations"), usage.newConversations && format("conversations", usage.newConversations)],
     [t("values.workers"), values.workers && format("people", values.workers)],
     [t("values.children"), values.children && format("tasks", values.children)],
@@ -60,8 +66,8 @@ export function TaskAnalysis({ taskId, title = false, work }: { taskId: string; 
       ...you > 0 ? [{ color: "bg-turn", name: t("time.you"), value: duration(you) }] : [],
       ...values.time.ai > 0 ? [{ color: "bg-working", name: t("time.ai"), value: duration(values.time.ai) }] : [],
       ...values.time.other >= 60_000 ? [{ color: "bg-rest", name: t("time.other"), value: duration(values.time.other) }] : [],
+      ...mine?.since ? [{ name: t("tree:status.facts.since"), value: mine.since }] : [],
       ...facts]} />
-    {work}
     {used.length > 0 && <>
       <h4 className="mt-8 mb-3 text-xs font-normal text-soft">{t("values.usage")}</h4>
       <Facts items={used.map(([name, value]) => ({ name, value }))} />
@@ -154,4 +160,9 @@ export function markGroups(lefts: number[], width: number, reach = 12): number[]
     if (group && (left - lefts[group[group.length - 1]!]!) / 100 * width < reach) group.push(at); else groups.push([at]);
   });
   return groups;
+}
+
+/** The Analysis tab of a task the reader shows: its values, with the times its row says. */
+export function ReaderTaskAnalysis({ task }: { task: Task }) {
+  return <TaskAnalysis taskId={task.id} live={useTaskTimes(task)} />;
 }

@@ -87,10 +87,8 @@
       "unknown": "原因不明"
     },
     "facts": {
-      "heading": "此任务的时间",
-      "own": "工作（单独）",
-      "since": "处于当前状态",
-      "subtree": "工作（含子任务）"
+      "own": "其中本任务",
+      "since": "处于当前状态"
     },
     "length": {
       "days_other": "{{count}}天",

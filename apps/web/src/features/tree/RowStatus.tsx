@@ -114,32 +114,16 @@ function WorkTime({ task, at }: { task: Task; at?: number | null }) {
 }
 
 /**
- * The times the task's row says, in its Analysis tab: how long agents have worked on it, in its two parts (with the
- * tasks under it, and its own), whatever its state, ticking in the working colour while Runs go; and, as its row says
- * when it does not run, how long it has been in its state. Drawn as the tab's other values are, each its name over its
- * value. A task no agent has worked on, in no state the row times, has none of it.
+ * The times the task's row says, for its Analysis tab: how long agents have worked on the task alone (the tab counts
+ * the whole with the tasks under it), ticking while Runs go, and, as its row says when it does not run, how long it has
+ * been in its state, in words; null for what there is none of.
  */
-export function TaskWorkFacts({ task, className }: { task: Task; className?: string }) {
-  const { t } = useTranslation("tree");
+export function useTaskTimes(task: Task): { own: number | null; since: string | null } {
   const offline = useOfflineShown();
   const receivedAt = useConnection((state) => offline ? state.lastReceivedAt : null);
   const work = useWorkTime(task, offline ? receivedAt ?? null : undefined);
   const since = useSince(task);
-  if (!work.any && !since) return null;
-  const tone = work.running && !work.still ? "text-working" : work.still ? "text-muted" : undefined;
-  const items = [
-    ...work.any ? work.parts.map(part => ({ key: part.key, name: t(`status.facts.${part.key}`), value: part.value, tone })) : [],
-    ...since ? [{ key: "since", name: t("status.facts.since"), value: since.shown, tone: undefined }] : [],
-  ];
-  return <section data-task-work className={className}>
-    <h4 className="mb-3 text-xs font-normal text-soft">{t("status.facts.heading")}</h4>
-    <dl className="grid grid-cols-4 gap-x-4 gap-y-4 narrow:grid-cols-3">
-      {items.map(item => <div key={item.key} data-work-time={item.key} className="min-w-0">
-        <dt className="text-xs text-muted">{item.name}</dt>
-        <dd className={cn("text-base font-semibold tabular-nums", item.tone)}>{item.value}</dd>
-      </div>)}
-    </dl>
-  </section>;
+  return { own: work.any ? work.own : null, since: since?.shown ?? null };
 }
 
 /** How long the task has been in its state, as its row says it when it does not run (`StatusTime`): null when it does not. */

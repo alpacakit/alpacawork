@@ -87,10 +87,8 @@
       "unknown": "理由不明"
     },
     "facts": {
-      "heading": "このタスクの時間",
-      "own": "作業（単体）",
-      "since": "今の状態になって",
-      "subtree": "作業（配下込み）"
+      "own": "うち単体",
+      "since": "今の状態になって"
     },
     "length": {
       "days_other": "{{count}}日",
