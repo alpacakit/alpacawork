@@ -1,0 +1,392 @@
+import { createHash } from 'node:crypto';
+import type { DatabaseSync } from 'node:sqlite';
+import { Problem, PROBLEM_CODE } from '@alpacawork/core';
+import { sumRunUsage } from '@alpacawork/contract';
+import type { ChangeLog } from '@alpacawork/db';
+import { isAnalysisTallyBy, type AnalysisAcceptedTotals, type AnalysisBucket, type AnalysisDays, type AnalysisHead,
+  type AnalysisListInput, type AnalysisListRow, type AnalysisModel, type AnalysisTallyBy, type AnalysisTaskInput, type AnalysisTaskBy,
+  type AnalysisTaskCounts, type AnalysisTasksInput, type AnalysisTasksView, type AnalysisUnitList,
+  type AnalysisUnitValues, type AnalysisUsageBy, type AnalysisUsageCounts, type AnalysisUsageInput, type AnalysisUsageView } from '@alpacawork/contract/analysis';
+import { authorize, type Caller } from '../control/authorize.js';
+import { readControl } from '../control/task-store.js';
+import type { Tally } from '../agents/adapters/tally.js';
+import { FactsCache, type AnalysisFacts, type FactLaunch, type Unit } from './facts.js';
+import { addDays, bucketStart, buckets, calendar, inDays, makeHead, monday, serverZone } from './calendar.js';
+import { clocks, emptyClock, shareOf, unitMarks, type ModelRun } from './rules.js';
+
+type DatedUnit = { day: string; unit: Unit };
+type CountedUnit = DatedUnit & { prCount: number };
+type DatedLaunch = { day: string; root: string; run: FactLaunch };
+type TalliedLaunch = DatedLaunch & { tally: Tally };
+const tallyFields = { skill: 'skills', tool: 'tools', mcp: 'mcp' } as const;
+type DimensionValue = { key: string; label: string; model?: AnalysisModel };
+type TaskDimensionValue = DimensionValue & { noOwnerRun?: true };
+const group = <T, D extends DimensionValue>(items: Iterable<T>, keys: (item: T) => readonly D[]) => {
+  const result = new Map<string, D & { items: T[] }>();
+  for (const item of items) for (const dimension of keys(item)) {
+    const found = result.get(dimension.key);
+    if (found) found.items.push(item);
+    else result.set(dimension.key, { ...dimension, items: [item] });
+  }
+  return result;
+};
+const single = (key: string, label = key) => [{ key, label }];
+const compareKey = (a: { label: string; key: string }, b: { label: string; key: string }) =>
+  a.label.localeCompare(b.label, 'en') || a.key.localeCompare(b.key, 'en');
+const compareTask = (a: Unit, b: Unit) => Number(a.node.id.slice(1)) - Number(b.node.id.slice(1));
+
+function taskCounts(units: readonly DatedUnit[]): AnalysisTaskCounts {
+  let passed = 0, accepted = 0, stopped = 0;
+  for (const { unit: { outcome } } of units) {
+    if (outcome.passed) passed++;
+    if (outcome.acceptedAt) accepted++;
+    else if (outcome.stoppedAt) stopped++;
+  }
+  return { passed, reworked: accepted - passed, stopped, accepted, finished: accepted + stopped, share: shareOf(passed, accepted) };
+}
+function median(values: number[]) {
+  if (!values.length) return null;
+  values.sort((a, b) => a - b);
+  const index = Math.floor(values.length / 2);
+  return values.length % 2 ? values[index]! : (values[index - 1]! + values[index]!) / 2;
+}
+function creditAcceptedPrs(units: readonly DatedUnit[]): Map<Unit, number> {
+  // Attribute a PR in the project scope before selecting dates or task groups.
+  const first = new Map<string, { unit: Unit; acceptedAt: string }>();
+  for (const { unit } of units) {
+    const { acceptedAt } = unit.outcome;
+    if (!acceptedAt) continue;
+    for (const link of unit.prs) {
+      const earlier = first.get(link);
+      if (!earlier || acceptedAt < earlier.acceptedAt ||
+        acceptedAt === earlier.acceptedAt && compareTask(unit, earlier.unit) < 0) {
+        first.set(link, { unit, acceptedAt });
+      }
+    }
+  }
+  const counts = new Map<Unit, number>();
+  for (const { unit } of first.values()) counts.set(unit, (counts.get(unit) ?? 0) + 1);
+  return counts;
+}
+function acceptedTotals(units: readonly CountedUnit[]): AnalysisAcceptedTotals {
+  let submits = 0, questions = 0, prs = 0;
+  const leads: number[] = [], time = emptyClock();
+  for (const { unit, prCount } of units) {
+    if (!unit.outcome.acceptedAt) continue;
+    leads.push(unit.outcome.leadMs!);
+    submits += unit.outcome.submits; questions += unit.questions;
+    prs += prCount;
+    const clock = unit.clock!.time;
+    time.review += clock.review; time.answer += clock.answer; time.ai += clock.ai; time.other += clock.other;
+  }
+  return { leadMedianMs: median(leads), submits, questions, prs, time };
+}
+const taskTotals = (units: readonly CountedUnit[]) => ({ counts: taskCounts(units), accepted: acceptedTotals(units) });
+
+function usageCounts(items: readonly DatedLaunch[], first: ReadonlySet<string>, now: number): AnalysisUsageCounts {
+  let newConversations = 0;
+  const tasks = new Set<string>();
+  for (const { root, run } of items) {
+    tasks.add(root);
+    if (first.has(run.id)) newConversations++;
+  }
+  const { runs, runMs, tokens, tokensUnknown, live } = sumRunUsage(items.map(item => item.run), now);
+  return { launches: runs, runMs, live, newConversations, tokensUnknown, tasks: tasks.size,
+    tokens: { output: tokens?.output ?? 0, input: tokens?.input ?? 0, cache: tokens ? tokens.cacheRead + tokens.cacheWrite : 0 } };
+}
+
+function tallyCalls(tally: Tally, by: Exclude<AnalysisTallyBy, 'skill'>, name?: string) {
+  const counts = tally[tallyFields[by]];
+  return name === undefined ? Object.values(counts).reduce((sum, count) => sum + count, 0) : counts[name] ?? 0;
+}
+
+function countedTotals(items: readonly TalliedLaunch[], by: AnalysisTallyBy) {
+  let calls = 0, launches = 0;
+  for (const { tally } of items) {
+    if (Object.keys(tally[tallyFields[by]]).length) launches++;
+    if (by !== 'skill') calls += tallyCalls(tally, by);
+  }
+  return { calls, launches };
+}
+
+const byBucket = <T extends { day: string }>(records: readonly T[], bucket: AnalysisBucket) =>
+  group(records, record => single(bucketStart(record.day, bucket)));
+
+function makeSeries<T extends { day: string }, C extends object>(bucket: AnalysisBucket, head: AnalysisHead,
+  records: readonly T[], values: (items: T[]) => C) {
+  const indexed = byBucket(records, bucket);
+  const points = buckets(head.firstDay, head.today, bucket).map(point => ({ ...point,
+    ...values(within(indexed.get(bucketStart(point.from, bucket))?.items ?? [], point)),
+  }));
+  return { bucket, points };
+}
+const within = <T extends { day: string }>(items: readonly T[], range: AnalysisDays | null) =>
+  items.filter(({ day }) => inDays(day, range));
+
+function row(unit: Unit, value: number | null): AnalysisListRow {
+  return { id: unit.node.id, project: unit.node.project!, title: unit.node.title, outcome: unit.outcome.outcome,
+    finishedAt: unit.outcome.finishedAt, value };
+}
+
+function matchingProject(facts: AnalysisFacts, project: string | null, ownProject: string | null) {
+  if (project && (facts.nodes.get(project)?.kind !== 'project' || facts.nodes.get(project)?.lifecycle === 'deleted'))
+    throw new Problem(PROBLEM_CODE.notFound, 'Project does not exist');
+  return (id: string) => {
+    if (ownProject !== null) return id === ownProject;
+    for (let node = facts.nodes.get(id); node?.kind === 'project'; node = facts.nodes.get(node.parent ?? '')) {
+      if (node.lifecycle === 'deleted') return false;
+      if (node.id === project) return true;
+    }
+    return project === null;
+  };
+}
+
+class ScopedAnalysis {
+  readonly today: string;
+  readonly firstDay: string | null;
+  readonly datedUnits: DatedUnit[] = [];
+  readonly datedLaunches: DatedLaunch[] = [];
+  readonly date: ReturnType<typeof calendar>;
+  private readonly tallyDay: string;
+  private readonly allows: (project: string) => boolean;
+
+  constructor(private readonly facts: AnalysisFacts, readonly project: string | null, ownProject: string | null,
+    private readonly timeZone: string, readonly now: number, tallySince: number,
+    private readonly tallies: ReadonlyMap<string, Tally>) {
+    this.date = calendar(timeZone);
+    this.today = this.date(now);
+    this.tallyDay = this.date(tallySince);
+    this.allows = matchingProject(facts, project, ownProject);
+    // Convert all instants at this read point using one shared date formatter.
+    let first = Infinity;
+    for (const unit of facts.units.values()) {
+      if (!this.allows(unit.node.project!)) continue;
+      if (unit.node.requested) {
+        first = Math.min(first, Date.parse(unit.outcome.requestedAt));
+        if (unit.outcome.finishedAt) this.datedUnits.push({ unit, day: this.date(Date.parse(unit.outcome.finishedAt)) });
+      }
+      for (const run of unit.launches) {
+        first = Math.min(first, run.started);
+        this.datedLaunches.push({ root: unit.node.id, run, day: this.date(run.started) });
+      }
+    }
+    this.firstDay = Number.isFinite(first) ? this.date(Math.min(first, now)) : null;
+  }
+
+  head(input: Parameters<typeof makeHead>[4]) {
+    return makeHead(this.project, this.timeZone, this.today, this.firstDay, input);
+  }
+
+  private taskKeys(unit: Unit, by: AnalysisTaskBy): TaskDimensionValue[] {
+    if (by === 'project') return this.projectKey(unit);
+    const run = unit.firstOwner;
+    // The colon keeps this key distinct from agent names and hashed model keys.
+    if (!run) return [{ key: 'owner:none', label: 'No owner Run', noOwnerRun: true }];
+    return by === 'agent' ? single(run.agent) : [this.modelKey(run)];
+  }
+
+  private projectKey(unit: Unit) {
+    const id = unit.node.project!;
+    return single(id, this.facts.nodes.get(id)?.title ?? id);
+  }
+
+  private modelKey(run: ModelRun) {
+    // Tallies can arrive after the Run facts have been cached.
+    const tally = this.tallies.get(run.id);
+    const model = tally?.model ?? run.model;
+    const name = model ?? run.agent;
+    const effort = model === null ? null : run.effort;
+    const label = effort === null ? name : `${name}(${effort})`;
+    // Custom launch values can contain parentheses or exceed the list key length limit.
+    const key = createHash('sha256').update(JSON.stringify([name, effort])).digest('base64url');
+    return { key, label, model: { name, effort } };
+  }
+
+  private usageKeys(item: DatedLaunch, by: AnalysisUsageBy): DimensionValue[] {
+    const { run } = item;
+    if (by === 'project') return this.projectKey(this.facts.units.get(item.root)!);
+    if (by === 'agent') return single(run.agent);
+    if (by === 'model') return [this.modelKey(run)];
+    const tally = this.tallies.get(run.id);
+    if (!tally) return [];
+    const names = Object.keys(tally[tallyFields[by]]);
+    return names.map(name => by === 'skill' ? { key: name, label: name }
+      : { key: JSON.stringify([tally.provider, name]), label: `${name} · ${tally.provider}` });
+  }
+
+  private calls(run: FactLaunch, by: AnalysisUsageBy | undefined, key: string | undefined): number {
+    const tally = this.tallies.get(run.id);
+    if (!tally || by !== 'tool' && by !== 'mcp') return 0;
+    const name = key === undefined ? undefined : (JSON.parse(key) as [string, string])[1];
+    return tallyCalls(tally, by, name);
+  }
+
+  private collectedLaunches(items: readonly DatedLaunch[]): TalliedLaunch[] {
+    return items.flatMap(item => {
+      if (!item.run.tallyEligible) return [];
+      const tally = this.tallies.get(item.run.id);
+      return tally && tally.state !== 'unsupported' ? [{ ...item, tally }] : [];
+    });
+  }
+
+  tasks(input: AnalysisTasksInput): AnalysisTasksView {
+    const head = this.head(input);
+    const prCounts = creditAcceptedPrs(this.datedUnits);
+    const units = this.datedUnits.map(item => ({ ...item, prCount: prCounts.get(item.unit) ?? 0 }));
+    const current = within(units, head.period);
+    const previous = head.previous && within(units, head.previous);
+    const value = taskTotals(current), before = previous && taskTotals(previous);
+    const lifetime = this.head({}).period;
+    const ever = lifetime && (input.period === 'all' ? value : taskTotals(within(units, lifetime)));
+    const series = makeSeries(input.bucket, head, units, taskTotals);
+    const counts = new Map<string, number>();
+    for (const { day } of this.datedUnits) counts.set(day, (counts.get(day) ?? 0) + 1);
+    const from = monday(head.firstDay ?? head.today), finished: number[] = [];
+    if (head.firstDay) for (let day = from; day <= head.today; day = addDays(day, 1)) finished.push(counts.get(day) ?? 0);
+    const by = input.by;
+    const breakdown = by ? { by, rows: [...group(current, ({ unit }) => this.taskKeys(unit, by)).values()].map(({ items, ...dimension }) => {
+      const { finished, accepted, passed, share } = taskCounts(items), totals = acceptedTotals(items);
+      return { ...dimension, finished, accepted, passed, share, leadMedianMs: totals.leadMedianMs,
+        submitsPerAccepted: accepted ? totals.submits / accepted : null };
+    }).sort((a, b) => b.finished - a.finished || compareKey(a, b)) } : null;
+    return { head, counts: { value: value.counts, previous: before?.counts ?? null },
+      accepted: { value: value.accepted, previous: before?.accepted ?? null }, ever, series, grass: { from, finished }, breakdown };
+  }
+
+  usage(input: AnalysisUsageInput): AnalysisUsageView {
+    const head = this.head(input);
+    const current = within(this.datedLaunches, head.period), previous = head.previous && within(this.datedLaunches, head.previous);
+    const value = this.useCounts(current);
+    const lifetime = this.head({}).period;
+    const ever = lifetime && (input.period === 'all' ? value : this.useCounts(within(this.datedLaunches, lifetime)));
+    const series = makeSeries(input.bucket, head, this.datedLaunches, items => ({ counts: this.useCounts(items) }));
+    const by = input.by;
+    const breakdown = isAnalysisTallyBy(by) ? this.countedBreakdown(by, head, series)
+      : by ? { by, since: null, counted: null, series: null, rows: this.usageGroups(current, by) } : null;
+    return { head, counts: { value, previous: previous && this.useCounts(previous) }, ever, series, breakdown };
+  }
+
+  private countedBreakdown(by: AnalysisTallyBy, head: AnalysisHead, chart: AnalysisUsageView['series']) {
+    const launches = this.collectedLaunches(this.datedLaunches);
+    if (!launches.length) return { by, since: null, counted: null, series: null, rows: [] };
+    const since = this.tallyDay;
+    const current = within(launches, head.period);
+    const previous = head.previous && head.previous.from >= since ? within(launches, head.previous) : null;
+    const indexed = byBucket(launches, chart.bucket);
+    return { by, since, counted: { value: countedTotals(current, by), previous: previous && countedTotals(previous, by) },
+      series: chart.points.map(point => point.to < since ? null :
+        countedTotals(within(indexed.get(bucketStart(point.from, chart.bucket))?.items ?? [], point), by)),
+      rows: this.usageGroups(current, by) };
+  }
+
+  private useCounts(items: readonly DatedLaunch[]) { return usageCounts(items, this.facts.first, this.now); }
+
+  private usageGroups(items: readonly DatedLaunch[], by: AnalysisUsageBy) {
+    return [...group(items, item => this.usageKeys(item, by)).values()].map(({ items, ...dimension }) => ({
+      ...dimension, counts: this.useCounts(items),
+      calls: by === 'tool' || by === 'mcp' ? items.reduce((sum, { run }) => sum + this.calls(run, by, dimension.key), 0) : null,
+    })).sort((a, b) => (b.calls ?? b.counts.launches) - (a.calls ?? a.counts.launches) || compareKey(a, b));
+  }
+
+  private usageRows(input: AnalysisListInput, head: AnalysisHead) {
+    const by = input.by;
+    const launches = isAnalysisTallyBy(by) ? this.collectedLaunches(this.datedLaunches) : this.datedLaunches;
+    const selected = within(launches, head.period).filter(item =>
+      !by || this.usageKeys(item, by).some(({ key }) => input.key === undefined || key === input.key));
+    return [...group(selected, item => single(item.root)).values()].map(({ key, items }) => {
+      const unit = this.facts.units.get(key)!;
+      if (!input.value) return row(unit, null);
+      if (input.value === 'calls') return row(unit, items.reduce((sum, { run }) => sum + this.calls(run, input.by, input.key), 0));
+      const { launches, runMs, newConversations, tokens } = this.useCounts(items);
+      if (input.value === 'tokens') return row(unit, tokens.output + tokens.input + tokens.cache);
+      return row(unit, ({ launches, runMs, newConversations, ...tokens } as Record<string, number>)[input.value] ?? null);
+    });
+  }
+
+  private taskRows(input: AnalysisListInput, head: AnalysisHead) {
+    const prCounts = input.value === 'prs' ? creditAcceptedPrs(this.datedUnits) : null;
+    const units = within(this.datedUnits, head.period).map(item => item.unit).filter(unit =>
+      (input.set === 'finished' || input.set === 'accepted' && unit.outcome.acceptedAt || unit.outcome.outcome === input.set)
+      && (!input.by || this.taskKeys(unit, input.by as AnalysisTaskBy).some(group => group.key === input.key)));
+    return units.map(unit => {
+      if (!input.value) return row(unit, null);
+      const { review, answer, ai, other } = unit.clock?.time ?? emptyClock();
+      const values: Record<string, number | null> = { lead: unit.outcome.leadMs, submits: unit.outcome.submits,
+        questions: unit.questions, prs: prCounts?.get(unit) ?? 0, you: review + answer, ai, other };
+      return row(unit, values[input.value] ?? null);
+    });
+  }
+
+  list(input: AnalysisListInput): AnalysisUnitList {
+    const head = this.head(input);
+    const home = input.set === 'finished' && input.period === 'today' && !input.end && !input.by && !input.value;
+    const rows = (input.set === 'used' ? this.usageRows(input, head) : this.taskRows(input, head))
+      .filter(item => !input.value || item.value !== null && (item.value > 0 || input.value === 'lead' || input.value === 'submits'))
+      .sort((a, b) => ((b.value ?? 0) - (a.value ?? 0)) ||
+        (home ? 1 : -1) * (a.finishedAt ?? '').localeCompare(b.finishedAt ?? '') || Number(a.id.slice(1)) - Number(b.id.slice(1)));
+    const selector = createHash('sha256').update(JSON.stringify([head.project, head.timeZone, head.period, input.set, input.by, input.key, input.value]))
+      .digest('base64url').slice(0, 22);
+    let offset = 0;
+    if (input.cursor) {
+      const match = /^([\w-]{22})\.(\d+)$/.exec(input.cursor);
+      if (!match || match[1] !== selector || !Number.isSafeInteger(Number(match[2])))
+        throw new Problem(PROBLEM_CODE.invalidInput, 'Use a cursor from the same analysis list');
+      offset = Number(match[2]);
+    }
+    const end = offset + (input.limit ?? 100);
+    return { head, total: rows.length, rows: rows.slice(offset, end), cursor: end < rows.length ? `${selector}.${end}` : null };
+  }
+
+  task(asked: string): AnalysisUnitValues {
+    const root = this.facts.rootOf.get(asked), unit = root && this.facts.units.get(root);
+    if (!unit || !this.allows(unit.node.project!)) throw new Problem(PROBLEM_CODE.notFound, 'Task does not exist in the analysis scope');
+    const from = Date.parse(unit.outcome.requestedAt), to = unit.outcome.finishedAt ? Date.parse(unit.outcome.finishedAt) : this.now;
+    const { time, band } = unit.clock ?? clocks(unit.log, unit.ownQuestions, unit.childQuestions, unit.launches, from, to, this.now);
+    // Use the same Run attribution as the period view, over this Task's lifetime.
+    const items = this.datedLaunches.filter(item => item.root === root);
+    const collected = this.collectedLaunches(items);
+    const models = [...group(items, ({ run }) => [this.modelKey(run)]).values()]
+      .map(({ key, label, model, items }) => {
+        const { launches, runMs, tokens } = this.useCounts(items);
+        return { key, label, model, launches, runMs, output: tokens.output };
+      }).sort((a, b) => b.launches - a.launches || compareKey(a, b));
+    const tools = this.usageGroups(collected, 'tool').map(({ key, calls }) =>
+      ({ name: (JSON.parse(key) as [string, string])[1], calls: calls! }));
+    const toolCounts = new Map<string, number>();
+    for (const { name, calls } of tools) toolCounts.set(name, (toolCounts.get(name) ?? 0) + calls);
+    return { head: this.head({}), unit: { ...row(unit, null), requestedAt: unit.outcome.requestedAt, asked },
+      band, time, marks: unitMarks(unit.log, from, to), submits: unit.outcome.submits,
+      questions: unit.questions, ...unit.outcome.instructions, answers: unit.answers, workers: unit.workers, children: unit.children,
+      usage: this.useCounts(items), models, prs: [...unit.prs].sort(),
+      skills: this.usageGroups(collected, 'skill').map(group => group.key).sort(),
+      tools: [...toolCounts].map(([name, calls]) => ({ name, calls })).sort((a, b) => b.calls - a.calls || a.name.localeCompare(b.name, 'en')),
+      tallied: { runs: collected.length, of: items.filter(({ run }) => run.tallyEligible).length, since: this.tallyDay } };
+  }
+}
+
+export class AnalysisReader {
+  private readonly facts: FactsCache;
+  readonly tallies = new Map<string, Tally>();
+  private readonly timeZone = serverZone();
+  constructor(private readonly root: string, private readonly tallySince: number, journal?: ChangeLog) {
+    this.facts = new FactsCache(root, tallySince, journal);
+  }
+  close() { this.facts.close(); }
+
+  private scoped<T>(input: { project?: string; timeZone?: string }, caller: Caller, apply: (view: ScopedAnalysis) => T): T {
+    return readControl(this.root, db => this.readAt(db, input, caller, apply));
+  }
+  private readAt<T>(db: DatabaseSync, input: { project?: string; timeZone?: string }, caller: Caller,
+    apply: (view: ScopedAnalysis) => T): T {
+    const { readScope } = authorize(db, caller, { name: 'task.list' }, { task: null, quote: null });
+    if (readScope !== null && input.project !== undefined && input.project !== readScope)
+      throw new Problem(PROBLEM_CODE.forbidden, 'A Run reads only its own project');
+    const facts = this.facts.read(db);
+    return apply(new ScopedAnalysis(facts, readScope ?? input.project ?? null, readScope, input.timeZone ?? this.timeZone,
+      Date.now(), this.tallySince, this.tallies));
+  }
+  tasks(input: AnalysisTasksInput, caller: Caller) { return this.scoped(input, caller, view => view.tasks(input)); }
+  usage(input: AnalysisUsageInput, caller: Caller) { return this.scoped(input, caller, view => view.usage(input)); }
+  list(input: AnalysisListInput, caller: Caller) { return this.scoped(input, caller, view => view.list(input)); }
+  task(input: AnalysisTaskInput, caller: Caller) { return this.scoped(input, caller, view => view.task(input.task)); }
+}

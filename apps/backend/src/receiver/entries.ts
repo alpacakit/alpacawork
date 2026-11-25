@@ -26,7 +26,10 @@ import { history, query, requireReadFrame, view } from './task-read-entries.js';
 import { updateNode } from './update-entries.js';
 import { workspaceUrl } from './workspace-url.js';
 
+import type { AnalysisReader } from '../analysis/reads.js';
+
 export interface Context extends TaskContext {
+  analysis?: AnalysisReader;
   push?: PushStore;
   presence?: Presence;
   host?: HostMonitor;
@@ -359,6 +362,10 @@ const implementations = {
   'help': { run: (_root, input) => mcpCommandHelp(input.commands) },
   'guide': { run: (_root, input) => mcpSkill(input.name) },
   ...taskCommands,
+  'analysis/tasks': { run: (_root, input, context) => context.analysis!.tasks(input, requireCaller(context)) },
+  'analysis/usage': { run: (_root, input, context) => context.analysis!.usage(input, requireCaller(context)) },
+  'analysis/list': { run: (_root, input, context) => context.analysis!.list(input, requireCaller(context)) },
+  'analysis/task': { run: (_root, input, context) => context.analysis!.task(input, requireCaller(context)) },
   'project/shelf': {
     run: (root, _input, context) => {
       authorizeRead(root, context, SCREEN, null);

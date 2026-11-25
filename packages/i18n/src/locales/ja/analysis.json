@@ -1,0 +1,319 @@
+{
+  "breakdown": {
+    "all_other": "すべて表示（{{count}}行）",
+    "since": "{{date}}から",
+    "title": "内訳",
+    "top": "上位だけ表示"
+  },
+  "bucket": {
+    "day": "日ごと",
+    "label": "区切り",
+    "month": "月ごと",
+    "ongoing": "途中",
+    "partial_other": "{{count}}日分",
+    "week": "週ごと"
+  },
+  "card": {
+    "copied": "画像をコピーしました",
+    "copy": "コピー",
+    "copyFailed": "コピーできませんでした。画像を保存してください",
+    "dark": "暗い",
+    "days_other": "{{count}}日間",
+    "drawFailed": "画像を作れませんでした",
+    "grass": "草",
+    "hero": "大きく出す数",
+    "kicker": "AI に任せた仕事",
+    "light": "明るい",
+    "make": "カードにする",
+    "model": "いちばん使ったモデル",
+    "numbers": "載せる数（{{limit}}つまで）",
+    "passed": "手直しなしで完了",
+    "post": "ポストする",
+    "postCopied": "画像をコピーしました。投稿の画面で貼り付けてください",
+    "postFinished_other": "この{{days}}日間で、AI に任せた仕事が {{value}}件終わりました",
+    "postFinishedAll_other": "これまでに、AI に任せた仕事が {{value}}件終わりました",
+    "postHintCopy": "画像はコピーされます。X の画面で貼り付けてください",
+    "postHintSave": "画像は保存されます。X の画面で添付してください",
+    "postOnX": "X でポストする",
+    "postSave": "画像を保存して、投稿に付けてください",
+    "postShare": "この{{days}}日間、AI に任せた仕事の {{value}} が手直しなしで完了しました",
+    "postShareAll": "これまでに、AI に任せた仕事の {{value}} が手直しなしで完了しました",
+    "postTokens": "この{{days}}日間、AI に {{value}}トークン分の仕事を任せました",
+    "postTokensAll": "これまでに、AI に {{value}}トークン分の仕事を任せました",
+    "prs": "PR",
+    "runMs": "AI の実行時間",
+    "save": "画像を保存",
+    "saved": "画像を保存しました",
+    "share": "共有",
+    "shareFailed": "共有できませんでした",
+    "theme": "色"
+  },
+  "chart": {
+    "binLabel": "{{day}}・{{name}} {{value}}",
+    "fewShare": "{{accepted}}件のうち {{passed}}件",
+    "finished": "終わったタスク",
+    "finishedTip": "{{total}}件：手直しなし {{passed}}・手直しあり {{reworked}}・中止 {{stopped}}",
+    "keys": "左右の矢印キーで列を選び、Enter でその列のタスクの一覧を開く",
+    "none": "受け入れなし",
+    "notCounted": "数え始める前",
+    "share": "手直しなしの割合",
+    "sharePercentTip": "受け入れた {{accepted}}件のうち {{passed}}件・{{share}}",
+    "shareTip": "受け入れた {{accepted}}件のうち {{passed}}件",
+    "shareTipFew": "受け入れた {{accepted}}件のうち {{passed}}件（10件受け入れると割合を出します）"
+  },
+  "colon": "：",
+  "day": "{{day}}（{{weekday}}）",
+  "def": {
+    "acceptedText": "あなたが受け入れたタスク。手直しなしの割合・かかった時間・確認に出した回数・あなたへの問い・関連 PR は、受け入れたタスクだけで数える",
+    "after": "作業中の指示の追加は数えない。割合は10件以上のときだけ出す。",
+    "aiText": "作業中で、AI が動いていた時間",
+    "cacheText": "キャッシュから読んだ分と書いた分。会話が続くと、前の文脈を読み直す分がここに入る",
+    "callsText": "ツール・MCP を呼び出した回数",
+    "conversationName": "新しい会話",
+    "conversationText": "この期間に最初に起動した会話",
+    "dayName": "日付",
+    "everName": "全期間",
+    "everText": "記録の最初の日から今日まで",
+    "finishedName": "終わったタスク",
+    "finishedTasksText": "受け入れたタスクと中止したタスク。受け入れたタスクは最初に受け入れた日に数える",
+    "finishedText": "「タスク」と同じ数",
+    "inputName": "入力",
+    "inputText": "キャッシュの読み書きは除く",
+    "launchName": "起動",
+    "launchText": "エージェントを起こした回数（動いている所へ渡した入力は除く）",
+    "lead": "受け入れたタスクのうち、次の3つを満たすもの",
+    "leadName": "かかった時間",
+    "leadText": "頼んでから最初の受け入れまで",
+    "mcpText": "MCP サーバーのツール。サブエージェント内の呼び出しは含まない",
+    "modelName": "モデル",
+    "modelText": "最初に任せたモデル",
+    "one": "確認に出したのは1回まで",
+    "otherText": "保留・エラー・着手前の時間と、作業中でも AI が動いていなかった時間",
+    "outputText": "AI が書いた分",
+    "perFinishedName": "終わったタスク1件あたり",
+    "perFinishedText": "その区切りの量 ÷ その区切りに終わったタスクの数。作業中のタスクの分も入るので、日ごとでは振れる",
+    "perTaskName": "1件あたり",
+    "perTaskText": "その区切りの合計 ÷ その区切りに受け入れたタスクの数。10件未満の区切りは白抜きの点",
+    "prName": "関連 PR",
+    "prText": "受け入れたタスクに出てきた PR。同じ PR は1つに数える",
+    "questionsText": "頼んでから終わるまでに AI があなたに聞いた問いの数。取り下げた問いも含む",
+    "runName": "実行時間",
+    "runText": "動いた長さの合計。並行分も足す",
+    "skillName": "スキル",
+    "skillText": "呼び出したか、スキルの文書を読んだ起動",
+    "submitsText": "受け入れるまでに確認に出した回数",
+    "three": "受け入れた後に指示が来ていない（来たら外れる）",
+    "tokensName": "トークン",
+    "tokensText": "出力＋入力＋キャッシュの読み書き。作業中のタスクの分も含む",
+    "tokensUnknown_other": "トークンの記録がない起動 {{count}}回は、トークンに含まない",
+    "toolName": "ツール",
+    "toolText": "サブエージェント内の呼び出しは含まない",
+    "two": "確認中に差し戻しも指示の追加もない",
+    "usedTasksText": "その AI が動いたタスク。1つのタスクで複数のモデルが動くとそれぞれに数えるので、合計は終わったタスクより多くなることがある",
+    "youText": "確認待ち（あなたが確認するのを待っていた時間）と、答え待ち（あなたへの問いに答えるのを待っていた時間）"
+  },
+  "face": {
+    "analysis": "分析",
+    "label": "画面",
+    "use": "使う"
+  },
+  "home": {
+    "label": "{{marks}}。分析を開く",
+    "marks_other": "今日の完了 {{count}}件（手直しなし {{passed}}件）"
+  },
+  "lead": {
+    "ever": "全期間 {{value}}"
+  },
+  "line": {
+    "median": "1件の中央値",
+    "perFinished": "終わったタスク1件あたり",
+    "perTask": "1件あたり"
+  },
+  "list": {
+    "back": "一覧",
+    "close": "閉じる",
+    "count_other": "{{n}}件",
+    "day": "終わった日",
+    "empty": "タスクはありません",
+    "more_other": "残り {{count}}件を表示",
+    "outcome": "結果",
+    "task": "タスク",
+    "usedTitle": "{{name}}のタスク"
+  },
+  "look": {
+    "label": "表示",
+    "tasks": "タスク",
+    "usage": "AI の使用量"
+  },
+  "outcome": {
+    "none": "作業中",
+    "passed": "手直しなし",
+    "reworked": "手直しあり",
+    "stopped": "中止"
+  },
+  "period": {
+    "28d": "直近28日",
+    "7d": "直近7日",
+    "all": "全期間",
+    "days_other": "{{count}}日",
+    "earlier": "前の期間",
+    "label": "期間",
+    "later": "次の期間",
+    "today": "今日"
+  },
+  "previous": {
+    "day": "前の日",
+    "days_other": "前の{{count}}日"
+  },
+  "range": "{{from}}〜{{to}}",
+  "same": "±0",
+  "sep": "・",
+  "table": {
+    "head": "{{name}}（{{unit}}）"
+  },
+  "tasks": {
+    "accepted": "受け入れた",
+    "by": {
+      "agent": "AI の種類",
+      "model": "モデル",
+      "project": "プロジェクト"
+    },
+    "cols": {
+      "accepted": "受け入れた",
+      "finished": "終わった",
+      "lead": "かかった時間の中央値",
+      "passed": "手直しなし",
+      "submits": "確認に出した回数（1件あたり）"
+    },
+    "few": "10件受け入れると割合を出します",
+    "finished": "終わったタスク",
+    "grass": "日ごとの終わったタスク",
+    "grassFew": "少ない",
+    "grassMany": "多い",
+    "grassTip_other": "{{day}}　終わったタスク {{count}}件",
+    "howCounted": "数え方",
+    "noAgent": "AI に任せていない",
+    "passed": "手直しなし",
+    "reworked": "手直しあり",
+    "stopped": "中止"
+  },
+  "time": {
+    "ai": "AI が動いた",
+    "answer": "答え待ち",
+    "other": "ほか",
+    "review": "確認待ち",
+    "total": "かかった時間の合計",
+    "you": "あなたの番"
+  },
+  "unit": {
+    "conversations_other": "件",
+    "countWords": "yes",
+    "hours": "時間",
+    "join": "{{value}}{{unit}}",
+    "joinTight": "{{value}}{{unit}}",
+    "minutes": "分",
+    "people_other": "人",
+    "points": "pt",
+    "prs_other": "件",
+    "questions_other": "回",
+    "scales": [
+      {
+        "at": 100000000,
+        "digits": 1,
+        "unit": "億"
+      },
+      {
+        "at": 10000,
+        "digits": 0,
+        "unit": "万"
+      }
+    ],
+    "spoken": [
+      {
+        "at": 100000000,
+        "digits": 1,
+        "unit": "億"
+      },
+      {
+        "at": 10000,
+        "digits": 0,
+        "unit": "万"
+      }
+    ],
+    "tasks_other": "件",
+    "times_other": "回"
+  },
+  "until": {
+    "lead": "かかった時間（中央値）",
+    "prs": "関連 PR",
+    "prsList": "関連 PR がある",
+    "questions": "あなたへの問い",
+    "questionsList": "問いがあった",
+    "submits": "確認に出した回数"
+  },
+  "usage": {
+    "by": {
+      "agent": "AI の種類",
+      "mcp": "MCP",
+      "model": "モデル",
+      "skill": "スキル",
+      "tool": "ツール"
+    },
+    "cache": "キャッシュ",
+    "cacheWithin": "うちキャッシュ {{value}}",
+    "calls": "呼び出し",
+    "heads": {
+      "agent": "AI の種類",
+      "mcp": "MCP",
+      "model": "モデル",
+      "skill": "スキル",
+      "tool": "ツール"
+    },
+    "input": "入力",
+    "inputTokens": "入力トークン",
+    "launches": "起動",
+    "newConversations": "新しい会話",
+    "none": "記録なし",
+    "output": "出力",
+    "outputTokens": "出力トークン",
+    "runMs": "実行時間",
+    "skillLaunches": "スキルを使った起動",
+    "tasks": "関わったタスク",
+    "tokens": "トークン"
+  },
+  "values": {
+    "accepted": "{{at}} 受け入れ",
+    "afterAccept": "受け入れ後の指示",
+    "answers": "あなたが答えた",
+    "atReview": "確認中の指示",
+    "band": {
+      "doing": "作業中",
+      "paused": "止まっていた",
+      "yours": "あなたの番"
+    },
+    "children": "子タスク",
+    "conversations": "新しい会話",
+    "duringWork": "作業中の指示",
+    "inputCache": "入力＋キャッシュ",
+    "marks": {
+      "instruction": "指示",
+      "sendBack": "差し戻し"
+    },
+    "models": "モデル",
+    "open": "タスクを開く",
+    "sendBacks": "差し戻し",
+    "skills": "スキル",
+    "stopped": "{{at}} 中止",
+    "tools": "ツール",
+    "usage": "AI の使用量",
+    "workers": "担当"
+  },
+  "window": {
+    "accepted_other": "受け入れた {{count}}件",
+    "after": "次の区切り",
+    "before": "前の区切り",
+    "finished_other": "終わった {{count}}件",
+    "list": "タスクの一覧",
+    "passedOf_other": "{{count}}件のうち{{passed}}件"
+  }
+}

@@ -35,39 +35,42 @@ export class JsonlReader {
 
   read(folder: string, onValue: OnValue, maxBytes = Number.POSITIVE_INFINITY): void {
     const fd = openRunFile(folder, RUN_FILES.stdout, constants.O_RDONLY);
-    try {
-      const chunk = Buffer.alloc(CHUNK);
-      let remaining = maxBytes;
-      while (remaining > 0) {
-        const count = readSync(fd, chunk, 0, Math.min(CHUNK, remaining), this.offset);
-        if (!count) break;
-        this.offset += count;
-        remaining -= count;
-        const bytes = chunk.subarray(0, count);
-        let start = 0;
-        for (let end = bytes.indexOf(10, start); end !== -1; end = bytes.indexOf(10, start)) {
-          const part = bytes.subarray(start, end);
-          if (!this.dropping && this.pendingLength + part.length <= this.maxLine) {
-            const line = Buffer.concat([...this.pending, part]);
-            this.parse(line, onValue);
-          } else {
-            this.reject('too_large');
-          }
-          this.clear();
-          this.dropping = false;
-          this.line++;
-          start = end + 1;
+    try { this.readFd(fd, onValue, maxBytes); } finally { closeSync(fd); }
+  }
+
+  /** The caller may provide an already verified regular file. It owns the descriptor. */
+  readFd(fd: number, onValue: OnValue, maxBytes = Number.POSITIVE_INFINITY): void {
+    const chunk = Buffer.alloc(CHUNK);
+    let remaining = maxBytes;
+    while (remaining > 0) {
+      const count = readSync(fd, chunk, 0, Math.min(CHUNK, remaining), this.offset);
+      if (!count) break;
+      this.offset += count;
+      remaining -= count;
+      const bytes = chunk.subarray(0, count);
+      let start = 0;
+      for (let end = bytes.indexOf(10, start); end !== -1; end = bytes.indexOf(10, start)) {
+        const part = bytes.subarray(start, end);
+        if (!this.dropping && this.pendingLength + part.length <= this.maxLine) {
+          const line = Buffer.concat([...this.pending, part]);
+          this.parse(line, onValue);
+        } else {
+          this.reject('too_large');
         }
-        const rest = bytes.subarray(start);
-        if (!this.dropping) {
-          if (this.pendingLength + rest.length > this.maxLine) {
-            this.clear();
-            this.dropping = true;
-            this.reject('too_large');
-          } else if (rest.length) { this.pending.push(Buffer.from(rest)); this.pendingLength += rest.length; }
-        }
+        this.clear();
+        this.dropping = false;
+        this.line++;
+        start = end + 1;
       }
-    } finally { closeSync(fd); }
+      const rest = bytes.subarray(start);
+      if (!this.dropping) {
+        if (this.pendingLength + rest.length > this.maxLine) {
+          this.clear();
+          this.dropping = true;
+          this.reject('too_large');
+        } else if (rest.length) { this.pending.push(Buffer.from(rest)); this.pendingLength += rest.length; }
+      }
+    }
   }
 
   finish(onValue: OnValue): void {

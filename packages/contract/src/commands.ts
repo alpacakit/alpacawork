@@ -1,3 +1,6 @@
+import { analysisTasksInput, analysisUsageInput, analysisListInput, analysisTaskInput,
+  analysisTasksViewSchema, analysisUsageViewSchema, analysisUnitListSchema, analysisUnitValuesSchema,
+  analysisTaskBySchema, analysisTaskValues, analysisUsageBySchema, analysisUsageValues } from './analysis.js';
 import { uiLocales } from '@alpacawork/core/ui-language';
 import { AGENT_CHECK_MS, agentInspectionInput } from './server-settings.js';
 import { codecs, createOutputContract, defineEntry, defineEntryEndpoint, defineEntryNode, defineEntryTree, optional, required, verifyEntryOutput,
@@ -58,6 +61,7 @@ export function commandRuleHelp(command: Command, showFlags = false): string[] {
 const groups: Readonly<Record<string, string>> = {
   dependency: 'Task execution order',
   project: 'Project management',
+  analysis: 'Counted values of finished tasks and AI use',
   task: 'Tasks: read, plan, request work, report and record',
   'task file': 'Files in a Task folder',
   'task attachment': 'Files attached to a request',
@@ -216,6 +220,13 @@ const taskListResultSchema = z.object({
   errors: z.array(errorEntrySchema), omitted: z.number().int().positive().optional(), cursor: z.string().optional(),
 }).strict();
 
+const analysisScope = [text('project', 'Project ID (nested projects included for people and the coordinator)'), text('timeZone', 'IANA zone (default: server zone)')];
+const analysisPeriodOptions = [text('period', 'Calendar preset (today, 7d, 28d, all)'), text('end', 'Last day of the preset (YYYY-MM-DD)'),
+  text('from', 'First local day of a custom range (YYYY-MM-DD)'), text('to', 'Last local day of a custom range (YYYY-MM-DD)')];
+const analysisBucket = text('bucket', 'Trend bucket (day, week, month)');
+const analysisTaskGroups = analysisTaskBySchema.options.join(', ');
+const analysisUsageGroups = analysisUsageBySchema.options.join(', ');
+
 const definitions = {
   'help': command('read', 'List commands or read the full inputs and access for selected commands',
     z.object({ commands: z.array(z.string()).max(45).optional() }).strict(),
@@ -224,6 +235,24 @@ const definitions = {
   'guide': command('read', 'Read a bundled alpacawork skill document',
     z.object({ name: mcpGuideName }).strict(), [text('name', 'Skill file name; start with SKILL.md')],
     { cli: false, output: z.object({ name: mcpGuideName, text: z.string() }).strict() }),
+  'analysis/tasks': command('read', 'Count finished tasks and acceptance totals by period and trend bucket, with lifetime totals', analysisTasksInput, [
+    ...analysisScope, ...analysisPeriodOptions, analysisBucket, text('by', `Breakdown (${analysisTaskGroups})`),
+  ], { output: analysisTasksViewSchema }),
+  'analysis/usage': command('read', 'Count task launches and measured AI usage by period and trend bucket, with lifetime totals', analysisUsageInput, [
+    ...analysisScope, ...analysisPeriodOptions, analysisBucket,
+    text('by', `Breakdown (${analysisUsageGroups}). Skill, tool and MCP trends start on their collection date`),
+  ], { output: analysisUsageViewSchema }),
+  'analysis/list': command('read', 'List the tasks counted in a selected value', analysisListInput, [
+    ...analysisScope, ...analysisPeriodOptions,
+    text('set', 'Task set (passed, reworked, stopped, accepted, finished, used)'),
+    text('by', `Breakdown (used: ${analysisUsageGroups}. Other sets: ${analysisTaskGroups})`),
+    text('key', 'Key from the selected row. Omit for skill, tool or MCP totals since collection began. Tool and MCP keys are JSON arrays [provider, name]'),
+    text('value', `Per-task value (used: ${analysisUsageValues.join(', ')}. Other sets: ${analysisTaskValues.join(', ')}). Tokens sum output, input and cache. Use calls to sum tool or MCP calls and launches to count each matching Run once`),
+    text('cursor', 'Cursor from the preceding page'), number('limit', 'Maximum rows per page (up to 100)'),
+  ], { output: analysisUnitListSchema }),
+  'analysis/task': command('read', 'Read the analysis values behind one task', analysisTaskInput, [
+    ...analysisScope, taskId,
+  ], { output: analysisUnitValuesSchema }),
   'project/shelf': command('read', 'Read archived projects and their restore targets', emptyInput, [], { output: projectShelfSchema }),
   'task/list': command('read', 'Read the Task tree, or search Tasks with a matching excerpt', taskListInput, [
     text('under', 'Subtree root Task ID, listed first'),

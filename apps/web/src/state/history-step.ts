@@ -1,5 +1,6 @@
 import { currentStepKey, navigate, pushStep, replaceStep, traverse } from "@/lib/history";
 import { gathering, readerFocusReturn, readerOn, useViewStore, type Navigation, type ReaderPane, type ReaderPlace } from "./view-store";
+import { analysisMoved, analysisSurfaces, belowLayer, readAnalysis } from "@/features/analysis/place";
 
 const HISTORY_KEY = "alpacaworkNavigation";
 /**
@@ -51,6 +52,9 @@ export const samePlace = (a: ReaderPlace, b: ReaderPlace) => a.task === b.task &
  */
 export function surfacesOf(search: string): string[] {
   const url = new URLSearchParams(search);
+  // On the analysis face its list and a task's values are the surfaces, as the reader is on the list of tasks.
+  const analysis = readAnalysis(url);
+  if (analysis) return analysisSurfaces(analysis);
   const task = url.get("task");
   if (!task) return [];
   return [task, ...overReader(url).map(([kind, value]) => `${kind}:${value}`)];
@@ -122,8 +126,17 @@ export function closeReaderStep() {
   navigate(() => closeSurface(0, () => useViewStore.getState().closeReader(), readerFocusReturn()), { bound: true });
 }
 
+/** A layer of the analysis closed (its ×, the list's way back from a task's values): it and those over it. */
+export function closeAnalysisLayer(depth: number) {
+  navigate(() => closeSurface(depth, () => {
+    const { analysis, showAnalysis } = useViewStore.getState();
+    if (analysis) showAnalysis(belowLayer(analysis, depth));
+  }));
+}
+
 /** The navigation with only its `depth` bottom surfaces open (`surfacesOf`). */
 export function belowSurface(navigation: Navigation, depth: number): Navigation {
+  if (navigation.analysis) return { ...navigation, analysis: belowLayer(navigation.analysis, depth) };
   if (depth <= 0) return { ...navigation, task: null, taskAddress: null, image: null, view: null, event: null, path: null, pane: "task" };
   // The surfaces over the reader the navigation shows, bottom first (`overReader`): those below `depth` stay.
   const shown = new URLSearchParams();
@@ -143,6 +156,7 @@ export function isStep(before: Navigation, after: Navigation, beforeUrl: URL, af
   const was = surfacesOf(beforeUrl.search), now = surfacesOf(afterUrl.search);
   const opened = now.length > was.length && sameStack(now.slice(0, was.length), was);
   const moved = before.project !== after.project
+    || analysisMoved(before.analysis, after.analysis)
     || gathering(before) !== gathering(after)
     || !!readerOn(after) && (readerOn(before) !== readerOn(after) || before.pane !== after.pane || before.path !== after.path
       || !!before.view && !!after.view && before.view !== after.view);

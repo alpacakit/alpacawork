@@ -28,6 +28,17 @@ export function SearchField({ className }: { className?: string }) {
     }, 150);
   };
   useEffect(() => { if (!composing.current) { cancel(); setDraft(query); } }, [query]);
+  // The screen's face changing (Use, Analysis, today's marks, a task opened from the analysis, Back or Forward: every one
+  // goes through the store's `analysis`) drops an edit not yet applied, so a search typed just before cannot show its
+  // results over the face just chosen.
+  // A conversion under way when it changes is dropped too: its confirmation then runs no search.
+  const dropped = useRef(false);
+  useEffect(() => useViewStore.subscribe((state, before) => {
+    if (!!state.analysis === !!before.analysis || timer.current === null && !composing.current) return;
+    cancel();
+    if (composing.current) dropped.current = true;
+    setDraft(state.query);
+  }), []);
   useEffect(() => cancel, []);
   return (
     <label className={cn("flex h-control-md min-w-0 items-center gap-2 rounded-md border border-lit-line px-2 text-muted focus-within:border-ink", className)}>
@@ -42,8 +53,12 @@ export function SearchField({ className }: { className?: string }) {
           setDraft(value);
           if (!composing.current && !(event.nativeEvent as InputEvent).isComposing) settle(value);
         }}
-        onCompositionStart={() => { composing.current = true; cancel(); }}
-        onCompositionEnd={(event) => { composing.current = false; setDraft(event.currentTarget.value); settle(event.currentTarget.value); }}
+        onCompositionStart={() => { composing.current = true; dropped.current = false; cancel(); }}
+        onCompositionEnd={(event) => {
+          composing.current = false;
+          if (dropped.current) { dropped.current = false; setDraft(useViewStore.getState().query); return; }
+          setDraft(event.currentTarget.value); settle(event.currentTarget.value);
+        }}
         placeholder={t("toolbar.searchPlaceholder")}
         aria-label={t("toolbar.searchLabel")}
         className="h-control-sm w-full min-w-0 border-0 bg-transparent px-0.5 py-px text-sm text-ink outline-none"

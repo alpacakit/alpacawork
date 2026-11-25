@@ -6,7 +6,8 @@
    (`text-[11px]`, a hex, a `/60` see-through). A value that is missing is
    added here first.
 
-   theme.ts writes `data-theme`. Colours are OKLCH except the sRGB ground shared with PWA metadata; small text on bg, lit, raised and hover is 4.5:1 or more.
+   theme.ts writes `data-theme`. `.theme-light` and `.theme-dark` give a part of the page one theme's colours
+   whatever the page's (the share card reads both, features/analysis/ShareCard.tsx). Colours are OKLCH except the sRGB ground shared with PWA metadata; small text on bg, lit, raised and hover is 4.5:1 or more.
    One colour says one thing. The ground, ink and lines:
    bg (the screen) · lit (a surface on it: a panel, a card, a field) ·
    raised (a surface over a surface: a menu, a sheet, a dialog, a hover card,
@@ -52,7 +53,7 @@
    is a turn the reader has set aside (Hold, `[data-held]` below).
 */
 
-:root {
+:root, .theme-light, .theme-dark {
   color-scheme: light;
   /* Global surfaces, from the reader through the image viewer. The coordinator, in every form, stands over the places
      the work is read in (the list's notes, the bar, the reader); what is opened for a moment (a task's card, a toast, an
@@ -112,6 +113,8 @@
   --paper: #fff;
   --stamp: #fff;
   --rule: color-mix(in oklab, var(--ink) 6%, transparent);
+  /* The column of the day pointed at, through every chart of the analysis: plain to find again at a glance. */
+  --day-band: color-mix(in oklab, var(--ink) 10%, transparent);
   --diff-add: oklch(97% 0.035 150);
   --diff-del: oklch(97% 0.025 20);
   --diff-add-word: oklch(91% 0.075 150);
@@ -122,7 +125,7 @@
 
 /* raised is lit unless a theme gives it a value of its own; mention is written by a style element (coordinator/parts.tsx),
    so it is a variable rather than a class. */
-:root {
+:root, .theme-light, .theme-dark {
   --raised: var(--lit);
   /* A named row is tinted, not picked: quieter than the hover a row takes, so the open row and the states lead. The
      dark ground is near black, where the same tint all but vanishes, so it keeps its own step below. */
@@ -131,10 +134,12 @@
      theme, so nothing behind shows through it and its ink keeps 4.5:1. A toast's own pressed step is from its paper. */
   --press: color-mix(in oklab, var(--ink) 22%, var(--raised));
   --press-line: var(--muted);
+  --rest-time: var(--lit-line);
 }
 
-:root[data-theme="dark"] {
+:root[data-theme="dark"], .theme-dark {
   color-scheme: dark;
+  --rest-time: var(--line);
   /* Each surface a step lighter than the one under it, and what is pointed at or picked lighter than any. */
   --bg: #07090c;
   --lit: oklch(24.5% 0.007 260);
@@ -165,6 +170,7 @@
   /* Opaque raised paper stays within sRGB; the existing theme owns all three stamp colors. */
   --stamp: var(--raised);
   --rule: color-mix(in oklab, var(--ink) 8%, transparent);
+  --day-band: color-mix(in oklab, var(--ink) 14%, transparent);
   --diff-add: oklch(25% 0.045 150);
   --diff-del: oklch(25% 0.05 20);
   --diff-add-word: oklch(34% 0.08 150);
@@ -228,6 +234,23 @@
   /* The ground under the tab shown (TabMarker, tabs.tsx): ink laid thin over whatever surface the row stands on, so it
      reads alike on a panel (lit) and on a dialog (raised), where hover would all but vanish. */
   --color-tab-shown: color-mix(in oklab, var(--ink) 9%, transparent);
+  /* The analysis's charts (features/analysis), each colour one thing: a task that went through without a fix is done's
+     green; one accepted after fixes a quiet grey between ink and the ground; stopped is stop's. The days of the
+     finished-task calendar deepen from the ground to done in four steps. The time that is neither yours nor the AI's
+     (rest) is a line's grey: the light theme's line is too faint on its ground, so it takes the edge's. */
+  /* Colours say whose hand a task took: done's green went through without a fix, your turn's orange took your hand
+     (reworked), stop's pink stopped. Each is also lighter in that order (reworked 26% toward the ground, a stopped part
+     38%), so they are told apart without the hue. */
+  --color-reworked: color-mix(in oklab, var(--turn) 74%, var(--bg));
+  --color-stopped-part: color-mix(in oklab, var(--stopped) 62%, var(--bg));
+  --color-rest: var(--rest-time);
+  /* The chosen span on the analysis's charts: a band through every row, fainter than the day pointed at (rule). */
+  --color-span-band: color-mix(in oklab, var(--ink) 4%, transparent);
+  --color-day-band: var(--day-band);
+  --color-grass-0: color-mix(in oklab, var(--ink) 6%, var(--bg));
+  --color-grass-1: color-mix(in oklab, var(--done) 30%, var(--bg));
+  --color-grass-2: color-mix(in oklab, var(--done) 52%, var(--bg));
+  --color-grass-3: color-mix(in oklab, var(--done) 76%, var(--bg));
   --color-placeholder: color-mix(in oklab, var(--line) 60%, transparent);
   --color-trail: color-mix(in oklab, var(--ink) 75%, transparent);
   /* A History row's words at rest, the work going on now with them: one colour for every row not opened, a step
@@ -301,6 +324,11 @@
                          of an empty project (26px on a phone)
                     display-compact 30 / 1.25 · -0.01em  the setup heading
                          beside its form on a wide screen
+                    heading 20 / 28 · 0  the analysis's headings and a
+                         row's number
+                    figure 40 / 44 · -0.02em  the analysis's four lead
+                         numbers (twice a row's number, 20)
+                    figure-compact 32 / 36 · -0.02em  the same on a phone
                   Sizes are rem (the table's px at the browser's 16px), so
                   they follow the reader's own text size; a line height is
                   a bare ratio (line ÷ size, `calc(22 / 14)`) and a letter
@@ -388,6 +416,15 @@
   --text-display-compact: 1.875rem;
   --text-display-compact--line-height: calc(5 / 4);
   --text-display-compact--letter-spacing: -0.01em;
+  --text-heading: 1.25rem;
+  --text-heading--line-height: calc(28 / 20);
+  --text-heading--letter-spacing: 0em;
+  --text-figure: 2.5rem;
+  --text-figure--line-height: calc(44 / 40);
+  --text-figure--letter-spacing: -0.02em;
+  --text-figure-compact: 2rem;
+  --text-figure-compact--line-height: calc(36 / 32);
+  --text-figure-compact--letter-spacing: -0.02em;
 
   /* No line heights or letter spacings of their own (Type steps, above). */
   --leading-*: initial;

@@ -13,7 +13,7 @@ export const runNumber = (id: RunId): number => Number(id.slice(1));
 export const compareRunIds = (a: { id: RunId }, b: { id: RunId }): number => runNumber(a.id) - runNumber(b.id);
 /** Raw logs and temporary launch files belonging to one Run. */
 export const RUN_FILES = {
-  promptTemp: 'prompt.tmp', resultTemp: 'result.tmp', stdout: 'stdout.log', stderr: 'stderr.log', activity: 'activity.json', recentWork: 'recent-work.json', managerLog: 'manager.log', managerLock: 'manager.lock',
+  promptTemp: 'prompt.tmp', resultTemp: 'result.tmp', stdout: 'stdout.log', stderr: 'stderr.log', activity: 'activity.json', recentWork: 'recent-work.json', tally: 'tally.json', managerLog: 'manager.log', managerLock: 'manager.lock',
 } as const;
 export const RUN_RESULT_LIMIT = 1024 * 1024;
 /** What became of a Run's final reply: `pending` until it ends, `present` with the text, otherwise why there is none. */

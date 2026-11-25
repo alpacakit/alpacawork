@@ -127,10 +127,7 @@ function WorkTime({ task, at }: { task: Task; at?: number | null }) {
     className={still ? "text-muted" : "text-working"} />;
 }
 
-/**
- * The tokens the finished Runs used, on this task and under it: input and output first, the cache's reads and writes
- * after and quieter (reads run to many times the rest and would read as the cost). Runs still going count once they end.
- */
+/** Recorded tokens from finished Runs on this task and its descendants. */
 function TokenLines({ task }: { task: Task }) {
   const { t, i18n } = useTranslation("tree");
   const { tokens, unknown } = subtreeTokens(task.usage, task.usageBelow);
