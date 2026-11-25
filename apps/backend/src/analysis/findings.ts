@@ -105,11 +105,13 @@ const timedTopSteps = (run: TraceRun) => (run.steps ?? []).filter(step => step.i
  * dd, patch, git commands that change the work folder, package installs, and interpreters run inline (which may write).
  */
 export const WRITING_COMMANDS: readonly RegExp[] = [
-  /(?:^|[^=\-<>])>>?(?![>&=]|\s*\/dev\/null)/,
+  // A redirection to a file, `>&file` and `&>file` included; not `2>&1`, `>&-` or /dev/null.
+  /(?:^|[^=\-<>&])(?:&>>?|>>?)(?:&(?![0-9-]))?(?![&>=])(?!\s*\/dev\/null)/,
   /\b(?:tee|rm|rmdir|mv|cp|touch|mkdir|ln|chmod|chown|truncate|dd|patch|install|rsync|unzip|tar)\b/,
   /\bsed\b[^|;&]*\s-[a-zA-Z]*i/,
   /\bperl\b[^|;&]*\s-[a-zA-Z]*i/,
-  /\bgit\s+(?:commit|checkout|switch|restore|apply|am|reset|merge|rebase|pull|stash|cherry-pick|revert|add|rm|mv|clean|worktree|branch|tag|init|clone)\b/,
+  // Global options (`-C <path>`, `-c <key=value>`, `--git-dir=…`) may come before the command.
+  /\bgit(?:\s+-[Cc]\s+\S+|\s+--[\w-]+(?:=\S+)?)*\s+(?:commit|checkout|switch|restore|apply|am|reset|merge|rebase|pull|stash|cherry-pick|revert|add|rm|mv|clean|worktree|branch|tag|init|clone)\b/,
   /\b(?:pnpm|npm|yarn|pip3?|cargo|go)\s+(?:install|i|add|remove|update|get|build)\b/,
   /\b(?:python3?|node|ruby|perl|bash|sh|zsh)\s+(?:-[a-zA-Z]*[ce]\b|-\s*$|-\s*<<)/,
 ];

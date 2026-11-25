@@ -139,11 +139,12 @@ test('same-result breaks at any write and counts only known successes with their
   const shell = (n: number, line: string, more = 0) => step(n, n, n + 0.1, { fingerprint: line, line, output: `w-${n}`, more });
   // A shell command that writes splits the reads as an edit does; one that only reads does not.
   assert.deepEqual(count([get(0), shell(1, 'printf changed > ./synthetic-file'), get(2)]), []);
-  for (const line of ['echo x >> notes.md', 'sed -i s/a/b/ file', 'git commit -m change', 'rm -f out', 'cat a | tee b', 'node -e "write()"'])
+  for (const line of ['echo x >> notes.md', 'sed -i s/a/b/ file', 'git commit -m change', 'rm -f out', 'cat a | tee b', 'node -e "write()"',
+    'printf changed >& ./synthetic-file', 'git -C ./other-repo commit -m example', 'make &> build.log'])
     assert.deepEqual(count([get(0), shell(1, line), get(2)]), [], line);
   // A script whose body is not read here may write: it splits too.
   assert.deepEqual(count([get(0), shell(1, 'python3 - <<EOF', 4), get(2)]), []);
-  assert.deepEqual(count([get(0), shell(1, 'git status 2>&1'), shell(2, 'ls > /dev/null'), get(3)]), [2]);
+  assert.deepEqual(count([get(0), shell(1, 'git status 2>&1'), shell(2, 'ls > /dev/null'), shell(3, 'git -C ./repo status 2>&-'), get(4)]), [2]);
   // Unknown state or a cut output (no whole digest) never joins.
   assert.deepEqual(count([get(0, { state: 'unknown' }), get(1, { state: 'unknown' })]), []);
   assert.deepEqual(count([get(0, { output: null }), get(1, { output: null }), get(2)]), []);
