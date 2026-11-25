@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { NARROW_QUERY, useViewStore } from "@/state/view-store";
-import { closeAnalysisLayer } from "@/state/history-step";
+import { closeAnalysisLayer, showList } from "@/state/history-step";
 import { cn } from "@/lib/utils";
 import { Seg, Shown } from "./parts";
 import { analysisHome, analysisSurfaces, belowLayer, type AnalysisPlace } from "./place";
@@ -9,7 +9,7 @@ import { useTodayFinished } from "./data";
 
 /**
  * The bar's faces, beside the project's name: the list of tasks to work with (Use), and what the records count
- * (Analysis). A face to come (Settings) is one more item here. Coming back to the analysis finds it as it was left.
+ * (Analysis). A face to come (Settings) is one more item here. Coming back to either finds it as it was left.
  */
 export function FaceSwitch({ className }: { className?: string }) {
   const { t } = useTranslation("analysis");
@@ -17,7 +17,7 @@ export function FaceSwitch({ className }: { className?: string }) {
   const left = useRef<AnalysisPlace | null>(null);
   if (analysis) left.current = belowLayer(analysis, 0);
   return <Seg className={cn("narrow:gap-0", className)} label={t("face.label")} value={analysis ? "analysis" : "use"}
-    onChange={face => useViewStore.getState().showAnalysis(face === "analysis" ? left.current ?? analysisHome() : null)}
+    onChange={face => face === "analysis" ? useViewStore.getState().showAnalysis(left.current ?? analysisHome()) : showList()}
     // Analysis pressed while a layer is open over it (a list, a task's values, the card): they close as × closes them.
     onAgain={() => { if (analysisSurfaces(analysis).length) closeAnalysisLayer(0); }}
     items={[["use", t("face.use")], ["analysis", t("face.analysis")]]} />;

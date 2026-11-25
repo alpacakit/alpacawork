@@ -146,6 +146,7 @@
     "more_one": "Show {{count}} more",
     "more_other": "Show {{count}} more",
     "outcome": "Outcome",
+    "resize": "Analysis list height (up and down arrows)",
     "task": "Task",
     "usedTitle": "{{name}}"
   },
@@ -155,7 +156,7 @@
     "usage": "AI usage"
   },
   "outcome": {
-    "none": "Working",
+    "none": "Unfinished",
     "passed": "No fixes",
     "reworked": "Needed fixes",
     "stopped": "Stopped"
@@ -317,13 +318,13 @@
     "children": "Child tasks",
     "conversations": "New conversations",
     "duringWork": "Instructions while working",
+    "empty": "No analysis is available for this task.",
     "inputCache": "Input + cache",
     "marks": {
       "instruction": "Instruction",
       "sendBack": "Send-back"
     },
     "models": "Model",
-    "open": "Open task",
     "sendBacks": "Send-backs",
     "skills": "Skills",
     "stopped": "Stopped {{at}}",

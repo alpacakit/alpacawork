@@ -67,12 +67,14 @@
   },
   "entries": {
     "after": "Waits for",
+    "analysis": "Analysis",
     "context": "Context",
     "count_one": "{{count}}",
     "count_other": "{{count}}",
     "dependencies": "Dependencies",
     "files": "Files",
     "history": "History",
+    "more": "More tabs",
     "waiters": "Followed by"
   },
   "family": {

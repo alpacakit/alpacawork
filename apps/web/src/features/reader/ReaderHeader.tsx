@@ -13,14 +13,12 @@ import { useViewAncestors } from "@/data/view-ancestors";
 import type { Task } from "@/data/types";
 import { pathTo } from "@/domain/tasks";
 import { listNeighbours, useListNavigation } from "@/features/tree/list-navigation";
-import { useViewStore } from "@/state/view-store";
 import { closeReaderStep } from "@/state/history-step";
-import { readerBack, useReaderBehind } from "@/state/reader-position";
-import type { ReaderPane } from "@/state/view-store";
+import { readerBack, useAnalysisListBack, useReaderBehind } from "@/state/reader-position";
+import { useViewStore, type ReaderPane } from "@/state/view-store";
 import type { ReaderMode } from "./Reader";
 import { navigate, readerNow } from "@/lib/history";
 import { useSheetControl } from "./TaskSheet";
-import { cn } from "@/lib/utils";
 import { useTaskCardOn } from "@/features/coordinator/TaskCard";
 import { taskInDraft } from "@/features/coordinator/editor/draft";
 
@@ -54,7 +52,9 @@ export function ReaderHeader({ task, mode, canDock, onFollow, walking, pane, rul
   const parentId = ancestors.at(-1)?.id;
   const behind = useReaderBehind();
   // A walk through the waiting questions goes on by itself: going back to the question before is not this Back.
-  const back = !!behind && !(walking && behind.task !== task.id) || pane !== "task";
+  const analysisList = useViewStore(state => !!state.analysis?.list);
+  const backToList = useAnalysisListBack(behind);
+  const back = !!behind && !(walking && behind.task !== task.id) || backToList || pane !== "task";
   return (
     // On a phone's sheet the header moves the sheet as its grip does.
     <header {...sheet?.grip} className={`${readerHeadBox(mode)} @container/reader ${ruled ? "border-rule" : "border-transparent"}`}>
@@ -65,7 +65,7 @@ export function ReaderHeader({ task, mode, canDock, onFollow, walking, pane, rul
           12px the row takes from the head's room keeps its focus ring whole. */}
       <div data-reader-head-row className={`-ml-1 flex min-w-0 items-start -mr-3 narrow:ml-0 overflow-x-clip pr-3 text-xs whitespace-nowrap text-muted ${HEAD_MARK_GAP}`}>
         <div data-reader-head-flow className={`flex min-w-0 flex-1 items-center overflow-x-clip @max-[480px]/reader:flex-wrap ${HEAD_MARK_GAP} ${HEAD_ROW}`}>
-          {back && <ReaderBack />}
+          {back && <ReaderBack toList={backToList} />}
           <nav ref={path} data-reader-path aria-label={t("readerHeader.path")} className="flex h-head min-w-min flex-[1_1_0%] flex-row-reverse flex-wrap content-start items-center justify-end gap-x-0.5 gap-y-2 overflow-clip [overflow-clip-margin:0.25rem] narrow:h-11 narrow:gap-x-0">
             <PathProject task={task} />
             {ancestors.map((ancestor, at) => (
@@ -81,7 +81,7 @@ export function ReaderHeader({ task, mode, canDock, onFollow, walking, pane, rul
             </div>
           </nav>
         </div>
-        <span data-reader-actions className={`flex flex-none items-center ${HEAD_ROW}`}><ListPager id={task.id} /></span>
+        {!analysisList && <span data-reader-actions className={`flex flex-none items-center ${HEAD_ROW}`}><ListPager id={task.id} /></span>}
         <FrameButtons canDock={canDock} />
       </div>
     </header>
@@ -179,11 +179,11 @@ export const readerHeadBox = (mode: ReaderMode) => `reader-header flex-none bord
 // phone with its two 12px insets, where full Back (~60), the parent's ID and its › (44), the ID (26), Copy (32 and its
 // 6px reach), the project's square (26) and four 32px faces with their 12px gaps (HEAD_MARK, HEAD_MARK_GAP) fit. Rem keeps this budget with enlarged text. Without its word, Back on a
 // phone stands 36px wide, so a 360px phone holds a parent with its 4-digit child.
-function ReaderBack() {
+export function ReaderBack({ toList }: { toList: boolean }) {
   const { t } = useTranslation("reader");
-  return <span className={`flex flex-none items-center ${HEAD_ROW}`}><BackButton data-reader-back label={t("readerHeader.back")}
-    className="@max-[24rem]/reader:w-8 @max-[24rem]/reader:p-0 narrow:@max-[24rem]/reader:-ml-1 narrow:@max-[24rem]/reader:w-9 narrow:@max-[24rem]/reader:pl-0"
-    labelClassName="@max-[24rem]/reader:hidden" onClick={() => { countUse('reader.back'); readerBack(); }} /></span>;
+  return <span className={`flex flex-none items-center ${HEAD_ROW}`}><BackButton data-reader-back label={toList ? t("analysis:list.back") : t("readerHeader.back")}
+    className={toList ? undefined : "@max-[24rem]/reader:w-8 @max-[24rem]/reader:p-0 narrow:@max-[24rem]/reader:-ml-1 narrow:@max-[24rem]/reader:w-9 narrow:@max-[24rem]/reader:pl-0"}
+    labelClassName={toList ? undefined : "@max-[24rem]/reader:hidden"} onClick={() => { countUse('reader.back'); readerBack(toList); }} /></span>;
 }
 
 /**

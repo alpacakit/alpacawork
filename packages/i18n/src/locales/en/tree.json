@@ -88,6 +88,10 @@
       "timeout": "Timed out",
       "unknown": "Reason unknown"
     },
+    "facts": {
+      "own": "This task alone",
+      "since": "In this state"
+    },
     "length": {
       "days_one": "{{count}}d",
       "days_other": "{{count}}d",

@@ -1,6 +1,8 @@
 import { projectRows } from './fixture/list-rows.ts';
+import { patchTask } from './fixture/task-state.ts';
+import { SAMPLE_NOW } from './fixture/sample.ts';
 import type { Locator, Page } from "@playwright/test";
-import { expect, keepShot, open, settleMotion, test, touch, openAbout, openReference } from "./fixtures.ts";
+import { expect, keepShot, open, settleMotion, test, touch, swipe, openAbout, openReference } from "./fixtures.ts";
 
 // These interaction scenarios need independent rows, rather than hidden ordinary children.
 test.use({ isolated: true, runtimePrepare: async ({}, use) => { await use(root => projectRows(root, ['T111', 'T113', 'T114'])); } });
@@ -152,4 +154,71 @@ test("a sheet pulled down from the whole screen keeps its top edge while the fin
   expect(await edge()).not.toBe("rgba(0, 0, 0, 0)");
   await session.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
   await session.detach();
+});
+
+test.describe("the task's analysis", () => {
+  test.use({ runtimePrepare: async ({}, use) => {
+    await use(root => {
+      projectRows(root, ["T113"]);
+      patchTask(root, "T113", { state: "done", userRequested: true, logs: [{
+        id: "a3b272b4-8bcc-4008-8165-8f5625c91642", kind: "reported", at: SAMPLE_NOW,
+        actor: { kind: "human" }, fromState: "doing", toState: "done", title: "Finished", description: null,
+      }] });
+    });
+  } });
+
+  test("the analysis list resizes, returns to its row after opening a task, and dismisses by touch", async ({ page, runtime }) => {
+    await open(page, runtime);
+    const dashboard = new URL(page.url());
+    dashboard.searchParams.set("face", "analysis");
+    dashboard.searchParams.set("span", "all");
+    await page.goto(dashboard.href);
+    await page.locator(".row-span-5").filter({ has: page.getByText("Finished tasks", { exact: true }) }).getByRole("button").tap();
+    const listSheet = page.locator("[data-analysis-list]");
+    const listGrip = listSheet.getByRole("separator", { name: "Analysis list height (up and down arrows)" });
+    const analysisRow = listSheet.locator('[data-unit-row="T113"]');
+    await expect(analysisRow).toBeVisible();
+    await expect(listGrip).toBeVisible();
+    const originalHeight = (await listSheet.boundingBox())!.height;
+    const grip = (await listGrip.boundingBox())!;
+    const start = { x: grip.x + grip.width / 2, y: grip.y + grip.height / 2 };
+    await swipe(page, start, { ...start, y: start.y - 74 });
+    await expect.poll(async () => (await listSheet.boundingBox())!.height).toBeGreaterThan(originalHeight + 40);
+    await settleMotion(page, listSheet);
+    const height = (await listSheet.boundingBox())!.height;
+
+    await analysisRow.tap();
+    const analysis = reader(page).locator('[data-reader-entry="analysis"]');
+    const history = reader(page).locator('[data-reader-entry="task"]');
+    await expect(reader(page).locator("[data-task-analysis]")).toBeVisible();
+    await expect(analysis).toHaveAttribute("aria-current", "page");
+    const surface = await reader(page).elementHandle();
+    await reader(page).locator("[data-reader-grow]").tap();
+    await expect(sheet(page)).toHaveAttribute("data-whole", "true");
+    await history.tap();
+    await expect(shown(page)).toHaveText("T113");
+    await expect(history).toHaveAttribute("aria-current", "page");
+    await expect(reader(page).locator("[data-task-analysis]")).toHaveCount(0);
+    expect(await reader(page).evaluate((element, original) => element === original, surface)).toBe(true);
+    await expect(sheet(page)).toHaveAttribute("data-whole", "true");
+    await page.goBack();
+    await expect(reader(page).locator("[data-task-analysis]")).toBeVisible();
+    await expect(analysis).toHaveAttribute("aria-current", "page");
+    await history.tap();
+    const back = reader(page).locator("[data-reader-back]");
+    // Back walks the tabs as it does anywhere; on the step the row opened it goes back to the list.
+    await expect(back).toHaveText("Back");
+    await back.tap();
+    await expect(analysis).toHaveAttribute("aria-current", "page");
+    await expect(back).toHaveText("Back to list");
+    await back.tap();
+    await expect(reader(page)).toHaveCount(0);
+    await expect(analysisRow).toBeFocused();
+    expect((await listSheet.boundingBox())!.height).toBe(height);
+    const returnedGrip = (await listGrip.boundingBox())!;
+    const returned = { x: returnedGrip.x + returnedGrip.width / 2, y: returnedGrip.y + returnedGrip.height / 2 };
+    await swipe(page, returned, { x: returned.x, y: PHONE.height - 28 });
+    await expect(listSheet).toHaveCount(0);
+    await expect(page).not.toHaveURL(/[?&]list=/);
+  });
 });

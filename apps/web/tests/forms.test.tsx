@@ -23,7 +23,7 @@ import { StateControl } from "../src/features/forms/ReportInputs";
 import { useTitleKeys } from "../src/features/forms/title-keys";
 import type { Task } from "../src/data/types";
 import { Reader } from "../src/features/reader/Reader";
-import { TaskActions } from "../src/features/reader/TaskActions";
+import { ReaderSheetClose, TaskActions } from "../src/features/reader/TaskActions";
 import { TaskActionSlot, useTaskActionSlot } from "../src/features/coordinator/task-action-slot";
 import { HoldKey } from "../src/features/reader/HoldKey";
 import { TurnReason } from "../src/features/reader/TurnReason";
@@ -128,7 +128,7 @@ test("popup composition-end Escape is ignored, while plain Escape later closes i
 
 test("on a phone the task's Done at the foot is labelled, while it awaits your review, and ready without a conversation input", () => {
   const data = sendbackData();
-  const first = render(<TestWorkspace data={data}><TaskActionSlot /><TaskActions task={child(data)} phone /></TestWorkspace>);
+  const first = render(<TestWorkspace data={data}><TaskActionSlot /><TaskActions task={child(data)} phone /><ReaderSheetClose /></TestWorkspace>);
   // Auto-swipe, then Change state to the left of Done, in the same row and the same round shape, each its mark alone;
   // on hover each says what it does, Change state and Done naming the task shown; over Done, the sheet's close.
   const id = child(data).id;

@@ -4,6 +4,7 @@ import { i18n } from "@alpacawork/i18n";
 import { useConnection } from "../src/data/connection";
 import { OFFLINE_SHOWN_AFTER_MS } from "../src/data/reach";
 import { TimeTree } from "../src/features/tree/TimeTree";
+import { Reader } from "../src/features/reader/Reader";
 import { useViewStore } from "../src/state/view-store";
 import { TestWorkspace, dto, homeFixture, logEntry, narrowScreen, decideItem, questionFixture, run, taskFixture, tree, userBall } from "./fixtures";
 import { canonical, created, fixture, iso, minute, now, report, served, setupTimeView } from "./time-view-fixture";
@@ -381,4 +382,30 @@ test.each([false, true])('stopped rows state the cause before progress and elaps
       unmount();
     }
   }finally{phone.restore();}
+});
+
+test("the task's Analysis tab adds its own run time to the whole's when tasks under it worked", async () => {
+  await i18n.changeLanguage("ja");
+  try {
+    const hour = 60 * minute;
+    const tasks = [dto({ id: "T1", state: "waiting", userRequested: true }), dto({ id: "T11", parentId: "T1", state: "done" })];
+    const runs = [run("R1", { taskId: "T1", placementId: "P1", state: "succeeded", startedAt: iso(now - 3 * hour), endedAt: iso(now - hour) })];
+    const own = { runs: 1, runMs: 2 * hour + 5 * minute, tokens: null, tokensUnknown: 1 };
+    const data = served(tree({ tasks, runs, usage: { T1: { usage: own, usageBelow: { ...own, runMs: 30 * minute } } } }));
+    const head = { timeZone: "UTC", today: "2026-11-25", firstDay: "2026-11-01", project: null, period: null, previous: null };
+    const values = { head, unit: { id: "T1", title: "t", project: "P1", outcome: null, finishedAt: null, value: null, requestedAt: iso(now - 4 * hour), asked: "T1" },
+      band: [], marks: [], time: { review: 0, answer: 0, ai: 0, other: 0 }, submits: 1, questions: 0, sendBacks: 0, instructionsAtReview: 0,
+      instructionsAfterAccept: 0, instructionsDuringWork: 0, answers: 0, workers: 0, children: 1,
+      usage: { launches: 2, runMs: 2 * hour + 35 * minute, live: 0, newConversations: 1, tokens: { output: 1, input: 2, cache: 3 }, tokensUnknown: 0, tasks: 1 },
+      models: [], prs: [], skills: [], tools: [], tallied: { runs: 0, of: 0, since: "2026-11-01" } };
+    const served_ = globalThis.fetch;
+    vi.stubGlobal("fetch", (url: RequestInfo | URL, init?: RequestInit) =>
+      String(url).includes("/api/commands/analysis/task") ? Promise.resolve(Response.json(values)) : served_(url, init));
+    render(<TestWorkspace data={data}><Reader mode="docked" /></TestWorkspace>);
+    act(() => useViewStore.getState().openTask("T1", { reader: true, pane: "analysis" }));
+    const tab = await vi.waitFor(() => { const found = document.querySelector<HTMLElement>("[data-task-analysis]"); expect(found).not.toBeNull(); return found!; });
+    const words = [...tab.querySelectorAll("dl > div")].map(item => item.textContent);
+    expect(words).toContain("実行時間2.6時間");
+    expect(words).toContain("うち単体2.1時間");
+  } finally { vi.unstubAllGlobals(); await i18n.changeLanguage("en"); }
 });

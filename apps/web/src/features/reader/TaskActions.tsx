@@ -28,7 +28,6 @@ import { canComplete, ReviewApprove } from './TaskDone';
  * The state form itself always stands in the same place, unseen at the reader's foot (R opens it), so what is typed in it
  * stays whichever opener is shown; it grows out of the opener that is shown, in that opener's window (the conversation's
  * own window when it has gone into one).
- * On a phone, the row folded over the input also holds what closes the sheet (SheetClose), finished task or not.
  */
 export function TaskActions({ task, phone }: { task: Task; phone: boolean }) {
   const slot = useTaskActionSlot(state => state.element);
@@ -41,13 +40,11 @@ export function TaskActions({ task, phone }: { task: Task; phone: boolean }) {
   // (and on a phone) they are marks alone (useRowWords).
   const labels = useTaskActionSlot(state => state.labels);
   const look = phone || !labels ? 'mark' : 'tool';
-  const folded = !useTaskActionSlot(state => state.inThread);
   return <>
     <SurfaceDocument value={page !== document ? page : null}>
       <span data-state-host aria-hidden inert className="pointer-events-none absolute right-4 bottom-4 opacity-0"><StateControl task={task} anchorRef={opener} /></span>
     </SurfaceDocument>
-    {slot && createPortal(<>{shown && <>{asks && <AutoSwipe look={look} />}<OpenState task={task} look={look} ref={opener} />{complete && <ReviewApprove task={task} look={look} />}</>}
-      {phone && folded && <SheetClose />}</>, slot)}
+    {slot && shown && createPortal(<>{asks && <AutoSwipe look={look} />}<OpenState task={task} look={look} ref={opener} />{complete && <ReviewApprove task={task} look={look} />}</>, slot)}
   </>;
 }
 
@@ -58,17 +55,19 @@ export function TaskActions({ task, phone }: { task: Task; phone: boolean }) {
  * the input as the conversation's ∨ does, so the keyboard goes down with it. The reader keeps that room clear at its
  * end (surfaces.css, data-reader-sheet-close).
  */
-function SheetClose() {
+export function ReaderSheetClose() {
   const { t } = useTranslation('reader');
   const tool = useRowTool();
-  return <button type="button" data-reader-sheet-close aria-label={t('readerHeader.close')} title={t('readerHeader.close')}
+  const slot = useTaskActionSlot(state => state.element);
+  const folded = !useTaskActionSlot(state => state.inThread);
+  return slot && folded && createPortal(<button type="button" data-reader-sheet-close aria-label={t('readerHeader.close')} title={t('readerHeader.close')}
     className={cn(tool, markTool, 'absolute right-0 bottom-full mb-4')}
     onClick={() => {
       if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
       closeReaderStep();
     }}>
     <Icon name="down" className="size-4" />
-  </button>;
+  </button>, slot);
 }
 
 /**

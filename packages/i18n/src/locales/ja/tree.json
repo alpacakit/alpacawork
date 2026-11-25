@@ -86,6 +86,10 @@
       "timeout": "時間切れ",
       "unknown": "理由不明"
     },
+    "facts": {
+      "own": "うち単体",
+      "since": "今の状態になって"
+    },
     "length": {
       "days_other": "{{count}}日",
       "hours_other": "{{count}}時間",

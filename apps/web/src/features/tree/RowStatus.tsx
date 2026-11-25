@@ -11,7 +11,7 @@ import { capitalized, dayClock } from "@/domain/day-clock";
 import { finishWords } from "@/domain/finish-words";
 import type { PeopleIndex } from "@/domain/people";
 import { representedWork, runningRunsSaid, saysRuns, saysStatus, shortLength, workLength } from "@/domain/row-status";
-import { subtreeTokens, taskWorkTime, workTimeMs } from "@/domain/usage";
+import { subtreeTokens, taskWorkTime, workTimeMs, type WorkTime as WorkTimeParts } from "@/domain/usage";
 import { finishFactsFor } from "@/features/people/labels";
 import { turnReasonKey, turnSentence } from "@/features/reader/TurnReason";
 import { causeSentence, type ErrorCause } from "@/domain/run-labels";
@@ -70,9 +70,8 @@ export function StatusTime({ task }: { task: Task }) {
         return [shown, shown, false];
       }
       case "since": {
-        const shown = length(now - status.at, t);
-        return [shown, t(task.rowFacts.kind?.kind === "stopped" || task.rowFacts.kind?.kind === "followup"
-          ? "status.long.reason" : "status.long.since", { length: shown }), true];
+        const since = sinceWords(task, status.at, now, t);
+        return [since.shown, since.long, true];
       }
     }
   })();
@@ -104,27 +103,68 @@ export function RunningRuns({ task }: { task: Task }) {
 /** `at`: out of reach, the time the work time stands at (the last receipt), or null when nothing was received. */
 function WorkTime({ task, at }: { task: Task; at?: number | null }) {
   const { t } = useTranslation("tree");
+  const work = useWorkTime(task, at);
+  if (!work.any || at === null) {
+    const empty = representedWork(task) ?? "running";
+    const shown = t(`status.${empty}`);
+    return <TimeTip data={{ "data-row-status": empty }} shown={shown} heading={null} long={shown} className={empty === "queued" && !work.still ? "text-ink" : "text-muted"} />;
+  }
+  return <TimeTip data={{ "data-row-status": "running" }} shown={workShort(work.subtree, t)} heading={t("status.work.heading")}
+    long={work.long} body={<WorkParts task={task} work={work} />} className={work.still ? "text-muted" : "text-working"} />;
+}
+
+/**
+ * The times the task's row says, for its Analysis tab: how long agents have worked on the task alone (the tab counts
+ * the whole with the tasks under it), ticking while Runs go, and, as its row says when it does not run, how long it has
+ * been in its state, in words; null for what there is none of.
+ */
+export function useTaskTimes(task: Task): { own: number | null; since: string | null } {
+  const offline = useOfflineShown();
+  const receivedAt = useConnection((state) => offline ? state.lastReceivedAt : null);
+  const work = useWorkTime(task, offline ? receivedAt ?? null : undefined);
+  const since = useSince(task);
+  return { own: work.any ? work.own : null, since: since?.shown ?? null };
+}
+
+/** How long the task has been in its state, as its row says it when it does not run (`StatusTime`): null when it does not. */
+function useSince(task: Task) {
+  const { t } = useTranslation("tree");
+  const now = useNow();
+  const { status } = task.rowFacts;
+  if (!saysRuns(task) || representedWork(task) || status?.kind !== "since" || !saysStatus(task, status.kind)) return null;
+  return sinceWords(task, status.at, now, t);
+}
+
+/** A time in the state, short and in words ("5時間", "この状態になって 5時間"; after a stop or a follow-up, since its reason). */
+function sinceWords(task: Task, at: number, now: number, t: T) {
+  const shown = length(now - at, t);
+  return { shown, long: t(task.rowFacts.kind?.kind === "stopped" || task.rowFacts.kind?.kind === "followup"
+    ? "status.long.reason" : "status.long.since", { length: shown }) };
+}
+
+/** The work time on a task and under it at the clock's now (or `at`, out of reach): its two parts, said in words. */
+function useWorkTime(task: Task, at?: number | null) {
+  const { t } = useTranslation("tree");
   const index = useTaskIndexFor(task.id);
   const people = usePeopleFor(task.id, true);
   const times = useMemo(() => taskWorkTime(task.id, index, people.runsByTask), [task.id, index, people]);
-  const ticking = useNow(), now = at ?? ticking, still = at !== undefined;
-  const data = { "data-row-status": "running" } as const;
-  if ((!times.subtree.doneMs && !times.subtree.runningSince.length) || at === null) {
-    const empty = representedWork(task) ?? "running";
-    const shown = t(`status.${empty}`);
-    return <TimeTip data={{ "data-row-status": empty }} shown={shown} heading={null} long={shown} className={empty === "queued" && !still ? "text-ink" : "text-muted"} />;
-  }
-  const subtree = workTimeMs(times.subtree, now), own = workTimeMs(times.own, now);
+  // Out of reach with nothing received, the running Runs' time is not known: only what was recorded counts.
+  const ticking = useNow(), now = at === null ? null : at ?? ticking;
+  const time = (part: WorkTimeParts) => now === null ? part.doneMs : workTimeMs(part, now);
+  const subtree = time(times.subtree), own = time(times.own);
   const parts = [{ key: "subtree", label: t("status.work.subtree"), value: workWords(subtree, t) },
     { key: "own", label: t("status.work.own"), value: workWords(own, t) }];
-  return <TimeTip data={data} shown={workShort(subtree, t)} heading={t("status.work.heading")}
-    long={parts.map(part => `${part.label} ${part.value}`).join(t("status.work.separator"))}
-    body={<>
-      <dl className="m-0 mt-2 grid grid-cols-[auto_auto] gap-x-5 gap-y-1">{parts.map(part => <div key={part.key} data-work-time={part.key} className="contents">
-        <dt className="text-muted">{part.label}</dt><dd className="m-0 text-right font-medium tabular-nums">{part.value}</dd></div>)}</dl>
-      <TokenLines task={task} />
-    </>}
-    className={still ? "text-muted" : "text-working"} />;
+  return { subtree, own, parts, still: at !== undefined, running: times.subtree.runningSince.length > 0,
+    any: !!times.subtree.doneMs || times.subtree.runningSince.length > 0,
+    long: parts.map(part => `${part.label} ${part.value}`).join(t("status.work.separator")) };
+}
+
+function WorkParts({ task, work }: { task: Task; work: ReturnType<typeof useWorkTime> }) {
+  return <>
+    <dl className="m-0 mt-2 grid grid-cols-[auto_auto] gap-x-5 gap-y-1">{work.parts.map(part => <div key={part.key} data-work-time={part.key} className="contents">
+      <dt className="text-muted">{part.label}</dt><dd className="m-0 text-right font-medium tabular-nums">{part.value}</dd></div>)}</dl>
+    <TokenLines task={task} />
+  </>;
 }
 
 /** Recorded tokens from finished Runs on this task and its descendants. */

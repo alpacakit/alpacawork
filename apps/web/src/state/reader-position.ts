@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { goBack, navigate, replaceStep, showScreen } from "@/lib/history";
-import { currentEntry, samePlace, subscribeStep, type HistoryEntry, type ReaderPosition } from "./history-step";
+import { closeTopReader, currentEntry, samePlace, subscribeStep, type HistoryEntry, type ReaderPosition } from "./history-step";
 import { setUrlValue } from "./screen-settings";
 import { readerPlace, screenNavigation, shownInReader, useViewStore, type ReaderPane, type ReaderPlace } from "./view-store";
 
@@ -154,9 +154,16 @@ export function browserBack() {
   keepReaderPosition();
   navigate(goBack);
 }
-export function readerBack() {
+export function readerBack(toList = false) {
   keepReaderPosition();
-  if (readerBehind()) navigate(goBack, { bound: true });
-  // Nothing behind it in this reader: the reports take this step's place, so no Back leads back to what was left.
+  if (!toList && readerBehind()) navigate(goBack, { bound: true });
+  else if (useViewStore.getState().analysis?.list) closeTopReader();
+  // A direct link to a details tab has no previous reader step.
   else navigate(() => useViewStore.getState().setReaderPane("task"), { bound: true, write: "over" });
+}
+
+/** Whether Back in the header returns to the analysis list: on the step its row opened, with nothing behind it. */
+export function useAnalysisListBack(behind: ReaderPlace | null) {
+  const inList = useViewStore(state => !!state.analysis?.list);
+  return inList && !behind;
 }

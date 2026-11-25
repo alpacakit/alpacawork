@@ -90,6 +90,10 @@
       "timeout": "Tiempo agotado",
       "unknown": "Motivo desconocido"
     },
+    "facts": {
+      "own": "Solo esta tarea",
+      "since": "En este estado"
+    },
     "length": {
       "days_one": "{{count}} d",
       "days_many": "{{count}} d",

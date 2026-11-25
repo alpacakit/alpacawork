@@ -52,12 +52,9 @@ export const samePlace = (a: ReaderPlace, b: ReaderPlace) => a.task === b.task &
  */
 export function surfacesOf(search: string): string[] {
   const url = new URLSearchParams(search);
-  // On the analysis face its list and a task's values are the surfaces, as the reader is on the list of tasks.
-  const analysis = readAnalysis(url);
-  if (analysis) return analysisSurfaces(analysis);
+  const layers = analysisSurfaces(readAnalysis(url));
   const task = url.get("task");
-  if (!task) return [];
-  return [task, ...overReader(url).map(([kind, value]) => `${kind}:${value}`)];
+  return task ? [...layers, task, ...overReader(url).map(([kind, value]) => `${kind}:${value}`)] : layers;
 }
 /**
  * The surfaces over the reader, bottom first, as the URL names them: a picture, or the viewer. The
@@ -121,12 +118,35 @@ function closeOver(kind: OverReader, apply: () => void) {
 export const closeImage = () => closeOver("image", () => useViewStore.getState().setImage(null));
 export const closeView = () => closeOver("view", () => useViewStore.getState().setView(null));
 
-/** The reader's ×, Esc, and every other way a person closes it (a finger sliding a phone's sheet away, a press behind it). */
-export function closeReaderStep() {
-  navigate(() => closeSurface(0, () => useViewStore.getState().closeReader(), readerFocusReturn()), { bound: true });
+/** The task panel and anything over it, using the same stack as the analysis list beneath it. */
+function closeReaderAt(depth: number) {
+  navigate(() => closeSurface(depth, () => {
+    const state = useViewStore.getState();
+    state.closeReader();
+    const analysis = state.analysis;
+    if (analysis && depth < analysisSurfaces(analysis).length) state.showAnalysis(belowLayer(analysis, depth));
+  }, readerFocusReturn()), { bound: true });
+}
+export const closeReaderStep = () => closeReaderAt(0);
+export const closeTopReader = () => closeReaderAt(analysisSurfaces(useViewStore.getState().analysis).length);
+
+/**
+ * Back to the list of tasks from the analysis (the face switch's Use). Come to the analysis from a step of the list in
+ * the project still chosen, the browser goes back to that step: the list is as it was left, its task panel open, and
+ * that panel's × closes it as before. Else, and where the browser cannot go there, the analysis closes where it is.
+ */
+export function showList() {
+  navigate(() => {
+    const { analysis, listStep, project } = useViewStore.getState();
+    // Pressed again on its way there, it is there already.
+    if (!analysis) return;
+    const here = () => useViewStore.getState().showAnalysis(null);
+    if (listStep && listStep.project === project) traverse(listStep.key, undefined, here);
+    else here();
+  });
 }
 
-/** A layer of the analysis closed (its ×, the list's way back from a task's values): it and those over it. */
+/** A layer of the analysis closed: it and those over it. */
 export function closeAnalysisLayer(depth: number) {
   navigate(() => closeSurface(depth, () => {
     const { analysis, showAnalysis } = useViewStore.getState();
@@ -136,12 +156,13 @@ export function closeAnalysisLayer(depth: number) {
 
 /** The navigation with only its `depth` bottom surfaces open (`surfacesOf`). */
 export function belowSurface(navigation: Navigation, depth: number): Navigation {
-  if (navigation.analysis) return { ...navigation, analysis: belowLayer(navigation.analysis, depth) };
-  if (depth <= 0) return { ...navigation, task: null, taskAddress: null, image: null, view: null, event: null, path: null, pane: "task" };
-  // The surfaces over the reader the navigation shows, bottom first (`overReader`): those below `depth` stay.
+  const analysis = navigation.analysis;
+  const layers = analysisSurfaces(analysis).length;
+  if (depth <= layers) return { ...navigation, analysis: analysis && belowLayer(analysis, depth),
+    task: null, taskAddress: null, image: null, view: null, event: null, path: null, pane: "task" };
   const shown = new URLSearchParams();
   for (const kind of OVER_READER) if (navigation[kind]) shown.set(kind, navigation[kind]);
-  const kept = new Set(overReader(shown).slice(0, depth - 1).map(([kind]) => kind));
+  const kept = new Set(overReader(shown).slice(0, depth - layers - 1).map(([kind]) => kind));
   return { ...navigation, image: kept.has("image") ? navigation.image : null, view: kept.has("view") ? navigation.view : null };
 }
 

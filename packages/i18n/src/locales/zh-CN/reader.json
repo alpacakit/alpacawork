@@ -60,11 +60,13 @@
   },
   "entries": {
     "after": "等待",
+    "analysis": "分析",
     "context": "上下文",
     "count_other": "{{count}}",
     "dependencies": "依赖",
     "files": "文件",
     "history": "历史",
+    "more": "更多标签",
     "waiters": "后续"
   },
   "family": {

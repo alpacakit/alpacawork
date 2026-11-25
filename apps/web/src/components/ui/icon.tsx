@@ -59,6 +59,7 @@ const paths = {
     </>
   ),
   activity: <path d="M3 12h4l3-7 4 14 3-7h4" />,
+  chart: <path d="M4 4v16h16M8 16v-4m5 4V8m5 8V5" />,
   /* An instruction the agent has not read yet: a clock, as a chat marks a message still on its way. */
   unread: (
     <>
@@ -123,6 +124,8 @@ const paths = {
     </>
   ),
   close: <path d="m6 6 12 12M6 18 18 6" />,
+  /* More: three dots in a row, for what a row has no room for. */
+  more: <><circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" /><circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none" /></>,
   // A broom: the handle down to its head, and the bristles fanned at its foot.
   clear: <path d="M19.5 3.5 12 11M9.75 9.25l5 5-3.25 6.25H4.5l1-6zM8 20.5l1.25-3.5M11 20.5l.5-1.5" />,
   copy: (

@@ -137,6 +137,7 @@
     "empty": "タスクはありません",
     "more_other": "残り {{count}}件を表示",
     "outcome": "結果",
+    "resize": "分析一覧の高さ（上下の矢印キーで調整）",
     "task": "タスク",
     "usedTitle": "{{name}}のタスク"
   },
@@ -146,7 +147,7 @@
     "usage": "AI の使用量"
   },
   "outcome": {
-    "none": "作業中",
+    "none": "未完了",
     "passed": "手直しなし",
     "reworked": "手直しあり",
     "stopped": "中止"
@@ -294,13 +295,13 @@
     "children": "子タスク",
     "conversations": "新しい会話",
     "duringWork": "作業中の指示",
+    "empty": "このタスクの分析データはありません。",
     "inputCache": "入力＋キャッシュ",
     "marks": {
       "instruction": "指示",
       "sendBack": "差し戻し"
     },
     "models": "モデル",
-    "open": "タスクを開く",
     "sendBacks": "差し戻し",
     "skills": "スキル",
     "stopped": "{{at}} 中止",

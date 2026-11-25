@@ -9,7 +9,8 @@ import { act, cleanup, render } from "@testing-library/react";
 import { useState } from "react";
 import { startI18n } from "@alpacawork/i18n";
 import { useUrlBootstrap } from "../src/state/bootstrap";
-import { closeReaderStep } from "../src/state/history-step";
+import { closeReaderStep, showList } from "../src/state/history-step";
+import { analysisHome } from "../src/features/analysis/place";
 import { useCloseOnBack } from "../src/lib/close-on-back";
 import { useEveryTaskIndex } from "../src/data/queries";
 import { useViewStore } from "../src/state/view-store";
@@ -187,4 +188,19 @@ test("a browser that says the move finished before its popstate: the reader clos
   await act(() => navigation.arrive(navigation.moves[0]!, { finishedFirst: true })); await wait(20);
   expect(closed()).toBe(true);
   expect(transientOpen).toBe(true);
+});
+
+test("the list with A open, the analysis, then Use: the browser goes back to the list's step with A open, and × closes A to the list", async () => {
+  const session = sessionHistory(); fakeNavigation();
+  mount(); await wait(5);
+  await open("T1");
+  act(() => useViewStore.getState().showAnalysis(analysisHome())); await wait(5);
+  expect(useViewStore.getState().reader.open).toBe(false);
+  act(() => showList()); await wait(20);
+  expect(useViewStore.getState()).toMatchObject({ analysis: null, selected: "T1", reader: { open: true } });
+  expect(session._currentIndex).toBe(1);
+  act(() => closeReaderStep()); await wait(20);
+  expect(closed()).toBe(true);
+  expect(useViewStore.getState().analysis).toBeNull();
+  expect(session._currentIndex).toBe(0);
 });

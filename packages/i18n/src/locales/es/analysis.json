@@ -155,6 +155,7 @@
     "more_many": "Mostrar {{count}} más",
     "more_other": "Mostrar {{count}} más",
     "outcome": "Resultado",
+    "resize": "Altura de la lista de análisis (flechas arriba y abajo)",
     "task": "Tarea",
     "usedTitle": "{{name}}"
   },
@@ -164,7 +165,7 @@
     "usage": "Uso de la IA"
   },
   "outcome": {
-    "none": "En curso",
+    "none": "Sin finalizar",
     "passed": "Sin correcciones",
     "reworked": "Necesitó correcciones",
     "stopped": "Detenida"
@@ -330,13 +331,13 @@
     "children": "Subtareas",
     "conversations": "Conversaciones nuevas",
     "duringWork": "Instrucciones durante el trabajo",
+    "empty": "No hay análisis para esta tarea.",
     "inputCache": "Entrada + caché",
     "marks": {
       "instruction": "Instrucción",
       "sendBack": "Devolución"
     },
     "models": "Modelo",
-    "open": "Abrir la tarea",
     "sendBacks": "Devoluciones",
     "skills": "Skills",
     "stopped": "Detenida {{at}}",

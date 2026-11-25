@@ -59,7 +59,7 @@ export function AnalysisView({ place }: { place: AnalysisPlace }) {
   const preset = "period" in place.span ? place.span.period : null;
   // The arrows move from the span chosen now, even while the answer for it is still on its way.
   const earlier = head ? stepChosen(place.span, head, -1) : null, later = head ? stepChosen(place.span, head, 1) : null;
-  const step = (direction: -1 | 1) => { const to = direction < 0 ? earlier : later; if (to) show({ span: to, list: null, unit: null, card: null }); };
+  const step = (direction: -1 | 1) => { const to = direction < 0 ? earlier : later; if (to) show({ span: to, list: null, card: null }); };
   const canEarlier = !!earlier, canLater = !!later;
 
   // The page scrolls as the list does, under the bar and clear of what stands at the screen's foot (--list-foot).
@@ -72,7 +72,7 @@ export function AnalysisView({ place }: { place: AnalysisPlace }) {
       {/* The card's way in stands at the row's end: beside the span on a computer, beside the looks on a phone, where
           the span takes a line of its own. */}
       <div className="ms-auto flex flex-wrap items-center gap-x-4 gap-y-2 narrow:order-last narrow:ms-0 narrow:w-full">
-        <Seg label={t("period.label")} value={preset ?? ""} onChange={period => show({ span: { period: period as Period }, list: null, unit: null, card: null })}
+        <Seg label={t("period.label")} value={preset ?? ""} onChange={period => show({ span: { period: period as Period }, list: null, card: null })}
           items={PRESETS.map(each => [each.period, t(`period.${each.period}`)] as const)} />
         <div className="flex items-center gap-0.5 whitespace-nowrap narrow:w-full">
           <button type="button" aria-label={t("period.earlier")} title={t("period.earlier")} disabled={!canEarlier} onClick={() => step(-1)}
@@ -104,12 +104,12 @@ export function AnalysisView({ place }: { place: AnalysisPlace }) {
 /** The analysis's way to the card: over the page, for the span and the project in view. */
 function ShareCardButton({ place }: { place: AnalysisPlace }) {
   const { t } = useTranslation("analysis");
-  return <Button variant="outline" className="flex-none" onClick={() => useViewStore.getState().showAnalysis({ ...place, list: null, unit: null, card: cardSpanOf(place.span) })}>
+  return <Button variant="outline" className="flex-none" onClick={() => useViewStore.getState().showAnalysis({ ...place, list: null, card: cardSpanOf(place.span) })}>
     <Icon name="image" className="size-3.5" />{t("card.make")}</Button>;
 }
 
 /**
- * What opens over the face (a number's tasks, one task's values, the card) is its own part of the code; the face is not
+ * What opens over the face (a number's tasks, the card) is its own part of the code; the face is not
  * (it is drawn with the list's code, so its only wait is for its answers: FaceSkeleton). The layers' part is fetched
  * when the list has been drawn and the screen is idle, or when the analysis opens; once fetched it is drawn at once.
  * `again`: at its address once more, made new, so the browser asks for it again instead of answering with the failure it

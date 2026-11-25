@@ -60,11 +60,13 @@
   },
   "entries": {
     "after": "待ち先",
+    "analysis": "分析",
     "context": "コンテキスト",
     "count_other": "{{count}}",
     "dependencies": "依存",
     "files": "ファイル",
     "history": "履歴",
+    "more": "ほかのタブ",
     "waiters": "後続"
   },
   "family": {

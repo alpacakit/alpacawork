@@ -86,6 +86,10 @@
       "timeout": "已超时",
       "unknown": "原因不明"
     },
+    "facts": {
+      "own": "其中本任务",
+      "since": "处于当前状态"
+    },
     "length": {
       "days_other": "{{count}}天",
       "hours_other": "{{count}}小时",

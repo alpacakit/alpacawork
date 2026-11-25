@@ -4,7 +4,7 @@ import { flushSync } from "react-dom";
 import { isComposingKey } from "@/components/ui/composing";
 import { openSettings, useDialogStore } from "@/state/dialog-store";
 import { isSearchShown, useViewStore } from "@/state/view-store";
-import { closeReaderStep, closeView } from "@/state/history-step";
+import { closeTopReader, closeView } from "@/state/history-step";
 import { focusCoordinator as focusComposer, leaveCoordinator as leaveComposer, focusReader } from "@/features/coordinator/editor/draft";
 import { useEscapeLayer } from "@/lib/escape-layer";
 import { cancelPendingSearch, focusSearchInput } from "./search-ref";
@@ -18,7 +18,7 @@ export function useGlobalShortcuts() {
     if (dialogs.dialog?.kind === "input") { dialogs.close(); return true; }
     if (dialogs.dialog) return false;
     if (inComposer) leaveComposer();
-    else if (view.reader.open) closeReaderStep();
+    else if (view.reader.open) closeTopReader();
     else if (view.selected) view.closeDetail();
     else if (isSearchShown(view)) {
       cancelPendingSearch();

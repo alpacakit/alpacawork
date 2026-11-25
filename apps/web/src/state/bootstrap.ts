@@ -42,7 +42,8 @@ export function openScreenLink(href: string) {
  * before (a link opened afresh), the tab is kept and the reader shows the task pane if it is empty.
  */
 function validPane(value: string | null, task: string | null): ReaderPane {
-  return task && (value === "files" || value === "about") ? value : "task";
+  // A project has no Analysis tab: only a task's values are counted.
+  return task && (value === "files" || value === "about" || value === "analysis" && task.startsWith("T")) ? value : "task";
 }
 
 function validPath(value: string | null, task: string | null, pane: ReaderPane, detail: TaskDetail | undefined, root: string): string | null {
@@ -109,10 +110,12 @@ type Projects = WorkspaceInfo["projects"];
  * widens the list to every project, wherever it was opened from (a URL, a link, a notice, a row); a project chosen
  * closes what is outside it.
  */
-const outside = (id: string | null, project: string | null, index: TaskIndex, projects: Projects, root: string) =>
-  id !== null && !withinProject(index.byId.has(id) ? id
-    : readerTask(queryClient, root, id)?.projectId ?? id,
-    project, { byId: index.byId, projects });
+const outside = (id: string | null, project: string | null, index: TaskIndex, projects: Projects, root: string) => {
+  if (!id || !project) return false;
+  // A row still to be read has no known project. Keep the current scope until its membership is known.
+  const subject = index.byId.has(id) ? id : readerTask(queryClient, root, id)?.projectId;
+  return !!subject && !withinProject(subject, project, { byId: index.byId, projects });
+};
 
 /** Keeps what an intent left the screen showing one with the project in view (`before`: the screen as it found it). */
 function fitProject(before: { project: string | null; selected: string | null }, index: TaskIndex, projects: Projects, root: string) {
@@ -136,9 +139,8 @@ function detailOf(task: string | null, row: Parameters<typeof taskDetail>[0] | u
  */
 function readNavigation(url: URL, index: TaskIndex, root: string, projects: Projects, missing: ReadonlySet<string>,
   turnSequence = isTurnSequenceNavigation()): Navigation {
-  // The analysis face shows no task: one the URL names beside it is left out.
   const analysis = readAnalysis(url.searchParams);
-  const requestedTask = analysis ? null : urlValue("task", url);
+  const requestedTask = urlValue("task", url);
   const row = requestedTask ? taskAtAddress(requestedTask, index) ?? readerTask(queryClient, root, requestedTask) : undefined;
   const refusal = requestedTask ? readQuery(queryClient, ['task', root, requestedTask])?.state.error : undefined;
   const task = row?.id ?? (refusal instanceof ApiError && refusal.code === 'forbidden' ? requestedTask : null);
