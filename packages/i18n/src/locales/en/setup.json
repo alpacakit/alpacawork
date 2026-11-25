@@ -30,7 +30,7 @@
   "beta": "Beta",
   "changedElsewhere": "Changed in another view. Showing the current setting.",
   "consent": {
-    "body": "Usage data includes the version, OS, and feature usage counts. Conversations, task contents, file names, and the PC name are never sent. Nothing is sent until you go to the next step, and alpacawork works the same with this off. You can change this anytime in Settings.",
+    "body": "Usage data includes the version, OS, and feature usage counts. Conversations, task contents, file names, and the PC name are never sent. Nothing is sent until you go to the next step, and alpacawork works the same with this off. You can see what is sent and change this anytime in Settings.",
     "close": "Close",
     "detail": "What is sent",
     "failed": "Couldn't save your usage data choice. Try again.",
@@ -44,8 +44,8 @@
       "notSentKey": "Never sent",
       "sent": "The alpacawork version, OS and device type, feature usage counts, screen load times, error types, the kinds of agents used, and approximate task counts",
       "sentKey": "Sent",
-      "stop": "In Settings → General → Usage data, you can stop sending and delete the data already sent",
-      "stopKey": "Stop and delete"
+      "stop": "In Settings → General → Usage data, you can see what will be and was sent, stop sending, and delete the data already sent",
+      "stopKey": "See, stop, delete"
     }
   },
   "display": {

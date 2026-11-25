@@ -30,7 +30,7 @@
   "beta": "Beta",
   "changedElsewhere": "Alterado em outra tela. Mostrando a configuração atual.",
   "consent": {
-    "body": "Os dados de uso incluem a versão, o sistema operacional e contagens de uso dos recursos. Conversas, conteúdo das tarefas, nomes de arquivos e o nome do PC nunca são enviados. Nada é enviado até você ir para a próxima etapa, e o alpacawork funciona do mesmo jeito com esta opção desativada. Você pode mudar isso a qualquer momento em Configurações.",
+    "body": "Os dados de uso incluem a versão, o sistema operacional e contagens de uso dos recursos. Conversas, conteúdo das tarefas, nomes de arquivos e o nome do PC nunca são enviados. Nada é enviado até você ir para a próxima etapa, e o alpacawork funciona do mesmo jeito com esta opção desativada. Em Configurações, você pode ver o que é enviado e mudar isso a qualquer momento.",
     "close": "Fechar",
     "detail": "O que é enviado",
     "failed": "Não foi possível salvar sua escolha sobre os dados de uso. Tente novamente.",
@@ -44,8 +44,8 @@
       "notSentKey": "Nunca enviado",
       "sent": "A versão do alpacawork, o sistema operacional e o tipo de dispositivo, contagens de uso dos recursos, tempos de carregamento das telas, tipos de erro, os tipos de agentes usados e contagens aproximadas de tarefas",
       "sentKey": "Enviado",
-      "stop": "Em Configurações → Geral → Dados de uso, você pode parar o envio e excluir os dados já enviados",
-      "stopKey": "Parar e excluir"
+      "stop": "Em Configurações → Geral → Dados de uso, você pode ver o que será e o que foi enviado, parar o envio e excluir os dados já enviados",
+      "stopKey": "Ver, parar, excluir"
     }
   },
   "display": {

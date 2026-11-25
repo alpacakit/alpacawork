@@ -40,7 +40,7 @@ To change your choice later, use the "Send usage data to help improve alpacawork
 
 When you stop, data not yet sent is deleted without being sent. Data already sent isn't deleted just by stopping ("Delete what was sent" below).
 
-If you update to a version that changes which fields are sent or how they are sent, you are asked again only if you had chosen to send. Nothing is sent until you answer.
+If you update to a version that adds a kind of information to what is sent, or changes how it is sent, a window asks you to agree again when you open the screen, only if you had chosen to send. It lists the fields added. Nothing is sent until you answer. Each kind of information is a field of the report (for example `shape.tasks`); your choice records the fields it covered, so a field added later is always asked about.
 
 In some cases, such as when alpacawork runs in CI or inside a container, nothing is sent even if you chose to send. The switch then can't be changed, and the reason appears under it.
 
@@ -48,10 +48,12 @@ Nothing is sent either while the environment variable `ALPACAWORK_TELEMETRY_DISA
 
 ## See what is sent
 
-- Screen: "See what's sent" under the usage data switch in Settings → General shows today's report so far (the one sent tomorrow), exactly as it will be sent. It shows content only while sending is on. What appears there hasn't been sent yet, so if you stop sending, it won't be.
-- Command: `alpacawork telemetry show` shows today's data so far, earlier days' reports not yet sent, your copies of reports already sent, and the list of names and values that can be sent. The list is shown even before you choose to send.
+- Screen: "See what's sent" under the usage data switch in Settings → General shows today's draft, reports waiting to send, and the requests made by alpacawork. Each attempt records the destination, the exact content, and the result if known, including retries and in-app deletion requests.
+- Command: `alpacawork telemetry show` shows the same history and the list of names and values that can be sent.
 
-Both show JSON. The `alpacawork telemetry` commands work only when a person types them in a terminal on this PC.
+Each attempt is recorded before sending and remains on this PC for 13 weeks, even if you turn sending off or ask to delete data at the receiver. If the response could not be recorded, the history shows that the outcome is unknown.
+
+The `alpacawork telemetry` commands work only when a person types them in a terminal on this PC.
 
 ## Delete what was sent
 
