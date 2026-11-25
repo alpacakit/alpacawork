@@ -323,7 +323,7 @@ const viewOf = (task: ControlTaskDTO, value: Served) => ({ task: { ...task,
   requestHeads: value.requests.filter((request) => request.taskId === task.id).map(({ body, ...request }) => ({
     ...request, headline: body.split("\n", 1)[0] ?? "", bodyBytes: Buffer.byteLength(body) })),
   values: valuesOf(task),
-  reply: value.replies[task.id] ?? null, questions: questionsOf(task.id, value), userQuestions: value.userQuestions && task.id in value.userQuestions ? value.userQuestions[task.id] : [], requestedByUser: value.requestedByUser[task.id] ?? null, conversations: { anew: 0, compacted: 0, changes: [] },
+  reply: value.replies[task.id] ?? null, questions: questionsOf(task.id, value), userQuestions: value.userQuestions && task.id in value.userQuestions ? value.userQuestions[task.id] : [], requestedByUser: value.requestedByUser[task.id] ?? null, conversations: { anew: 0, compacted: 0, cutTokens: null, changes: [] },
   userReviews: value.userReviews && task.id in value.userReviews ? value.userReviews[task.id] : [] });
 /** Each task's opened view as the projection answers it: its own row without the list's numbers, its ancestors' heads. */
 export const viewsOf = (value: Served, sourcePv = 0): TaskProjectedViewDTO[] => value.tasks.map((task) => {

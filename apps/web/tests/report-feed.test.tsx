@@ -1320,11 +1320,13 @@ test("the context meter lists the task's conversation changes newest first, with
     { at: "2026-11-26T01:00:00.000Z", change: "compacted", beforeTokens: 610_000, afterTokens: 140_000, windowTokens: 1_000_000 },
     { at: "2026-11-26T02:00:00.000Z", change: "compacted", beforeTokens: 500_000, afterTokens: 100_000, windowTokens: 1_000_000 },
   ] as const;
-  render(<ContextMeter press conversations={{ anew: 1, compacted: 2, changes: [...changes] }}
+  render(<ContextMeter press conversations={{ anew: 1, compacted: 23, cutTokens: 9_870_000, changes: [...changes] }}
     context={{ usedTokens: 140_000, windowTokens: 1_000_000, windowFrom: "reported", compacted: false, observedAt: "2026-11-26T00:00:00.000Z" }} />);
   fireEvent.click(document.querySelector<HTMLElement>("[data-context-meter]")!);
   const list = await waitFor(() => document.querySelector<HTMLElement>("[data-conversation-list]")!);
-  expect(list.querySelector("[data-conversation-cut]")!.textContent).toBe("Compactions cut 870K tokens in all");
+  // The total is the task's whole, from the server, and what the list leaves out is said.
+  expect(list.querySelector("[data-conversation-cut]")!.textContent).toBe("Compactions cut 9.9M tokens in all");
+  expect(list.querySelector("[data-conversation-more]")!.textContent).toBe("21 more in History");
   const rows = [...list.querySelectorAll<HTMLElement>("[data-conversation-change]")];
   expect(rows.map(row => row.dataset.conversationChange)).toEqual(["compacted", "compacted", "new"]);
   expect(rows[0]!.textContent).toContain("50%");

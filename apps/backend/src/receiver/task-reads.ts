@@ -2,7 +2,7 @@ import { questionApplicable, questionSnapshot } from '../control/question-rules.
 
 import { type ReadRunRecord, resultHead, reviewClosure, PARENT_VISIBLE_EVENTS, compareHistoryEvents, currentReview, eventOf, historyCursor, renderContext, type TaskValues } from '@alpacawork/contract';
 import { HISTORY_WINDOW_MAX, HISTORY_WINDOW_SIZE, historyWindowRequestSchema, viewReportLog, CONVERSATION_LIST_LIMIT, type HistoryWindowRequest, type TaskHistoryWindowDTO, type TaskProjectedViewDTO, type ControlIndexDTO, type ControlRunDTO, type ControlTaskDTO, type ControlTreeDTO, type HistoryCrewDTO, type PlacementDTO, type TaskHistoryDTO, type TaskPageRowDTO, type TaskRowDTO, type TaskViewDTO } from '@alpacawork/contract/control';
-import { carrierOf, compareRunIds, isRunEnded, isRunInTrouble, isRunMoving, conversationChanges, type ConversationChange } from '@alpacawork/contract/run';
+import { carrierOf, compareRunIds, isRunEnded, isRunInTrouble, isRunMoving, compactionCut, conversationChanges, type ConversationChange } from '@alpacawork/contract/run';
 import { runErrorCause } from '@alpacawork/contract/agent-diagnostics';
 import { PROBLEM_CODE, Problem } from '@alpacawork/core';
 import { closureOf, openQuestions, questionsOf, type TaskActor } from '@alpacawork/raw';
@@ -332,7 +332,9 @@ function namedReports(log: readonly { id: string; title?: string | null }[], cha
 function conversationsOf(log: readonly { id: string; title?: string | null }[], runs: readonly ReadRunRecord[]): TaskProjectedViewDTO['conversations'] {
   const changes = namedReports(log, conversationChanges(runs.map(run => ({ id: run.id, placementId: run.placementId, resumes: run.resumes,
     state: run.state, startedAt: run.started_at, supersededBy: run.supersededBy, newConversation: run.newConversation, compactions: run.compactions }))));
+  const cuts = changes.map(compactionCut).filter((cut): cut is number => cut !== null);
   return { anew: changes.filter(change => change.change === 'new').length, compacted: changes.filter(change => change.change === 'compacted').length,
+    cutTokens: cuts.length ? cuts.reduce((total, cut) => total + cut, 0) : null,
     changes: changes.slice(-CONVERSATION_LIST_LIMIT).map(({ run: _run, ...change }) => change) };
 }
 

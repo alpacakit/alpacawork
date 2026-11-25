@@ -27,6 +27,10 @@ test('History has a row for the compaction an agent made on its own and for a la
     assert.equal(compaction.beforeTokens, 610_000);
     assert.equal(compaction.afterTokens, 140_000);
     assert.equal(rows.filter((row: { change: string }) => row.change === 'new').length, 1, 'the first conversation is not a new one');
+    // The task view counts and totals the same changes, for the context meter's list.
+    const view = await (await fetch(new URL(`/api/task/view?task=${h.taskId}`, app.url))).json();
+    assert.deepEqual({ ...view.conversations, changes: view.conversations.changes.map((change: { change: string }) => change.change) },
+      { anew: 1, compacted: 1, cutTokens: 470_000, changes: ['compacted', 'new'] });
     // The list's time strip stays as it was: no conversation row reaches it.
     const strip = await (await fetch(new URL(`/api/task/timeline?lanes=${h.taskId}&from=2020-01-01T00:00:00.000Z&to=2100-01-01T00:00:00.000Z&limit=50`, app.url))).json();
     const notes = strip.lanes.flatMap((lane: { events: { kind: string; event?: { kind?: string } }[] }) => lane.events)

@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import type { ContextView } from "@alpacawork/contract/agent-context";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TONE_TEXT, UsageRing, percentText } from "@/components/ui/usage-ring";
-import { compactionCut, contextFigure, totalCut, type TaskConversations } from "@/domain/context";
+import { compactionCut, contextFigure, type TaskConversations } from "@/domain/context";
 import { limitTone } from "@/domain/limits";
 import { contextPercent } from "@alpacawork/contract/agent-context";
 import { Icon } from "@/components/ui/icon";
@@ -72,23 +72,24 @@ function ConversationList({ conversations }: { conversations: TaskConversations 
     return <span className="inline-flex items-center gap-0.5">
       <UsageRing percent={percent ?? 0} tone={limitTone(percent ?? 0)} open={percent === null} className="size-3" />{percent !== null ? percentText(percent) : compact(tokens)}</span>;
   };
-  const total = totalCut(conversations.changes);
+  const total = conversations.cutTokens, more = conversations.anew + conversations.compacted - conversations.changes.length;
   return <div data-conversation-list className="mt-2 border-t border-rule pt-2 text-xs">
     <div className="flex items-center gap-1">
       <p className="m-0 font-medium text-muted">{t("context.conversations")}</p>
       <Popover>
         <PopoverTrigger aria-label={t("context.help")} onClick={event => event.stopPropagation()}
-          className="inline-flex size-5 cursor-pointer items-center justify-center rounded-full text-muted outline-none pointer-fine:hover:bg-hover pointer-fine:hover:text-ink focus-visible:ring-2 focus-visible:ring-ink/40">
+          className="relative inline-flex size-5 cursor-pointer before:absolute before:-inset-3 before:content-[''] items-center justify-center rounded-full text-muted outline-none pointer-fine:hover:bg-hover pointer-fine:hover:text-ink focus-visible:ring-2 focus-visible:ring-ink/40">
           <Icon name="help" className="size-4" /></PopoverTrigger>
         <PopoverContent side="top" className="w-64 p-3 text-xs leading-relaxed" onClick={event => event.stopPropagation()}>
-          <p className="m-0">{t("context.helpCompacted")}</p><p className="m-0 mt-2">{t("context.helpNew")}</p></PopoverContent>
+          <p className="m-0">{t("context.helpCompacted")}</p><p className="m-0 mt-2">{t("context.helpNew")}</p>
+          <p className="m-0 mt-2 text-muted">{t("context.helpFigures")}</p></PopoverContent>
       </Popover>
     </div>
     {total !== null && <p data-conversation-cut className="m-0 mt-1.5">{t("context.cut", { tokens: compact(total) })}</p>}
     <ol className="m-0 mt-1.5 max-h-48 list-none overflow-y-auto p-0">
-      {[...conversations.changes].reverse().map(change => {
+      {[...conversations.changes].reverse().map((change, index) => {
         const cut = compactionCut(change);
-        return <li key={`${change.at}:${change.change}`} data-conversation-change={change.change} className="grid grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center gap-x-1.5 py-1 tabular-nums">
+        return <li key={index} data-conversation-change={change.change} className="grid grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center gap-x-1.5 py-1 tabular-nums">
           <span className="text-muted">{when(change.at)}</span>
           <Icon name={change.change === "new" ? "chat" : "reload"} className="size-3.5 text-conversation" />
           {change.change === "new"
@@ -100,5 +101,6 @@ function ConversationList({ conversations }: { conversations: TaskConversations 
         </li>;
       })}
     </ol>
+    {more > 0 && <p data-conversation-more className="m-0 mt-1 text-muted">{t("context.more", { count: more })}</p>}
   </div>;
 }

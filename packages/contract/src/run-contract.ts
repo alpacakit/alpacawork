@@ -112,6 +112,10 @@ export function conversationChanges(runs: readonly ChangingRun[]): ConversationC
   ];
   return changes.sort((a, b) => a.at.localeCompare(b.at));
 }
+/** The tokens a compaction took out of its conversation, when its agent said both figures. */
+export const compactionCut = (change: ConversationChange): number | null =>
+  change.change === 'compacted' && change.beforeTokens !== null && change.afterTokens !== null
+    ? Math.max(0, change.beforeTokens - change.afterTokens) : null;
 export const isRunMoving = (state: RunState): boolean => state === RUN_STATE.queued || state === RUN_STATE.running;
 export const isRunInTrouble = (state: RunState): boolean => state === RUN_STATE.failed || state === RUN_STATE.needs_review;
 /** A failure is current until a later Run in its resumed chain actually starts. */
