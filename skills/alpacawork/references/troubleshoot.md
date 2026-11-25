@@ -37,9 +37,9 @@ On WSL2, the server runs only while Ubuntu is running, and Windows does not star
 
 This is the order for stopping Runs before maintenance during which you do not want agents to be relaunched (such as an update that changes the shape of the database). Hold comes first because the return from `run stop` can wake the owner of the requester task, which may then request the same work again.
 
-1. Read the Runs to stop with one `run list` (`--under <ID>` for part of the tree), following `cursor`. A task in any state, `todo` included, can have them. A list with `errors` is incomplete, and inside a Run it covers only that Run's project (`scope`).
+1. Read the Runs to stop (`queued`, `running`, `needs_review`) with one `run list` (`--under <ID>` for part of the tree), following `cursor`. A task in any state, `todo` included, can have them. A list with `errors` is incomplete, and inside a Run it covers only that Run's project (`scope`).
 2. Put on hold each task that has one and each requester task its return would wake (hold is a mark on each task; holding an ancestor does not hold the tasks under it), with each task's hash from `task get`. Leave a task already on hold as it is.
-3. Stop them with `run stop`, `queued` first. Stopping a Run also stops the Runs under it (`parentRun`), so leave your own Run (`ALPACAWORK_RUN`), the Runs above it and `coordinator` Runs, which end with their reply.
+3. Stop them with `run stop`, `queued` first and children before their parent: stopping a Run also stops the Runs under it (`parentRun`). Leave your own Run (`ALPACAWORK_RUN`), the Runs above it and `coordinator` Runs, which end with their reply.
 4. Before the maintenance, confirm with `run list` that only those remain (`stopRequested` ones are still ending); send no new requests and take nothing off hold meanwhile. If an update still reports Runs, see `run list -h`. Afterwards take the holds off from the upper tasks down ([Hold](lifecycle.md#hold)); treat the results of stopped tests as missing and verify reruns separately.
 
 When the server is down and `run stop` cannot be run, a person runs `alpacawork run stop-local` on the server machine (give a UUID explicitly in `--op-id`). The Run stops without waiting for the server to come back. The record reflects it only after the server has come back.
