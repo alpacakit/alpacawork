@@ -26,6 +26,7 @@ import { ReaderSheetClose, TaskActions } from "./TaskActions";
 import { FrameButtons, ReaderBack, ReaderHeader, readerHeadBox, ReaderTitle } from "./ReaderHeader";
 import { ContextPage, ReportFeed } from "./ReportFeed";
 import { TaskAnalysis } from "@/features/analysis/TaskAnalysis";
+import { ReaderTimes } from "@/features/tree/RowStatus";
 import { COLUMN, looksWide } from "./reading-column";
 import { FilesTab } from "./files/FilesTab";
 import { MarkdownBody } from "./MarkdownBody";
@@ -226,6 +227,7 @@ export function Reader({ mode, overlapping = false, canDock = mode === "docked" 
         {/* Every pane stands under the task's title and its tabs (ReaderEntries), which scroll with it. */}
         <div data-head-title className={`relative -mx-4 -mt-2 mb-2 border-b border-rule pb-1 narrow:-mx-3 narrow:px-3 ${COLUMN.title}`}>
           <ReaderTitle task={task} titleRef={titleRef} />
+          <ReaderTimes task={task} people={people} className="mb-1" />
           <ReaderEntries task={task} detail={detail} pane={pane} /><ReaderPanelSlot />{notes}{!analysis && reading}</div>
         {analysis ? <div data-reading-column className={COLUMN.body}><TaskAnalysis key={task.id} taskId={task.id} /></div>
         : <div data-reading-column={wide ? "wide" : ""} data-held-hidden={hidden || undefined} inert={hidden} aria-hidden={hidden || undefined}

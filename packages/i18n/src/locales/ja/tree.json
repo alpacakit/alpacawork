@@ -136,6 +136,7 @@
     "work": {
       "heading": "エージェントが動いた時間の合計",
       "hours": "{{hours}}時間{{minutes}}分",
+      "label": "実行時間",
       "minutes_other": "{{count}}分",
       "own": "このタスクだけ",
       "separator": "、",

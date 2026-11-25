@@ -149,6 +149,7 @@
     "work": {
       "heading": "Tempo total de trabalho dos agentes",
       "hours": "{{hours}}h {{minutes}}min",
+      "label": "Tempo de execução",
       "minutes_one": "{{count}} min",
       "minutes_many": "{{count}} min",
       "minutes_other": "{{count}} min",

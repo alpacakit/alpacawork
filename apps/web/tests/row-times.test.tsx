@@ -4,6 +4,7 @@ import { i18n } from "@alpacawork/i18n";
 import { useConnection } from "../src/data/connection";
 import { OFFLINE_SHOWN_AFTER_MS } from "../src/data/reach";
 import { TimeTree } from "../src/features/tree/TimeTree";
+import { Reader } from "../src/features/reader/Reader";
 import { useViewStore } from "../src/state/view-store";
 import { TestWorkspace, dto, homeFixture, logEntry, narrowScreen, decideItem, questionFixture, run, taskFixture, tree, userBall } from "./fixtures";
 import { canonical, created, fixture, iso, minute, now, report, served, setupTimeView } from "./time-view-fixture";
@@ -381,4 +382,22 @@ test.each([false, true])('stopped rows state the cause before progress and elaps
       unmount();
     }
   }finally{phone.restore();}
+});
+
+test("the detail names the agents' run time under the title for a finished task, and says nothing before any Run", async () => {
+  await i18n.changeLanguage("ja");
+  try {
+    const hour = 60 * minute;
+    const tasks = [dto({ id: "T1", state: "done", userRequested: true }), dto({ id: "T2", state: "todo" })];
+    const runs = [run("R1", { taskId: "T1", placementId: "P1", state: "succeeded", startedAt: iso(now - 3 * hour), endedAt: iso(now - hour) })];
+    render(<TestWorkspace data={served(tree({ tasks, runs, usage: { T1: { usage: { runs: 1, runMs: 2 * hour + 5 * minute, tokens: null, tokensUnknown: 1 }, usageBelow: null } } }))}>
+      <Reader mode="docked" /></TestWorkspace>);
+    act(() => useViewStore.getState().openTask("T1", { reader: true }));
+    const time = await vi.waitFor(() => document.querySelector<HTMLElement>("[data-reader-work-time]")!);
+    expect(time.textContent).toBe("実行時間2時間05分");
+    expect(time.classList.contains("text-working")).toBe(false);
+    act(() => useViewStore.getState().openTask("T2", { reader: true }));
+    await vi.waitFor(() => expect(document.querySelector("[data-reader-title]")?.getAttribute("data-reader-title")).toBe("T2"));
+    expect(document.querySelector("[data-reader-times]")).toBeNull();
+  } finally { await i18n.changeLanguage("en"); }
 });

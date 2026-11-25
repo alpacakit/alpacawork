@@ -49,9 +49,10 @@ export function TaskAnalysis({ taskId, title = false }: { taskId: string; title?
   return <div ref={setRoot} data-task-analysis className="pb-6">
     <PointerTip root={root} />
     {heading}
-    <p className="mt-2 inline-flex items-center text-muted">
-      <Square className={row.outcome ? OUTCOME[row.outcome] : "bg-rule"} />{t(`outcome.${row.outcome ?? "none"}`)}{lead !== null && <span className="ms-3">{duration(lead)}</span>}
-    </p>
+    {/* How it ended, and how long it took; a task not finished says so once, at its band's end. */}
+    {row.outcome && <p className="mt-2 inline-flex items-center text-muted">
+      <Square className={OUTCOME[row.outcome]} />{t(`outcome.${row.outcome}`)}{lead !== null && <span className="ms-3">{duration(lead)}</span>}
+    </p>}
     <Band values={values} />
     <Facts className="mt-4" items={[
       ...you > 0 ? [{ color: "bg-turn", name: t("time.you"), value: duration(you) }] : [],

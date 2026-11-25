@@ -142,6 +142,7 @@
     "work": {
       "heading": "Total agent working time",
       "hours": "{{hours}}h {{minutes}}m",
+      "label": "Run time",
       "minutes_one": "{{count}} min",
       "minutes_other": "{{count}} min",
       "own": "This task only",

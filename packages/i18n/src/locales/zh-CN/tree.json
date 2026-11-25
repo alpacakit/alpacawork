@@ -136,6 +136,7 @@
     "work": {
       "heading": "智能体工作总时长",
       "hours": "{{hours}}小时{{minutes}}分",
+      "label": "运行时间",
       "minutes_other": "{{count}} 分钟",
       "own": "仅此任务",
       "separator": "，",
