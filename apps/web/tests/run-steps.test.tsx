@@ -179,6 +179,15 @@ test('an edit too large to carry whole says how many more files it changed', asy
   await waitFor(() => expect(document.querySelector('[data-run-step-more-files]')?.textContent).toBe('and 59000 more files'));
 });
 
+test('a step whose details were too large to keep says so when opened', async () => {
+  server.put(entry(0, 'echo hi'));
+  server.details.set(0, { input: { text: 'echo hi', omitted: 0 }, output: null, detailsDropped: true });
+  render(<AnswerSteps run="R7" />);
+  fireEvent.click(screen.getByRole('button', { name: 'Steps behind this answer' }));
+  fireEvent.click(await screen.findByRole('button', { name: /echo hi/ }));
+  await waitFor(() => expect(document.querySelector('[data-run-step-dropped]')?.textContent).toBe('Its contents were too large, so the details could not be recorded'));
+});
+
 test('a step whose outcome could not be read is not shown done, and opened says why', async () => {
   server.put(entry(0, 'pnpm test', { state: 'unknown' }));
   render(<AnswerSteps run="R7" />);

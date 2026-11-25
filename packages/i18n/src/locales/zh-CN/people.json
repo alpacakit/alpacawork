@@ -96,6 +96,7 @@
       "answered": "此回复之前的步骤",
       "answeredCount_other": "此回复之前的步骤（{{count}} 步）",
       "count_other": "目前共 {{count}} 步",
+      "detailsDropped": "内容过大，未能记录详细内容",
       "none": "没有记录到步骤",
       "older_other": "显示之前的 {{count}} 项（还剩 {{rest}} 项）",
       "omitted_other": "此后 {{count}} 个字符过长，已省略",

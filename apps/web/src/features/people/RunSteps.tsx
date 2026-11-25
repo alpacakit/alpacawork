@@ -227,7 +227,8 @@ const StepRow = memo(function StepRow({ run, step, generation, open, toggle, aga
       {detail?.value ? <>
         <StepText data-run-step-input text={detail.value.input} tone="text-ink" />
         {detail.value.output && <StepText data-run-step-output text={detail.value.output} tone={step.state === "failed" ? "text-error" : "text-soft"} />}
-        {step.state === "unknown" && <Message tone="caution" size="line" quiet title={t("now.step.unknown")} className="text-xs" />}</>
+        {step.state === "unknown" && <Message tone="caution" size="line" quiet title={t("now.step.unknown")} className="text-xs" />}
+        {detail.value.detailsDropped && <Message tone="caution" size="line" quiet data-run-step-dropped title={t("now.step.detailsDropped")} className="text-xs" />}</>
         : detail?.failed ? <Message tone="error" size="line" title={t("now.step.unreadableOne")} className="text-xs" />
         : <span className="text-muted">{t("now.step.reading")}</span>}
     </div>}

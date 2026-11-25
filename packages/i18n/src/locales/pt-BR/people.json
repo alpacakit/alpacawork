@@ -116,6 +116,7 @@
       "count_one": "{{count}} etapa até agora",
       "count_many": "{{count}} etapas até agora",
       "count_other": "{{count}} etapas até agora",
+      "detailsDropped": "O conteúdo era grande demais, então os detalhes não puderam ser registrados",
       "none": "Nenhuma etapa foi registrada",
       "older_one": "Mostrar {{count}} anterior (restam {{rest}})",
       "older_many": "Mostrar {{count}} anteriores (restam {{rest}})",

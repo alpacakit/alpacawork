@@ -142,10 +142,15 @@ function cutText(text: string, bytes: number): { text: string; lost: number } {
  * fits is written as it is. Else what a person reads is said as text (ITEM_READABLE; a tool event's input and output
  * already are), what says what the step is and how it went is kept whole, and the room left is shared among the texts,
  * each cut from its end; how much each lost goes with that field alone (an item's `clipped`, a text's `omitted`). A
- * change list keeps each file's path and kind as they were, its text going in `changesText`; a result keeps whether it
- * was an error in `resultIsError`.
+ * change list keeps each file's path and kind as they were (as many as fit), its text going in `changesText`; a result
+ * keeps whether it was an error in `resultIsError`. A line still too long after that falls to the last guard (leastOf),
+ * so no content makes a line worse than main's.
  */
 export function boundBridgeEvent(event: BridgeEvent): BridgeEvent {
+  // Whatever goes wrong on the way (a structure too deep to write), the last guard still writes a line that fits.
+  try { return cutReadable(event); } catch { return leastOf(event); }
+}
+function cutReadable(event: BridgeEvent): BridgeEvent {
   let line: string | null;
   try { line = JSON.stringify(event); } catch { line = null; }
   if (line !== null && utf8.encode(line).length <= BRIDGE_LINE_BYTES) return event;
@@ -166,7 +171,22 @@ export function boundBridgeEvent(event: BridgeEvent): BridgeEvent {
       if (field === 'result' && record(item.result).isError === true) kept.resultIsError = true;
       const into = kept;
       const value = item[field];
-      parts.push({ text: field === 'changes' && Array.isArray(value) ? () => readable(value.slice(0, (kept!.changes as unknown[]).length)) : () => readable(value), put: (text, lost) => { into[name] = text; if (lost) clipped[name] = lost; else delete clipped[name]; } });
+      const put = (text: string, lost: number) => { into[name] = text; if (lost) clipped[name] = lost; else delete clipped[name]; };
+      if (field === 'changes' && Array.isArray(value)) {
+        // The files the text says are those whose heading is in it as written: the rest, of all the edit's files, are
+        // told by their count (changesOmitted), whatever was cut on the way.
+        let files: string[] = [];
+        parts.push({ text: () => (files = value.slice(0, (into.changes as unknown[]).length).map(record).map(fileChangeText)).join('\n\n'),
+          put: (text, lost) => {
+            put(text, lost);
+            let at = 0, shown = 0;
+            for (const file of files) {
+              if (at + (file.indexOf('\n') === -1 ? file.length : file.indexOf('\n')) > text.length) break;
+              shown++; at += file.length + 2;
+            }
+            if (value.length > shown) into.changesOmitted = value.length - shown; else delete into.changesOmitted;
+          } });
+      } else parts.push({ text: () => readable(value), put });
     }
     said.item = kept;
   }
@@ -190,7 +210,6 @@ export function boundBridgeEvent(event: BridgeEvent): BridgeEvent {
         if (over()) high = mid - 1; else low = mid;
       }
       kept.changes = changes.slice(0, low);
-      kept.changesOmitted = changes.length - low;
     }
   }
   const fixed = utf8.encode(JSON.stringify(said)).length + CLIPPED_ROOM;
@@ -203,7 +222,41 @@ export function boundBridgeEvent(event: BridgeEvent): BridgeEvent {
     room -= writtenBytes(text);
   });
   if (kept && Object.keys(clipped).length) kept.clipped = clipped;
-  return said as BridgeEvent;
+  return lineBytes(said) <= BRIDGE_LINE_BYTES ? said as BridgeEvent : leastOf(event);
+}
+/** The bytes a line takes as written; one too deep to write at all is taken as too long. */
+const lineBytes = (value: unknown) => {
+  try { return utf8.encode(JSON.stringify(value)).length; } catch { return Number.POSITIVE_INFINITY; }
+};
+/** Texts of `fields` in `into` cut from their end to share the room the line leaves them. */
+function shareRoom(line: Record<string, unknown>, into: Record<string, unknown>, fields: readonly string[]): void {
+  const texts = fields.filter(key => typeof into[key] === 'string').map(key => ({ key, text: into[key] as string }));
+  for (const { key } of texts) into[key] = '';
+  let room = Math.max(0, BRIDGE_LINE_BYTES - lineBytes(line) - CLIPPED_ROOM);
+  texts.sort((a, b) => a.text.length - b.text.length).forEach(({ key, text }, at) => {
+    into[key] = cutText(text, Math.floor(room / (texts.length - at))).text;
+    room -= writtenBytes(into[key] as string);
+  });
+}
+/**
+ * The last guard, for a line that is still too long however its readable fields were cut: an item is written as main
+ * writes it (its type, ID, command and text), those texts cut to fit, marked `detailsDropped` so the step says its
+ * details could not be kept; any other line keeps its type and ID, its other texts cut to fit and any structure left out.
+ */
+function leastOf(event: BridgeEvent): BridgeEvent {
+  const source = event as Record<string, unknown>;
+  if (source.item !== undefined) {
+    const item = record(source.item);
+    const least: Record<string, unknown> = { type: item.type, ...item.id !== undefined ? { id: item.id } : {},
+      ...typeof item.command === 'string' ? { command: item.command } : {}, ...typeof item.text === 'string' ? { text: item.text } : {}, detailsDropped: true };
+    const line = { type: source.type, item: least };
+    shareRoom(line, least, ['command', 'text']);
+    return line as BridgeEvent;
+  }
+  const line: Record<string, unknown> = Object.fromEntries(Object.entries(source).filter(([, value]) => value === null || typeof value !== 'object'));
+  if (Object.keys(line).length < Object.keys(source).length) line.detailsDropped = true;
+  shareRoom(line, line, Object.keys(line).filter(key => key !== 'type' && key !== 'id'));
+  return line as BridgeEvent;
 }
 /** A provider item as it crosses the bridge: its type (snake case) and the fields the step reading takes, as given. */
 export function boundaryItem(type: string, item: Record<string, unknown>): BridgeItem {

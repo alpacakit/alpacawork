@@ -106,6 +106,7 @@
       "answeredCount_other": "{{count}} steps behind this answer",
       "count_one": "{{count}} step so far",
       "count_other": "{{count}} steps so far",
+      "detailsDropped": "Its contents were too large, so the details could not be recorded",
       "none": "No steps were recorded",
       "older_one": "Show {{count}} earlier ({{rest}} left)",
       "older_other": "Show {{count}} earlier ({{rest}} left)",

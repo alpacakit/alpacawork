@@ -76,7 +76,9 @@ export const runStepsPageSchema = z.object({ steps: z.array(runStepEntrySchema).
 export type RunStepsPage = z.infer<typeof runStepsPageSchema>;
 /** GET /api/runs/:run/steps/:n: what that step ran and what came back (null before it has ended or when nothing did). */
 export const runStepDetailSchema = z.object({ input: runStepTextSchema, output: runStepTextSchema.nullable(),
-  changed: runStepEntrySchema.shape.changed, generation: runStepsPageSchema.shape.generation }).strict();
+  changed: runStepEntrySchema.shape.changed, generation: runStepsPageSchema.shape.generation,
+  /** Its record was too large to keep its details: what it ran and got back could not be kept. */
+  detailsDropped: z.literal(true).optional() }).strict();
 export type RunStepDetail = z.infer<typeof runStepDetailSchema>;
 /** The running turn's recent work: its rounded name (null once it has gone quiet), and its latest words and steps as they are. */
 export const coordinatorWorkSchema = z.object({ name: workNameSchema.nullable(), count: z.number().int().nonnegative(),

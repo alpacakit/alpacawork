@@ -385,3 +385,22 @@ test('an edit of sixty thousand files leaves the Run succeeded, and opens to its
   assert.ok(detail!.input.text.startsWith('add: /src/packages/module-0/file-0.ts\n+export const v0 = 0;'));
   assert.ok(detail!.input.omittedFiles! > 0);
 });
+
+test('a call to sixty thousand threads with a large diagnostic leaves the Run succeeded, its step saying its details could not be kept', async t => {
+  const h = setup(t);
+  const result = join(h.area, 'result.txt');
+  const b = h.start(['--json', '-o', result]);
+  b.send('many', JSON.stringify({ manyReceivers: true }));
+  await b.until(events => events.some(event => event.type === 'turn.completed'), 'turn completed');
+  b.child.stdin.end();
+  assert.equal(await b.exited, 0, b.stderr());
+  const lines = b.events().map(event => JSON.stringify(event));
+  assert.ok(lines.every(line => Buffer.byteLength(line) <= BRIDGE_LINE_BYTES));
+  writeFileSync(join(h.area, RUN_FILES.stdout), lines.join('\n') + '\n');
+  writeFileSync(join(h.area, RUN_FILES.resultTemp), readFileSync(result));
+  assert.equal(AGENT_RUNTIME_ADAPTERS.codex.read({ mode: 'start', session: null }, h.area, { code: 0, signal: null }).outcome.state, 'succeeded');
+  const index = new RunStepIndex(h.area, AGENT_RUNTIME_ADAPTERS.codex);
+  await index.update();
+  const step = index.range(undefined, 12).steps.find(each => each.id === 'r-turn-1')!;
+  assert.equal((await index.detail(step.n))?.detailsDropped, true);
+});

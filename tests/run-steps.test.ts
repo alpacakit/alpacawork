@@ -363,10 +363,55 @@ test('an edit whose file list alone passes the line keeps the files that fit fro
     { item: Record<string, unknown> };
   assert.ok(Buffer.byteLength(JSON.stringify(event)) <= BRIDGE_LINE_BYTES);
   const kept = (event.item.changes as unknown[]).length;
-  assert.deepEqual([event.item.id, event.item.status, event.item.changeCount, event.item.changesOmitted], ['f1', 'completed', 60_000, 60_000 - kept]);
+  assert.deepEqual([event.item.id, event.item.status, event.item.changeCount], ['f1', 'completed', 60_000]);
+  assert.ok(kept < 60_000);
   writeFileSync(join(path, 'stdout.log'), JSON.stringify(event) + '\n');
   const index = await read(path, 'codex'), detail = await index.detail(0);
   assert.equal(index.range(undefined, 12).steps[0]?.state, 'done');
   assert.ok(detail!.input.text.startsWith('add: /src/packages/module-0/components/generated/file-0.ts\n+export const value0 = 0;'));
-  assert.equal(detail!.input.omittedFiles, 60_000 - kept);
+  assert.equal(detail!.input.omittedFiles, event.item.changesOmitted);
+});
+
+test('a line still too long once its readable fields are cut is written as main writes it, marked, and fits', () => {
+  // A diagnostic that is no readable field, and a list of IDs that says who a call went to.
+  const diagnostic = boundBridgeEvent({ type: 'error', message: 'retry diagnostic '.repeat(130_000) } as never) as Record<string, unknown>;
+  assert.ok(Buffer.byteLength(JSON.stringify(diagnostic)) <= BRIDGE_LINE_BYTES);
+  assert.equal(diagnostic.type, 'error');
+  assert.ok((diagnostic.message as string).startsWith('retry diagnostic'));
+  const call = boundBridgeEvent({ type: 'item.completed', item: boundaryItem('collab_agent_tool_call', { id: 'r1', status: 'completed', prompt: 'check in',
+    receiverThreadIds: Array.from({ length: 60_000 }, (_, n) => `thread-${n}-0123456789`) }) }) as { item: Record<string, unknown> };
+  assert.ok(Buffer.byteLength(JSON.stringify(call)) <= BRIDGE_LINE_BYTES);
+  assert.deepEqual(call.item, { type: 'collab_agent_tool_call', id: 'r1', detailsDropped: true });
+});
+
+test('an edit is taken whole from its end when the end gives one, none of its start mixed in', async t => {
+  const path = folder(t);
+  const big = Array.from({ length: 60_000 }, (_, n) => ({ path: `/src/packages/module-${n}/file-${n}.ts`, kind: { type: 'add' }, diff: `+export const v${n} = ${n};` }));
+  const started = boundBridgeEvent({ type: 'item.started', item: boundaryItem('file_change', { id: 'f1', changes: big, status: 'inProgress' }) });
+  const ended = boundBridgeEvent({ type: 'item.completed', item: boundaryItem('file_change', { id: 'f1', status: 'completed',
+    changes: [{ path: '/src/only.ts', kind: { type: 'update', move_path: null }, diff: '-a\n+b' }] }) });
+  writeFileSync(join(path, 'stdout.log'), [started, ended].map(row => JSON.stringify(row)).join('\n') + '\n');
+  const detail = await (await read(path, 'codex')).detail(0);
+  assert.deepEqual(detail!.input, { text: 'update: /src/only.ts\n-a\n+b', omitted: 0 });
+});
+
+test('"and N more files" counts every file whose heading the text does not show', async t => {
+  const path = folder(t);
+  const changes = Array.from({ length: 60_000 }, (_, n) => ({ path: `/src/packages/module-${n}/file-${n}.ts`, kind: { type: 'add' }, diff: `+export const v${n} = ${n};` }));
+  const event = boundBridgeEvent({ type: 'item.completed', item: boundaryItem('file_change', { id: 'f1', changes, status: 'completed' }) });
+  writeFileSync(join(path, 'stdout.log'), JSON.stringify(event) + '\n');
+  const detail = await (await read(path, 'codex')).detail(0);
+  // A heading cut in the middle of its path does not show that file.
+  const headings = detail!.input.text.split('\n').filter(line => /^add: \/src\/packages\/module-\d+\/file-\d+\.ts$/.test(line)).length;
+  assert.equal(detail!.input.omittedFiles, 60_000 - headings);
+});
+
+test('a bash command cut short by the bridge still shows the script inside it', async t => {
+  const path = folder(t);
+  const script = "printf 'a'\n" + 'echo line\n'.repeat(150_000);
+  const event = boundBridgeEvent({ type: 'item.started', item: boundaryItem('command_execution', { id: 'c1', command: `/bin/bash -lc '${script.replaceAll("'", "'\\''")}'` }) });
+  writeFileSync(join(path, 'stdout.log'), JSON.stringify(event) + '\n');
+  const detail = await (await read(path, 'codex')).detail(0);
+  assert.ok(detail!.input.text.startsWith("printf 'a'\necho line\n"));
+  assert.ok(detail!.input.omitted > 0);
 });

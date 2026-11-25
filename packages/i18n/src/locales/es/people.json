@@ -116,6 +116,7 @@
       "count_one": "{{count}} paso hasta ahora",
       "count_many": "{{count}} pasos hasta ahora",
       "count_other": "{{count}} pasos hasta ahora",
+      "detailsDropped": "Su contenido era demasiado grande, así que no se pudieron registrar los detalles",
       "none": "No se registraron pasos",
       "older_one": "Mostrar {{count}} anterior (quedan {{rest}})",
       "older_many": "Mostrar {{count}} anteriores (quedan {{rest}})",

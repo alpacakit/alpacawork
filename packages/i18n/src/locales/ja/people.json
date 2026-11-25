@@ -96,6 +96,7 @@
       "answered": "この返事までの作業",
       "answeredCount_other": "この返事までの作業 {{count}} 件",
       "count_other": "これまでの作業 {{count}} 件",
+      "detailsDropped": "中身が大きすぎるため、詳しい内容は記録できませんでした",
       "none": "記録された作業はありません",
       "older_other": "前の {{count}} 件を表示（残り {{rest}} 件）",
       "omitted_other": "ここから先の {{count}} 文字は長いため省略しました",

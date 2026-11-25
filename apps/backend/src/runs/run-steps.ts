@@ -195,7 +195,7 @@ export class RunStepIndex {
       const output = outcome?.output ?? (outcome?.result.text ? lineText(outcome.result) : null);
       const files = call ? callOmittedFiles(call) : 0;
       return { input: { ...fullRunText(input.text, input.omitted), ...files ? { omittedFiles: files } : {} }, output: output && (output.text || output.omitted) ? fullRunText(output.text, output.omitted) : null,
-        changed: step.changed, generation: this.generation };
+        changed: step.changed, generation: this.generation, ...said.some(event => event.dropped) ? { detailsDropped: true as const } : {} };
     } finally { await handle.close(); }
   }
 }

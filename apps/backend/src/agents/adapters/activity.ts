@@ -33,7 +33,9 @@ const firstText = (...values: unknown[]) => values.find((value): value is string
 /** Codex wraps every command in one login shell; the script inside is what the agent wrote. */
 function shellScript(command: unknown): unknown {
   if (typeof command !== 'string') return command;
-  const wrapped = /^(?:\/bin\/|\/usr\/bin\/)?(?:bash|sh) -l?c (['"])([\s\S]*)\1$/.exec(command);
+  // A command cut short by the bridge has lost its closing quote: what follows the opening one is still the script.
+  const wrapped = /^(?:\/bin\/|\/usr\/bin\/)?(?:bash|sh) -l?c (['"])([\s\S]*)\1$/.exec(command)
+    ?? /^(?:\/bin\/|\/usr\/bin\/)?(?:bash|sh) -l?c (['"])([\s\S]*)$/.exec(command);
   if (!wrapped) return command;
   return wrapped[1] === "'" ? wrapped[2]!.replaceAll(`'\\''`, "'").replaceAll(`'"'"'`, "'") : wrapped[2]!.replace(/\\(["\\$`])/g, '$1');
 }
@@ -87,6 +89,8 @@ export function stepInputDocument(call: StepCall): string | undefined {
     default: return toolInputDocument(call.tool, call.input);
   }
 }
+/** The fields that say one edit together: taken from one record, never mixed from two. */
+const EDIT_FIELDS = ['changes', 'changesText', 'changesOmitted'] as const;
 /** What the bridge cut under one field of an item, by the field below it there ("" for the field cut whole). */
 function clippedBy(item: Record<string, unknown>, field: string): Record<string, number> {
   const clipped = object(item.clipped), by: Record<string, number> = {};
@@ -106,7 +110,11 @@ export function joinStepCalls(start: StepCall | undefined, end: StepCall | undef
   const fields = (value: unknown) => value !== null && typeof value === 'object' && !Array.isArray(value);
   if (!fields(start.input) || !fields(end.input)) return end.input === undefined ? start : end;
   const input = { ...start.input as Record<string, unknown> }, clipped: Record<string, number> = { ...start.clipped };
-  for (const [key, value] of Object.entries(end.input as Record<string, unknown>)) if (value !== undefined) {
+  // An edit (its change list, that list's text, the files left out of it) is taken whole from one record: the end's
+  // when it gives a change list, none of the start's mixed in.
+  const ended = end.input as Record<string, unknown>;
+  if (EDIT_FIELDS.some(key => ended[key] !== undefined)) for (const key of EDIT_FIELDS) { delete input[key]; delete clipped[key]; }
+  for (const [key, value] of Object.entries(ended)) if (value !== undefined) {
     input[key] = value;
     clipped[key] = end.clipped?.[key] ?? 0;
   }
@@ -195,7 +203,7 @@ export function bridgeActivity(value: unknown, received: string): ActivityEvent[
       : item.name;
     return [{ at, kind: row.type === 'item.started' ? 'tool_start' : 'tool_end', toolName, stepTool, id: item.id,
       ...bridgeInput(item), command: row.type === 'item.started' && item.type === 'command_execution' ? commandOf(item.command) : null,
-      ...(row.type === 'item.completed' ? { outcome: bridgeOutcome(item) } : {}) }];
+      ...(row.type === 'item.completed' ? { outcome: bridgeOutcome(item) } : {}), ...item.detailsDropped === true ? { dropped: true as const } : {} }];
   }
   if (item.type === 'agent_message') return [{ at, kind: 'message', text: item.text }];
   return [{ at, kind: 'output' }];
