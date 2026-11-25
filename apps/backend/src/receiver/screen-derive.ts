@@ -8,7 +8,7 @@
  */
 import { isDeepStrictEqual } from 'node:util';
 import { DELIVERY_STATE, controlReplySchema, taskViewRowSchema, type ControlRunDTO, type PlacementDTO, type TaskViewPlacementDTO, type TaskViewRunDTO, type TaskViewRowDTO } from '@alpacawork/contract/control';
-import { isRunEnded, isRunMoving, runSpan, sumUsage, userTurn, PARENT_VISIBLE_EVENTS, eventOf, type Ball } from '@alpacawork/contract';
+import { isRunEnded, runUsage, sumUsage, userTurn, PARENT_VISIBLE_EVENTS, eventOf, type Ball } from '@alpacawork/contract';
 import { taskRowFields } from '@alpacawork/contract/control';
 import { compareRunIds, hasContinuableSession, runFailureResolution, type ReadRunRecord } from '@alpacawork/contract/run';
 import type { RunId } from '@alpacawork/contract/fields';
@@ -211,7 +211,7 @@ export const deriveTask: DeriveTask = (records, id) => {
   });
   const ball = ballOfTask(records, id);
   const base = taskRowFields(view);
-  const usage = sumUsage(runs.filter(run => !isRunMoving(run.state)), Date.now());
+  const usage = sumUsage(runs, null);
   const row = pick({ ...base, projectId: records.projectOf(id), ball, usage,
     notice: { ...base.notice, turnKey: userTurn(ball)?.key ?? null }, question: openQuestions(view.log)[0]?.title ?? '',
     startOrder: startOrder(records, bundle) });
@@ -223,8 +223,8 @@ export const deriveTask: DeriveTask = (records, id) => {
     homeWorking: bundle.runs.some(run => run.state === 'running'),
     usage,
     openRuns: runs.flatMap(run => {
-      const span = runSpan(run, null);
-      return span && span.to === null ? [[run.id, span.from] as const] : [];
+      const usage = runUsage(run);
+      return usage?.live ? [[run.id, usage.started] as const] : [];
     }),
     movedAt: bundle.runs.reduce((at, run) => Math.max(at, Date.parse(run.ended_at ?? '') || 0, Date.parse(run.started_at ?? '') || 0),
       Date.parse(view.log.at(-1)?.at ?? '') || 0),

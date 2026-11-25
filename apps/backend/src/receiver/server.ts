@@ -1,3 +1,6 @@
+import { AnalysisReader } from '../analysis/reads.js';
+import { startTallyJob } from '../analysis/tally-job.js';
+import { openTallyScope } from '../analysis/tally-scope.js';
 import { mcpRequestBytes, type McpFileReadOptions } from '@alpacawork/contract/mcp';
 import { installMcpRoute } from './mcp-route.js';
 import { readMcpFile } from './mcp-file.js';
@@ -338,7 +341,11 @@ export async function startServer(root: string, port: number, options: ServerOpt
       await delay(20);
     }
   }
-  const context: Context = { root, push, presence, agentInspection: options.agentInspection };
+  const tallySince = openTallyScope(root);
+  const analysis = new AnalysisReader(root, tallySince, changes.log);
+  startupCleanup.push(() => analysis.close());
+  let stopAnalysisTally: (() => Promise<void>) | undefined;
+  const context: Context = { root, push, presence, analysis, agentInspection: options.agentInspection };
   const generation = randomUUID();
   startupCleanup.push(() => runs?.close());
   const stopDelivery = new StopDeliveryOwner(runStore());
@@ -1013,6 +1020,8 @@ export async function startServer(root: string, port: number, options: ServerOpt
       if (!starting) try { await lifecycle.quiesce(); } catch (error) { drainFault = error; }
       try {
       await stopTelemetry?.();
+      await stopAnalysisTally?.();
+      analysis.close();
       await firstRunSkills.close();
       await stopUpdates?.();
       clearInterval(timer);
@@ -1072,6 +1081,7 @@ export async function startServer(root: string, port: number, options: ServerOpt
     stopUpdates=monitorUpdates(root,error=>console.error('Update discovery needs attention',error));
     stopTelemetry=monitorTelemetry(telemetry);
     host.start();
+    stopAnalysisTally = startTallyJob(root, tallySince, changes.log, analysis.tallies);
     let lastSettle = 0, lastHeartbeat = Date.now(), lastCheck = 0, lastAudit = Date.now();
     let auditing: Promise<void> | undefined;
     loopDelay?.enable();

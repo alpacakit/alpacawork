@@ -312,7 +312,7 @@ export type ServerCommand<Input, C extends Context = Context> = {
   inputEvidence?: (query: (name: string) => string | undefined) => { replyTo?: string };
   readThread?: (input: Input) => boolean;
 };
-type LocalCommands = Exclude<JsonCommandName, `settings/${string}` | 'project/shelf' | 'workspace/url' | 'operation/get' | 'help' | 'guide'>;
+type LocalCommands = Exclude<JsonCommandName, `analysis/${string}` | `settings/${string}` | 'project/shelf' | 'workspace/url' | 'operation/get' | 'help' | 'guide'>;
 
 function lifecycleCommand(action: 'archive' | 'delete' | 'restore'): ServerCommand<CommandInput<'task/archive'>> {
   return {

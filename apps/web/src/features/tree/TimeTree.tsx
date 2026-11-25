@@ -7,6 +7,7 @@ import { useTimelineAxis } from "@/data/timeline-axis";
 import { useLaneReads, useTimelineLanes } from "@/data/timeline-lanes";
 import { errorText } from "@/data/client";
 import { createContext, Fragment, memo, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode, type RefObject } from "react";
+import { TodayMarks } from "@/features/analysis/FaceSwitch";
 import { useTranslation } from "react-i18next";
 import { useInfiniteQuery, useQuery, type InfiniteData } from "@tanstack/react-query";
 import { isFinished } from "@alpacawork/contract/branch";
@@ -524,8 +525,8 @@ function SectionHead({ section, first, shared, onToggle }: { section: Section; f
   return <div data-section={section.section} data-motion-key={`section:${section.section}`} className="border-b border-rule">
     <div style={frozen(shared)} className={cn("sticky left-0 flex h-8 bg-bg pl-list-text items-end pr-2 pb-1.5 text-base font-semibold text-ink narrow:h-11 narrow:items-center narrow:pb-0",
       !first && "h-12 pt-4 narrow:h-13 narrow:pt-2", columnEdge(shared))}>
-      <h2 className="m-0 flex text-base font-semibold">
-        <button type="button" aria-expanded={section.open} onClick={onToggle} className={cn(HEAD_LINE, HEAD_PRESS)}>
+      <h2 className="m-0 flex min-w-0 flex-1 text-base font-semibold">
+        <button type="button" aria-expanded={section.open} onClick={onToggle} className={cn(HEAD_LINE, HEAD_PRESS, "flex-none")}>
           {/* The square stands on the list's mark line, where a row's unread dot does; the name starts on the rows' icons. */}
           <span aria-hidden="true" className="relative -mr-1.5 flex w-0 flex-none items-center self-stretch">
             <i className={cn("absolute left-[calc(var(--spacing-list-mark)-var(--spacing-list-text))] size-2 -translate-x-1/2 rounded-xs", SECTION_MARK[section.section])} />
@@ -534,6 +535,7 @@ function SectionHead({ section, first, shared, onToggle }: { section: Section; f
           <span className="font-normal tabular-nums text-muted">{section.count}</span>
           <Icon name="right" className={cn("size-3 text-muted transition-transform motion-reduce:transition-none", section.open && "rotate-90")} />
         </button>
+        {section.section === "done" && <TodayMarks />}
       </h2>
     </div>
   </div>;

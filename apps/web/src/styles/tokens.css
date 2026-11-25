@@ -112,6 +112,8 @@
   --paper: #fff;
   --stamp: #fff;
   --rule: color-mix(in oklab, var(--ink) 6%, transparent);
+  /* The column of the day pointed at, through every chart of the analysis: plain to find again at a glance. */
+  --day-band: color-mix(in oklab, var(--ink) 10%, transparent);
   --diff-add: oklch(97% 0.035 150);
   --diff-del: oklch(97% 0.025 20);
   --diff-add-word: oklch(91% 0.075 150);
@@ -131,10 +133,12 @@
      theme, so nothing behind shows through it and its ink keeps 4.5:1. A toast's own pressed step is from its paper. */
   --press: color-mix(in oklab, var(--ink) 22%, var(--raised));
   --press-line: var(--muted);
+  --rest-time: var(--lit-line);
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
+  --rest-time: var(--line);
   /* Each surface a step lighter than the one under it, and what is pointed at or picked lighter than any. */
   --bg: #07090c;
   --lit: oklch(24.5% 0.007 260);
@@ -165,6 +169,7 @@
   /* Opaque raised paper stays within sRGB; the existing theme owns all three stamp colors. */
   --stamp: var(--raised);
   --rule: color-mix(in oklab, var(--ink) 8%, transparent);
+  --day-band: color-mix(in oklab, var(--ink) 14%, transparent);
   --diff-add: oklch(25% 0.045 150);
   --diff-del: oklch(25% 0.05 20);
   --diff-add-word: oklch(34% 0.08 150);
@@ -228,6 +233,23 @@
   /* The ground under the tab shown (TabMarker, tabs.tsx): ink laid thin over whatever surface the row stands on, so it
      reads alike on a panel (lit) and on a dialog (raised), where hover would all but vanish. */
   --color-tab-shown: color-mix(in oklab, var(--ink) 9%, transparent);
+  /* The analysis's charts (features/analysis), each colour one thing: a task that went through without a fix is done's
+     green; one accepted after fixes a quiet grey between ink and the ground; stopped is stop's. The days of the
+     finished-task calendar deepen from the ground to done in four steps. The time that is neither yours nor the AI's
+     (rest) is a line's grey: the light theme's line is too faint on its ground, so it takes the edge's. */
+  /* Colours say whose hand a task took: done's green went through without a fix, your turn's orange took your hand
+     (reworked), stop's pink stopped. Each is also lighter in that order (reworked 26% toward the ground, a stopped part
+     38%), so they are told apart without the hue. */
+  --color-reworked: color-mix(in oklab, var(--turn) 74%, var(--bg));
+  --color-stopped-part: color-mix(in oklab, var(--stopped) 62%, var(--bg));
+  --color-rest: var(--rest-time);
+  /* The chosen span on the analysis's charts: a band through every row, fainter than the day pointed at (rule). */
+  --color-span-band: color-mix(in oklab, var(--ink) 4%, transparent);
+  --color-day-band: var(--day-band);
+  --color-grass-0: color-mix(in oklab, var(--ink) 6%, var(--bg));
+  --color-grass-1: color-mix(in oklab, var(--done) 30%, var(--bg));
+  --color-grass-2: color-mix(in oklab, var(--done) 52%, var(--bg));
+  --color-grass-3: color-mix(in oklab, var(--done) 76%, var(--bg));
   --color-placeholder: color-mix(in oklab, var(--line) 60%, transparent);
   --color-trail: color-mix(in oklab, var(--ink) 75%, transparent);
   /* A History row's words at rest, the work going on now with them: one colour for every row not opened, a step

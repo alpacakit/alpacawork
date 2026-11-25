@@ -1,6 +1,6 @@
 /** Run intervals and additive usage shared by CLI and browser views. */
 import type { ControlRunDTO } from './control-contract.js';
-import type { TokenCounters } from './run-contract.js';
+import { TOKEN_COUNTER_KEYS, type ReadRunRecord, type TokenCounters } from './run-contract.js';
 
 type TimedRun = Pick<ControlRunDTO, 'startedAt' | 'endedAt' | 'state'>;
 
@@ -14,6 +14,31 @@ export function runSpan(run: TimedRun, now: number | null): { from: number; to: 
   return { from, to };
 }
 
+type UsageSource = Pick<ControlRunDTO, 'startedAt' | 'endedAt' | 'state' | 'processStarted' | 'usage'>;
+
+export function runUsageSource(run: Pick<ReadRunRecord, 'started_at' | 'ended_at' | 'state' | 'pids' | 'usage'>): UsageSource {
+  return { startedAt: run.started_at, endedAt: run.ended_at, state: run.state,
+    processStarted: run.pids.agent !== null,
+    usage: run.usage ? { run: run.usage.run, includesEarlier: run.usage.includesEarlier } : null };
+}
+
+export type RunContribution = { started: number; ended: number | null; live: boolean; tokens: TokenCounters | null };
+
+/** A reservation records a timestamp before the process starts. Count only witnessed launches. */
+export function runUsage(run: UsageSource): RunContribution | null {
+  if (!run.processStarted || run.startedAt === null || run.state === 'queued' || run.state === 'joined') return null;
+  const started = Date.parse(run.startedAt);
+  if (!Number.isFinite(started)) return null;
+  const end = run.endedAt === null ? NaN : Date.parse(run.endedAt);
+  return { started, ended: Number.isFinite(end) ? end : null,
+    live: run.state === 'running' && run.endedAt === null, tokens: run.usage?.run ?? null };
+}
+
+/** Passing no clock keeps live time out of a saved total; the reader can add it from the recorded start. */
+export function runUsageMs(run: RunContribution, now: number | null): number {
+  return Math.max(0, (run.ended ?? (run.live ? now : null) ?? run.started) - run.started);
+}
+
 export type UsageTotal = {
   runs: number;
   runMs: number;
@@ -21,22 +46,22 @@ export type UsageTotal = {
   tokensUnknown: number;
 };
 
-/** Add stored per-Run deltas; unknown and live Runs make the known sum a lower bound. */
-export function sumUsage(runs: readonly ControlRunDTO[], now: number): UsageTotal {
-  let count = 0, runMs = 0, tokensUnknown = 0;
+export function sumUsage(runs: readonly UsageSource[], now: number | null): UsageTotal {
+  const { live: _live, ...total } = sumRunUsage(runs.map(runUsage), now);
+  return total;
+}
+
+export function sumRunUsage(runs: Iterable<RunContribution | null>, now: number | null): UsageTotal & { live: number } {
+  let count = 0, runMs = 0, live = 0, tokensUnknown = 0;
   let tokens: TokenCounters | null = null;
-  for (const run of runs) {
-    if (run.startedAt === null) continue;
+  for (const usage of runs) {
+    if (!usage) continue;
     count++;
-    const span = runSpan(run, now);
-    if (span && span.to !== null) runMs += span.to - span.from;
-    const known = run.endedAt !== null ? run.usage?.run : null;
-    if (!known) { tokensUnknown++; continue; }
-    if (!tokens) tokens = { input: 0, cacheRead: 0, cacheWrite: 0, output: 0 };
-    tokens.input += known.input;
-    tokens.cacheRead += known.cacheRead;
-    tokens.cacheWrite += known.cacheWrite;
-    tokens.output += known.output;
+    runMs += runUsageMs(usage, now);
+    if (usage.live) { live++; continue; }
+    if (!usage.tokens) { tokensUnknown++; continue; }
+    tokens ??= { input: 0, cacheRead: 0, cacheWrite: 0, output: 0 };
+    for (const key of TOKEN_COUNTER_KEYS) tokens[key] += usage.tokens[key];
   }
-  return { runs: count, runMs, tokens, tokensUnknown };
+  return { runs: count, runMs, tokens, tokensUnknown, live };
 }

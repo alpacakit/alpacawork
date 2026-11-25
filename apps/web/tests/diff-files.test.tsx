@@ -161,7 +161,7 @@ test("a diff file the Task does not hold says so where the summary would be, in 
 test("the viewer is a surface over the reader; what it reads is a Task's file or one of its code locations, a diff read as one", () => {
   expect(surfacesOf("?task=T1&view=T1%2Fdiffs%2Fa.diff")).toEqual(["T1", "view:T1/diffs/a.diff"]);
   const shown = { project: null, task: "T1", taskAddress: null, full: false, pane: "task" as const, path: null, query: "", image: null,
-    view: "T1/diffs/a.diff", event: null };
+    view: "T1/diffs/a.diff", event: null, analysis: null };
   expect([1, 0].map(depth => { const below = belowSurface(shown, depth); return [below.task, below.view]; })).toEqual([["T1", null], [null, null]]);
   expect(["T1/diffs/a.diff", "T1/notes.md", "T1//home/me/repo/src/a.patch", "T1/../x", "nothing"].map(viewerTarget)).toEqual([
     { owner: "T1", path: "diffs/a.diff", where: "task", reads: "diff" }, { owner: "T1", path: "notes.md", where: "task", reads: "file" },

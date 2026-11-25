@@ -43,6 +43,7 @@ export default defineConfig({
       "reader:history.waiting.*", "reader:history.reasons.*", "reader:files.facet.*",
       "reader:reportFeed.row.*", // A History row says its party, kind and ending by the record's own values.
       "translation:problem.*", "translation:validation.*",
+      "analysis:*", // The analysis writes its numbers and names through helpers and by the server's keys (features/analysis).
     ],
     sort: true,
     indentation: 2,

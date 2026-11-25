@@ -8,6 +8,7 @@ export const BACKEND_ENTRIES = {
   'installation/local-cli': 'installation/local-cli',
   'run-manager': 'run-manager',
   'receiver/read-thread-worker': 'receiver/read-thread-worker',
+  'analysis/tally-worker': 'analysis/tally-worker',
   'receiver/workspace-file-worker': 'receiver/workspace-file-worker',
   'storage-format': 'storage-format',
   'schema-manifest': 'schema-manifest',
