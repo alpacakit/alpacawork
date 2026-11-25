@@ -1,5 +1,5 @@
 /** Translate native Claude and common bridge stdout events for the activity projection. */
-import { bridgeToolEventSchema } from '@alpacawork/contract/agent-bridge';
+import { bridgeToolEventSchema, clippedUnder } from '@alpacawork/contract/agent-bridge';
 import { RUN_NOTE_LIMIT, inputDocument, previewRunLine, previewToolInput, toolInputDocument, toolResultText, type RunStepText } from '@alpacawork/contract/run';
 import type { ActivityEvent, StepCall } from '../../runs/activity-events.js';
 import { commandOf } from '../../runs/shell-command.js';
@@ -57,11 +57,14 @@ const changedPaths = (changes: unknown) => (Array.isArray(changes) ? changes : [
 /** A Codex item's input as given: its type and the fields of it the record holds. */
 function bridgeInput(item: Record<string, unknown>): Pick<ActivityEvent, 'detail' | 'about' | 'call'> {
   const fields = ITEM_INPUT[String(item.type)];
-  if (!fields) return toolCall(item.tool ?? item.name, item.arguments);
+  if (!fields) {
+    const call = toolCall(item.tool ?? item.name, item.arguments);
+    return { ...call, call: { ...call.call!, omitted: clippedUnder(item, ['arguments']) } };
+  }
   const input = Object.fromEntries(fields.filter(key => key in item).map(key => [key, item[key]]));
   const line = item.type === 'command_execution' ? shellScript(item.command) : item.type === 'web_search' ? firstText(item.query, object(item.action).url)
     : item.type === 'file_change' ? changedPaths(item.changes).map(change => change.path).join('  ') : item.type === 'image_view' ? item.path : item.prompt;
-  return { detail: previewRunLine(line), call: { tool: `codex:${String(item.type)}`, input } };
+  return { detail: previewRunLine(line), call: { tool: `codex:${String(item.type)}`, input, omitted: clippedUnder(item, fields) } };
 }
 /**
  * A step's input to read in full, from its call as given (the start's and end's put together field by field): the main
@@ -98,7 +101,7 @@ export function joinStepCalls(start: StepCall | undefined, end: StepCall | undef
   if (!fields(start.input) || !fields(end.input)) return end.input === undefined ? start : end;
   const input = { ...start.input as Record<string, unknown> };
   for (const [key, value] of Object.entries(end.input as Record<string, unknown>)) if (value !== undefined) input[key] = value;
-  return { tool: end.tool || start.tool, input };
+  return { tool: end.tool || start.tool, input, omitted: Math.max(start.omitted ?? 0, end.omitted ?? 0) };
 }
 
 /** What a structured result says when it gives no text. */
@@ -111,7 +114,8 @@ function bridgeOutcome(item: Record<string, unknown>): NonNullable<ActivityEvent
   const output = firstText(item.aggregatedOutput, toolResultText(item.result), toolResultText(result.content),
     toolResultText(item.contentItems), object(item.error).message) ?? structured(result.structuredContent);
   return {
-    result: previewRunLine(output), ...output === undefined ? {} : { output: whole(output) },
+    result: previewRunLine(output),
+    ...output === undefined ? {} : { output: { text: output, omitted: clippedUnder(item, ['aggregatedOutput', 'result', 'contentItems', 'error']) } },
     failed: item.status === 'failed' || item.status === 'declined' || item.success === false ||
       result.isError === true || (typeof item.exitCode === 'number' && item.exitCode !== 0),
   };

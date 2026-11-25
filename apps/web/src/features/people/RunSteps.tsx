@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { useTranslation } from "react-i18next";
 import { type RunStep, type RunStepDetail, type RunStepEntry, type RunStepsPage, type RunStepText } from "@alpacawork/contract/run";
 import { readRunStep, readRunSteps } from "@/data/run-steps";
+import { ApiError } from "@/data/client";
 import { Message } from "@/components/ui/message";
 import { cn } from "@/lib/utils";
 
@@ -181,7 +182,8 @@ function StepText({ text, tone, ...data }: { text: RunStepText; tone: string; "d
 /**
  * What one step ran and got back, read when it is opened and again when it changes. It is shown only when it is of
  * the list's generation and not older than the step as the list holds it, so the opened text is always that line's.
- * Of a newer generation, the list is read anew (`again`), and this step is read again once the list holds it.
+ * Of a newer generation, or not found (the output it was read from is no longer there), the list is read anew
+ * (`again`), and this step is read again once the list holds it.
  */
 function useStepDetail(run: string, step: RunStepEntry, generation: number, open: boolean, again: () => void) {
   const [detail, setDetail] = useState<{ value: RunStepDetail | null; failed: boolean } | null>(null);
@@ -192,7 +194,11 @@ function useStepDetail(run: string, step: RunStepEntry, generation: number, open
     readRunStep(run, n, abort.signal).then(value => {
       if (value.generation > generation) again();
       setDetail({ value, failed: false });
-    }, () => { if (!abort.signal.aborted) setDetail({ value: null, failed: true }); });
+    }, error => {
+      if (abort.signal.aborted) return;
+      if (error instanceof ApiError && error.code === "not_found") { again(); setDetail(null); return; }
+      setDetail({ value: null, failed: true });
+    });
     return () => abort.abort();
   }, [run, n, changed, open, generation, again]);
   if (!open || !detail) return null;
@@ -231,19 +237,21 @@ const NOTE = "py-0.5 text-muted narrow:py-1.5";
 export function StepList({ steps, className }: { steps: StepsRead; className?: string }) {
   const { t } = useTranslation("people");
   const { listed, run } = steps;
-  // The steps opened, by their tool call: a list read anew keeps open those it still holds; the rest are closed.
-  const [opened, setOpened] = useState<ReadonlySet<string>>(new Set());
-  const ids = listed?.steps.map(step => step.id).join(" ");
+  // The steps opened, by their place in the Run (`n`, one per step whatever its tool call's ID) and the step there. A
+  // list read anew keeps open those whose place still holds the same step; the rest are closed.
+  const [opened, setOpened] = useState<ReadonlyMap<number, string>>(new Map());
+  const held = listed?.steps;
   useEffect(() => {
-    if (ids === undefined) return;
-    const held = new Set(ids.split(" "));
-    setOpened(previous => [...previous].every(id => held.has(id)) ? previous : new Set([...previous].filter(id => held.has(id))));
+    if (!held) return;
+    const at = new Map(held.map(step => [step.n, step.id]));
+    setOpened(previous => [...previous].every(([n, id]) => at.get(n) === id) ? previous
+      : new Map([...previous].filter(([n, id]) => at.get(n) === id)));
   }, [listed?.generation]); // eslint-disable-line react-hooks/exhaustive-deps -- pruned only when a list is read anew
   if (!listed || !run) return steps.failed ? <Message tone="error" size="line" title={t("now.step.unreadable")} className={cn("text-xs", NOTE, className)} /> : null;
   if (!listed.steps.length) return <Message tone="empty" size="line" quiet title={t("now.step.none")} className={cn("text-xs", NOTE, className)} />;
-  const toggle = (id: string) => setOpened(previous => {
-    const next = new Set(previous);
-    if (!next.delete(id)) next.add(id);
+  const toggle = (step: RunStepEntry) => setOpened(previous => {
+    const next = new Map(previous);
+    if (!next.delete(step.n)) next.set(step.n, step.id);
     return next;
   });
   return <ol data-run-steps="open" className={cn("m-0 flex list-none flex-col p-0 text-xs", className)}>
@@ -252,5 +260,5 @@ export function StepList({ steps, className }: { steps: StepsRead; className?: s
       {t("now.step.older", { count: Math.min(EARLIER, listed.from), rest: listed.from })}</button></li>}
     {steps.failed && <li><Message tone="error" size="line" title={t("now.step.unreadable")} className={cn("text-xs", NOTE)} /></li>}
     {listed.steps.map(step => <StepRow key={`${listed.generation}:${step.n}`} run={run} step={step} generation={listed.generation}
-      open={opened.has(step.id)} toggle={() => toggle(step.id)} again={steps.again} />)}</ol>;
+      open={opened.get(step.n) === step.id} toggle={() => toggle(step)} again={steps.again} />)}</ol>;
 }

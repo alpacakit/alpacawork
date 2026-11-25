@@ -3,12 +3,13 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { startI18n, i18n } from '@alpacawork/i18n';
 import type { RunStep, RunStepDetail, RunStepEntry } from '@alpacawork/contract/run';
 import { StepList, WorkLine, takeIn, useRunSteps } from '../src/features/people/RunSteps';
+import { ApiError } from '../src/data/client';
 import { AnswerSteps } from '../src/features/coordinator/parts';
 
 // The server's side: one Run's steps, each with the version it last changed at, and what each ran.
 const server = vi.hoisted(() => ({
   steps: [] as RunStepEntry[], version: 0, generation: 1, details: new Map<number, Omit<RunStepDetail, 'changed' | 'generation'>>(),
-  refuse: false, asked: [] as string[],
+  refuse: false, asked: [] as string[], /** Answers "not found" this many times for one step. */ missing: 0,
   /** Adds or changes a step, as the server's index does: it takes the next version. */
   put(step: Omit<RunStepEntry, 'changed'>) { server.steps[step.n] = { ...step, changed: ++server.version }; },
 }));
@@ -23,13 +24,14 @@ vi.mock('../src/data/run-steps', () => ({
   },
   readRunStep: async (run: string, n: number) => {
     server.asked.push(`${run} step ${n}`);
+    if (server.missing > 0) { server.missing--; throw new ApiError('Step does not exist', 'not_found'); }
     return { ...server.details.get(n) ?? { input: { text: server.steps[n]!.text, omitted: 0 }, output: null },
       changed: server.steps[n]!.changed, generation: server.generation };
   },
 }));
 
 beforeAll(async () => { await startI18n(); await i18n.changeLanguage('en'); });
-beforeEach(() => { server.steps = []; server.version = 0; server.generation = 1; server.details = new Map(); server.refuse = false; server.asked = []; });
+beforeEach(() => { server.steps = []; server.version = 0; server.generation = 1; server.details = new Map(); server.refuse = false; server.asked = []; server.missing = 0; });
 afterEach(cleanup);
 
 const entry = (n: number, text: string, rest: Partial<RunStepEntry> = {}): Omit<RunStepEntry, 'changed'> => ({ n, id: `s${n}`, tool: 'Bash',
@@ -141,6 +143,29 @@ test('a newer generation from any answer reads the list anew: a step still there
   expect(screen.queryByText('Reading…')).toBeNull();
   expect(document.querySelectorAll('[data-run-step-input]')).toHaveLength(1);
   expect(screen.getByRole('button', { name: /pnpm build/ }).getAttribute('aria-expanded')).toBe('false');
+});
+
+test('a step no longer found reads the list anew rather than standing on an error', async () => {
+  server.put(entry(0, 'pnpm test'));
+  render(<AnswerSteps run="R7" />);
+  fireEvent.click(screen.getByRole('button', { name: 'Steps behind this answer' }));
+  const row = await screen.findByRole('button', { name: /pnpm test/ });
+  // The output was replaced; the step read first is not found, then found again in the new list.
+  server.generation = 2; server.missing = 1;
+  fireEvent.click(row);
+  await waitFor(() => expect(document.querySelector('[data-run-step-input]')?.textContent).toBe('pnpm test'));
+  expect(server.asked.filter(asked => asked === 'R7 latest 12')).toHaveLength(2);
+  expect(screen.queryByRole('alert')).toBeNull();
+});
+
+test('two steps of one Run under one tool call ID open apart', async () => {
+  server.put(entry(0, 'echo first', { id: 'again' }));
+  server.put(entry(1, 'echo second', { id: 'again' }));
+  render(<AnswerSteps run="R7" />);
+  fireEvent.click(screen.getByRole('button', { name: 'Steps behind this answer' }));
+  fireEvent.click(await screen.findByRole('button', { name: /echo first/ }));
+  await waitFor(() => expect(document.querySelectorAll('[data-run-step-input]')).toHaveLength(1));
+  expect(screen.getByRole('button', { name: /echo second/ }).getAttribute('aria-expanded')).toBe('false');
 });
 
 test('a step whose outcome could not be read is not shown done, and opened says why', async () => {

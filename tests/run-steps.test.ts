@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { RunStepIndex, RUN_STEPS_LINE_LIMIT } from '@alpacawork/backend/test-dist/runs/run-steps.js';
 import { OutputActivityReader, readRunActivity } from '@alpacawork/backend/test-dist/runs/activity.js';
 import { AGENT_RUNTIME_ADAPTERS } from '@alpacawork/backend/test-dist/agents/registry.js';
+import { BRIDGE_ITEM_BYTES, boundaryItem } from '@alpacawork/contract/agent-bridge';
 import { RUN_STEP_FULL_TEXT_LIMIT, fullRunText, runStepsPageSchema, runStepDetailSchema, toolInputDocument, tookSteps } from '@alpacawork/contract/run';
 
 function folder(t: TestContext) {
@@ -244,4 +245,42 @@ test('a search whose fields are said on one line is put together field by field 
   writeFileSync(join(path, 'stdout.log'), '');
   write(path, [call('item.started', { pattern: 'floor', path: '/src' }), call('item.completed', { pattern: '' })]);
   assert.equal((await (await read(path, 'codex')).detail(0))?.input.text, toolInputDocument('grep', { pattern: '', path: '/src' }));
+});
+
+test('a codex item crosses the bridge with what its step is read by, its line bounded, and what was cut said', async t => {
+  const path = folder(t);
+  const output = 'x'.repeat(3 * 1024 * 1024), diff = '+'.repeat(2 * 1024 * 1024);
+  const item = boundaryItem('command_execution', { id: 'c1', type: 'commandExecution', command: 'cat big.log', cwd: '/src',
+    aggregatedOutput: output, exitCode: 1, status: 'failed', processId: 'p1', commandActions: [{ type: 'read' }], durationMs: 9 });
+  const line = JSON.stringify({ type: 'item.completed', item });
+  assert.ok(Buffer.byteLength(line) <= BRIDGE_ITEM_BYTES);
+  assert.deepEqual(Object.keys(item).sort(), ['aggregatedOutput', 'clipped', 'command', 'cwd', 'exitCode', 'id', 'status', 'type']);
+  const edit = boundaryItem('file_change', { id: 'f1', changes: [{ path: '/a.ts', kind: { type: 'update', move_path: null }, diff }] });
+  writeFileSync(join(path, 'stdout.log'), line + '\n' + JSON.stringify({ type: 'item.completed', item: edit }) + '\n');
+  const index = await read(path, 'codex'), [run, change] = [await index.detail(0), await index.detail(1)];
+  assert.equal(index.range(undefined, 12).steps[0]?.state, 'failed');
+  assert.equal(run!.output!.text.length + run!.output!.omitted, output.length);
+  assert.ok(run!.output!.omitted > 0);
+  assert.ok(change!.input.text.startsWith('update: /a.ts\n+++'));
+  assert.ok(change!.input.omitted > 0);
+});
+
+for (const extra of [0, 1]) test(`a start line ${extra ? 'one byte past' : 'of exactly'} the outcome reader's 2 MiB counts and lists the same step`, async t => {
+  const path = folder(t);
+  const head = JSON.stringify(bash('long', '')).length;
+  const command = 'x'.repeat(2 * 1024 * 1024 - head + extra);
+  write(path, [bash('long', command)]);
+  assert.equal(Buffer.byteLength(JSON.stringify(bash('long', command))), 2 * 1024 * 1024 + extra);
+  const live = new OutputActivityReader(AGENT_RUNTIME_ADAPTERS.claude);
+  live.poll(path); live.poll(path);
+  const activity = readRunActivity(path);
+  assert.deepEqual([activity?.stepsStarted, tookSteps(activity), (await read(path)).total], [1, true, 1]);
+});
+
+test('a Run of words alone counts no step and lists none', async t => {
+  const path = folder(t);
+  write(path, [{ type: 'assistant', parent_tool_use_id: null, message: { content: [{ type: 'text', text: 'Hello' }] } }, { type: 'result', is_error: false }]);
+  const live = new OutputActivityReader(AGENT_RUNTIME_ADAPTERS.claude);
+  live.poll(path);
+  assert.deepEqual([tookSteps(readRunActivity(path)), (await read(path)).total], [false, 0]);
 });

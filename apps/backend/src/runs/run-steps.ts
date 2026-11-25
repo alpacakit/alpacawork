@@ -20,13 +20,14 @@ import { RUN_FILES, RUN_STEPS_PAGE_LIMIT, RUN_TOOL_ID_LIMIT, RUN_TOOL_NAME_LIMIT
 import type { AgentAdapter } from '../agents/adapters/types.js';
 import type { ActivityEvent } from './activity-events.js';
 import { runStepKind } from './recent-work.js';
+import { STEP_LINE_LIMIT } from './readers/jsonl.js';
 import { joinStepCalls, stepInputDocument } from '../agents/adapters/activity.js';
 
 /**
- * The longest output line read as one row. A longer one (an agent's single message past this) is passed over: the steps
- * it would have started or ended are missed, as any row that is not JSON is.
+ * The longest output line read as one row: the live activity's (STEP_LINE_LIMIT), so the steps listed are the steps it
+ * counts. A longer one is passed over as any row that is not JSON is: a step it would have started is missed in both.
  */
-export const RUN_STEPS_LINE_LIMIT = 64 * 1024 * 1024;
+export const RUN_STEPS_LINE_LIMIT = STEP_LINE_LIMIT;
 const CHUNK = 1024 * 1024;
 type Settled = 'done' | 'failed';
 type Step = Omit<RunStepEntry, 'n'> & { start: number; end: number | null;
@@ -187,7 +188,7 @@ export class RunStepIndex {
       const said = [...ended, ...started];
       const call = joinStepCalls(started.map(event => event.call).find(Boolean), ended.map(event => event.call).find(Boolean));
       const document = call && stepInputDocument(call);
-      const input = document !== undefined ? { text: document, omitted: 0 }
+      const input = document !== undefined ? { text: document, omitted: call?.omitted ?? 0 }
         : said.map(event => event.input).find(text => !!text && (text.text !== '' || text.omitted > 0))
         ?? ({ text: said.map(event => event.detail?.text).find(Boolean) ?? '', omitted: 0 } satisfies RunStepText);
       const outcome = ended.map(event => event.outcome).find(Boolean);

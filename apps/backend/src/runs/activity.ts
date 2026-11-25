@@ -4,7 +4,7 @@ import { RUN_FILES, RUN_NOTE_LIMIT, RUN_STEP_LIMIT, RUN_TOOL_ID_LIMIT, RUN_TOOL_
 import { mergeContext, type AgentContext, type ContextUpdate } from '@alpacawork/contract/agent-context';
 import { optionalRunFile, readRunFile, writeRunFile } from './files.js';
 import { INLINE_MARKDOWN_LINK } from '@alpacawork/contract';
-import { JsonlReader } from './readers/jsonl.js';
+import { JsonlReader, STEP_LINE_LIMIT } from './readers/jsonl.js';
 import type { AgentAdapter } from '../agents/adapters/types.js';
 import { RecentWork, recentWorkName, runStepKind } from './recent-work.js';
 import type { ActivityEvent } from './activity-events.js';
@@ -124,7 +124,8 @@ export class OutputActivityReader {
     private readonly reported: (update: ContextUpdate) => void = () => {}) {}
 
   private readonly work = new WorkActivity();
-  private readonly lines = new JsonlReader(() => this.resetWork());
+  // The same lines the index of steps reads (STEP_LINE_LIMIT), so the steps counted here are the steps it lists.
+  private readonly lines = new JsonlReader(() => this.resetWork(), STEP_LINE_LIMIT);
   private latest: Omit<RunActivity, 'doing' | 'steps' | 'context'> | null = null;
   private context: AgentContext | null = null;
   private dirty = false;

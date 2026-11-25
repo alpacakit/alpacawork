@@ -5,15 +5,24 @@ import { constants } from 'node:fs';
 
 const CHUNK = 64 * 1024;
 export const MAX_LINE = 2 * 1024 * 1024;
+/**
+ * The longest line read as a row where a Run's steps are read: the live activity that counts them and the index that
+ * lists them read the same lines, so a step counted can be listed and one listed was counted. A Run's outcome keeps
+ * MAX_LINE.
+ */
+export const STEP_LINE_LIMIT = 64 * 1024 * 1024;
 type OnValue = (value: unknown, line: number) => void;
 
 /** Reads complete lines only. A reader can resume at its previous byte offset. Each line is bounded, the file is not. */
 export class JsonlReader {
-  constructor(private readonly rejected: () => void = () => {}) {}
+  constructor(private readonly rejected: () => void = () => {}, private readonly maxLine = MAX_LINE) {}
   private offset = 0;
   private line = 0;
-  private pending = Buffer.alloc(0);
+  /** The unfinished line's parts, joined once it ends: a long line is not copied again with every chunk. */
+  private pending: Buffer[] = [];
+  private pendingLength = 0;
   private dropping = false;
+  private clear(): void { this.pending = []; this.pendingLength = 0; }
   rejection: 'too_large' | 'unreadable' | null = null;
   private reject(reason: NonNullable<JsonlReader['rejection']>): void { this.rejection = reason; this.rejected(); }
 
@@ -38,33 +47,33 @@ export class JsonlReader {
         let start = 0;
         for (let end = bytes.indexOf(10, start); end !== -1; end = bytes.indexOf(10, start)) {
           const part = bytes.subarray(start, end);
-          if (!this.dropping && this.pending.length + part.length <= MAX_LINE) {
-            const line = Buffer.concat([this.pending, part]);
+          if (!this.dropping && this.pendingLength + part.length <= this.maxLine) {
+            const line = Buffer.concat([...this.pending, part]);
             this.parse(line, onValue);
           } else {
             this.reject('too_large');
           }
-          this.pending = Buffer.alloc(0);
+          this.clear();
           this.dropping = false;
           this.line++;
           start = end + 1;
         }
         const rest = bytes.subarray(start);
         if (!this.dropping) {
-          if (this.pending.length + rest.length > MAX_LINE) {
-            this.pending = Buffer.alloc(0);
+          if (this.pendingLength + rest.length > this.maxLine) {
+            this.clear();
             this.dropping = true;
             this.reject('too_large');
-          } else this.pending = Buffer.concat([this.pending, rest]);
+          } else if (rest.length) { this.pending.push(Buffer.from(rest)); this.pendingLength += rest.length; }
         }
       }
     } finally { closeSync(fd); }
   }
 
   finish(onValue: OnValue): void {
-    if (this.dropping || !this.pending.length) return;
-    const line = this.pending;
-    this.pending = Buffer.alloc(0);
+    if (this.dropping || !this.pendingLength) return;
+    const line = Buffer.concat(this.pending);
+    this.clear();
     this.parse(line, onValue);
   }
 }
