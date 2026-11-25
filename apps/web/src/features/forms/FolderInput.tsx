@@ -115,6 +115,8 @@ export function FolderInput({ value, onChange, onBlur, ref, className, placehold
   const before = useRef<string | null>(null);
   const walked = useRef(false);
   const refocus = useRef(false);
+  // One per opening: what answers after the list has closed (a folder made) leaves the list closed.
+  const opening = useRef(0);
   const go = (path: string | null) => {
     setReason(null);
     setNaming(null);
@@ -124,6 +126,7 @@ export function FolderInput({ value, onChange, onBlur, ref, className, placehold
     setWalking(path);
   };
   const close = (used?: string) => {
+    opening.current++;
     setNaming(null);
     const restore = used === undefined && walking !== false && walked.current ? before.current : null;
     setWalking(false);
@@ -162,10 +165,12 @@ export function FolderInput({ value, onChange, onBlur, ref, className, placehold
     makingNow.current = true;
     setMaking(true);
     setMakeFailure(null);
+    const at = opening.current;
     try {
       const { path } = await api.request("workspace/folders/new", madeFolderSchema, undefined,
         { path: shown.path, name: naming.trim() }, undefined, workspaceWriteBasis());
       await queries.invalidateQueries({ queryKey: ["folders", root] });
+      if (at !== opening.current) return;
       setMade(fromHome(path, shown.home));
       // Made, it is walked into like any folder: the field follows, and more can be made inside it.
       refocus.current = true;
@@ -204,6 +209,9 @@ export function FolderInput({ value, onChange, onBlur, ref, className, placehold
     if (!shown && missing && walking && walking !== "/") { setWalking(walking.replace(/\/[^/]*\/?$/, "") || "/"); return; }
     setReason(problemText(walk.error));
     setFailedAt(walking || null);
+    // The move did not happen: nothing waits to take the focus to the folder it was for.
+    refocus.current = false;
+    setCameFrom(null);
     if (shown) setWalking(shown.path);
   }, [walk.isError, walk.error, shown, walking]);
   // The offer chosen by the keys stays in view.
@@ -214,26 +222,34 @@ export function FolderInput({ value, onChange, onBlur, ref, className, placehold
   // at that folder's row; the focus, when it was in the list, goes to that row or the first; the list opened comes into
   // view whole.
   const [cameFrom, setCameFrom] = useState<string | null>(null);
-  const opened = useRef(false);
+  // The folder last shown: the same one read again (a refetch) moves nothing.
+  const shownPath = useRef<string | null>(null);
   useEffect(() => {
     // Set only when the folder asked for has been read (or the nearest above one not there yet).
-    if (!shown) return;
+    if (!shown || shown.path === shownPath.current) return;
+    const first = shownPath.current === null;
+    shownPath.current = shown.path;
     if (walked.current && fromHome(shown.path, shown.home) !== value) onChange(fromHome(shown.path, shown.home));
     const rows = folders.current;
     if (rows) rows.scrollTop = 0;
     const from = cameFrom ? rows?.querySelector<HTMLElement>(`[data-folder-name="${CSS.escape(cameFrom)}"]`) : null;
     from?.scrollIntoView({ block: "nearest" });
-    if (refocus.current || from) (from ?? rows?.querySelector<HTMLElement>("[data-folder-name]") ?? list.current?.querySelector<HTMLElement>("[data-folder-use]"))?.focus();
+    // Not when the person has gone on to another control meanwhile (a slow read).
+    const at = document.activeElement;
+    const elsewhere = at && at !== document.body && !list.current?.contains(at) && !at.matches("[data-folder-walk]")
+      && at.matches("input, select, textarea, button, a[href], [tabindex]:not([tabindex='-1'])");
+    if ((refocus.current || from) && !elsewhere)
+      (from ?? rows?.querySelector<HTMLElement>("[data-folder-name]") ?? list.current?.querySelector<HTMLElement>("[data-folder-use]"))?.focus();
     refocus.current = false;
     setCameFrom(null);
-    if (!opened.current) { opened.current = true; list.current?.scrollIntoView({ block: "nearest" }); }
+    if (first) list.current?.scrollIntoView({ block: "nearest" });
     // Only a new folder shown moves the field and the focus; the field's own changes do not.
   }, [shown]);
-  useEffect(() => { if (walking === false) opened.current = false; }, [walking]);
+  useEffect(() => { if (walking === false) shownPath.current = null; }, [walking]);
   // In the list, the arrows move between folders, → or Enter goes in, ← or Backspace goes up; Tab leaves it.
   const onListKey = (event: KeyboardEvent<HTMLUListElement>) => {
     const row = (event.target as HTMLElement).closest<HTMLElement>("[data-folder-name]");
-    if (!row || !shown) return;
+    if (!row || !shown || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
     const all = [...folders.current!.querySelectorAll<HTMLElement>("[data-folder-name]")];
     const at = all.indexOf(row);
     const to = { ArrowDown: at + 1, ArrowUp: at - 1, Home: 0, End: all.length - 1 }[event.key as "Home"];
@@ -296,7 +312,7 @@ export function FolderInput({ value, onChange, onBlur, ref, className, placehold
         className="min-w-0 flex-1 font-mono"
         onChange={(event) => {
           // Typing goes back to the offers: the list is left where it is, without putting back what it had.
-          if (walking !== false) { setWalking(false); setShown(null); setNaming(null); setReason(null); }
+          if (walking !== false) { opening.current++; setWalking(false); setShown(null); setNaming(null); setReason(null); }
           onChange(event.target.value); setActive(-1); setDismissed(null); setMade(null);
         }}
         onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
