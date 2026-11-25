@@ -1,5 +1,6 @@
 /** How a conversation's context fill is said beside its agent (contract: agent-context). */
 import { contextPercent, type ContextView } from "@alpacawork/contract/agent-context";
+import type { TaskProjectedViewDTO } from "@alpacawork/contract/control";
 import { limitTone, type LimitTone } from "./limits";
 
 export type ContextFigure = {
@@ -12,8 +13,19 @@ export type ContextFigure = {
   waiting: boolean;
 };
 
-/** How often a Task's agents started a conversation anew and compacted one (the Task view's `conversations`). */
-export type ConversationCounts = { anew: number; compacted: number };
+/** How a Task's agents' conversations went (the Task view's `conversations`): counts and the latest changes, oldest first. */
+export type TaskConversations = TaskProjectedViewDTO["conversations"];
+type Change = TaskConversations["changes"][number];
+
+/** The tokens a compaction took out of its conversation, when its agent said both figures. */
+export const compactionCut = (change: Change): number | null =>
+  change.change === "compacted" && change.beforeTokens !== null && change.afterTokens !== null
+    ? Math.max(0, change.beforeTokens - change.afterTokens) : null;
+/** What the listed compactions took out together (null when none said its figures). */
+export function totalCut(changes: readonly Change[]): number | null {
+  const cuts = changes.map(compactionCut).filter((cut): cut is number => cut !== null);
+  return cuts.length ? cuts.reduce((total, cut) => total + cut, 0) : null;
+}
 
 /** The ring's reading; the same 80% rule as the plan limits. */
 export function contextFigure(context: ContextView): ContextFigure {

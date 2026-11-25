@@ -100,6 +100,18 @@ export function newConversationStarts<T extends { id: RunId; placementId: string
     return anew;
   });
 }
+/** What happened to a Task's agents' conversations, oldest first: each new conversation and each compaction, with its Run. */
+export type ConversationChange = { run: RunId; at: string } & ({ change: 'new'; because?: NewConversation['because']; report?: string }
+  | ({ change: 'compacted' } & Omit<RunCompaction, 'at'>));
+type ChangingRun = Parameters<typeof newConversationStarts>[0][number] & { newConversation?: NewConversation; compactions?: readonly RunCompaction[] };
+/** The one list History rows and a Task's counts are made from: newConversationStarts and the Runs' compactions, by time. */
+export function conversationChanges(runs: readonly ChangingRun[]): ConversationChange[] {
+  const changes: ConversationChange[] = [
+    ...newConversationStarts(runs).map(run => ({ run: run.id, at: run.startedAt!, change: 'new' as const, ...run.newConversation })),
+    ...runs.flatMap(run => (run.compactions ?? []).map(({ at, ...fill }) => ({ run: run.id, at, change: 'compacted' as const, ...fill }))),
+  ];
+  return changes.sort((a, b) => a.at.localeCompare(b.at));
+}
 export const isRunMoving = (state: RunState): boolean => state === RUN_STATE.queued || state === RUN_STATE.running;
 export const isRunInTrouble = (state: RunState): boolean => state === RUN_STATE.failed || state === RUN_STATE.needs_review;
 /** A failure is current until a later Run in its resumed chain actually starts. */

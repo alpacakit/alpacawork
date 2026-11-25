@@ -51,6 +51,16 @@ export const RESULT_HEAD_LENGTH = 300;
 export const resultHead = (text: string) => text.length <= RESULT_HEAD_LENGTH ? text
   : text.slice(0, RESULT_HEAD_LENGTH - (/[\uD800-\uDBFF]/.test(text[RESULT_HEAD_LENGTH - 1]!) ? 1 : 0));
 
+/**
+ * What happened to an agent's conversation (conversationChanges): started anew — why, when the Run that started it says
+ * (its newConversation), with the title of the report that prepared it — or compacted, with its fill before and after.
+ */
+const newChange = z.object({ change: z.literal('new'), because: z.enum(NEW_CONVERSATION_REASONS).optional(), report: z.string().optional() }).strict();
+const compactedChange = runCompactionSchema.omit({ at: true }).extend({ change: z.literal('compacted') }).strict();
+export const conversationChangeSchema = z.discriminatedUnion('change', [newChange, compactedChange]);
+/** The same, with when it happened (a Task view's list of them). */
+const at = z.iso.datetime({ offset: true });
+export const datedConversationChangeSchema = z.discriminatedUnion('change', [newChange.extend({ at }), compactedChange.extend({ at })]);
 export const historyEventSchema = z.object({
   ...historyLinksSchema.shape,
   /** The record's ID. */
@@ -97,11 +107,7 @@ export const historyEventSchema = z.object({
    * On a conversation row, what happened to the agent's conversation: a Run started it anew (newConversationStarts), or
    * it was compacted (one of a Run's compactions), with the fill before and after when the agent said it.
    */
-  conversation: z.discriminatedUnion('change', [
-    // Why, when the Run that started it says (its newConversation), with the title of the report that prepared it.
-    z.object({ change: z.literal('new'), because: z.enum(NEW_CONVERSATION_REASONS).optional(), report: z.string().optional() }).strict(),
-    runCompactionSchema.omit({ at: true }).extend({ change: z.literal('compacted') }).strict(),
-  ]).optional(),
+  conversation: conversationChangeSchema.optional(),
 }).strict().refine(event => (event.open !== undefined) === (event.kind === 'question' || event.kind === 'review'),
   { path: ['open'], message: 'Questions and reviews say whether they are open' }).refine(event =>
   event.note === undefined || event.kind === 'request', { path: ['note'], message: 'Only a Request row has a Task note' }).refine(event =>

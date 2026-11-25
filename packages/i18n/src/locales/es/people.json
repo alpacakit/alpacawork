@@ -29,14 +29,22 @@
     "yesterday": "ayer {{clock}}"
   },
   "context": {
-    "anew_one": "{{count}} conversación nueva",
-    "anew_many": "{{count}} conversaciones nuevas",
-    "anew_other": "{{count}} conversaciones nuevas",
+    "because": {
+      "another_ai": "otra IA",
+      "asked": "solicitada",
+      "handoff": "pausa del responsable",
+      "unresumable": "no se pudo retomar"
+    },
+    "change": {
+      "compacted": "Compactación",
+      "new": "Conversación nueva"
+    },
     "compacted": "La conversación acaba de compactarse. La próxima respuesta dirá cuánto se usa.",
-    "compactions_one": "{{count}} compactación",
-    "compactions_many": "{{count}} compactaciones",
-    "compactions_other": "{{count}} compactaciones",
-    "countsOf": "Esta tarea",
+    "conversations": "Conversaciones de esta tarea",
+    "cut": "Las compactaciones quitaron {{tokens}} tokens en total",
+    "help": "Sobre las compactaciones y las conversaciones nuevas",
+    "helpCompacted": "Compactación: cuando una conversación se alarga, la IA resume lo dicho y sigue con la versión corta. La IA lo hace cerca de su límite o en una pausa del trabajo.",
+    "helpNew": "Conversación nueva: cuando, por ejemplo, cambia el enfoque o empieza el siguiente resultado, la conversación empieza de nuevo con los datos de la tarea y no hace falta releer lo anterior.",
     "label": "Contexto de la conversación {{figure}} (usado {{used}} / límite {{window}})",
     "noWindow": "Sin definir",
     "setWindow": "Escribe un límite en Límites de contexto, en los ajustes del agente, para ver un porcentaje.",

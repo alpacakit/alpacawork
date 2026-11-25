@@ -29,12 +29,22 @@
     "yesterday": "yesterday {{clock}}"
   },
   "context": {
-    "anew_one": "{{count}} new conversation",
-    "anew_other": "{{count}} new conversations",
+    "because": {
+      "another_ai": "another AI",
+      "asked": "asked for",
+      "handoff": "owner's break",
+      "unresumable": "could not resume"
+    },
+    "change": {
+      "compacted": "Compacted",
+      "new": "New conversation"
+    },
     "compacted": "The conversation was just compacted. The next reply says how much is used.",
-    "compactions_one": "{{count}} compaction",
-    "compactions_other": "{{count}} compactions",
-    "countsOf": "This task",
+    "conversations": "This task's conversations",
+    "cut": "Compactions cut {{tokens}} tokens in all",
+    "help": "About compactions and new conversations",
+    "helpCompacted": "Compacted: as a conversation grows long, the AI summarizes what was said so far and carries on with the shorter one. The AI does it near its limit or at a break in the work.",
+    "helpNew": "New conversation: when, for example, the approach changes or the next result begins, the conversation starts over with the task's details, so the old exchange need not be read again.",
     "label": "Conversation context {{figure}} (used {{used}} / limit {{window}})",
     "noWindow": "Not set",
     "setWindow": "Enter a limit under Context limits in the agent's settings to see a percent.",

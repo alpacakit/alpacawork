@@ -29,10 +29,22 @@
     "yesterday": "昨日 {{clock}}"
   },
   "context": {
-    "anew_other": "新しい会話 {{count}}回",
+    "because": {
+      "another_ai": "別の AI へ",
+      "asked": "依頼で指定",
+      "handoff": "責任者の区切り",
+      "unresumable": "続けられず"
+    },
+    "change": {
+      "compacted": "圧縮",
+      "new": "新しい会話"
+    },
     "compacted": "会話を圧縮した直後です。次の応答で使用量が分かります。",
-    "compactions_other": "圧縮 {{count}}回",
-    "countsOf": "このタスク",
+    "conversations": "このタスクの会話",
+    "cut": "圧縮で減らした量 合計 {{tokens}} トークン",
+    "help": "会話の圧縮と新しい会話について",
+    "helpCompacted": "圧縮: 会話が長くなると、AI がこれまでのやり取りを要約して短くし、そのまま作業を続けます。上限に近づいたときや作業の区切りで、AI が判断して行います。",
+    "helpNew": "新しい会話: 進め方が変わったときや次の成果に移るときなどに、タスクの内容を渡して会話を最初から始めます。古いやり取りを読み直す分のトークンが要らなくなります。",
     "label": "会話の使用量 {{figure}}（使用 {{used}}／上限 {{window}}）",
     "noWindow": "未設定",
     "setWindow": "設定の「会話の上限」に入れると、割合が出ます。",

@@ -1312,14 +1312,28 @@ test("a compaction's row shows its fill before and after as rings; a new convers
   expect(words).toContain("The owner switched to a new conversation after “Filters reviewed”");
 });
 
-test("the context meter counts, with History's marks, only what happened to the task's conversations", async () => {
+test("the context meter lists the task's conversation changes newest first, with what compactions cut", async () => {
   await inEnglish();
   const { ContextMeter } = await import("../src/features/people/ContextMeter");
-  render(<ContextMeter press conversations={{ anew: 0, compacted: 2 }}
+  const changes = [
+    { at: "2026-11-26T00:00:00.000Z", change: "new", because: "handoff" },
+    { at: "2026-11-26T01:00:00.000Z", change: "compacted", beforeTokens: 610_000, afterTokens: 140_000, windowTokens: 1_000_000 },
+    { at: "2026-11-26T02:00:00.000Z", change: "compacted", beforeTokens: 500_000, afterTokens: 100_000, windowTokens: 1_000_000 },
+  ] as const;
+  render(<ContextMeter press conversations={{ anew: 1, compacted: 2, changes: [...changes] }}
     context={{ usedTokens: 140_000, windowTokens: 1_000_000, windowFrom: "reported", compacted: false, observedAt: "2026-11-26T00:00:00.000Z" }} />);
   fireEvent.click(document.querySelector<HTMLElement>("[data-context-meter]")!);
-  const counts = await waitFor(() => document.querySelector<HTMLElement>("[data-conversation-counts]")!);
-  expect([...counts.children].map(each => each.textContent)).toEqual(["2 compactions"]);
+  const list = await waitFor(() => document.querySelector<HTMLElement>("[data-conversation-list]")!);
+  expect(list.querySelector("[data-conversation-cut]")!.textContent).toBe("Compactions cut 870K tokens in all");
+  const rows = [...list.querySelectorAll<HTMLElement>("[data-conversation-change]")];
+  expect(rows.map(row => row.dataset.conversationChange)).toEqual(["compacted", "compacted", "new"]);
+  expect(rows[0]!.textContent).toContain("50%");
+  expect(rows[0]!.textContent).toContain("10%");
+  expect(rows[0]!.textContent).toContain("−400K");
+  expect(rows[2]!.textContent).toContain("owner's break");
+  // What a compaction and a new conversation are is a press on the ? away.
+  fireEvent.click(list.querySelector<HTMLElement>('[aria-label="About compactions and new conversations"]')!);
+  await waitFor(() => expect(document.body.textContent).toContain("the conversation starts over with the task's details"));
 });
 
 test("a stop the AI stack carried on goes to the AI that took over, closed and open alike", async () => {

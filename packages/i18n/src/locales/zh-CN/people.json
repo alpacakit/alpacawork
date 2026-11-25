@@ -29,10 +29,22 @@
     "yesterday": "昨天 {{clock}}"
   },
   "context": {
-    "anew_other": "新对话 {{count}} 次",
+    "because": {
+      "another_ai": "其他 AI",
+      "asked": "请求指定",
+      "handoff": "负责人的节点",
+      "unresumable": "无法继续"
+    },
+    "change": {
+      "compacted": "压缩",
+      "new": "新对话"
+    },
     "compacted": "对话刚刚被压缩。下一次回复后会显示用量。",
-    "compactions_other": "压缩 {{count}} 次",
-    "countsOf": "此任务",
+    "conversations": "此任务的对话",
+    "cut": "压缩共减少 {{tokens}} 个令牌",
+    "help": "关于压缩和新对话",
+    "helpCompacted": "压缩：对话变长时，AI 会把之前的内容总结变短后继续工作。在接近上限时或工作告一段落时由 AI 判断进行。",
+    "helpNew": "新对话：例如方向改变或进入下一个成果时，带着任务内容从头开始对话，无需再读之前的往来内容。",
     "label": "对话用量 {{figure}}（已用 {{used}} / 上限 {{window}}）",
     "noWindow": "未设置",
     "setWindow": "在智能体设置的“上下文上限”中填写后，会显示百分比。",

@@ -19,7 +19,7 @@ function viewRow(task) {
 }
 const view = taskProjectedViewSchema.parse({ ...source, task, row: viewRow(task), ancestors: [], requestHeads: [], placements: [], runs: [],
   values: { values: { notes: 'Saved body' }, fields: ['notes'], from: null, context: '## 本文\nSaved body' }, reply: null,
-  questions: [], userQuestions: [], userReviews: [], requestedByUser: null, conversations: { anew: 0, compacted: 0 } });
+  questions: [], userQuestions: [], userReviews: [], requestedByUser: null, conversations: { anew: 0, compacted: 0, changes: [] } });
 const viewFor = task => ({ ...view, task, row: viewRow(task), ancestors: [] });
 const index = projectedIndexSchema.parse({ ...source, requiredPv: { view: {}, history: {}, page: {}, search: {}, timeline: {} }, restoreId: 'initial', generation: 'generation-a', rev: 1, root: '/fixture', projectShelfVersion: 'b'.repeat(64), projects: [{ id: 'P100', title: 'Project', color: '#39659b', parentId: null, cwd: null, depth: 0, counts: { turn: 0, running: 0 } }],
   tasks: [{ ...taskRowFields(task), projectId: 'P100', rowFacts: { status: null, childrenRunning: 0, runningRuns: 0, warning: null, kind: null },
