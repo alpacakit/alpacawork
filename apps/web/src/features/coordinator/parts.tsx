@@ -103,7 +103,8 @@ export function WorkingReply({ turn }: { turn: { id: string; at: string } }) {
   const count = stepCount(steps);
   return <div>
     {mine?.words && <div data-working-words dir="auto" className="mb-2 [overflow-wrap:anywhere]"><MarkdownBody text={mine.words} task={null} variant="note" onFollow={followTask} /></div>}
-    <div ref={block} className="scroll-mt-[max(3rem,calc(var(--pane-head,1.25rem)+1rem))]">
+    {/* The work line beside the message, at the size of its other states and the answer's own line. */}
+    <div ref={block} className="scroll-mt-[max(3rem,calc(var(--pane-head,1.25rem)+1rem))] text-xs">
     {worked ? <button type="button" data-working-steps aria-expanded={open} onClick={() => setOpen(!open)} className={STEPS_BUTTON}>
       <WorkLine data-ask-thinking step={step} idle={t('coordinatorCard.thinking')} label={count === undefined ? undefined : p('now.step.count', { count })} className="min-w-0 flex-1 group-hover/steps:text-ink"
         end={<>{time}<Chevron open={open} /></>} /></button>
@@ -152,7 +153,7 @@ export function AnswerSteps({ run }: { run: string }) {
   useListedInSight(steps.listed, block);
   const count = stepCount(steps);
   return <div ref={block} data-answer-steps className="mb-2 scroll-mt-[max(3rem,calc(var(--pane-head,1.25rem)+1rem))]">
-    <button type="button" aria-expanded={open} onClick={() => setOpen(!open)} className={cn(STEPS_BUTTON, "text-muted hover:text-ink")}>
+    <button type="button" aria-expanded={open} onClick={() => setOpen(!open)} className={cn(STEPS_BUTTON, "text-xs text-muted hover:text-ink")}>
       <span className="min-w-0 flex-1 truncate">{count === undefined ? t('now.step.answered') : t('now.step.answeredCount', { count })}</span>
       <Chevron open={open} /></button>
     {open && <StepList steps={steps} className="mt-1" />}
