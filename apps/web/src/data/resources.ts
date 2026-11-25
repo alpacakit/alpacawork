@@ -1,5 +1,6 @@
 import { commandRoute } from '@alpacawork/contract/command-path';
 import { agentLimitsResponseSchema } from "@alpacawork/contract/agent-limits";
+import { analysisUnitListSchema, analysisUnitValuesSchema } from "@alpacawork/contract/analysis";
 import { AGENT_CHECK_READ_MS, foldersSchema, hostEpisodeMinutesSchema, hostStatusSchema, noticeStateResponseSchema, personalSettingsResponseSchema, placeHomeRows, pushDevicesSchema, pushKeySchema, serverSettingsSchema } from "@alpacawork/contract";
 import { projectedIndexSchema, controlRunFilesSchema, projectShelfSchema, taskProjectedPageSchema, taskRowFields, taskProjectedSearchSchema, taskShelvedDetailSchema, taskProjectedTimelineAxisSchema, taskTimelineLanesSchema, type ProjectedIndexDTO, type ControlTaskHeadDTO, type IndexPatchDTO, type TaskRowDTO, type TaskProjectedViewDTO } from "@alpacawork/contract/control";
 import { CancelledError, QueryObserver, infiniteQueryOptions, keepPreviousData, queryOptions, type QueryClient, type QueryKey, type Query as QueryRecord } from "@tanstack/react-query";
@@ -143,7 +144,7 @@ export const resources = {
    * offline and shown again at the next start until read anew. It is read again when the analysis says (data.ts), not on
    * every move of the index: a burst of work asks once.
    */
-  analysisView: <T,>(root: string, name: 'tasks' | 'usage', input: Record<string, string | null>, schema: z.ZodType<T>) => {
+  analysisView: <T,>(root: string, name: 'tasks' | 'usage' | 'breakdown', input: Record<string, string | null>, schema: z.ZodType<T>) => {
     // The key holds what is asked as the request says it (one string), as every read's key holds only plain values.
     const query = new URLSearchParams();
     for (const [key, value] of Object.entries(input)) if (value !== null && value !== '') query.set(key, value);
@@ -154,6 +155,24 @@ export const resources = {
       placeholderData: keepPreviousData,
     });
   },
+  /** The tasks behind one number of the analysis (`analysis list`), a page at a time, read and kept as the face's are. */
+  analysisList: (root: string, input: Record<string, string | null>) => {
+    const query = new URLSearchParams();
+    for (const [key, value] of Object.entries(input)) if (value !== null && value !== '') query.set(key, value);
+    return infiniteQueryOptions({
+      queryKey: ['analysis-view', root, 'list', query.toString()] as const,
+      queryFn: ({ client, queryKey, signal, pageParam }) => readResource(client, queryKey,
+        () => api.request(`${commandRoute('analysis/list')}?${queryKey[3]}${pageParam ? `&cursor=${encodeURIComponent(pageParam)}` : ''}`, analysisUnitListSchema, signal)),
+      initialPageParam: null as string | null,
+      getNextPageParam: page => page.cursor ?? undefined,
+    });
+  },
+  /** One task's analysis values (`analysis task`), read and kept as the face's are. */
+  analysisTask: (root: string, unit: string) => queryOptions({
+    queryKey: ['analysis-view', root, 'task', unit] as const,
+    queryFn: ({ client, queryKey, signal }) => readResource(client, queryKey,
+      () => api.request(`${commandRoute('analysis/task')}?task=${encodeURIComponent(unit)}`, analysisUnitValuesSchema, signal)),
+  }),
   personalSettings: (root: string) => queryOptions({
     queryKey: ["person-settings", root] as const,
     queryFn: ({ client, queryKey, signal }) => readResource(client, queryKey, () => api.request(commandRoute("settings/get"), personalSettingsResponseSchema, signal)),

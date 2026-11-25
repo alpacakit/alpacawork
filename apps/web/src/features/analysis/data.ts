@@ -3,7 +3,7 @@ import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-quer
 import { commandRoute } from "@alpacawork/contract/command-path";
 import { api, resources } from "@/data/resources";
 import { useWorkspaceInfo } from "@/data/queries";
-import { tasksViewSchema, unitListSchema, unitValuesSchema, usageViewSchema, type Bucket, type Group, type UnitList } from "./contract";
+import { breakdownViewSchema, tasksViewSchema, unitListSchema, unitValuesSchema, usageViewSchema, type Bucket, type Group, type UnitList } from "./contract";
 import { spanQuery, type ListPlace, type Span } from "./place";
 
 /**
@@ -34,6 +34,15 @@ export function useUsageView(project: string | null, span: Span, bucket: Bucket,
 }
 
 /**
+ * One look's breakdown alone (`analysis breakdown`), for a breakdown's own place: the numbers and charts above it are
+ * already held, so they are not read again with it.
+ */
+export function useBreakdown(look: "tasks" | "usage", project: string | null, span: Span, bucket: Bucket, by: Group, enabled = true) {
+  const root = useWorkspaceInfo(info => info.root);
+  return useQuery({ ...resources.analysisView(root, "breakdown", { ...scope(project, span), bucket, look, by }, breakdownViewSchema), enabled });
+}
+
+/**
  * Whether a part of the face has come near the screen (within half a screen of it, in the scrolling `root`), so
  * what only it needs is read then and not before. Once near, it stays so. Where nothing can tell, it is near at once.
  */
@@ -55,16 +64,13 @@ export function useUnitList(project: string | null, span: Span, list: ListPlace 
   const root = useWorkspaceInfo(info => info.root);
   // A list opened from a chart's bin is for that bin's days; one opened from a number, for the span.
   const days = list?.days ? { project, from: list.days.from, to: list.days.to } : scope(project, span);
-  const input = list ? { ...days, set: list.set, value: list.value, by: list.group, key: list.member, limit: String(LIST_PAGE) } : null;
-  return useInfiniteQuery({ queryKey: ["analysis", root, "list", input], enabled: !!input, initialPageParam: null as string | null,
-    queryFn: ({ signal, pageParam }) => api.request(route("list", { ...input!, cursor: pageParam }), unitListSchema, signal),
-    getNextPageParam: page => page.cursor });
+  const input = list ? { ...days, set: list.set, value: list.value, by: list.group, key: list.member, limit: String(LIST_PAGE) } : {};
+  return useInfiniteQuery({ ...resources.analysisList(root, input), enabled: !!list });
 }
 
 export function useUnitValues(unit: string | null) {
   const root = useWorkspaceInfo(info => info.root);
-  return useQuery({ queryKey: ["analysis", root, "task", unit], enabled: !!unit,
-    queryFn: ({ signal }) => api.request(route("task", { task: unit }), unitValuesSchema, signal) });
+  return useQuery({ ...resources.analysisTask(root, unit ?? ""), enabled: !!unit });
 }
 
 /**

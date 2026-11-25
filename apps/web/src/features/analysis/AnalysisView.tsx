@@ -2,16 +2,15 @@ import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Icon } from "@/components/ui/icon";
 import { RegionSkeleton } from "@/components/ui/skeleton";
-import { ReadFailure } from "@/components/ui/loadable";
 import { BarRoom } from "@/features/chrome/Bar";
 import { UNDER_BAR } from "@/state/bar";
 import { useViewStore } from "@/state/view-store";
 import { cn } from "@/lib/utils";
-import { answerOf, useAnalysisFreshness, useTasksView, useUsageView } from "./data";
+import { useAnalysisFreshness, useTasksView, useUsageView } from "./data";
 import { daysBetween, spanLabel } from "./format";
 import { Layers } from "./Layers";
 import { ShareCardButton } from "./ShareCard";
-import { PointerTip, Seg, Shown, useChoices } from "./parts";
+import { PointerTip, ReadPart, Seg, useChoices } from "./parts";
 import { listOnAnswer, PERIOD_BACK, stepChosen, type AnalysisPlace, type ListPlace } from "./place";
 import { TasksLook } from "./TasksLook";
 import { UsageLook } from "./UsageLook";
@@ -85,15 +84,14 @@ export function AnalysisView({ place }: { place: AnalysisPlace }) {
       </div>
       <span className="narrow:ms-auto"><ShareCardButton place={place} /></span>
     </div>
-    {/* While the answer for what was just chosen is on its way, the one shown is another's: dimmed, and out of reach. */}
-    {/* The usage look draws the tasks' answer too (its finished tasks): both must be for what is chosen now. */}
-    <Shown current={(answerOf<unknown>(query)?.current ?? true) && (place.look === "tasks" || (answerOf<unknown>(tasks)?.current ?? true))}>
-      {query.data && !days ? <p className="text-soft">{t("usage.none")}</p>
-        : !query.data || !days || !head ? query.isError ? <ReadFailure error={query.error} retry={() => void query.refetch()} />
-          : <RegionSkeleton shape={place.look === "tasks" ? "analysisTasks" : "analysisUsage"} />
-        : place.look === "tasks" && tasks.data ? <TasksLook view={tasks.data} span={place.span} root={root} days={days} open={open} zone={zoneName(head.timeZone)} />
-          : usage.data && <UsageLook view={usage.data} span={place.span} root={root} tasks={tasks.data ?? null} days={days} open={open} zone={zoneName(head.timeZone)} />}
-    </Shown>
+    {/* One part, whichever look: the usage look draws the tasks' answer too (its finished tasks), so it is drawn once both
+        have come and each for what is chosen now (ReadPart); nothing is put in above what is drawn later. */}
+    <ReadPart reads={place.look === "tasks" ? [tasks] : [usage, tasks]}
+      skeleton={<RegionSkeleton shape={place.look === "tasks" ? "analysisTasks" : "analysisUsage"} />}>
+      {() => !days || !head ? <p className="text-soft">{t("usage.none")}</p>
+        : place.look === "tasks" ? <TasksLook view={tasks.data!} span={place.span} root={root} days={days} open={open} zone={zoneName(head.timeZone)} />
+          : <UsageLook view={usage.data!} span={place.span} root={root} tasks={tasks.data ?? null} days={days} open={open} zone={zoneName(head.timeZone)} />}
+    </ReadPart>
     </div></div>
     <Layers place={place} project={project} days={days} />
     <PointerTip root={root} />

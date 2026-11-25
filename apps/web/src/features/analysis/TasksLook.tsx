@@ -1,14 +1,15 @@
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
+import { RegionSkeleton } from "@/components/ui/skeleton";
 import { i18n } from "@alpacawork/i18n";
 import { daysBetween, decimalText, delta, format, inUnit, parts, share, shareDelta, previousName, unitOf, type Kind } from "./format";
 import { Grass } from "./charts";
 import { BreakdownTable, type Cell } from "./BreakdownTable";
 import { BarChart, ChartGroup, DayAxis, inSpanOf, Lead, Leads, lineTop, Parts, Row, spanMost, useLineLabel, useScale, type DayList, type RowSay } from "./rows";
-import { BreakdownPart, ChartHead, Compare, gapTone, Num, OPEN, OpenMark, Rule, RuleCard, Rules, rowName, Section, Seg, Value, tip, useChoices, type TaskGroup } from "./parts";
+import { ReadPart, ChartHead, Compare, gapTone, Num, OPEN, OpenMark, Rule, RuleCard, Rules, rowName, Section, Seg, Value, tip, useChoices, type TaskGroup } from "./parts";
 import type { ListSet, ListValue, TasksView } from "./contract";
 import type { ListPlace, Span } from "./place";
-import { useNear, useTasksView } from "./data";
+import { useBreakdown, useNear } from "./data";
 import { useViewStore } from "@/state/view-store";
 
 type Days = { from: string; to: string };
@@ -224,12 +225,12 @@ function TasksBreakdown({ span, root, open }: { span: Span; root: HTMLElement | 
   const choose = useChoices(state => state.choose);
   const project = useViewStore(state => state.project);
   const [near, wanted] = useNear(root);
-  const breakdownRead = useTasksView(project, span, bucket, taskGroup, wanted);
-  const read = breakdownRead.data?.breakdown ?? null, breakdownRows = read?.rows ?? [];
+  const breakdownRead = useBreakdown("tasks", project, span, bucket, taskGroup, wanted);
+  const answer = breakdownRead.data?.breakdown, read = answer?.look === "tasks" ? answer : null, breakdownRows = read?.rows ?? [];
   const groupOf = (key: string) => ({ group: read?.by ?? taskGroup, member: key });
   return <div ref={near}><Section title={t("breakdown.title")} aside={<Seg label={t("breakdown.title")} value={taskGroup} onChange={next => choose({ taskGroup: next as TaskGroup, all: false })}
     items={[["model", t("tasks.by.model")], ["agent", t("tasks.by.agent")], ["project", t("tasks.by.project")]]} />}>
-    <BreakdownPart read={breakdownRead}>
+    <ReadPart reads={[breakdownRead]} skeleton={<RegionSkeleton shape="analysisRows" />}>{() => <>
       <BreakdownTable tone="done" id={`tasks-${taskGroup}`} head={t(`tasks.by.${taskGroup}`)}
         columns={[head(t("tasks.cols.finished"), "tasks"), head(t("tasks.cols.accepted"), "tasks"), head(t("tasks.cols.passed"), "tasks"), t("chart.share"),
           head(t("tasks.cols.lead"), "hours"), t("tasks.cols.submits")]}
@@ -245,7 +246,7 @@ function TasksBreakdown({ span, root, open }: { span: Span; root: HTMLElement | 
           row.submitsPerAccepted === null ? { text: "—" } : { text: decimalText(row.submitsPerAccepted, 2),
             open: () => open({ set: "accepted", value: "submits", ...groupOf(row.key) }) },
         ] }))} />
-    </BreakdownPart>
+    </>}</ReadPart>
   </Section></div>;
 }
 

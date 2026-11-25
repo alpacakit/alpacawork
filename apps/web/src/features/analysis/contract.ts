@@ -1,4 +1,4 @@
-import { analysisTasksViewSchema, analysisUnitListSchema, analysisUnitValuesSchema, analysisUsageViewSchema,
+import { analysisBreakdownViewSchema, analysisTasksViewSchema, analysisUnitListSchema, analysisUnitValuesSchema, analysisUsageViewSchema,
   type AnalysisBucket, type AnalysisHead, type AnalysisListRow, type AnalysisTaskCounts, type AnalysisTasksView,
   type AnalysisUnitList, type AnalysisUnitValues, type AnalysisUsageCounts, type AnalysisUsageView } from "@alpacawork/contract/analysis";
 
@@ -8,6 +8,7 @@ import { analysisTasksViewSchema, analysisUnitListSchema, analysisUnitValuesSche
  */
 export const tasksViewSchema = analysisTasksViewSchema;
 export const usageViewSchema = analysisUsageViewSchema;
+export const breakdownViewSchema = analysisBreakdownViewSchema;
 export const unitListSchema = analysisUnitListSchema;
 export const unitValuesSchema = analysisUnitValuesSchema;
 export type TasksView = AnalysisTasksView;

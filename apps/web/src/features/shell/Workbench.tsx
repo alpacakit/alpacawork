@@ -9,7 +9,7 @@ import { readerHasTask, useEveryTaskIndex, useListPlace } from "@/data/queries";
 import { subscribeReads } from "@/data/read-model";
 import { useQueryClient } from "@tanstack/react-query";
 import { useFrameSelector, WorkspaceContext } from "@/data/workspace-store";
-import { Loadable } from "@/components/ui/loadable";
+import { Loadable, ReadFailure } from "@/components/ui/loadable";
 import { RegionSkeleton } from "@/components/ui/skeleton";
 import { NoProjects } from "@/features/archive/NoProjects";
 import { openSettings, useDialogStore } from "@/state/dialog-store";
@@ -48,8 +48,18 @@ let analysisPart: AnalysisPart | undefined;
 const loadAnalysis = () => import("@/features/analysis/AnalysisView").then(part => analysisPart = part);
 function AnalysisView({ place }: { place: AnalysisPlace }) {
   const [part, setPart] = useState(analysisPart);
-  useEffect(() => { if (!part) void loadAnalysis().then(setPart); }, [part]);
-  return part ? <part.AnalysisView place={place} /> : analysisWaiting(place.look);
+  // A part that could not be fetched is said as every read that could not be done, with a way to ask again.
+  const [failure, setFailure] = useState<{ error: unknown } | null>(null);
+  useEffect(() => {
+    if (part || failure) return;
+    let live = true;
+    loadAnalysis().then(next => { if (live) setPart(next); }, error => { if (live) setFailure({ error }); });
+    return () => { live = false; };
+  }, [part, failure]);
+  if (part) return <part.AnalysisView place={place} />;
+  if (failure) return <div {...UNDER_BAR} className="relative min-h-75 flex-1 basis-0 narrow:min-h-67.5"><BarRoom />
+    <ReadFailure size="region" error={failure.error} retry={() => setFailure(null)} /></div>;
+  return analysisWaiting(place.look);
 }
 /** The analysis's place while its part is read: its top line, then its shape (as the analysis says while it reads). */
 const analysisWaiting = (look: "tasks" | "usage") => <div {...UNDER_BAR} className="relative min-h-75 flex-1 basis-0 overflow-hidden narrow:min-h-67.5">

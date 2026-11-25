@@ -8,7 +8,7 @@ import { hashKey, notifyManager, replaceEqualDeep, type Query as QueryRecord, ty
 import { projectShelfSchema, type ProjectShelfDTO, controlTaskHeadSchema, projectedIndexSchema, taskHistorySchema, taskProjectedPageSchema, taskProjectedViewSchema, taskTimelineLaneSchema, taskProjectedTimelineAxisSchema, taskProjectedSearchSchema, closedPageScope,
   type TaskPageRowDTO, type TaskRowDTO, type ProjectedIndexDTO, type TaskProjectedViewDTO, type ControlTaskHeadDTO, type ProjectionResourceKind, type TaskViewPlacementDTO, type TaskViewRunDTO, type PlacementDTO, type ControlRunDTO } from '@alpacawork/contract/control';
 import { noticeStateResponseSchema, personalSettingsResponseSchema } from '@alpacawork/contract';
-import { analysisTasksViewSchema, analysisUsageViewSchema } from '@alpacawork/contract/analysis';
+import { analysisBreakdownViewSchema, analysisTasksViewSchema, analysisUnitListSchema, analysisUnitValuesSchema, analysisUsageViewSchema } from '@alpacawork/contract/analysis';
 import type { QueryCacheNotifyEvent } from '@tanstack/react-query';
 
 type Query = QueryRecord<any, any, any, any>;
@@ -92,6 +92,9 @@ const taskReadSchema = z.union([readViewSchema, writtenReadSchema]);
 const historyPages = pages(taskHistorySchema).refine(value => value.pages.length === 1
   && (value.pages as z.infer<typeof taskHistorySchema>[]).every(page => page.events.every(event => event.taskId.length > 0)));
 const taskPages = pages(taskProjectedPageSchema), searchPages = pages(taskProjectedSearchSchema);
+/** The analysis's reads kept as the list's are, by the command each reads. */
+const analysisViews = { tasks: analysisTasksViewSchema, usage: analysisUsageViewSchema, breakdown: analysisBreakdownViewSchema,
+  list: pages(analysisUnitListSchema), task: analysisUnitValuesSchema };
 export function readCodec(key: QueryKey): z.ZodType | undefined {
   const [kind, root, id, scope] = key;
   if (kind === 'index' && key.length === 1) return projectedIndexSchema;
@@ -100,7 +103,7 @@ export function readCodec(key: QueryKey): z.ZodType | undefined {
     return kind === 'person-settings' ? personalSettingsResponseSchema : noticeStateResponseSchema;
   if (kind === 'project-shelf' && key.length === 2) return projectShelfSchema;
   // The analysis as its face draws it: what its tasks and the AI's use count for one choice of days and steps.
-  if (kind === 'analysis-view' && key.length === 4 && (id === 'tasks' || id === 'usage')) return id === 'tasks' ? analysisTasksViewSchema : analysisUsageViewSchema;
+  if (kind === 'analysis-view' && key.length === 4 && typeof id === 'string' && Object.hasOwn(analysisViews, id)) return analysisViews[id as keyof typeof analysisViews];
   if (kind === 'coordinator' && key.length === 2) return coordinatorSnapshotSchema.refine(value => value.root === root);
   if (kind === 'task' && key.length === 3 && typeof id === 'string') return taskReadSchema.refine(view => view.task.id === id);
   if (kind === 'task-history' && key.length === 3 && typeof id === 'string') return historyPages;

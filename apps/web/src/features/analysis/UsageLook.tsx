@@ -1,13 +1,14 @@
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
+import { RegionSkeleton } from "@/components/ui/skeleton";
 import { daysBetween, delta, format, tokenColumn, unitOf as unitWord, type Kind } from "./format";
 import { BreakdownTable } from "./BreakdownTable";
 import { cell, head, useFinishedParts, type Open } from "./TasksLook";
 import { BarChart, ChartGroup, DayAxis, inSpanOf, Lead, Leads, lineTop, Parts, Row, RowName, spanMost, useLineLabel, useScale, type DayList, type RowSay } from "./rows";
-import { BreakdownPart, ChartHead, Compare, Num, Rule, RuleCard, Rules, rowName, Section, Seg, Value, useChoices, type UsageGroup } from "./parts";
+import { ReadPart, ChartHead, Compare, Num, Rule, RuleCard, Rules, rowName, Section, Seg, Value, useChoices, type UsageGroup } from "./parts";
 import { tokenTotal, type TasksView, type UsageCounts, type UsageView } from "./contract";
 import type { Span } from "./place";
-import { useNear, useUsageView } from "./data";
+import { useBreakdown, useNear } from "./data";
 import { useViewStore } from "@/state/view-store";
 
 type Days = { from: string; to: string };
@@ -200,8 +201,8 @@ function Breakdown({ view, span, root, group, days, open, choose }: {
   const { bucket } = useChoices();
   const project = useViewStore(state => state.project);
   const [near, wanted] = useNear(root);
-  const breakdownRead = useUsageView(project, span, bucket, group, wanted);
-  const breakdown = breakdownRead.data?.breakdown ?? null, rows = breakdown?.rows ?? [];
+  const breakdownRead = useBreakdown("usage", project, span, bucket, group, wanted);
+  const answer = breakdownRead.data?.breakdown, breakdown = answer?.look === "usage" ? answer : null, rows = breakdown?.rows ?? [];
   const by = (breakdown?.by as UsageGroup | undefined) ?? group;
   const member = (key: string) => ({ group: by, member: key });
   const counted = by === "skill" || by === "tool" || by === "mcp";
@@ -250,10 +251,10 @@ function Breakdown({ view, span, root, group, days, open, choose }: {
   </ChartGroup>;
   return <div ref={near}><Section title={t("breakdown.title")} aside={<Seg label={t("breakdown.title")} value={group} onChange={next => choose(next as UsageGroup)}
     items={(["model", "agent", "skill", "tool", "mcp"] as const).map(key => [key, t(`usage.by.${key}`)] as const)} />}>
-    <BreakdownPart read={breakdownRead}>
+    <ReadPart reads={[breakdownRead]} skeleton={<RegionSkeleton shape="analysisRows" />}>{() => <>
       {chart}
       {counted && since === null ? <p className="text-soft">{t("usage.none")}</p>
         : !before && <BreakdownTable tone="working" id={`usage-${group}`} head={t(`usage.heads.${group}`)} columns={columns} rows={table} />}
-    </BreakdownPart>
+    </>}</ReadPart>
   </Section></div>;
 }

@@ -8,10 +8,10 @@ import { closeAnalysisLayer } from "@/state/history-step";
 import { useNarrow, useViewStore } from "@/state/view-store";
 import { cn } from "@/lib/utils";
 import { giveFocusBack, openerChain } from "@/lib/focus-return";
-import { useTasksView, useUnitList, useUnitValues, useUsageView } from "./data";
+import { useBreakdown, useUnitList, useUnitValues } from "./data";
 import { duration, format, instant, spanLabel, tokenColumn } from "./format";
 import { listColumn, listHeading, listTitle, showsDays, writeValue } from "./lists";
-import { ModelName, PointerTip, rowName, Square, tip, useChoices } from "./parts";
+import { ModelName, PointerTip, ReadPart, rowName, Square, tip, useChoices } from "./parts";
 import { CardPane } from "./ShareCard";
 import type { ListRow, UnitValues } from "./contract";
 import { analysisSurfaces, type AnalysisPlace, type ListPlace, type Span } from "./place";
@@ -99,7 +99,8 @@ function ListPane({ place, project, days }: { place: AnalysisPlace; project: str
   const member = row ? rowName(row, t("tasks.noAgent")) : list.member === null ? list.group && t(`usage.by.${list.group}`) : null;
   const span = first?.head.period ?? days;
   const spanWords = !list.days && span ? spanLabel(span.from, span.to) : null;
-  if (!first) return query.isError ? <ReadFailure error={query.error} className="mt-4" retry={() => void query.refetch()} /> : <RegionSkeleton shape="analysisList" />;
+  // Until its first page has come, the list stands as every part does (ReadPart): its shape, its failure, or offline.
+  if (!first) return <ReadPart reads={[query]} skeleton={<RegionSkeleton shape="analysisList" />}>{() => null}</ReadPart>;
   const left = first.total - rows.length;
   // A list of a chart's bin says its days and what it lists on one line; a number's list says its span under it.
   const title = listHeading(list, first.total);
@@ -140,9 +141,9 @@ function ListPane({ place, project, days }: { place: AnalysisPlace; project: str
 function useRowOf(project: string | null, span: Span, list: ListPlace) {
   const bucket = useChoices(state => state.bucket);
   const group = list.group ?? "model", row = list.group !== null && list.member !== null;
-  const tasks = useTasksView(project, span, bucket, group, row && list.set !== "used");
-  const usage = useUsageView(project, span, bucket, group, row && list.set === "used");
-  const rows: (Parameters<typeof rowName>[0] & { key: string })[] = (list.set === "used" ? usage.data?.breakdown?.rows : tasks.data?.breakdown?.rows) ?? [];
+  // The same read as the breakdown's own (already held when the list was opened from it).
+  const read = useBreakdown(list.set === "used" ? "usage" : "tasks", project, span, bucket, group, row);
+  const rows: (Parameters<typeof rowName>[0] & { key: string })[] = read.data?.breakdown.rows ?? [];
   return row ? rows.find(each => each.key === list.member) ?? null : null;
 }
 
@@ -150,7 +151,7 @@ function useRowOf(project: string | null, span: Span, list: ListPlace) {
 function UnitPane({ unit }: { unit: string }) {
   const { t } = useTranslation("analysis");
   const query = useUnitValues(unit);
-  if (!query.data) return query.isError ? <ReadFailure error={query.error} className="mt-4" retry={() => void query.refetch()} /> : <RegionSkeleton shape="analysisTask" />;
+  if (!query.data) return <ReadPart reads={[query]} skeleton={<RegionSkeleton shape="analysisTask" />}>{() => null}</ReadPart>;
   const values = query.data, row = values.unit;
   const you = values.time.review + values.time.answer;
   const lead = row.outcome && row.outcome !== "stopped" && row.finishedAt ? Date.parse(row.finishedAt) - Date.parse(row.requestedAt) : null;
