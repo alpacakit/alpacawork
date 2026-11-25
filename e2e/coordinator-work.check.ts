@@ -5,6 +5,7 @@ import { parse, stringify } from 'yaml';
 import { writeFixtureConfig } from './fixture-writes.ts';
 import { test, expect, open, openCoordinator, writeCoordinator } from './fixtures.ts';
 import { readyCoordinator, foldConversation } from './coordinator-fixture.ts';
+import { markCentreGap } from './mark-centre.ts';
 
 test.use({ isolated: true, fixedTime: false });
 for (const phone of [false]) test(`observed work reaches folded and open conversation without rereading it (${phone ? 'phone' : 'pc'})`, async ({ page, runtime }, info) => {
@@ -37,6 +38,8 @@ for (const phone of [false]) test(`observed work reaches folded and open convers
   const steps = page.locator('[data-coordinator-turn=running] [data-working-steps]');
   await expect(steps).toContainText('alpacawork task new --title test');
   await expect(steps.locator('[data-work-seconds]')).toHaveText(/^\d+s$/);
+  // The mark stands level with the words beside it.
+  expect(await markCentreGap(steps.locator('[data-work-line]'))).toBeLessThanOrEqual(1);
   await page.screenshot({ path: info.outputPath('work-open.png'), animations: 'disabled' });
   await page.locator('[data-coordinator-turn=running] [data-exchange-toggle]').click();
   await expect(page.locator('[data-exchange-outcome]')).toContainText('New task');

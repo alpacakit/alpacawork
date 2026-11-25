@@ -4,6 +4,7 @@ import { test as base, expect, open, openCoordinator, writeCoordinator, keepShot
 import { atTheTop } from './toast-position.ts';
 import { configureCoordinator, foldConversation } from './coordinator-fixture.ts';
 import { start } from './server.ts';
+import { markCentreGap } from './mark-centre.ts';
 
 // What is sent shows at once and the input is free at once; serve's snapshot settles it, whichever of the POST's
 // answer and the event comes first; a refused send comes back, an unknown one is resent as it was.
@@ -74,6 +75,8 @@ for (const phone of [false]) test.describe(phone ? 'phone' : 'pc', () => {
     await expect(thread(page).locator('[data-coordinator-local=sending]')).toContainText('Sending…');
     // On its way it already shows the work's mark, where the work line will show it.
     await expect(thread(page).locator('[data-coordinator-local=sending] [data-coordinator-posting] [data-work-mark]')).toHaveCount(1);
+    // The mark stands level with the words beside it.
+    expect(await markCentreGap(thread(page).locator('[data-coordinator-local=sending] [data-coordinator-posting]'))).toBeLessThanOrEqual(1);
     // On its way nothing is offered to take back, and the place it is said stays one element up to its answer.
     const sending = thread(page).locator('[data-coordinator-local=sending]');
     await expect(sending.locator('[data-coordinator-withdraw]')).toHaveCount(0);
