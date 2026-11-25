@@ -177,7 +177,7 @@ export function CardPane({ place, project }: { place: AnalysisPlace; project: st
   // A number is chosen by the name the card gives it; several can be, so each chosen one carries a check.
   const chip = (key: string, name: string, on: boolean, enabled: boolean, press: () => void, className?: string) =>
     <button key={key} type="button" aria-pressed={on} disabled={!enabled} onClick={press}
-      className={cn(TAB, TALL, className, "aria-pressed:bg-tab-shown aria-pressed:font-semibold aria-pressed:text-ink disabled:cursor-default disabled:opacity-38 disabled:hover:text-muted")}>
+      className={cn(TAB, TALL, className, "text-base aria-pressed:bg-tab-shown aria-pressed:font-semibold aria-pressed:text-ink disabled:cursor-default disabled:opacity-38 disabled:hover:text-muted")}>
       {on && <Icon name="check" className="-ms-0.5 size-3" />}<TabLabel>{name}</TabLabel></button>;
   // The names stand in a column as wide as the longest of them, each on one line; on a phone each over its choices.
   // Each choice under its name, the name small and quiet as a section's is, so the choices lead.
@@ -207,7 +207,7 @@ export function CardPane({ place, project }: { place: AnalysisPlace; project: st
     </div>
     {/* What posting will do with the picture, said before it is pressed. */}
     <p className="mt-2 text-xs text-soft">{copying ? t("card.postHintCopy") : t("card.postHintSave")}</p>
-    <div className="mt-7 grid gap-4 border-t border-rule pt-5">
+    <div className="mt-8 grid gap-6">
       {row(t("period.label"), <Seg label={t("period.label")} value={card.length} className={fold}
         onChange={length => useViewStore.getState().showAnalysis({ ...place, card: { ...card, length } })}
         items={CARD_PERIODS.map(each => [each, t(`period.${each}`)] as const)} />)}

@@ -6,7 +6,7 @@ import { stylesheet } from "./stylesheet";
 const src = fileURLToPath(new URL("../src/", `file://${__filename}`));
 const sources = readdirSync(src, { recursive: true, encoding: "utf8" }).filter(name => /\.tsx?$/.test(name))
   .map(file => [file, readFileSync(src + file, "utf8")] as const);
-const STEPS = ["micro", "xs", "sm", "base", "md", "lg", "xl", "seal", "display", "display-compact"];
+const STEPS = ["micro", "xs", "sm", "base", "md", "lg", "xl", "seal", "display", "display-compact", "heading", "figure", "figure-compact"];
 const steppedLineHeight = new RegExp(`(?<![\\w-])(?:[\\w-]+:)*(text-(?:${STEPS.join("|")})/[^\\s"'\\x60]+)`, "g");
 
 /**

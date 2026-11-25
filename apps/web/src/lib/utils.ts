@@ -15,9 +15,9 @@ const twMerge = extendTailwindMerge({
       // The app bar's and a head row's heights (styles.css, Head line) are min-height steps too.
       "min-h": [{ "min-h": [...controlHeights, "bar", "head"] }],
       "max-h": [{ "max-h": controlHeights }],
-      // The steps tailwind-merge does not have (styles.css: md, a stamp's seal): sizes, not colours, so `text-ink` or
+      // The steps tailwind-merge does not have (styles.css: md, a stamp's seal, the analysis's heading and figures): sizes, not colours, so `text-ink` or
       // `text-done` beside them stays and a caller's `text-sm` replaces them.
-      "font-size": [{ text: ["md", "seal"] }],
+      "font-size": [{ text: ["md", "seal", "heading", "figure", "figure-compact"] }],
       // A surface's edge and shadow (styles.css), so a caller's `shadow-none` or `border-0` replaces them.
       "border-w": [{ border: ["hairline"] }],
       "border-w-t": [{ "border-t": ["hairline"] }],
