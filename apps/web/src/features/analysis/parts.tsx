@@ -276,34 +276,38 @@ function TipBox({ words, x, top, bottom, tipRef, onEnter, onLeave }: { words: st
 /** A read a part of the analysis draws from: its answer, or that it is on its way or could not be read. */
 export type PartRead<T> = { data: T | undefined; isPlaceholderData: boolean; isError: boolean; error: Error | null; refetch: () => unknown };
 /**
- * What a part shows of its reads: one set, every answer in it for the same choice. While a new choice's answers come in,
- * the last whole set stands as it was (dimmed, `current` false) and the new one replaces it at once when all of it has
- * come, so no answer of one choice is ever drawn beside another's. `kind`: what the reads are for (another kind, as
- * another look, has no set of this one's to stand in for it).
+ * What a part shows of its reads: one set, every answer in it for the same choice. The set is whole when every read has
+ * its own answer for what is chosen now, wherever the person came from; a stand-in answer (a placeholder, the last
+ * choice's) is for some earlier choice, so a set with one is never shown as it is. While a choice's answers come in, the
+ * last whole set of this `kind` (what the reads are for, as a look) stands as it was (dimmed, `current` false) and the
+ * new one replaces it at once when all of it has come: no answer of one choice is ever drawn beside another's. A single
+ * read's stand-in is one choice's whole answer, so it stands in too.
  */
 export type ReadSet = { data: readonly unknown[] | null; current: boolean; reads: readonly PartRead<unknown>[] };
 export function useReadSet(kind: string, reads: readonly PartRead<unknown>[]): ReadSet {
-  const held = useRef<{ kind: string; data: readonly unknown[] } | null>(null);
+  const held = useRef(new Map<string, readonly unknown[]>());
   const whole = reads.every(read => read.data !== undefined && !read.isPlaceholderData);
   const answers = reads.map(read => read.data);
-  if (whole) held.current = { kind, data: answers };
-  const kept = held.current?.kind === kind ? held.current.data : null;
-  // Before any whole set of this kind, answers that all stand for an earlier choice are still one set.
-  return { data: whole ? answers : kept ?? (reads.every(read => read.data !== undefined) ? answers : null), current: whole, reads };
+  if (whole) held.current.set(kind, answers);
+  const kept = held.current.get(kind) ?? (reads.length === 1 && reads[0]!.data !== undefined ? answers : null);
+  return { data: whole ? answers : kept, current: whole, reads };
 }
 
 /**
  * Every part of the analysis (the face, a breakdown, a list, a task's values) stands in its place by one rule, whatever
  * it waits for: drawn from its whole set of answers (`useReadSet`; one for an earlier choice dimmed and out of reach until
  * the new one has wholly come, `Shown`); until it has one, its own shape (`skeleton`), never nothing, so nothing is put in
- * above what is drawn later; what could not be read said in its place as every read says it, with a way to ask again;
- * and, offline, what was never read said as the list of tasks says it (ReadNote), not a wait that cannot end.
+ * above what is drawn later; any read for what is chosen now that could not be read said in its place as every read says
+ * it, with a way to ask again, even while an earlier set stands (it would not be replaced); and, offline, what was never
+ * read said as the list of tasks says it (ReadNote), not a wait that cannot end.
  */
 export function ReadPart({ set, skeleton, children }: { set: ReadSet; skeleton: ReactNode; children: (data: readonly unknown[]) => ReactNode }) {
   const offline = useOfflineShown();
+  const failed = set.current ? undefined : set.reads.find(read => read.isError);
+  if (failed) return <ReadFailure error={failed.error} retry={() => {
+    for (const read of set.reads) if (read.isError || read.data === undefined || read.isPlaceholderData) void read.refetch();
+  }} />;
   if (set.data) return <Shown current={set.current}>{children(set.data)}</Shown>;
-  const failed = set.reads.find(read => read.data === undefined && read.isError);
-  if (failed) return <ReadFailure error={failed.error} retry={() => { for (const read of set.reads) if (read.data === undefined) void read.refetch(); }} />;
   if (offline) return <ReadNote kind="absent" />;
   return <>{skeleton}</>;
 }
