@@ -63,23 +63,49 @@ function field(key: string, value: unknown): string {
   return `${key}: ${text ?? String(value)}`;
 }
 /**
+ * A tool call's input as given, kept by field so the records of its start and end can be put together field by field:
+ * its main argument as written (absent when it gave none), and every other field it was given.
+ */
+export type InputParts = { main?: string; fields: Record<string, unknown> };
+/**
  * An input to read in full: its main argument as written, then every other field it was given by name, each text with
  * its own lines. An empty value given (null, "", []) is said as given; only a field not given is left out.
  */
-export function inputDocument(main: string | undefined, fields: Record<string, unknown>): string {
+export function inputDocument({ main, fields }: InputParts): string {
   const rest = Object.entries(fields).filter(([, value]) => value !== undefined).map(([key, value]) => field(key, value));
   return [main ?? '', rest.join('\n')].filter(Boolean).join('\n\n');
 }
 /**
- * A tool call's whole input as written, to read in full (inputDocument): an edit's old and new text, a read's range.
- * The agent's words for a command are said apart, so they are not repeated.
+ * One input from the records of a step's start and end, field by field: a field the end gives is the end's, any other
+ * the start's (the end may say more, as a Codex edit's diff; the start may say what the end leaves out, as where a
+ * command ran).
  */
+export function joinInputParts(start: InputParts | undefined, end: InputParts | undefined): InputParts | undefined {
+  if (!start || !end) return end ?? start;
+  const fields = { ...start.fields };
+  for (const [key, value] of Object.entries(end.fields)) if (value !== undefined) fields[key] = value;
+  return { main: end.main ?? start.main, fields };
+}
+/**
+ * A tool call's input by field (InputParts): the main argument is its named fields that have words (an edit's path, a
+ * search's pattern and path); one given empty is said by name with the rest, as given. The agent's words for a
+ * command are said apart, so they are not repeated.
+ */
+export function toolInputParts(tool: unknown, raw: unknown): InputParts | undefined {
+  if (typeof raw === 'string') return { main: raw, fields: {} };
+  if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) {
+    const text = toolArgumentText(raw);
+    return text === undefined ? undefined : { main: text, fields: {} };
+  }
+  const input = record(raw), keys = mainFields(tool, input), worded = keys.filter(key => input[key] !== '');
+  const said = tool === 'Bash' || typeof input.command === 'string' ? ['description'] : [];
+  return { main: worded.length ? worded.map(key => input[key] as string).join(SEPARATOR[String(tool)] ?? '') : undefined,
+    fields: Object.fromEntries(Object.entries(input).filter(([key]) => !worded.includes(key) && !said.includes(key))) };
+}
+/** A tool call's whole input as written, to read in full (inputDocument of toolInputParts). */
 export function toolInputDocument(tool: unknown, raw: unknown): string | undefined {
-  if (typeof raw === 'string') return raw;
-  if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return toolArgumentText(raw);
-  const input = record(raw), main = mainFields(tool, input), said = tool === 'Bash' || typeof input.command === 'string' ? ['description'] : [];
-  return inputDocument(main.length ? toolInputText(tool, raw) : undefined,
-    Object.fromEntries(Object.entries(input).filter(([key]) => !main.includes(key) && !said.includes(key))));
+  const parts = toolInputParts(tool, raw);
+  return parts && inputDocument(parts);
 }
 /** A step's text to read in full, up to the limit; `omitted` counts the characters (code points) left out, before it too. */
 export function fullRunText(value: string, omitted = 0): RunStepText {

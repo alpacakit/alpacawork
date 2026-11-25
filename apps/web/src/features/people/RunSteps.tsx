@@ -177,10 +177,10 @@ function StepText({ text, tone, ...data }: { text: RunStepText; tone: string; "d
     {text.omitted > 0 && <span className="block font-sans text-muted">{t("now.step.omitted", { count: text.omitted })}</span>}</pre>;
 }
 /**
- * What one step ran and got back, read when it is opened and again when it changes: an answer older than the step as
- * the list holds it is not shown, so the opened text never says other than its line.
+ * What one step ran and got back, read when it is opened and again when it changes. It is shown only when it is of
+ * the list's generation and not older than the step as the list holds it, so the opened text is always that line's.
  */
-function useStepDetail(run: string, step: RunStepEntry, open: boolean) {
+function useStepDetail(run: string, step: RunStepEntry, generation: number, open: boolean) {
   const [detail, setDetail] = useState<{ value: RunStepDetail | null; failed: boolean } | null>(null);
   const { n, changed } = step;
   useEffect(() => {
@@ -191,13 +191,13 @@ function useStepDetail(run: string, step: RunStepEntry, open: boolean) {
     return () => abort.abort();
   }, [run, n, changed, open]);
   if (!open || !detail) return null;
-  return detail.value && detail.value.changed < changed ? null : detail;
+  return detail.value && (detail.value.generation !== generation || detail.value.changed < changed) ? null : detail;
 }
 /** One step of the list: its line, and on a press what it ran and what came back, in full. */
-function StepRow({ run, step }: { run: string; step: RunStepEntry }) {
+function StepRow({ run, step, generation }: { run: string; step: RunStepEntry; generation: number }) {
   const { t } = useTranslation("people");
   const [open, setOpen] = useState(false);
-  const detail = useStepDetail(run, step, open);
+  const detail = useStepDetail(run, step, generation, open);
   return <li data-run-step={step.state} className="min-w-0">
     <button type="button" aria-expanded={open} onClick={() => setOpen(!open)}
       className="flex w-full min-w-0 cursor-pointer items-baseline gap-1.5 rounded-sm py-0.5 text-left text-soft outline-none hover:text-ink focus-visible:outline-2 focus-visible:outline-ring narrow:py-1.5">
@@ -233,5 +233,5 @@ export function StepList({ steps, className }: { steps: StepsRead; className?: s
       className={cn("cursor-pointer rounded-sm underline-offset-2 outline-none hover:text-ink hover:underline focus-visible:outline-2 focus-visible:outline-ring", NOTE)}>
       {t("now.step.older", { count: Math.min(EARLIER, listed.from), rest: listed.from })}</button></li>}
     {steps.failed && <li><Message tone="error" size="line" title={t("now.step.unreadable")} className={cn("text-xs", NOTE)} /></li>}
-    {listed.steps.map(step => <StepRow key={step.n} run={run} step={step} />)}</ol>;
+    {listed.steps.map(step => <StepRow key={`${listed.generation}:${step.n}`} run={run} step={step} generation={listed.generation} />)}</ol>;
 }

@@ -122,6 +122,20 @@ test('answers in any order: an older page never undoes a newer change, and anoth
   expect(takeIn(earlier, { steps: [], total: 1, generation: 2 })).toBeNull();
 });
 
+test('an opened step shows no text of another generation of the Run\'s output', async () => {
+  server.put(entry(0, 'pnpm test'));
+  render(<AnswerSteps run="R7" />);
+  fireEvent.click(screen.getByRole('button', { name: 'Steps behind this answer' }));
+  const row = await screen.findByRole('button', { name: /pnpm test/ });
+  // The output was replaced: its step 0 is another step now.
+  server.generation = 2;
+  server.details.set(0, { input: { text: 'rm -rf build', omitted: 0 }, output: null });
+  fireEvent.click(row);
+  await waitFor(() => expect(server.asked).toContain('R7 step 0'));
+  expect(screen.queryByText('rm -rf build')).toBeNull();
+  expect(screen.getByText('Reading…')).toBeTruthy();
+});
+
 test('a step whose outcome could not be read is not shown done, and opened says why', async () => {
   server.put(entry(0, 'pnpm test', { state: 'unknown' }));
   render(<AnswerSteps run="R7" />);

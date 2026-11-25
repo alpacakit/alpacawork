@@ -12,6 +12,7 @@ import { workNameWords } from '@/domain/work-words';
 import { causeReason, limitName } from '@/domain/run-labels';
 import { agentLabel } from '@/domain/agent-label';
 import { StepList, WorkLine, stepCount, useRunSteps } from '@/features/people/RunSteps';
+import { tookSteps } from '@alpacawork/contract/run';
 import { Icon } from '@/components/ui/icon';
 import { MarkdownBody } from '@/features/reader/MarkdownBody';
 import { followTask } from './follow-task';
@@ -89,8 +90,8 @@ export function WorkingReply({ turn }: { turn: { id: string; at: string } }) {
   const mine = !offline && work && work.conversation === conversation && work.turn === turn.id ? work : null;
   const step = mine?.steps.at(-1);
   // Brought up to date whenever any of its steps starts or ends, however many run at once.
-  // Whether there is a list is whether the Run has taken any step, not whether the latest few came with its work.
-  const worked = !!step || (mine?.stepEvents ?? 0) > 0;
+  // Whether there is a list is whether the Run has taken any step (tookSteps), as everywhere its steps are offered.
+  const worked = tookSteps(mine);
   const steps = useRunSteps(mine?.run, open && worked, mine?.stepEvents ?? 0);
   const block = useRef<HTMLDivElement>(null);
   useListedInSight(steps.listed, block);

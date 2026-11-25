@@ -15,7 +15,7 @@
  */
 import { open, type FileHandle } from 'node:fs/promises';
 import { join } from 'node:path';
-import { RUN_FILES, RUN_STEPS_PAGE_LIMIT, RUN_TOOL_ID_LIMIT, RUN_TOOL_NAME_LIMIT, clipRunText, fullRunText,
+import { RUN_FILES, RUN_STEPS_PAGE_LIMIT, RUN_TOOL_ID_LIMIT, RUN_TOOL_NAME_LIMIT, clipRunText, fullRunText, inputDocument, joinInputParts,
   type RunStepDetail, type RunStepEntry, type RunStepLine, type RunStepText, type RunStepsPage } from '@alpacawork/contract/run';
 import type { AgentAdapter } from '../agents/adapters/types.js';
 import type { ActivityEvent } from './activity-events.js';
@@ -36,6 +36,14 @@ const parse = (line: Buffer): unknown => {
   try { return JSON.parse(line.toString('utf8')); } catch { return undefined; }
 };
 
+/**
+ * A generation no reading has had in this server, nor (counted on from when it started) in one before it: an index
+ * read again from the start, because its output was replaced or because it was let go and read anew, never answers
+ * with a generation a list of the earlier reading holds.
+ */
+let generations = Date.now();
+const nextGeneration = () => ++generations;
+
 /** One Run's index of steps, read on from where it stopped each time it is asked. */
 export class RunStepIndex {
   private readonly steps: Step[] = [];
@@ -44,7 +52,7 @@ export class RunStepIndex {
   private offset = 0;
   private file: string | null = null;
   private version = 0;
-  /** How many times the output was read from its start: a replaced output is another generation of steps. */
+  /** Which reading of the output from its start this is (nextGeneration): a list of another is not this one's. */
   private generation = 0;
   /** How the Run ended, once it has: what its output left running is settled so, and its last line is whole. */
   private ended: Settled | null = null;
@@ -102,7 +110,7 @@ export class RunStepIndex {
       const stat = await handle.stat(), file = `${stat.dev}:${stat.ino}`;
       if (file !== this.file || stat.size < this.offset) {
         // Read again from the start, its versions going on, so a list holding the old ones takes every step again.
-        this.steps.length = 0; this.byId.clear(); this.offset = 0; this.file = file; this.generation++;
+        this.steps.length = 0; this.byId.clear(); this.offset = 0; this.file = file; this.generation = nextGeneration();
       }
       const chunk = Buffer.alloc(CHUNK);
       let pending: Buffer[] = [], pendingLength = 0, lineStart = this.offset, position = this.offset, dropping = false;
@@ -173,8 +181,12 @@ export class RunStepIndex {
       };
       const started = await events(step.start), ended = step.end === step.start ? started : await events(step.end);
       // The input is taken from the end's record where it says it (it may hold more, as a Codex edit's diff), else the start's.
+      // The input from the records of its start and end, field by field (joinInputParts); a bridge's, already one text,
+      // is the end's where it says it.
       const said = [...ended, ...started];
-      const input = said.map(event => event.input).find(text => !!text && (text.text !== '' || text.omitted > 0))
+      const call = joinInputParts(started.map(event => event.call).find(Boolean), ended.map(event => event.call).find(Boolean));
+      const input = call ? { text: inputDocument(call), omitted: 0 }
+        : said.map(event => event.input).find(text => !!text && (text.text !== '' || text.omitted > 0))
         ?? ({ text: said.map(event => event.detail?.text).find(Boolean) ?? '', omitted: 0 } satisfies RunStepText);
       const outcome = ended.map(event => event.outcome).find(Boolean);
       const output = outcome?.output ?? (outcome?.result.text ? lineText(outcome.result) : null);

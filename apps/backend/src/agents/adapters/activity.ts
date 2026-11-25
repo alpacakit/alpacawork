@@ -1,6 +1,6 @@
 /** Translate native Claude and common bridge stdout events for the activity projection. */
 import { bridgeToolEventSchema } from '@alpacawork/contract/agent-bridge';
-import { RUN_NOTE_LIMIT, inputDocument, previewRunLine, previewToolInput, toolInputDocument, toolResultText, type RunStepText } from '@alpacawork/contract/run';
+import { RUN_NOTE_LIMIT, previewRunLine, previewToolInput, toolInputParts, toolResultText, type RunStepText } from '@alpacawork/contract/run';
 import type { ActivityEvent } from '../../runs/activity-events.js';
 import { commandOf } from '../../runs/shell-command.js';
 import { object } from './output.js';
@@ -39,13 +39,13 @@ function shellScript(command: unknown): unknown {
 }
 /** All of a text as the output holds it: the step's opened view bounds it. */
 const whole = (text: string): RunStepText => ({ text, omitted: 0 });
-/** A step's input as a preview and as written (absent when it is no text). */
-const written = (value: unknown, all: unknown = value): Pick<ActivityEvent, 'detail' | 'input'> =>
-  ({ detail: previewRunLine(value), ...typeof all === 'string' ? { input: whole(all) } : {} });
-/** A named tool's call: its preview, the agent's words for it, and its whole input as written. */
-function toolCall(tool: unknown, raw: unknown): Pick<ActivityEvent, 'detail' | 'about' | 'input'> {
-  const document = toolInputDocument(tool, raw);
-  return { ...previewToolInput(tool, raw), ...document === undefined ? {} : { input: whole(document) } };
+/** A step's input as a preview and by field (`call`): its main argument and the other fields it gave. */
+const written = (main: unknown, fields: Record<string, unknown> = {}): Pick<ActivityEvent, 'detail' | 'call'> =>
+  ({ detail: previewRunLine(main), call: { ...typeof main === 'string' ? { main } : {}, fields } });
+/** A named tool's call: its preview, the agent's words for it, and its input by field. */
+function toolCall(tool: unknown, raw: unknown): Pick<ActivityEvent, 'detail' | 'about' | 'call'> {
+  const call = toolInputParts(tool, raw);
+  return { ...previewToolInput(tool, raw), ...call ? { call } : {} };
 }
 /** A file change as Codex records it: what was done to which path, then its diff. */
 function fileChange(change: Record<string, unknown>): string {
@@ -53,23 +53,18 @@ function fileChange(change: Record<string, unknown>): string {
   const moved = typeof kind.move_path === 'string' ? ` → ${kind.move_path}` : '';
   return [`${done}: ${String(change.path)}${moved}`, typeof change.diff === 'string' && change.diff ? change.diff : ''].filter(Boolean).join('\n');
 }
-/** A bridge item's input: its main argument, and the other fields it records about what it asked (inputDocument). */
-function bridgeInput(item: Record<string, unknown>): Pick<ActivityEvent, 'detail' | 'about' | 'input'> {
+/** A bridge item's input: its main argument, and the other fields it records about what it asked (a field it does not record is left to the other record). */
+function bridgeInput(item: Record<string, unknown>): Pick<ActivityEvent, 'detail' | 'about' | 'call'> {
   switch (item.type) {
-    case 'command_execution': {
-      const script = shellScript(item.command);
-      return written(script, inputDocument(typeof script === 'string' ? script : undefined, { cwd: item.cwd }));
-    }
-    case 'web_search': {
-      const query = firstText(item.query, object(item.action).url);
-      return written(query, inputDocument(query, { action: item.action }));
-    }
+    case 'command_execution': return written(shellScript(item.command), { cwd: item.cwd });
+    case 'web_search': return written(firstText(item.query, object(item.action).url), { action: item.action });
     case 'file_change': {
-      const changes = (Array.isArray(item.changes) ? item.changes : []).map(object).filter(change => typeof change.path === 'string');
-      return written(changes.map(change => change.path).join('  '), changes.map(fileChange).join('\n\n'));
+      if (!Array.isArray(item.changes)) return { detail: previewRunLine(undefined), call: { fields: {} } };
+      const changes = item.changes.map(object).filter(change => typeof change.path === 'string');
+      return { detail: previewRunLine(changes.map(change => change.path).join('  ')),
+        call: { ...changes.length ? { main: changes.map(fileChange).join('\n\n') } : {}, fields: {} } };
     }
-    case 'collab_agent_tool_call': return written(item.prompt, inputDocument(typeof item.prompt === 'string' ? item.prompt : undefined,
-      { tool: item.tool, model: item.model, receiverThreadIds: item.receiverThreadIds }));
+    case 'collab_agent_tool_call': return written(item.prompt, { tool: item.tool, model: item.model, receiverThreadIds: item.receiverThreadIds });
     case 'image_view': return written(item.path);
     default: return toolCall(item.tool ?? item.name, item.arguments);
   }

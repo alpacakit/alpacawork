@@ -64,8 +64,9 @@ export type RunStepEntry = z.infer<typeof runStepEntrySchema>;
  * GET /api/runs/:run/steps: `?from=&limit=` gives the Run's steps from `from` on (the latest `limit` without `from`),
  * oldest first; `?since=` gives the steps that changed after version `since` (new ones too), oldest change first.
  * `version` is how far this answer has caught up: asked again `since` it, a list misses no change. `total`: the steps
- * so far. `complete`: `version` is the latest (a long run of changes comes a page at a time). `generation` changes when
- * the output was replaced and its steps read again from the start: a list of another generation is no longer the Run's.
+ * so far. `complete`: `version` is the latest (a long run of changes comes a page at a time). `generation` names the
+ * reading of the output its steps come from; a new one (the output was replaced, or the index was read anew) never
+ * repeats an earlier, and a list of another generation is no longer the Run's.
  */
 export const runStepsPageSchema = z.object({ steps: z.array(runStepEntrySchema).max(RUN_STEPS_PAGE_LIMIT),
   total: z.number().int().nonnegative(), version: z.number().int().nonnegative(), complete: z.boolean(),

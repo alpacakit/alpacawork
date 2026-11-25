@@ -204,3 +204,22 @@ test('a text past the limit says how much was left out; no output reads as no st
   writeFileSync(join(path, 'stdout.log'), '');
   assert.equal((await read(path)).total, 0);
 });
+
+test('an index let go and read anew never answers with a generation an earlier reading had', async t => {
+  const path = folder(t);
+  write(path, [bash('a', 'echo a')]);
+  const first = (await read(path)).range(undefined, 12).generation;
+  // The same output read by a new index (as after the index cache let the old one go): another generation.
+  assert.notEqual((await read(path)).range(undefined, 12).generation, first);
+});
+
+test('an input is put together field by field from its start and end: where a command ran, said only at its start, stays', async t => {
+  const path = folder(t);
+  write(path, [{ type: 'item.started', item: { id: 'c1', type: 'command_execution', command: 'pnpm test', cwd: '/src/app' } },
+    { type: 'item.completed', item: { id: 'c1', type: 'command_execution', command: 'pnpm test', aggregatedOutput: 'ok', exitCode: 0 } }]);
+  assert.deepEqual((await (await read(path, 'codex')).detail(0))?.input, { text: 'pnpm test\n\ncwd: /src/app', omitted: 0 });
+});
+
+test('a main argument given empty is said as given', () => {
+  assert.equal(toolInputDocument('Grep', { pattern: '', path: '/src' }), '/src\n\npattern: ""');
+});

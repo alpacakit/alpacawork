@@ -27,7 +27,7 @@ export { runStepSchema, runStepsSchema, runStepKindSchema, RUN_STEP_LIMIT, RUN_S
   RUN_TOOL_NAME_LIMIT, RUN_NOTE_LIMIT, type RunStep, type RunStepKind, type RunStepLine } from './work-contract.js';
 export { runStepsPageSchema, runStepEntrySchema, runStepDetailSchema, runStepTextSchema, RUN_STEPS_PAGE_LIMIT,
   RUN_STEP_FULL_TEXT_LIMIT, type RunStepsPage, type RunStepEntry, type RunStepDetail, type RunStepText } from './work-contract.js';
-export { clipRunText, previewRunLine, previewToolInput, toolInputText, toolInputDocument, inputDocument, fullRunText, toolResultText, toolArgumentText } from './work-preview.js';
+export { clipRunText, previewRunLine, previewToolInput, toolInputText, toolInputDocument, toolInputParts, inputDocument, joinInputParts, fullRunText, toolResultText, toolArgumentText, type InputParts } from './work-preview.js';
 import { runWorkSchema, runStepsSchema, RUN_NOTE_LIMIT, RUN_TOOL_NAME_LIMIT } from './work-contract.js';
 export const runActivitySchema = z.object({
   at: z.iso.datetime({ offset: true }), kind: runActivityKindSchema,
@@ -44,6 +44,12 @@ export const runActivitySchema = z.object({
   stepEvents: z.number().int().nonnegative().optional(),
 }).strict();
 export type RunActivity = z.infer<typeof runActivitySchema>;
+/**
+ * Whether a Run has taken any step, the one answer every place that offers its steps asks: its latest steps, or any
+ * step's start or end counted (an unreadable line can leave the latest steps empty while steps were taken).
+ */
+export const tookSteps = (activity: { steps: readonly unknown[]; stepEvents?: number } | null | undefined): boolean =>
+  !!activity && (activity.steps.length > 0 || (activity.stepEvents ?? 0) > 0);
 /** A working Run's activity as the screen reads it: its fill with its model's resolved window (agents/context-limits). */
 export const runActivityViewSchema = runActivitySchema.extend({ context: contextViewSchema.nullable() }).strict();
 export type RunActivityView = z.infer<typeof runActivityViewSchema>;

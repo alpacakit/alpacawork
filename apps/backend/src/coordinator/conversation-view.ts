@@ -4,7 +4,7 @@
  */
 import type { DatabaseSync } from 'node:sqlite';
 import { DELIVERY_STATE } from '@alpacawork/contract/control';
-import { carrierOf, isRunMoving, runFolder, type CoordinatorRunRecord } from '@alpacawork/contract/run';
+import { carrierOf, isRunMoving, runFolder, tookSteps, type CoordinatorRunRecord } from '@alpacawork/contract/run';
 import type { RunId } from '@alpacawork/contract/fields';
 import { inputUnsettled } from '@alpacawork/contract/run-protocol';
 import type { CoordinatorConversation as ConversationView, CoordinatorError, CoordinatorResult, CoordinatorTurn } from '@alpacawork/contract/coordinator';
@@ -26,10 +26,10 @@ const UNREAD_ANSWERS = ['too_large', 'unreadable'] as const satisfies readonly C
 /** Whether an ended Run took any steps, by its ID: an ended Run's activity no longer changes. */
 const worked = new Map<string, boolean>();
 const WORKED_LIMIT = 1024;
-function tookSteps(root: string, id: RunId): boolean {
+function endedRunTookSteps(root: string, id: RunId): boolean {
   const key = `${root}\0${id}`, known = worked.get(key);
   if (known !== undefined) return known;
-  const value = !!readRunActivity(runFolder(root, id))?.steps.length;
+  const value = tookSteps(readRunActivity(runFolder(root, id)));
   worked.set(key, value);
   if (worked.size > WORKED_LIMIT) worked.delete(worked.keys().next().value!);
   return value;
@@ -139,7 +139,7 @@ export function view(db: DatabaseSync, store: RunStore, conversation: Conversati
       // The message sent in its place carries what is left to read, while this one stays failed: one that answers after
       // all (a Run back from review) is shown with its answer.
       const again = sentAgain.has(id) && turn.status === 'failed';
-      const workedBy = readable(turn) && isEnded(run) && tookSteps(store.root, run.id) ? run.id : undefined;
+      const workedBy = readable(turn) && isEnded(run) && endedRunTookSteps(store.root, run.id) ? run.id : undefined;
       turns.push({ ...turn, ...attempts ? { attempts } : {}, ...failure ? { failure } : {}, ...(typeof request.reply_to === 'string' ? { replyTo: reply(request.reply_to) } : {}),
         ...again ? { sentAgain: true as const } : {}, ...workedBy ? { workedBy } : {}, seen: readable(turn) && (again || seen.has(id)) });
     }
