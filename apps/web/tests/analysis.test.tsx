@@ -3,7 +3,7 @@ import { i18n, startI18n } from "@alpacawork/i18n";
 import { comparison, delta, parts, share, shareDelta } from "../src/features/analysis/format";
 import { analysisMoved, analysisSurfaces, analysisValues, belowLayer, listOnAnswer, readAnalysis, settleSpan, spanQuery, stepChosen, type AnalysisPlace } from "../src/features/analysis/place";
 import { axisLabels } from "../src/features/analysis/charts";
-import { inSpanOf, lineDots, lineTop, spanMost } from "../src/features/analysis/rows";
+import { dayIntent, inSpanOf, lineDots, lineTop, spanMost } from "../src/features/analysis/rows";
 import { tipAround, tipBeside, tipPlace } from "../src/features/analysis/parts";
 import { isStep, surfacesOf } from "../src/state/history-step";
 import type { Navigation } from "../src/state/view-store";
@@ -196,4 +196,15 @@ test("the day counting began is always named, and no other name on the axis touc
     for (let i = 1; i < named.length; i++) expect(extent(named[i]!)[0]! - extent(named[i - 1]!)[1]!).toBeGreaterThanOrEqual(8);
     for (const at of named) expect(extent(at)[1]).toBeLessThanOrEqual(width);
   }
+});
+
+test("a day the pointer passes going left fast, on its way to the row's legend, waits; slower or any other way it is taken at once", () => {
+  const at = (x: number, y: number, time: number) => ({ x, y, time });
+  expect(dayIntent(at(800, 100, 0), at(700, 104, 20))).toBe("wait");
+  expect(dayIntent(at(800, 100, 0), at(790, 100, 100))).toBe("now");
+  expect(dayIntent(at(800, 100, 0), at(900, 100, 20))).toBe("now");
+  expect(dayIntent(at(800, 100, 0), at(760, 160, 20))).toBe("now");
+  expect(dayIntent(null, at(700, 100, 20))).toBe("now");
+  // Starting left from rest, it waits (a slow one is taken a moment later).
+  expect(dayIntent(at(800, 100, 0), at(790, 100, 400))).toBe("wait");
 });

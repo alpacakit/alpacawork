@@ -195,19 +195,56 @@ function under(x: number, y: number, self: Element) {
  */
 function Columns({ layer }: { layer: "back" | "front" }) {
   const group = useGroup();
+  const intent = useDayIntent(group);
   return <div aria-hidden={layer === "back"} className={cn(GRID, "pointer-events-none absolute inset-0", layer === "front" && "z-1")}>
     {/* Leaving the day columns lets go of the day, unless for the same row (its legend, on the left). */}
     <div className="col-span-9 col-start-4 grid auto-cols-[minmax(0,1fr)] grid-flow-col" onMouseLeave={layer === "front" ? event => {
+      intent.cancel();
       const row = group.pointed?.row, to = event.relatedTarget;
       if (!(to instanceof Element && row !== undefined && to.closest(`[data-row="${row}"]`))) group.point(null);
     } : undefined}>
       {group.bins.map((bin, at) => layer === "back"
         ? <i key={bin.from} className={cn("block", group.hovered === at ? "bg-rule" : lit(bin, group.span) && "bg-span-band")} />
         : <span key={bin.from} data-day-column="" className="pointer-events-auto cursor-pointer"
-          onMouseMove={event => group.point(at, under(event.clientX, event.clientY, event.currentTarget).row)}
+          onMouseMove={event => intent.move(at, under(event.clientX, event.clientY, event.currentTarget).row, event.clientX, event.clientY, event.timeStamp)}
           onClick={event => { const { row, part } = under(event.clientX, event.clientY, event.currentTarget); if (row >= 0) group.press(at, row, part); }} />)}
     </div>
   </div>;
+}
+
+/** Where the pointer was last, and the day it is heading for (`move`), deferred or not (`dayIntent`). */
+type Trace = { x: number; y: number; time: number };
+/**
+ * Whether a move to another day of the same row waits: the pointer going left fast and mostly sideways (or starting
+ * that way from rest) is on its way to the row's legend (the days it crosses are not chosen); slower, or any other
+ * way, it takes the day at once.
+ */
+export function dayIntent(from: Trace | null, to: Trace) {
+  if (!from) return "now";
+  const dx = to.x - from.x, dy = to.y - from.y, gap = to.time - from.time;
+  if (!(dx < 0 && Math.abs(dx) > 2 * Math.abs(dy))) return "now";
+  // The first move after the pointer rested has no speed yet: it waits too (a slow one is taken a moment later).
+  return gap > 100 || -dx / Math.max(1, gap) > 0.5 ? "wait" : "now";
+}
+/** How long a day passed on the way to the legend waits before it is taken (the pointer stopped over it). */
+const INTENT_MS = 120;
+/**
+ * The pointer's way over the columns: a day of the same row the pointer passes on its way to the legend waits
+ * (`dayIntent`) and is dropped if the pointer leaves for the row (`cancel`); it is taken if the pointer stays on it.
+ */
+function useDayIntent(group: GroupState) {
+  const last = useRef<Trace | null>(null), timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancel = () => { if (timer.current) clearTimeout(timer.current); timer.current = null; };
+  useEffect(() => cancel, []);
+  const move = (at: number, row: number, x: number, y: number, time: number) => {
+    const trace = { x, y, time }, from = last.current;
+    last.current = trace;
+    const same = group.pointed && (row < 0 || row === group.pointed.row);
+    if (group.pointed?.at === at && same) { cancel(); return; }
+    if (same && dayIntent(from, trace) === "wait") { cancel(); timer.current = setTimeout(() => { timer.current = null; group.point(at, row); }, INTENT_MS); return; }
+    cancel(); group.point(at, row);
+  };
+  return { move, cancel };
 }
 
 /** What a bin covers: its days, and how much of it there is when it is not whole. */

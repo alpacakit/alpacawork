@@ -187,6 +187,12 @@ test("a chart takes the keys: the arrows choose the day its legend says, Enter o
   expect(legend()?.textContent).toContain("11/3");
   fireEvent.click(view.getByRole("button", { name: /手直しあり/ }));
   expect(opened).toHaveBeenLastCalledWith({ set: "reworked", value: "lead", from: "2026-11-03", to: "2026-11-03" });
+  // Going left fast toward the legend, the days crossed are not taken; arriving in the row, the day stays.
+  fireEvent.mouseMove(columns[6]!, { clientX: 600, clientY: 10 });
+  fireEvent.mouseMove(columns[4]!, { clientX: 400, clientY: 12 });
+  fireEvent.mouseMove(columns[1]!, { clientX: 100, clientY: 12 });
+  fireEvent.mouseLeave(columns[1]!.parentElement!, { relatedTarget: left });
+  expect(legend()?.textContent).toContain("11/7");
   // Leaving the row lets go of the day.
   fireEvent.mouseMove(columns[2]!, { clientX: 10, clientY: 10 });
   fireEvent.mouseLeave(view.container.querySelector("[data-row='0']")!, { relatedTarget: view.getByRole("button", { name: "外" }) });
