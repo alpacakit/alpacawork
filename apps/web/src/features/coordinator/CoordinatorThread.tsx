@@ -16,7 +16,7 @@ import { firstSentence } from "./foot";
 import { answerBodyFiles, MessageFiles, type OpenMessageImages } from "./MessageFiles";
 import { SentMessage, useMessageCopy, useMessageParts } from "./SentMessage";
 import { Attempts, coordinatorErrorReason, Thinking, TurnWork } from "./parts";
-import { useShownConversation, type SentTurn } from "./shown";
+import { partitionTurns, useShownConversation, type SentTurn } from "./shown";
 import { ReplyLabel } from './ReplyLabel';
 import { messageTime } from './message-time';
 import { replyInDraft } from './editor/draft';
@@ -179,9 +179,11 @@ export const CoordinatorThread = memo(function CoordinatorThread({ turns: recent
   const conversation = useConversation(state => state.conversation);
   // Turns older than the snapshot's come before its own, read a page at a time once the history is open.
   const earlier = useEarlierHistory(conversation);
+  const shown = useShownConversation(recent);
+  // The older turns have all ended: each is a row of the thread, or joined to one.
+  const older = useMemo(() => partitionTurns(earlier.turns), [earlier.turns]);
+  const work = useMemo(() => older.thread.length ? [...older.thread, ...shown.thread] : shown.thread, [older, shown.thread]);
   const turns = useMemo(() => earlier.turns.length ? [...earlier.turns, ...recent] : recent, [earlier.turns, recent]);
-  const shown = useShownConversation(turns);
-  const work = shown.thread;
   const taken = useConversation(state => state.opening);
   const scope = useConversation(state => state.conversation?.id);
   // The store's opening (coordinator.ts owns when it is taken); drawn outside one, as an opening of what is here would be.
@@ -245,7 +247,7 @@ export const CoordinatorThread = memo(function CoordinatorThread({ turns: recent
     // Hidden history has no row yet: build its labels and messages only when it is opened.
     if (at < start && !earlierOpen) return null;
     const open = turn.waiting || (hand.get(turn.id) ?? at >= start);
-    const joined = shown.joined.get(turn.id) ?? [];
+    const joined = shown.joined.get(turn.id) ?? older.joined.get(turn.id) ?? [];
     const mark = <TimelineMark kind={turn.status === "running" ? "start" : turn.status === "failed" ? "error" : "request"}
       tone={turn.status === "running" ? "working" : turn.status === "failed" ? "error" : "quiet"} />;
     // Said in words, not an arrow: an arrow on the conversation is what closes it (its ∨ at the top right). Taller than

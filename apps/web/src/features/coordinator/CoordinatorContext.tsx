@@ -32,8 +32,8 @@ export function CoordinatorContext({ className }: { className?: string }) {
   const context = conversation?.context ?? null;
   const words = useContextWords(context);
   if (!conversation) return null;
-  // Reset waits for the answer at work: the coordinator is only started again for the next message.
-  const busy = conversation.turns.some(turn => turn.status === "queued" || turn.status === "sending" || turn.status === "running");
+  // Reset waits for the answer at work (serve refuses it meanwhile): the coordinator starts again for the next message.
+  const busy = conversation.busy;
   const auto = autoWords(t, conversation.autoReset);
   const reset = () => {
     setOpen(false);

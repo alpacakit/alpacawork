@@ -9,9 +9,9 @@ export const compactCount = (value: number) => new Intl.NumberFormat(i18n.langua
 
 /** Two AIs by their models; by model and effort when the models are the same. */
 function aiNames(from: AiRow, to: AiRow) {
-  const label = (row: AiRow) => modelLabel(launchName(row.agent, row.values).full);
-  const before = label(from), after = label(to);
-  return before.name === after.name ? { from: before.full, to: after.full } : { from: before.name, to: after.name };
+  const model = (row: AiRow) => modelLabel(launchName(row.agent, row.values).model).name;
+  const full = (row: AiRow) => modelLabel(launchName(row.agent, row.values).full).full;
+  return model(from) === model(to) ? { from: full(from), to: full(to) } : { from: model(from), to: model(to) };
 }
 
 /**
