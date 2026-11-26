@@ -5,7 +5,7 @@ import { i18n } from "@alpacawork/i18n";
 import { daysBetween, decimalText, delta, format, inUnit, parts, share, shareDelta, previousName, unitOf, type Kind } from "./format";
 import { Grass } from "./charts";
 import { BreakdownTable, type Cell } from "./BreakdownTable";
-import { BarChart, ChartGroup, DayAxis, inSpanOf, Lead, Leads, lineTop, Parts, Row, spanMost, useLineLabel, useScale, type DayList, type RowSay } from "./rows";
+import { BarChart, binsKey, ChartGroup, DayAxis, inSpanOf, Lead, Leads, lineTop, Parts, Row, spanMost, useLineLabel, useScale, type DayList, type RowSay } from "./rows";
 import { ReadPart, useReadSet, ChartHead, Compare, gapTone, Num, OPEN, OpenMark, Rule, RuleCard, Rules, rowName, Section, Seg, Value, tip, useChoices, type TaskGroup } from "./parts";
 import type { ListSet, ListValue, TasksView } from "./contract";
 import type { ListPlace, Span } from "./place";
@@ -31,7 +31,7 @@ export const TasksLook = memo(function TasksLook({ view, span, root, days, open,
   /** False for the face's stand-in (FaceSkeleton): it reads nothing of its own. */
   live?: boolean }) {
   const { t } = useTranslation("analysis");
-  const { bucket, taskGroup, grow } = useChoices();
+  const { bucket, taskGroup } = useChoices();
   const choose = useChoices(state => state.choose);
   const length = daysBetween(days.from, days.to);
   const now = view.counts.value, before = view.counts.previous;
@@ -145,7 +145,7 @@ export const TasksLook = memo(function TasksLook({ view, span, root, days, open,
     return g === 0 ? t("same") : `${g > 0 ? "+" : "−"}${decimalText(Math.abs(g), 2)}`; };
   const openDay = (list: DayList) => open({ set: list.set, value: list.value, group: list.group ?? null, member: list.member ?? null, days: { from: list.from, to: list.to } });
   const rows = <ChartGroup bins={points} span={days} today={today} bucket={bucket} rows={say} open={openDay} changes={changes}>
-    <div key={grow}>
+    <div key={binsKey(points)}>
       {/* A row whose number is a lead's above says no span before again (the lead says it). */}
       <Row row={0} className="border-t-0" left={<>
         <Num className="" label={t("tasks.finished")} kind="tasks" value={now.finished} previous={null} length={length}

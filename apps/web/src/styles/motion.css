@@ -127,7 +127,8 @@
      drawn by a layer over the value (its ::after), so the value's own outline stays the focus's. */
   --animate-noted: motion-noted 1.6s var(--ease-out) both;
   /* A chart's bar: grows up from its foot when the chart is drawn for another span, look or step of time. */
-  --animate-bar: motion-bar var(--motion-slow) var(--ease-out) both;
+  /* Backwards only: once grown, a bar is no longer animated, and the browser stops keeping each as a layer of its own. */
+  --animate-bar: motion-bar var(--motion-slow) var(--ease-out) backwards;
   @keyframes motion-bar { from { scale: 1 0; } }
   /* The analysis's window: comes in from the side it stands on, as the reader does. */
   --animate-side: motion-side var(--motion-slow) var(--ease-out) both;

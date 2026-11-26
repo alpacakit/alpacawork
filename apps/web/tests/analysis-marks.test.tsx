@@ -384,3 +384,26 @@ test("the face's stand-in asks the server for nothing, so the face's own answer 
   }
   expect(asked.filter(url => url.includes("analysis/"))).toEqual([]);
 });
+
+test("the pointed day's band follows the pointer at once, even while the legend's day waits, and no chart's bars are drawn again for it", () => {
+  vi.useFakeTimers();
+  const bins = Array.from({ length: 10 }, (_, at) => ({ from: `2026-11-${String(at + 1).padStart(2, "0")}`, to: `2026-11-${String(at + 1).padStart(2, "0")}`, complete: true }));
+  const rows = [{ name: "トークン", total: (at: number) => `${at}` }];
+  let drawn = 0;
+  const view = render(<ChartGroup bins={bins} span={{ from: "2026-11-01", to: "2026-11-10" }} today="2026-11-30" bucket="day" rows={rows} open={() => {}}>
+    <Row row={0} left={<span>期間の数</span>}><BarChart row={0} height="h-16" scale={{ top: 40, label: "40" }} values={at => { drawn++; return [["", at + 1]]; }} /></Row>
+  </ChartGroup>);
+  const columns = view.container.querySelectorAll("[data-day-column]");
+  const lit = () => [...view.container.querySelectorAll<HTMLElement>("[data-bin][data-lit]")].map(bin => Number(bin.dataset.bin));
+  const legend = () => view.container.querySelector("[data-day-legend]")?.textContent ?? "";
+  const before = drawn;
+  fireEvent.mouseMove(columns[8]!, { clientX: 800, clientY: 10 });
+  expect(new Set(lit())).toEqual(new Set([8]));
+  // A quick move left: the legend still says the day before, the band already stands on the new day.
+  fireEvent.mouseMove(columns[7]!, { clientX: 700, clientY: 10 });
+  expect(new Set(lit())).toEqual(new Set([7]));
+  expect(legend()).toContain("11/9");
+  act(() => { vi.advanceTimersByTime(500); });
+  expect(legend()).toContain("11/8");
+  expect(drawn).toBe(before);
+});

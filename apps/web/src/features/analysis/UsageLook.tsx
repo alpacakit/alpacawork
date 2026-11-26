@@ -6,7 +6,7 @@ import { RegionSkeleton } from "@/components/ui/skeleton";
 import { dayLabel, daysBetween, delta, format, tokenColumn, unitOf as unitWord, type Kind } from "./format";
 import { BreakdownTable } from "./BreakdownTable";
 import { cell, head, useFinishedParts, type Open } from "./TasksLook";
-import { BarChart, ChartGroup, DayAxis, inSpanOf, Lead, Leads, lineTop, Parts, Row, RowName, spanMost, useLineLabel, useScale, type DayList, type RowSay } from "./rows";
+import { BarChart, binsKey, ChartGroup, DayAxis, inSpanOf, Lead, Leads, lineTop, Parts, Row, RowName, spanMost, useLineLabel, useScale, type DayList, type RowSay } from "./rows";
 import { ReadPart, useReadSet, ChartHead, Compare, Num, Rule, RuleCard, Rules, rowName, Section, Seg, Value, useChoices, type UsageGroup } from "./parts";
 import { tokenTotal, type TasksView, type UsageCounts, type UsageView } from "./contract";
 import type { Span } from "./place";
@@ -44,7 +44,7 @@ export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days
   live?: boolean;
 }) {
   const { t } = useTranslation("analysis");
-  const { bucket, usageGroup, grow } = useChoices();
+  const { bucket, usageGroup } = useChoices();
   const choose = useChoices(state => state.choose);
   const length = daysBetween(days.from, days.to);
   const now = view.counts.value, before = view.counts.previous;
@@ -140,7 +140,7 @@ export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days
   const part = (kind: Kind, value: number, list: Parameters<Open>[0]) => ({ value: <Value small kind={kind} value={value} />, onOpen: value ? () => open(list) : undefined });
   const openDay = (list: DayList) => open({ set: list.set, value: list.value, group: list.group ?? null, member: list.member ?? null, days: { from: list.from, to: list.to }, filter: list.filter ?? null });
   const rows = <ChartGroup bins={points} span={days} today={today} bucket={bucket} rows={say} open={openDay}>
-    <div key={grow}>
+    <div key={binsKey(points)}>
       {/* Each row's number is a lead's above: the span before is said there, not again here. */}
       {taskPoints && finished && <Row row={0} className="border-t-0" left={<>
         <Num className="" label={t("tasks.finished")} kind="tasks" value={finished.finished} previous={null} length={length}
