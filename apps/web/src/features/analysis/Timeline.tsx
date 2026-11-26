@@ -222,7 +222,7 @@ function Lanes({ trace, lanes, window, findings, at, zone, onDrag, onLetGo }: {
   const lit = at !== null && at >= window.from && at <= window.to;
   const ticks = axisTicks(window);
   const names = lanes.map(lane => <span key={lane.id} style={{ paddingInlineStart: `${depth(lane) * 0.5}rem` }}
-    className="flex h-9 items-center text-[0.6875rem] leading-tight text-muted" title={lane.label}><span className="line-clamp-2">{lane.label}</span></span>);
+    className="flex h-9 items-center text-xs text-muted" title={lane.label}><span className="line-clamp-2">{lane.label}</span></span>);
   return <div className="mt-3 flex gap-x-2 text-xs">
     {/* The lanes' names, beside their tracks, under the axis's height. */}
     <div className="w-36 flex-none pt-9 narrow:w-20">{names}</div>
@@ -240,7 +240,7 @@ function Lanes({ trace, lanes, window, findings, at, zone, onDrag, onLetGo }: {
         {findings.map((finding, n) => { const ms = Date.parse(finding.at); return ms >= window.from && ms <= window.to &&
           <button key={finding.id} type="button" style={{ left: `${left(ms)}%` }} onPointerDown={event => event.stopPropagation()}
             onClick={() => useViewStore.getState().setScene(sceneOf(finding))}
-            className="absolute top-0 grid size-5.5 -translate-x-1/2 place-items-center rounded-full bg-turn text-[0.6875rem] font-semibold text-bg"
+            className="absolute top-0 grid size-5.5 -translate-x-1/2 place-items-center rounded-full bg-turn text-xs font-semibold text-bg"
             {...tip(`${n + 1} ${t(`rule.${finding.rule}`)} ${duration(finding.durationMs)}`)}>{n + 1}</button>; })}
       </div>
       {lanes.map(lane => {

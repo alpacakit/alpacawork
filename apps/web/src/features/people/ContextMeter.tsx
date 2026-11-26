@@ -82,7 +82,7 @@ function ConversationList({ conversations }: { conversations: TaskConversations 
         <PopoverTrigger aria-label={t("context.help")} onClick={event => event.stopPropagation()}
           className="relative inline-flex size-5 cursor-pointer before:absolute before:-inset-3 before:content-[''] items-center justify-center rounded-full text-muted outline-none pointer-fine:hover:bg-hover pointer-fine:hover:text-ink focus-visible:ring-2 focus-visible:ring-ink/40">
           <Icon name="help" className="size-4" /></PopoverTrigger>
-        <PopoverContent side="top" className="w-64 p-3 text-xs leading-relaxed" onClick={event => event.stopPropagation()}>
+        <PopoverContent side="top" className="w-64 p-3 text-xs" onClick={event => event.stopPropagation()}>
           {/* Each term with the mark it has in the list and History, then what the list's figures are. */}
           <dl data-conversation-help className="m-0 grid gap-2">
             <div><dt className="flex items-center gap-1 font-medium"><Icon name="reload" className="size-3.5 text-conversation" />{t("context.change.compacted")}</dt>

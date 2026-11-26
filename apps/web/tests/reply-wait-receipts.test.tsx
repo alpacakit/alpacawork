@@ -44,6 +44,6 @@ test('HTTP detail keeps what each question fixed across replacement, answering a
   expect(expired.questions?.map(q=>[q.id,q.state])).toEqual([[data.q1,'withdrawn'],[data.q2,'withdrawn'],[data.fresh,'answered'],[data.q3,'expired']]);
   for(const view of [replaced,answered,expired]) {
     expect(view.questions).not.toBeNull();
-    for(const question of view.questions!) expect(question.decide).toEqual([{decide_question:'Choose',decide_note:'A or B'}]);
+    for(const question of view.questions!) expect(question.decide).toEqual([{decide_kind:'choose',decide_question:'Choose',decide_choices:[{decide_choice:'A'},{decide_choice:'B'}]}]);
   }
 });

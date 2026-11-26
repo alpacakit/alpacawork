@@ -358,7 +358,8 @@ test("the ring has a piece for each answer of the sitting, filled one after anot
   expect(options(tick).delay).toBe(full);
   const words = animations.filter(item => item.target.closest("[data-empty-deck]") && !item.target.closest("svg"));
   expect(words.map(item => options(item).delay)).toEqual([full + duration("fast"), full + duration("fast") * 2]);
-  expect([...fills(), tick, ...words].every(item => options(item).fill === "both")).toBe(true);
+  expect([...fills(), tick].map(item => options(item).fill)).toEqual(["both", "both", "both", "both"]);
+  expect(words.map(item => options(item).fill)).toEqual(["backwards", "backwards"]);
   // Each piece grows from nothing to its length; the tick draws from nothing to whole; the words rise from hidden to shown.
   for (const piece of fills()) {
     const [from, to] = piece.keyframes.map(frame => String(frame.strokeDasharray).split(" ").map(Number));
@@ -499,7 +500,7 @@ test("with reduced motion the answered card's ring, words and Close only fade in
     expect(shown.map(item => item.target)).toEqual([...deckBox.children]);
     for (const item of shown) {
       expect(item.keyframes).toEqual([{ opacity: 0 }, { opacity: 1 }]);
-      expect(item.options).toMatchObject({ delay: ringStart(), fill: "both" });
+      expect(item.options).toMatchObject({ delay: ringStart(), fill: "backwards" });
     }
   } finally { restore(); }
 });

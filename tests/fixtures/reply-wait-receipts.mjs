@@ -28,7 +28,7 @@ const human={kind:'human'};
  w.journal(head);const imported=new RunStore(w.root,{busyTimeoutMs:1000});
  try {new RunEventImporter(imported).pass();} finally {imported.close();}
  const url=await w.start();
- const commands=new ControlTaskCommands(w.root,human), task=(await commands.create({parentId:w.project,userRequested:true,tasks:[{title:'Receipt',values:{decide:[{decide_question:'Choose',decide_note:'A or B'}]}}]})).tasks[0];
+ const commands=new ControlTaskCommands(w.root,human), task=(await commands.create({parentId:w.project,userRequested:true,tasks:[{title:'Receipt',values:{decide:[{decide_kind:'choose',decide_question:'Choose',decide_choices:[{decide_choice:'A'},{decide_choice:'B'}]}]}}]})).tasks[0];
  const placement=await assignResponsible(w.root,task,'claude'),store=new RunStore(w.root,{busyTimeoutMs:1000}),tasks=new ControlTaskStore(w.root);
  // A manually driven boundary includes its Task transition before a command reads that Task's hash.
  // Freezing the scheduler interval does not freeze ChangeLog-driven routing.

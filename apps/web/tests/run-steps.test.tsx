@@ -45,12 +45,13 @@ const entry = (n: number, text: string, rest: Partial<RunStepEntry> = {}): Omit<
   fingerprint: null, output: null, parentId: null, subagentSteps: 0, ...rest });
 const lines = () => [...document.querySelectorAll('[data-run-step]')].map(item => item.textContent);
 
-test('the work line says the tool and what it runs on one line, or how many steps are listed under it', () => {
+test('the work line shows the shell command and extra lines, or how many steps are listed under it', () => {
   const latest: RunStep = { id: '1', at: '2026-11-24T00:00:00Z', tool: 'command_execution', kind: 'command', text: 'pnpm test --filter web', more: 2,
     about: null, state: 'running', result: null };
   const { rerender, container } = render(<WorkLine step={latest} />);
   expect(container.querySelector('[data-work-mark]')).toBeTruthy();
-  expect(screen.getByText('Bash')).toBeTruthy();
+  expect(screen.getByText('$')).toBeTruthy();
+  expect(screen.getByText('+2 lines')).toBeTruthy();
   expect(screen.getByText('pnpm test --filter web')).toBeTruthy();
   rerender(<WorkLine step={latest} label="12 steps so far" />);
   expect(screen.queryByText('pnpm test --filter web')).toBeNull();

@@ -113,7 +113,7 @@ function Way({ name, label, face, disabled, onClick, describedBy, children }: {
   return <button type="button" disabled={disabled} onClick={onClick} aria-label={label} aria-describedby={describedBy}
     className="group flex w-16 flex-none cursor-pointer touch-manipulation flex-col items-center gap-1.5 rounded-md py-1 text-xs text-muted outline-offset-2 hover:text-ink disabled:cursor-default disabled:opacity-38 disabled:hover:text-muted narrow:w-auto narrow:min-w-0 narrow:flex-1">
     <span className={cn("grid size-12 place-items-center rounded-full narrow:size-11 transition-[filter,transform] group-hover:brightness-110 group-active:translate-y-px group-disabled:brightness-100", face)}>{children}</span>
-    <span className="text-center leading-tight [word-break:keep-all]">{name}</span>
+    <span className="text-center [word-break:keep-all]">{name}</span>
   </button>;
 }
 
