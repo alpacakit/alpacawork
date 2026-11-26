@@ -8,7 +8,7 @@ import { TELEMETRY_CONSENT_VERSION, TELEMETRY_OPS, TELEMETRY_EVENT_ATTRIBUTES, T
   TELEMETRY_RETRY_MS, TELEMETRY_MAX_EVENTS, telemetryFieldsAdded, TELEMETRY_MAX_COUNT, TELEMETRY_MAX_REPORT_BYTES, dayRange, deadline, utcDay,
   type TelemetryHistory } from '@alpacawork/contract/telemetry';
 import { ConsentStore, telemetryPaths, telemetryGate, runtimeFacts, type Consent, type GateFacts, type TelemetryPaths } from './consent.js';
-import { TelemetryMarks, type Mark } from './marks.js';
+import { TelemetryMarks, type DayMarks, type Mark } from './marks.js';
 import { TelemetryOutbox, finishedReport } from './outbox.js';
 import { TelemetryQueue } from './queue.js';
 import { envelope, reportFromWorkspace } from './report.js';
@@ -84,11 +84,29 @@ export class TelemetryService {
     const deleted = readJson(join(this.store.paths.state, 'deleted.json')) as { at?: number } | null;
     return Math.max(Date.parse(consent.decidedAt), typeof deleted?.at === 'number' ? deleted.at : 0);
   }
+  /**
+   * Days on which the server ran with sending turned off by an environment variable (DO_NOT_TRACK and the like). Their
+   * use is never reported, even after the variable is removed. Other blocks are about the running copy (a source
+   * checkout, a test), not the person, so they do not hold back the days an installed copy reports.
+   */
+  private envBlockedDays(): Set<string> {
+    const value = readJson(join(this.store.paths.state, 'env-blocked-days.json')) as { days?: unknown } | null;
+    return new Set(Array.isArray(value?.days) ? value.days.filter((day): day is string => typeof day === 'string') : []);
+  }
+  private noteEnvBlocked(): void {
+    const now = this.now(), days = [...this.envBlockedDays(), utcDay(now)];
+    writeJson(join(this.store.paths.state, 'env-blocked-days.json'), { days: [...new Set(days)].filter(day => deadline(day) > now).sort() });
+  }
+  /** The one place a day's report is built; a day the environment kept from sending has none. */
+  private report(consent: Consent, day: string, marks: DayMarks, from: number) {
+    if (this.envBlockedDays().has(day)) return null;
+    return reportFromWorkspace(this.root!, consent, day, marks, this.runtime.envelope ?? envelope, from);
+  }
   /** Read today's report so far without queueing, recording a send, or touching the network. */
   preview() {
     if (this.gate().state !== 'on' || !this.root) return null;
     const consent = this.store.read()!, day = utcDay(this.now());
-    return reportFromWorkspace(this.root, consent, day, this.marks.snapshot(day, consent.decidedAt), this.runtime.envelope ?? envelope, this.countFrom(consent));
+    return this.report(consent, day, this.marks.snapshot(day, consent.decidedAt), this.countFrom(consent));
   }
   choose(choice: Consent['choice'], decidedBy: Consent['decidedBy'], expectedDigest?: string) {
     if (choice === 'on' && (decidedBy !== 'screen' || this.gate().state === 'blocked'))
@@ -137,7 +155,9 @@ export class TelemetryService {
   /** Each closed day still inside its retry window gets its report once, sent at a random time during the next day. */
   async tick(signal?: AbortSignal): Promise<void> {
     this.outbox.prune(this.now());
-    if (this.gate().state !== 'on' || !this.root) return;
+    const gate = this.gate();
+    if (gate.blockedBy === 'env') this.noteEnvBlocked();
+    if (gate.state !== 'on' || !this.root) return;
     const consent = this.store.read()!, now = this.now(), today = utcDay(now), state = this.store.paths.state;
     writeJson(join(state, 'clock.json'), { day: today });
     this.marks.flush(consent.decidedAt);
@@ -145,10 +165,10 @@ export class TelemetryService {
     for (let at = dayRange(first).start; at < dayRange(today).start; at += TELEMETRY_DAY_MS) {
       const day = utcDay(at);
       if (this.queue.has(day) || now >= deadline(day)) continue;
-      const report = reportFromWorkspace(this.root, consent, day, this.marks.read(day, consent.decidedAt), this.runtime.envelope ?? envelope, from);
+      const report = this.report(consent, day, this.marks.read(day, consent.decidedAt), from);
       if (report && this.gate().state === 'on') this.queue.enqueue(report, dayRange(day).end + randomInt(TELEMETRY_DAY_MS), now);
     }
-    const next = reportFromWorkspace(this.root, consent, today, this.marks.read(today, consent.decidedAt), this.runtime.envelope ?? envelope, from);
+    const next = this.report(consent, today, this.marks.read(today, consent.decidedAt), from);
     if (this.gate().state !== 'on') return;
     writeJson(join(state, 'next.json'), next);
     await this.send(10_000, signal);
