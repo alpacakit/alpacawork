@@ -8,12 +8,11 @@ import { finishedClock, type AnalysisFacts, type Unit } from './facts.js';
 import { addSplit, emptySplit, splitWaits, type Activity, type WaitSplit } from './presence.js';
 import { clocks } from './rules.js';
 
-type Clues = Pick<AnalysisAcceptedTotals, 'waits' | 'answerItems' | 'answersWithoutParts' | 'instructions' | 'questionsReplaced'>;
+type Clues = Pick<AnalysisAcceptedTotals, 'waits' | 'answerItems' | 'instructions' | 'questionsReplaced'>;
 /** Sums of clues over units, before the instruction kinds are written out as rows. */
 export class CluesSum {
   readonly waits = emptySplit();
   readonly answerItems = { total: 0, choice: 0, recommended: 0, recommendable: 0, other: 0, stop: 0, unmatched: 0 };
-  private answersWithoutParts = 0;
   private readonly kinds = new Map<string, number>();
   private readonly fixes = new Map<string, number>();
   private total = 0; private labeled = 0;
@@ -24,7 +23,7 @@ export class CluesSum {
     for (const question of unit.asked) {
       if (question.replacedBy !== null) this.questionsReplaced++;
       if (!question.answered) continue;
-      if (!question.parts) { this.answersWithoutParts++; continue; }
+      if (!question.parts) continue;
       for (const item of question.parts.items) {
         const items = this.answerItems;
         items.total++;
@@ -44,7 +43,7 @@ export class CluesSum {
     // Most first; a tie keeps the kinds' own order.
     const rows = <K extends string>(kinds: readonly K[], counts: Map<string, number>) => kinds
       .map(kind => ({ kind, count: counts.get(kind) ?? 0 })).filter(row => row.count > 0).sort((a, b) => b.count - a.count);
-    return { waits: { ...this.waits }, answerItems: { ...this.answerItems }, answersWithoutParts: this.answersWithoutParts,
+    return { waits: { ...this.waits }, answerItems: { ...this.answerItems },
       questionsReplaced: this.questionsReplaced,
       instructions: { total: this.total, unlabeled: this.total - this.labeled,
         kinds: rows(INSTRUCTION_KINDS, this.kinds), fixes: rows(FIX_KINDS, this.fixes) } };

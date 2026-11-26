@@ -104,11 +104,8 @@ export class StepJournal {
   private readonly closed = new Map<string, number>();
   private held: Map<string, StepTime> | null = null;
   private failed = false;
-  /** Entries this journal appended (or, when it does not write, would have). */
-  added = 0;
 
-  /** `write` false: count what would be appended, writing nothing (a trial of an import). */
-  constructor(private readonly folder: string, private readonly write = true) {}
+  constructor(private readonly folder: string) {}
 
   /**
    * One adapter event read from output line `line`. `timeOf` gives the time to write for the start or end of the step
@@ -158,19 +155,6 @@ export class StepJournal {
   get broken(): boolean { return this.failed; }
 
   /**
-   * Whether the journal holds a time the Run's manager kept as it happened (not one imported from a conversation
-   * record) for the start or end of the step that output line `line` started with call `id`.
-   */
-  keptLive(line: number, id: string): boolean {
-    return (['start', 'end'] as const).some(event => { const source = this.heldTime(event, line, id)?.source; return source !== undefined && source !== 'transcript'; });
-  }
-
-  /** The time the journal holds for the start or end of the step that output line `line` started with call `id`. */
-  heldTime(event: StepJournalEntry['event'], line: number, id: string): StepTime | undefined {
-    return this.heldNames().get(key(event, line, id));
-  }
-
-  /**
    * The steps still without an end when the Run ended end with it (`state`), each at the time `timeOf` gives (not
    * written where it gives none).
    */
@@ -196,7 +180,6 @@ export class StepJournal {
   private append(entry: StepJournalEntry): void {
     const held = this.heldNames(), name = key(entry.event, entry.line, entry.id);
     if (held.has(name)) return;
-    if (!this.write) { held.set(name, { at: entry.at, source: entry.source }); this.added++; return; }
     try {
       const fd = openSync(`${this.folder}/${RUN_FILES.steps}`, constants.O_RDWR | constants.O_CREAT | constants.O_APPEND, 0o600);
       try {
@@ -205,7 +188,7 @@ export class StepJournal {
         const torn = size > 0 && readSync(fd, last, 0, 1, size - 1) === 1 && last[0] !== 10;
         appendFileSync(fd, (torn ? '\n' : '') + JSON.stringify(entry) + '\n');
       } finally { closeSync(fd); }
-      held.set(name, { at: entry.at, source: entry.source }); this.added++;
+      held.set(name, { at: entry.at, source: entry.source });
     } catch (error) {
       // The journal is a record beside the Run, not part of it: a Run goes on without it, and says so once.
       this.failed = true;

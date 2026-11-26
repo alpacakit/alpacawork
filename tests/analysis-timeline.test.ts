@@ -243,7 +243,7 @@ test('at an instant: states, the Run running with its steps around that time, th
   const [running] = situation.runs;
   assert.deepEqual([running!.run, running!.current.map(item => item.step), running!.before?.step, running!.after?.step], ['R1', [1, 2], 0, 3]);
   assert.deepEqual(situation.queued.map(item => item.run), ['R2']);
-  assert.deepEqual(situation.questions.map(item => [item.question, item.askedTo, item.accept, item.estimated]), [['q1', 'user', false, true]]);
+  assert.deepEqual(situation.questions.map(item => [item.question, item.askedTo, item.accept]), [['q1', 'user', false]]);
   // Steps run in parallel: the one before is the one that ended last, not the one that started last.
   const parallel = records([root], [run('R1', { started: at(0), ended: at(30), steps: [step(0, 1, 6), step(1, 2, 5)] })]);
   assert.equal(situationAt(parallel, at(7)).runs[0]!.before?.step, 0);

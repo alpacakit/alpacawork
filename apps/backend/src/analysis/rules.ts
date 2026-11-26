@@ -67,26 +67,17 @@ const accepts = (entry: TaskLog) => entry.toState === 'done' && entry.fromState 
 
 /**
  * A question to the user, read for analysis: when it was open, whether the user answered it, whether it asked to take a
- * result as it is (`accept`, the asker's decide_kind; `estimated` where the question predates that record and its words
- * were read instead), the user's instruction that withdrew it in place of an answer, and how the answer read item by item.
+ * result as it is (`accept`, the asker's decide_kind; false for a question asked before that was recorded), the user's instruction that withdrew it in place of an answer, and how the answer read item by item.
  */
 export type UserQuestion = {
-  id: string; from: number; to: number | null; answered: boolean; accept: boolean; estimated: boolean;
+  id: string; from: number; to: number | null; answered: boolean; accept: boolean;
   replacedBy: string | null; replacedAt: number | null; parts: AnswerParts | null;
   /** Item by item (in order, from 1), whether the asker recommended one of its choices. */
   recommends: boolean[];
 };
-/** Words that mark a question as asking to take a result as it is, for a question asked before decide_kind was recorded. */
-const ACCEPT_WORDS = /merge|adopt|accept|マージ|取り込|取込|採用|受け入れ|main\s*に入れ/i;
-const itemWords = (item: Readonly<Record<string, unknown>>) => [item.decide_question,
-  ...(Array.isArray(item.decide_choices) ? item.decide_choices : []).map(choice =>
-    choice && typeof choice === 'object' ? (choice as Record<string, unknown>).decide_choice : null)]
-  .filter((text): text is string => typeof text === 'string');
-/** Whether a question asks to take a result as it is: any item the asker marked `accept`, or for an older one, its words. */
+/** Whether a question asks to take a result as it is: any item the asker marked `accept`. */
 export function questionKind(decide: readonly Readonly<Record<string, unknown>>[]) {
-  const kinds = decide.map(item => item.decide_kind);
-  if (kinds.some(kind => typeof kind === 'string')) return { accept: kinds.includes('accept'), estimated: false };
-  return { accept: decide.some(item => itemWords(item).some(text => ACCEPT_WORDS.test(text))), estimated: true };
+  return { accept: decide.some(item => item.decide_kind === 'accept') };
 }
 
 /**
@@ -119,8 +110,7 @@ export function userQuestions(log: readonly TaskLog[]): UserQuestion[] {
 /**
  * How a unit went, from its own log and the user's questions of its whole subtree (`questions`). A review round is a
  * submit for review or a question to the user that asks to take a result as it is; an instruction that came in place of
- * the answer to such a question is rework, as an instruction at review is. `estimated`: a round was read from a
- * question's words (asked before its kind was recorded).
+ * the answer to such a question is rework, as an instruction at review is.
  */
 export function taskOutcome(log: readonly TaskLog[], state: TaskBaseState, createdAt: string, questions: readonly UserQuestion[] = []) {
   const initial = log.find(instruction);
@@ -175,7 +165,7 @@ export function taskOutcome(log: readonly TaskLog[], state: TaskBaseState, creat
   const passed = acceptedAt !== null && reviews <= 1 &&
     !instructions.sendBacks && !instructions.instructionsAtReview && !instructions.instructionsAfterAccept;
   return { requestedAt, acceptedAt, stoppedAt, doneAt, finishedAt: acceptedAt ?? stoppedAt, passed, submits: reviews + rounds.length,
-    estimated: open.some(question => question.estimated), instructions, rework,
+    instructions, rework,
     leadMs: acceptedAt === null ? null : Math.max(0, Date.parse(acceptedAt) - Date.parse(requestedAt)),
     outcome: acceptedAt ? passed ? 'passed' as const : 'reworked' as const : stoppedAt ? 'stopped' as const
       : doneAt ? 'doneUnaccepted' as const : null };

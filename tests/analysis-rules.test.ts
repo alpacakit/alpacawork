@@ -262,7 +262,7 @@ test('a question asking to take a result is a review round, and an instruction i
   const start = event('start', 'linked', 0, { fromState: 'todo', toState: 'doing' });
   const log = [initial, start, asked, withdrawn, fix, again, yes, submit, approved];
   const outcome = taskOutcome(log, 'done', initial.at, userQuestions(log));
-  assert.deepEqual([outcome.submits, outcome.passed, outcome.estimated], [3, false, false]);
+  assert.deepEqual([outcome.submits, outcome.passed], [3, false]);
   assert.deepEqual(outcome.instructions, { sendBacks: 0, instructionsAtReview: 1, instructionsAfterAccept: 0, instructionsDuringWork: 0 });
   // Answered at once: two rounds (the question and the submit), still taken as it was.
   const clean = [initial, again, yes, submit, approved];
@@ -270,10 +270,9 @@ test('a question asking to take a result is a review round, and an instruction i
   // A child's question replaced in the child's own log is the unit's rework too.
   const child = userQuestions([asked, withdrawn, fix]);
   assert.equal(taskOutcome(clean, 'done', initial.at, [...userQuestions(clean), ...child]).passed, false);
-  // Before decide_kind was recorded, the question's words decide, and the count says it was read so.
+  // A question with no decide_kind is not a review round, whatever its words say.
   const older = [initial, { ...again, decide: [{ decide_question: 'PR #1 を main にマージしてよいか' }] }, yes, submit, approved];
-  assert.deepEqual(userQuestions(older).map(({ accept, estimated }) => [accept, estimated]), [[true, true]]);
-  assert.equal(taskOutcome(older, 'done', initial.at, userQuestions(older)).estimated, true);
+  assert.deepEqual(userQuestions(older).map(({ accept }) => accept), [false]);
   // Its open time is review time, not answer time.
   const { time, waits } = clocks(log, userQuestions(log), [], [], epoch, epoch + 60, epoch + 60);
   assert.deepEqual([time.review, time.answer], [10 + 10 + 10, 0]);
@@ -307,7 +306,7 @@ test('a wait is split by where the user was: away after 30 idle minutes, else th
 });
 
 test('clues count answers by item, replaced questions and labeled instructions, most frequent kind first', () => {
-  const question = (fields: object) => ({ id: 'q', from: 0, to: 1, answered: true, accept: false, estimated: false,
+  const question = (fields: object) => ({ id: 'q', from: 0, to: 1, answered: true, accept: false,
     replacedBy: null, replacedAt: null, parts: null, recommends: [true, false], ...fields });
   const unit = { asked: [
     question({ parts: { source: 'user', words: false, items: [
@@ -319,7 +318,7 @@ test('clues count answers by item, replaced questions and labeled instructions, 
   sum.add(unit, { away: 1, otherTasks: 2, thisTask: 3 });
   assert.deepEqual(sum.clues(), { waits: { away: 1, otherTasks: 2, thisTask: 3 },
     answerItems: { total: 2, choice: 1, recommended: 1, recommendable: 1, other: 0, stop: 0, unmatched: 1 },
-    answersWithoutParts: 1, questionsReplaced: 1,
+    questionsReplaced: 1,
     instructions: { total: 3, unlabeled: 1, kinds: [{ kind: 'fix', count: 2 }], fixes: [{ kind: 'look_feel', count: 2 }, { kind: 'speed', count: 1 }] } });
 });
 
