@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { AGENT_RUNTIME_ADAPTERS } from '@alpacawork/backend/test-dist/agents/registry.js';
 import { OutputActivityReader, readRunActivity } from '@alpacawork/backend/test-dist/runs/activity.js';
-import { RUN_FILES, runOutputSpeed } from '@alpacawork/contract/run';
+import { RUN_FILES, runActivityViewSchema, runOutputSpeed } from '@alpacawork/contract/run';
 
 test('Claude replaces split assistant usage, counts subagents, and keeps only recent output in activity', t => {
   const folder = mkdtempSync(join(tmpdir(), 'alpacawork-output-'));
@@ -50,6 +50,22 @@ test('Claude replaces split assistant usage, counts subagents, and keeps only re
 
   reader.finish(folder, 'done');
   assert.equal(output(), undefined);
+});
+
+test('bridge live output reaches the screen payload independently of the terminal total', t => {
+  const folder = mkdtempSync(join(tmpdir(), 'alpacawork-output-'));
+  t.after(() => rmSync(folder, { recursive: true, force: true }));
+  writeFileSync(join(folder, RUN_FILES.stdout), [
+    { type: 'turn.started' },
+    { type: 'item.completed', item: { type: 'agent_message', text: 'Measured reply' } },
+    { type: 'model.output', tokens: 5 },
+    { type: 'model.output', tokens: -1 },
+    { type: 'turn.completed', usage: { scope: 'run', counters: { output: 40 } } },
+  ].map(row => JSON.stringify(row)).join('\n') + '\n');
+  new OutputActivityReader(AGENT_RUNTIME_ADAPTERS.codex, () => 100_000).poll(folder);
+  const activity = runActivityViewSchema.parse(readRunActivity(folder));
+  assert.equal(activity.note?.text, 'Measured reply');
+  assert.deepEqual(activity.output, { buckets: [[100, 5]], lastActivityAt: 100 });
 });
 
 test('display sums Runs, ages out seconds on the clock, and distinguishes unknown and measured zero', () => {
