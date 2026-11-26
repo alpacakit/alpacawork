@@ -98,7 +98,7 @@ export function Reader({ mode, overlapping = false, canDock = mode === "docked" 
   const client = useQueryClient();
   const reports = useMemo(() => detail ?? (open && pane === "task" && task && history.assessment.display ? rowDetail(task) : undefined),
     [detail, open, pane, task, history.assessment.display]);
-  const { catalog } = useFieldCatalog();
+  const { catalog } = useFieldCatalog(open);
   // A Task its own write answered with, before its view arrives: its values as the context tab would show them.
   const written = presentation.kind === 'written'
     ? renderContext(presentation.earlier?.values.fields ?? DEFAULT_SCHEMA, presentation.document.values as TaskValues, shownCatalog(catalog)) : "";

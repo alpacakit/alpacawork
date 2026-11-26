@@ -22,14 +22,14 @@ const locale = () => i18n.resolvedLanguage ?? i18n.language ?? "en";
  */
 const said = new Map<string, string>();
 const SAID_MAX = 20_000;
+function keepSaid(at: string, text: string) {
+  if (said.size >= SAID_MAX) said.clear();
+  said.set(at, text);
+  return text;
+}
 const word = (key: string, options?: Record<string, number | string>) => {
   const at = `${locale()}\u0000${key}\u0000${options ? JSON.stringify(options) : ""}`;
-  let text = said.get(at);
-  if (text === undefined) {
-    if (said.size >= SAID_MAX) said.clear();
-    said.set(at, text = i18n.t(`analysis:${key}`, options));
-  }
-  return text;
+  return said.get(at) ?? keepSaid(at, i18n.t(`analysis:${key}`, options));
 };
 /**
  * What a language writes with, made or read once for it (a formatter, its steps, whether it writes count words): a chart
@@ -160,7 +160,11 @@ export const dateLabel = (day: string) => fmt({ dateStyle: "medium" }).format(ut
 export const dayLabel = (day: string) => fmt({ month: "numeric", day: "numeric" }).format(utc(day));
 export const monthLabel = (day: string) => fmt({ month: "short" }).format(utc(day));
 export const weekdayLabel = (day: string) => fmt({ weekday: "short" }).format(utc(day));
-export const dayWithWeekday = (day: string) => word("day", { day: dayLabel(day), weekday: weekdayLabel(day) });
+// Several chart rows name the same day. Keep the finished label, including its formatted date and weekday.
+export function dayWithWeekday(day: string) {
+  const at = `${locale()}\u0000day\u0000${day}`;
+  return said.get(at) ?? keepSaid(at, i18n.t("analysis:day", { day: dayLabel(day), weekday: weekdayLabel(day) }));
+}
 export const spanLabel = (from: string, to: string) => from === to ? dayWithWeekday(from) : word("range", { from: dayWithWeekday(from), to: dayWithWeekday(to) });
 /** An instant, as the day and the clock in the server's zone. */
 export const instant = (iso: string, zone: string) =>
