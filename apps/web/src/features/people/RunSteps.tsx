@@ -145,13 +145,15 @@ export function useRunSteps(run: string | undefined, shown: boolean, signal: str
     current.current = { run, failed: false, listed };
     setState(current.current);
   }, [run]);
+  // Opened again, a failure of the last time is not said again before this read answers: set before it is drawn.
+  useLayoutEffect(() => {
+    if (run && shown) setState(previous => previous.failed ? { ...previous, failed: false } : previous);
+  }, [run, shown, restart]);
   // The signal the list is up to date with: a first read is, so only a later change reads what changed.
   const told = useRef(signal);
   useEffect(() => {
     told.current = signal;
     if (!run || !shown) return;
-    // Opened again, a failure of the last time is not said again before this read answers.
-    setState(previous => previous.failed ? { ...previous, failed: false } : previous);
     const abort = new AbortController();
     readRunSteps(run, { limit: FIRST }, abort.signal).then(page =>
       setState({ run, failed: false, listed: takeIn(null, page, { caughtUp: page.version }) }),
@@ -304,6 +306,8 @@ export const StepList = memo(function StepList({ steps, open, className }: { ste
     setOpened(previous => [...previous].every(([n, id]) => at.get(n) === id) ? previous
       : new Map([...previous].filter(([n, id]) => at.get(n) === id)));
   }, [listed?.generation]); // eslint-disable-line react-hooks/exhaustive-deps -- pruned only when a list is read anew
+  // Folded, the steps opened in it close with it: opened again, it stands at its foot as it first did.
+  useEffect(() => { if (!open) setOpened(previous => previous.size ? new Map() : previous); }, [open]);
   const waited = useWaited(open && !listed && !steps.failed);
   const unfolded = open && (!!listed || steps.failed || waited);
   return <DisclosureBody open={unfolded} swap={listed ? "read" : steps.failed ? "failed" : "wait"} className="mr-0 pr-0">
