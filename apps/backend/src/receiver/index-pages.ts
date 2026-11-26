@@ -149,8 +149,8 @@ const lanesVersion = (frame: PublishedFrame, lanes: readonly string[]) =>
   `${frame.generation}:${Math.max(0, ...lanes.map(id => frame.requiredPv.timeline[id] ?? 0))}`;
 const invalidLanes = () => new Problem(PROBLEM_CODE.invalidInput, 'Invalid visible Task IDs', undefined, { reason: { kind: 'invalid_visible_task_ids' } });
 
-/** Strips kept to send changes against: per row, and in all. */
-const SENT_PER_ROW = 4, SENT_STRIPS = 512;
+/** Strips kept to send changes against: per row and range, per row, and in all. */
+const SENT_PER_RANGE = 2, SENT_PER_ROW = 8, SENT_STRIPS = 512;
 /** Server-prepared time and search resources expire only when their rows' or scope's requiredPv changes. */
 export class ProjectedPages {
   private generation: string | undefined;
@@ -158,11 +158,13 @@ export class ProjectedPages {
   private readonly lanes = new Map<string, { lane: string; version: string; value: TaskTimelineLaneDTO }>();
   private readonly searches = new Map<string, { scope: string; version: string; sourcePv: ProjectionVersion; ids: string[] }>();
   /**
-   * The strips sent lately, by their token, so a reader holding one is sent only what changed since (any range): a few
-   * per row, as a row's strip can be large and each reader holds the newest it was sent; an older one is sent whole.
+   * The strips sent lately, by their token, so a reader holding one is sent only what changed since (any range). A
+   * reader holds the newest strip it was sent for its range, so each row keeps the newest few of each range it was
+   * read for, and a few in all, as a row's strip can be large; a strip no longer kept is sent whole.
    */
   private readonly sent = new Map<string, TaskTimelineLaneDTO>();
-  private readonly sentOf = new Map<string, string[]>();
+  /** Each row's kept strips, oldest first, with the range each was read for. */
+  private readonly sentOf = new Map<string, { range: string; token: string }[]>();
   /** Each item's text, written once per item object: a strip kept for its version shares its items with the next. */
   private readonly texts = new WeakMap<object, string>();
 
@@ -294,15 +296,19 @@ export class ProjectedPages {
     return value;
   }
 
-  private keep(value: TaskTimelineLaneDTO): void {
-    const tokens = (this.sentOf.get(value.lane) ?? []).filter(token => token !== value.token);
-    tokens.push(value.token);
-    for (const token of tokens.splice(0, Math.max(0, tokens.length - SENT_PER_ROW))) this.sent.delete(token);
-    this.sent.delete(value.token); this.sent.set(value.token, value); this.sentOf.set(value.lane, tokens);
+  private keep(value: TaskTimelineLaneDTO, range: string): void {
+    const sent = [...(this.sentOf.get(value.lane) ?? []).filter(item => item.token !== value.token), { range, token: value.token }];
+    const kept: typeof sent = [], perRange = new Map<string, number>();
+    for (const item of sent.reverse()) {
+      const count = perRange.get(item.range) ?? 0;
+      if (count < SENT_PER_RANGE && kept.length < SENT_PER_ROW) { perRange.set(item.range, count + 1); kept.unshift(item); }
+      else this.sent.delete(item.token);
+    }
+    this.sent.delete(value.token); this.sent.set(value.token, value); this.sentOf.set(value.lane, kept);
     while (this.sent.size > SENT_STRIPS) {
       const [token, { lane }] = this.sent.entries().next().value!;
       this.sent.delete(token);
-      const left = this.sentOf.get(lane)?.filter(kept => kept !== token) ?? [];
+      const left = this.sentOf.get(lane)?.filter(item => item.token !== token) ?? [];
       if (left.length) this.sentOf.set(lane, left); else this.sentOf.delete(lane);
     }
   }
@@ -358,7 +364,7 @@ export class ProjectedPages {
       const sent = this.patch(value, bases.get(id));
       if (answered.length && events + sent.events.length > budget) break;
       answered.push(sent); events += sent.events.length;
-      this.keep(value);
+      this.keep(value, key(id));
     }
     return { lanes: answered, gone: asked.filter(id => !values.has(id)) };
   }

@@ -998,8 +998,7 @@ const timelineEventAt = (event: TimelineEvent) => Date.parse(event.kind === 'log
  * it): the screen keeps that order among records of the same time.
  */
 export const timelineEventOrder = (a: TimelineEvent, b: TimelineEvent) => {
-  const key = [timelineItemKey.event(a), timelineItemKey.event(b)];
-  return timelineEventAt(a) - timelineEventAt(b) || (key[0]! < key[1]! ? -1 : key[0]! > key[1]! ? 1 : 0);
+  return timelineEventAt(a) - timelineEventAt(b) || timelineItemKey.event(a).localeCompare(timelineItemKey.event(b));
 };
 type TimelineItem = TimelineEvent | TaskTimelineLaneDTO['belowRuns'][number] | TaskTimelineLaneDTO['placements'][number];
 const keyedItems = (lane: TimelineItems): (readonly [string, TimelineItem])[] => [

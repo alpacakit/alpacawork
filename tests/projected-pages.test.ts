@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { applyTimelinePatch, taskProjectedPageSchema, taskProjectedSearchSchema, taskTimelineLanesSchema, taskProjectedTimelineAxisSchema,
-  type TaskTimelineLaneDTO } from '@alpacawork/contract/control';
+  timelineEventOrder, type TaskTimelineLaneDTO } from '@alpacawork/contract/control';
 import { Problem } from '@alpacawork/core';
 import { ProjectedPages } from '@alpacawork/backend/test-dist/receiver/index-pages.js';
 import { at, bundle, entry, FakeRecords, frame, pv, emptyAggregate } from './helpers/projection-read-fixture.ts';
@@ -131,4 +131,27 @@ test('a row read again with the strip it holds, of this range or another, is sen
   const [unknown] = reads.timeline(latest, { ...query, bases: 'T1:not-kept' }).lanes;
   assert.equal(unknown!.base, null, 'a strip no longer kept is answered whole');
   assert.throws(() => applyTimelinePatch({ ...held, token: 'other' }, { ...unknown!, base: held.token }), 'a patch is never laid on another strip');
+});
+
+test('screens holding one row over several ranges are each sent only what changed, whatever order they read in', () => {
+  const project = bundle('P1');
+  let log = Array.from({ length: 30 }, (_, index) => entry(`L${index + 1}`, index + 1));
+  const reads = new ProjectedPages(), ranges = [at(0), at(10), at(20)].map(from => ({ lanes: 'T1', from, to: at(100) }));
+  const frameAt = (n: number) => frame(new FakeRecords([project, bundle('T1', 'P1', log)], pv(n)),
+    { requiredPv: { view: {}, history: {}, page: {}, search: {}, timeline: { T1: pv(n) } } });
+  const held = ranges.map(range => reads.timeline(frameAt(1), range).lanes[0]!.token);
+  for (let n = 2; n <= 5; n++) {
+    log = [...log, entry(`L${30 + n}`, 30 + n)];
+    const order = n % 2 ? [0, 1, 2] : [2, 1, 0];
+    for (const screen of order) {
+      const [patch] = reads.timeline(frameAt(n), { ...ranges[screen]!, bases: `T1:${held[screen]}` }).lanes;
+      assert.equal(patch!.base, held[screen], `screen ${screen} after record ${n} is sent what changed`);
+      held[screen] = patch!.token;
+    }
+  }
+});
+
+test('records of one time keep the order they had before strips were patched (IDs compared as text is compared)', () => {
+  const events = ['A', 'a'].map(id => ({ kind: 'log' as const, taskId: 'T1', entry: entry(id, 1) }));
+  assert.deepEqual(events.sort(timelineEventOrder).map(event => event.entry.id), ['a', 'A']);
 });
