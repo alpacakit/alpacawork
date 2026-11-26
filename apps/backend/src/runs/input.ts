@@ -8,11 +8,14 @@ import type { CompactionLaunch } from '@alpacawork/contract/run-protocol';
 
 export type InputReceipt<Id extends string> = { id: string; owner: Id; outcome: 'taken' | 'not_sent' | 'uncertain'; raw: unknown };
 export class AgentInputReceipts<Id extends string> {
-  private readonly lines = new JsonlReader();
+  private readonly lines: JsonlReader;
   private readonly pending = new Map<string, { owner: Id; outcome: InputReceipt<Id>['outcome'] | null }>();
   working = false;
   private readonly protocol: InputProtocol;
-  constructor(spec: InputProtocol) { this.protocol = spec; }
+  constructor(spec: InputProtocol, skipLine?: (line: Buffer) => boolean) {
+    this.protocol = spec;
+    this.lines = new JsonlReader(undefined, undefined, skipLine);
+  }
   watch(input: string, owner: Id): void {
     const prior = this.pending.get(input);
     if (prior && prior.owner !== owner) throw new Error('Input identity conflict');
@@ -49,9 +52,9 @@ export class AgentInputChannel<Id extends string = RunId> {
   private readonly failedWrites = new Set<string>();
   private closed = false;
   private readonly protocol: InputProtocol;
-  constructor(private readonly stdin: Writable, spec: InputProtocol) {
+  constructor(private readonly stdin: Writable, spec: InputProtocol, skipLine?: (line: Buffer) => boolean) {
     this.protocol = spec;
-    this.receipts = new AgentInputReceipts(this.protocol);
+    this.receipts = new AgentInputReceipts(this.protocol, skipLine);
     stdin.on('error', () => { this.closed = true; });
     stdin.on('close', () => { this.closed = true; });
   }

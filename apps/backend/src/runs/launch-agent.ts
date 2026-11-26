@@ -70,7 +70,7 @@ export async function launchAgent<Id extends string>(input: {
     const exited = new Promise<AgentExit>(resolve => child.once('exit', (code, signal) => resolve({ code, signal })));
     await new Promise<void>((resolve, reject) => { child.once('error', reject); child.once('spawn', resolve); });
     if (child.pid === undefined) throw new Error('Agent did not receive a pid');
-    const channel = new AgentInputChannel<Id>(child.stdin!, adapter.input);
+    const channel = new AgentInputChannel<Id>(child.stdin!, adapter.input, adapter.skipOutputLine);
 
     return { child, exited, channel, spawnedAt: performance.now() };
   } finally { closeSync(stdout); if (stderr >= 0) closeSync(stderr); }

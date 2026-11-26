@@ -171,7 +171,9 @@ const STATE_FIELDS = ['status', 'exitCode', 'success', 'resultIsError'] as const
 
 export function claudeActivity(value: unknown, received: string): ActivityEvent[] {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) return [];
-  const row = object(value), at = eventAt(row, received);
+  const row = object(value);
+  if (row.type === 'stream_event') return [];
+  const at = eventAt(row, received);
   if (row.type === 'result') return [{ at, kind: row.is_error === true ? 'error' : 'result' }];
   if (row.type === 'error') return [{ at, kind: 'error' }];
   if (row.type === 'assistant' || row.type === 'user') {
@@ -206,7 +208,7 @@ export function bridgeActivity(value: unknown, received: string): ActivityEvent[
   if (value === null || typeof value !== 'object' || Array.isArray(value)) return [];
   const row = object(value), at = eventAt(row, received);
   // How full the conversation is says nothing of the work: the step shown stays (runs/activity keeps the fill apart).
-  if (row.type === 'context.updated') return [];
+  if (row.type === 'context.updated' || row.type === 'model.output') return [];
   if (row.type === 'error' || row.type === 'turn.failed') return [{ at, kind: 'error' }];
   if (row.type === 'turn.completed') return [{ at, kind: 'result' }];
   if (row.type === 'tool.started' || row.type === 'tool.completed') {

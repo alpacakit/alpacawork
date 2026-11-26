@@ -40,6 +40,7 @@ export class CopilotRuntime implements Runtime {
   private lastMessage = '';
   /** Every model call of this process (one Run), so each turn's completion carries the Run's whole usage so far. */
   private calls: unknown[] = [];
+  private readonly measuredCalls = new Set<string>();
   private turnCount = 0;
   private lastFailed = false;
   private health: NodeJS.Timeout | null = null;
@@ -142,7 +143,16 @@ export class CopilotRuntime implements Runtime {
     if (this.closing) return;
     // Sub-agents' model calls are this Run's cost too; their other events are not this conversation's. A compaction's model
     // call has no assistant.usage: its counters, in the same fields, come with its end.
-    if (event.type === 'assistant.usage') { this.calls.push(event.data); return; }
+    if (event.type === 'assistant.usage') {
+      this.calls.push(event.data);
+      const key = event.data.apiCallId ? `call:${event.data.apiCallId}` : `event:${event.id}`;
+      const tokens = callTokens(event.data.outputTokens);
+      if (tokens !== null && !this.measuredCalls.has(key)) {
+        this.measuredCalls.add(key);
+        this.io.emit({ type: 'model.output', tokens });
+      }
+      return;
+    }
     // Its end also says the conversation's fill after it (copilotContext).
     if (event.type === 'session.compaction_complete' && event.data.compactionTokensUsed) this.calls.push(event.data.compactionTokensUsed);
     if (event.agentId) return;

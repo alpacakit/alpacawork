@@ -133,6 +133,23 @@ test('Copilot SDK confirms first and mid-turn delivery by message ID, then compl
   assert.deepEqual(h.events().filter(event => event.type === 'input.accepted').map(event => event.id), ['one', 'two']);
 });
 
+test('Copilot live output counts each measured call once and accepts explicit zero', async t => {
+  const h = await setup(t);
+  h.send('one', 'start');
+  await h.until(() => h.events().some(event => event.type === 'input.taken' && event.id === 'one'));
+  h.event('assistant.usage', { apiCallId: 'unmeasured' });
+  h.event('assistant.usage', { apiCallId: 'first', outputTokens: 7 });
+  h.event('assistant.usage', { apiCallId: 'first', outputTokens: 7 });
+  h.event('assistant.usage', { apiCallId: 'second', outputTokens: 0 });
+  await h.until(() => h.events().some(event => event.type === 'model.output' && event.tokens === 0));
+  h.answer('start', 'answer');
+  h.idle();
+  await h.until(() => h.events().some(event => event.type === 'turn.completed'));
+  h.child.stdin.end();
+  assert.equal(await h.exited, 0, h.stderr());
+  assert.deepEqual(h.events().filter(event => event.type === 'model.output').map(event => event.tokens), [7, 0]);
+});
+
 for (const resume of [false, true]) test(`Copilot ${resume ? 'resumes' : 'opens'} its session with the folder of the person's skills`, async t => {
   const h = await setup(t, resume);
   h.send('one', 'start');

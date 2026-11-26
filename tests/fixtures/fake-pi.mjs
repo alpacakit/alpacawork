@@ -46,6 +46,12 @@ function finish() {
    ...(mode === 'error' ? { errorMessage: 'structured synthetic failure; Authorization: Bearer synthetic-secret-value\n' + 'x'.repeat(3000) } : {}),
    usage: { input: 99999, output: 99999, cacheRead: 99999, cacheWrite: 99999 } } },
    { type: 'agent_end', willRetry: false }, ...(mode === 'agent-end-only' ? [] : [{ type: 'agent_settled', aborted: mode === 'abort' }])];
+  if (mode === 'output-ledger') {
+   const assistant = { type: 'message_start', message: { role: 'assistant' } };
+   const failed = { type: 'message_end', message: { role: 'assistant', stopReason: 'error', usage: { output: 0 } } };
+   const toolRequest = { type: 'message_end', message: { role: 'assistant', responseId: 'tool-response', stopReason: 'toolUse', usage: { output: 4 } } };
+   rows.unshift(assistant, failed, assistant, toolRequest, assistant, toolRequest, assistant);
+  }
   const bytes = Buffer.from(rows.map(row => JSON.stringify(row)).join('\n') + '\n');
   if (mode === 'unicode') { for (let i = 0; i < bytes.length; i += 7) process.stdout.write(bytes.subarray(i, i + 7)); }
   else process.stdout.write(bytes);

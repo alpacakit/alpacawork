@@ -28,9 +28,11 @@ export const bridgeToolEventSchema = z.discriminatedUnion('type', [
     output: runStepTextSchema.optional() }).strict(),
 ]);
 export type BridgeToolEvent = z.infer<typeof bridgeToolEventSchema>;
+export const bridgeModelOutputSchema = z.object({ type: z.literal('model.output'), tokens: z.int().nonnegative() }).strict();
 
 export type BridgeEvent =
   | BridgeToolEvent
+  | z.infer<typeof bridgeModelOutputSchema>
   | { type: 'thread.started'; thread_id: string }
   | { type: 'input.accepted' | 'input.taken'; id: string }
   | { type: 'input.not_sent'; id: string; message: string; evidence: 'transfer_not_started' }

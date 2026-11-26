@@ -1,6 +1,6 @@
 import { AGENT_ADAPTERS, type BridgeAdapterId } from '@alpacawork/contract/agent-adapters';
 import { contextUpdateSchema, type ContextUpdate } from '@alpacawork/contract/agent-context';
-import { agentUsageSchema, type AgentUsage, type BridgeInstruction } from '@alpacawork/contract/agent-bridge';
+import { agentUsageSchema, bridgeModelOutputSchema, type AgentUsage, type BridgeInstruction } from '@alpacawork/contract/agent-bridge';
 import { RUN_FILES } from '@alpacawork/contract/run';
 import { runErrorCauseSchema, type RunFailure } from '@alpacawork/contract/run-failure';
 import { bridgeActivity, ToolResults } from './activity.js';
@@ -9,7 +9,7 @@ import { JsonlReader, MAX_LINE } from '../../runs/readers/jsonl.js';
 import { diagnosticFailure } from '@alpacawork/contract/agent-diagnostics';
 import { object, resultFile, scanOutput } from './output.js';
 import { catalogContext } from './skills.js';
-import type { AgentAdapter, InputProtocol, LimitsProbe } from './types.js';
+import type { AgentAdapter, InputProtocol, LimitsProbe, ModelOutputEvent } from './types.js';
 import type { CompactionOutcome } from '@alpacawork/contract/run-protocol';
 
 // Non-tool items do not attest to external work. Unknown item kinds with a lifecycle require a completion.
@@ -43,10 +43,19 @@ export function bridgeContext(value: unknown): ContextUpdate | null {
   const parsed = contextUpdateSchema.safeParse(row.context);
   return parsed.success ? parsed.data : null;
 }
+function bridgeModelOutput(value: unknown): ModelOutputEvent | null {
+  const row = object(value);
+  if (row.type === 'turn.started') return { kind: 'turn_started' };
+  if (row.type === 'turn.completed' || row.type === 'turn.failed') return { kind: 'turn_ended' };
+  if (row.type !== 'model.output') return null;
+  const parsed = bridgeModelOutputSchema.safeParse(row);
+  return parsed.success ? { kind: 'call', tokens: parsed.data.tokens } : null;
+}
 /** All bridge built-ins speak this boundary; only codex's known writer-lock exit has a special meaning. */
 export function bridgeAdapter(id: BridgeAdapterId): AgentAdapter {
   return {
-    input: bridgeInput, activity: bridgeActivity, context: bridgeContext, limits: AGENT_ADAPTERS[id].limits ? bridgeLimits : null,
+    input: bridgeInput, activity: bridgeActivity, modelOutputReader: () => bridgeModelOutput,
+    context: bridgeContext, limits: AGENT_ADAPTERS[id].limits ? bridgeLimits : null,
     skillCatalogContext: input => catalogContext(id, input),
     earlySession(invocation, folder) {
       try {

@@ -41,7 +41,7 @@ function observeLostAttempt(store: RunStore, run: RuntimeRunRecord, launch: Laun
   let observed: ReturnType<AgentInputReceipts<string>['poll']> = { taken: [], refused: [], receipts: [] };
   if (inputs.length && adapter) {
     // Reconstruct every mapping from durable attempts; scan stdout from its start to find delayed receipts.
-    const receipts = new AgentInputReceipts<string>(adapter.input);
+    const receipts = new AgentInputReceipts<string>(adapter.input, adapter.skipOutputLine);
     for (const input of inputs) receipts.watch(String(input.input_id), `R${input.instruction_run_no}`);
     const folder = store.folder(run.id);
     try { observed = receipts.poll(folder, run.session?.id ?? adapter.earlySession(adapterInvocation, folder)); }

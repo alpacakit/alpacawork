@@ -74,6 +74,16 @@
     "deleted": "Excluída",
     "restore": "Restaurar"
   },
+  "speed": {
+    "idle": "Sem saída {{length}}",
+    "idleShort": "Ocioso",
+    "perSecond": "/s",
+    "rowTip": "Velocidade de saída {{rate}} tok/s (média dos últimos 5 segundos)\nÚltimo minuto: média {{mean}}, pico {{peak}}",
+    "totalTip_many": "Velocidade de saída total de {{count}} tarefas em andamento (média dos últimos 5 segundos)",
+    "totalTip_one": "Velocidade de saída total de {{count}} tarefa em andamento (média dos últimos 5 segundos)",
+    "totalTip_other": "Velocidade de saída total de {{count}} tarefas em andamento (média dos últimos 5 segundos)",
+    "unit": "tok/s"
+  },
   "status": {
     "cause": {
       "modelCapacity": "Modelo sobrecarregado",
