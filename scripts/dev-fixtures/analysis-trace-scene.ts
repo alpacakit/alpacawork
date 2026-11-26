@@ -10,8 +10,8 @@ import {
   RUN_FILES, runConditionsSchema, runFolder, runRecordSchema, stepJournalEntrySchema, type RunRecord,
 } from '@alpacawork/contract/run';
 import { openControlDatabase, taskHash } from '@alpacawork/db';
-import type { TaskBaseState } from '@alpacawork/raw';
-import { storedTaskLogSchema, type InstructionLabel, type TaskActor, type TaskLog } from '@alpacawork/raw/task-log-schema';
+import { requestActionReasonSchema, type TakenReason, type TaskBaseState } from '@alpacawork/raw';
+import { storedTaskLogSchema, type TaskActor, type TaskLog } from '@alpacawork/raw/task-log-schema';
 import { fixtureAgentSetting, inertFixtureLaunch } from '../../tests/helpers/agent-stub.ts';
 import { record } from '../../tests/runs-fixtures.ts';
 import { copyWorkspace, createOriginal, profiles, removeWorkspace } from './fixture.ts';
@@ -36,7 +36,7 @@ type RequestOptions = RunOptions & {
   author?: TaskActor;
   cycle?: string;
   reviewRun?: string;
-  label?: Omit<InstructionLabel, 'request'>;
+  taken?: TakenReason;
   purpose?: 'return_continuation';
 };
 
@@ -53,7 +53,7 @@ const topics = [
   'Show the refund destination', 'Check receipt links in email',
 ];
 
-const corrections: { words: string; fixes: InstructionLabel['fixes'] }[] = [
+const corrections: { words: string; fixes: TakenReason['aspects'] }[] = [
   { words: 'Move the payment total above the action buttons.', fixes: ['look_feel'] },
   { words: 'Keep the primary action in view while the panel scrolls.', fixes: ['look_feel'] },
   { words: 'Preserve the selected card when the panel closes.', fixes: ['behavior'] },
@@ -117,8 +117,8 @@ function seedRecords(db: ReturnType<typeof openControlDatabase>, root: string, s
   const insertPlacement = db.prepare(`INSERT INTO placements(id,task_id,agent_id,profile_key,responsible,revision,started_at)
     VALUES(?,?,'fixture-agent','codex',?,1,?)`);
   const insertRequest = db.prepare(`INSERT INTO requests(id,task_id,placement_id,placement_revision,task_hash,mode,body,purpose,author,
-    submitted_at,delivery_state,wait_cycle_id,head_run_id,about_run_id)
-    VALUES(?,?,?,1,?,'new',?,?,?,?,'queued',?,?,?)`);
+    submitted_at,delivery_state,wait_cycle_id,head_run_id,about_run_id,reason)
+    VALUES(?,?,?,1,?,'new',?,?,?,?,'queued',?,?,?,?)`);
   const insertRun = db.prepare("INSERT INTO runs(id,record,prompt,result,result_state) VALUES(?,?,?,?,'present')");
   const insertLog = db.prepare('INSERT INTO task_log(id,task_id,ordinal,entry,request_id) VALUES(?,?,?,?,?)');
   const insertClosure = db.prepare('INSERT INTO task_log_question(log_id,question_log_id) VALUES(?,?)');
@@ -169,12 +169,12 @@ function seedRecords(db: ReturnType<typeof openControlDatabase>, root: string, s
   const request = (task: Task, words: string, created: number, started: number, ended: number,
     options: RequestOptions = {}) => {
     const id = `${task.key}-request-${runNumber + 1}`;
-    const { placement = task.owner, author = human, cycle = null, reviewRun = null, label } = options;
+    const { placement = task.owner, author = human, cycle = null, reviewRun = null, taken } = options;
     insertRequest.run(id, task.id, placement, taskHash(task.key, 1), words,
-      options.purpose ?? (reviewRun ? 'review_send_back' : 'instruction'), JSON.stringify(author), clock(created), cycle, reviewRun, reviewRun);
+      options.purpose ?? (reviewRun ? 'review_send_back' : 'instruction'), JSON.stringify(author), clock(created), cycle, reviewRun, reviewRun,
+      taken ? JSON.stringify(requestActionReasonSchema.parse({ taken })) : null);
     const runId = run(task, id, words, created, started, ended, options);
     if (!options.purpose) insertLog.run(id, task.key, task.ordinal++, null, id);
-    if (label) log(task, created, 'request_labeled', { label: { request: id, ...label } });
     return { id, runId };
   };
   const changeState = (task: Task, at: number, fromState: TaskBaseState, toState: TaskBaseState, runId?: string, originCauseId?: string) =>
@@ -259,7 +259,7 @@ function seedRecords(db: ReturnType<typeof openControlDatabase>, root: string, s
       break;
     }
     const revision = request(showcase, correction.words, repliedAt, repliedAt + 1, rounds[index + 1]![0] + 1, {
-      model, label: { kind: 'fix', fixes: correction.fixes },
+      model, taken: { code: 'fix', cause: 'shortfall', aspects: correction.fixes, of: null },
     });
     const withdrawal = log(showcase, repliedAt, 'question_withdrawn', {
       actor: actor(showcase.owner), questionId, runId: reviewing, originCauseId: revision.id,
@@ -290,13 +290,13 @@ function seedRecords(db: ReturnType<typeof openControlDatabase>, root: string, s
         { author: actor(item.owner), purpose: 'return_continuation' }).runId;
     } else if (index % 7 === 1) {
       reviewRun = request(item, 'Also check the text in the printed receipt.', at + 12, at + 13, at + 23, {
-        label: { kind: 'addition', fixes: [] },
+        taken: { code: 'addition', cause: null, aspects: [], of: null },
       }).runId;
     }
     submit(item, duringReview ? at + 28 : at + 45, reviewRun);
     if (sendBack) {
       const back = request(item, 'Use the same receipt terms as the billing page.', at + 65, at + 66, at + 100,
-        { reviewRun, label: { kind: 'fix', fixes: ['wording'] } });
+        { reviewRun, taken: { code: 'fix', cause: 'shortfall', aspects: ['wording'], of: null } });
       changeState(item, at + 66, 'waiting', 'doing', back.runId, back.id);
       reviewRun = back.runId;
       submit(item, at + 99, reviewRun);

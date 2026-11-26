@@ -703,6 +703,7 @@ export const fieldUseResultSchema = taskWriteResultSchema;
 /** `task new --plan-file` returns the heads of the sibling Tasks it created. */
 export const taskPlanResultSchema = z.object({ tasks: z.array(controlTaskHeadSchema).min(1) }).strict();
 export const taskReportResultSchema = taskWriteResultSchema.extend({
+  ignoredTrigger: z.literal(true).optional(), ignoredTaken: z.literal(true).optional(),
   outcome: z.discriminatedUnion('kind', [
     z.object({ kind: z.literal('recorded'), opId: z.string().min(1).optional() }).strict(),
     z.object({ kind: z.enum(['accepted', 'stopped']), opId: z.string().min(1) }).strict(),
@@ -710,6 +711,7 @@ export const taskReportResultSchema = taskWriteResultSchema.extend({
 }).strict();
 /** `task request` sends a Request (an instruction or a send-back) or records an answer to the Task's question. */
 export const taskRequestResultSchema = taskWriteResultSchema.extend({
+  ignoredTaken: z.literal(true).optional(),
   outcome: z.discriminatedUnion('kind', [
     z.object({ kind: z.literal('request_accepted'), opId: z.string().min(1), request: requestReceiptSchema, answers: logIdSchema.optional() }).strict(),
     z.object({ kind: z.literal('answered'), opId: z.string().min(1) }).strict(),
@@ -744,7 +746,7 @@ export const setResponsibleInputSchema = z.object({
 export const setResponsibleReceiptSchema = z.object({ placement: placementRecordSchema,
   previousPlacement: placementRecordSchema.nullable() }).strict();
 export const releaseAgentInputSchema = setResponsibleInputSchema;
-export const releaseAgentReceiptSchema = z.object({ placement: placementRecordSchema }).strict();
+export const releaseAgentReceiptSchema = z.object({ placement: placementRecordSchema, ignoredTaken: z.literal(true).optional() }).strict();
 export const placeMemberInputSchema = z.object({ taskId: taskIdSchema, selected: selectionSchema.optional(), aiStack: aiStackPrefixSchema.optional(),
   agentId: z.string().min(1).optional(),
   profileKey: z.string().min(1).optional(), expectedTaskHash: digestSchema,
@@ -757,7 +759,7 @@ export const releaseMemberInputSchema = z.object({ taskId: taskIdSchema,
   expectedResponsibleRevision: z.number().int().positive(),
   expectedPlacementRevision: z.number().int().positive(),
 }).strict();
-export const releaseMemberReceiptSchema = z.object({ placement: placementRecordSchema }).strict();
+export const releaseMemberReceiptSchema = releaseAgentReceiptSchema;
 export const taskPlacementResultSchema = taskWriteResultSchema.extend({ agent: z.union([
   placeAgentReceiptSchema, setResponsibleReceiptSchema, placeMemberReceiptSchema, releaseAgentReceiptSchema,
 ]) }).strict();

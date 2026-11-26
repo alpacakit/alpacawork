@@ -73,14 +73,16 @@ export class TaskRequestService {
     const expectedTaskHash = shown(input.expectedTaskHash, 'expectedTaskHash', '--expected-task-hash');
     const expectedPlacementRevision = shown(input.expectedPlacementRevision ?? undefined, 'expectedPlacementRevision',
       '--expected-placement-revision');
-    const request = await new RequestService(this.root).request({ taskId: input.task, body: input.body, requestId: input.opId,
+    const { ignoredTaken, ...request } = await new RequestService(this.root).request({ taskId: input.task, body: input.body, requestId: input.opId,
       expectedTaskHash, expectedPlacementRevision, expectedHeadRunId: input.expectedHeadRun,
       targetPlacementId: input.agent, mode: input.newConversation ? 'new' : undefined,
       ...(input.compact ? { compact: { focus: input.compactFocus ?? null } } : {}),
       selected: input.selected, aiStack: input.aiStack, cwd: input.cwd },
     { purpose: 'instruction', actor, actorRunId: caller.kind === 'run' ? caller.runId : undefined,
-      ...(input.instructionKind ? { label: { kind: input.instructionKind, fixes: input.fixes ?? [] } } : {}) });
-    return { task: controlTaskHead(await new ControlTaskStore(this.root).get(input.task)),
+      reasons: { taken: input.taken, cause: input.cause, aspects: input.aspects, causeNote: input.causeNote,
+        placedAs: input.placedAs, placedNote: input.placedNote } });
+    const task = await new ControlTaskStore(this.root).get(input.task);
+    return { task: controlTaskHead(task), ...(ignoredTaken && { ignoredTaken: true }),
       outcome: { kind: 'request_accepted', opId: input.opId, request } };
   }
 }

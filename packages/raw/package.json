@@ -9,6 +9,10 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./reasons": {
+      "types": "./dist/reasons.d.ts",
+      "default": "./dist/reasons.js"
+    },
     "./analysis-subject": {
       "types": "./dist/analysis-subject.d.ts",
       "default": "./dist/analysis-subject.js"

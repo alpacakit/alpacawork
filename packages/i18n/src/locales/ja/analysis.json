@@ -1,4 +1,12 @@
 {
+  "aspect": {
+    "behavior": "動きの誤り",
+    "look_feel": "見た目・使い心地",
+    "presentation": "見せ方の手順",
+    "scope": "範囲の追加",
+    "speed": "速さ",
+    "wording": "文言"
+  },
   "breakdown": {
     "all_other": "すべて表示（{{count}}行）",
     "since": "{{date}}から",
@@ -48,7 +56,16 @@
     "shareFailed": "共有できませんでした",
     "theme": "色"
   },
+  "cause": {
+    "external": "外部要因",
+    "misread": "依頼の取り違え",
+    "other": "その他",
+    "premise_changed": "前提が変わった",
+    "shortfall": "成果が要件に届かなかった",
+    "unclear_request": "依頼が曖昧"
+  },
   "causes": {
+    "aspects": "影響した箇所：{{items}}",
     "choice": "問いに選択肢で答えた",
     "firstRound": "初回の作業",
     "firstRoundTip": "各タスクの1回目の確認とその答えまでに使ったトークン",
@@ -58,8 +75,8 @@
     "laterTip": "各タスクの1回目の確認の後に、直して待った分",
     "meant": "思った通りか",
     "noFixes": "この期間に分類された直しはありません。",
-    "none": "この期間に出せるものはありません。",
     "noQuestions": "問いなしでそのまま採用",
+    "none": "この期間に出せるものはありません。",
     "ofFixes_one": "あなたが頼んだ直し {{count}}件のうち（分類ごと）",
     "ofFixes_other": "あなたが頼んだ直し {{count}}件のうち（分類ごと）",
     "ofItems_one": "答えた {{count}} 項目のうち",
@@ -157,16 +174,6 @@
     "analysis": "分析",
     "label": "画面",
     "use": "使う"
-  },
-  "fix": {
-    "behavior": "動きの誤り",
-    "intent": "意図の取り違え",
-    "look_feel": "見た目・使い心地",
-    "other": "その他",
-    "review_flow": "見せ方の手順",
-    "scope": "範囲の追加",
-    "speed": "速さ",
-    "wording": "文言"
   },
   "history": {
     "accepted": "受け入れ",

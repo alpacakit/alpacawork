@@ -86,10 +86,10 @@ test('the parent responsible Run places, replaces, hands over and releases a chi
   const h = await setup(t);
   const place = new PlacementCommands(h.root);
   const actor = h.asOwner;
-  const first = await place.placeNewResponsible({ taskId: h.child.id, profileKey: 'zeta',
+  const first = await place.placeNewResponsible({ placedAs: 'policy', taskId: h.child.id, profileKey: 'zeta',
     expectedTaskHash: await hash(h.root, h.child.id) }, h.asOwner);
   assert.deepEqual((await lastLog(h.root, h.child.id)).actor, actor);
-  const replaced = await place.placeNewResponsible({ taskId: h.child.id, profileKey: 'zeta',
+  const replaced = await place.placeNewResponsible({ placedAs: 'policy', taskId: h.child.id, profileKey: 'zeta',
     expectedTaskHash: await hash(h.root, h.child.id), replacePlacementId: first.placement.id,
     expectedPlacementRevision: first.placement.revision }, h.asOwner);
   assert.equal(replaced.previousPlacement?.active, false);
@@ -97,7 +97,7 @@ test('the parent responsible Run places, replaces, hands over and releases a chi
   const member = people.place({ taskId: h.child.id, agentId: people.createAgent().id,
     profileKey: 'zeta', responsible: false });
   people.close();
-  const handed = await place.setResponsible({ taskId: h.child.id, placementId: member.id,
+  const handed = await place.setResponsible({ placedAs: 'policy', taskId: h.child.id, placementId: member.id,
     expectedTaskHash: await hash(h.root, h.child.id), expectedPlacementRevision: member.revision }, h.asOwner);
   assert.equal(handed.placement.responsible, true);
   const released = await place.release({ taskId: h.child.id, placementId: handed.placement.id,
@@ -111,7 +111,7 @@ test('the parent responsible Run places, replaces, hands over and releases a chi
 test('a child at work changes its responsible only by replacement or handover, which tells the new one', async t => {
   const h = await setup(t);
   const place = new PlacementCommands(h.root);
-  const first = (await place.placeNewResponsible({ taskId: h.child.id, profileKey: 'zeta',
+  const first = (await place.placeNewResponsible({ placedAs: 'policy', taskId: h.child.id, profileKey: 'zeta',
     expectedTaskHash: await hash(h.root, h.child.id) }, h.asOwner)).placement;
   // Its Run ends with no end, no question and no open Request: the child is in error, still at work.
   const run = runningRun(h.root, h.child.id, first.id);
@@ -127,7 +127,7 @@ test('a child at work changes its responsible only by replacement or handover, w
   await assert.rejects(place.release({ taskId: h.child.id, placementId: first.id,
     expectedTaskHash: await hash(h.root, h.child.id), expectedPlacementRevision: first.revision }, h.asOwner),
   { code: 'handover_required', detail: { task: h.child.id, hasChildren: false, state: 'error' } });
-  const replaced = await place.placeNewResponsible({ taskId: h.child.id, profileKey: 'zeta',
+  const replaced = await place.placeNewResponsible({ placedAs: 'policy', taskId: h.child.id, profileKey: 'zeta',
     expectedTaskHash: await hash(h.root, h.child.id), replacePlacementId: first.id,
     expectedPlacementRevision: first.revision }, h.asOwner);
   const replacement = await lastLog(h.root, h.child.id);
@@ -138,7 +138,7 @@ test('a child at work changes its responsible only by replacement or handover, w
   const member = people.place({ taskId: h.child.id, agentId: people.createAgent().id,
     profileKey: 'zeta', responsible: false });
   people.close();
-  await place.setResponsible({ taskId: h.child.id, placementId: member.id,
+  await place.setResponsible({ placedAs: 'policy', taskId: h.child.id, placementId: member.id,
     expectedTaskHash: await hash(h.root, h.child.id), expectedPlacementRevision: member.revision }, h.asOwner);
   const handover = await lastLog(h.root, h.child.id);
   assert.deepEqual(handovers(h.root, h.child.id).sort(), [replacement.id, handover.id].sort(), 'so does a handover');
@@ -146,12 +146,12 @@ test('a child at work changes its responsible only by replacement or handover, w
 
 test('the parent responsible Run chooses launch values with each instruction to a child; one left out keeps the last', async t => {
   const h = await setup(t);
-  const placed = await new PlacementCommands(h.root).placeNewResponsible({ taskId: h.child.id, profileKey: 'zeta',
+  const placed = await new PlacementCommands(h.root).placeNewResponsible({ placedAs: 'policy', taskId: h.child.id, profileKey: 'zeta',
     expectedTaskHash: await hash(h.root, h.child.id) }, h.asOwner);
   const requests = new TaskRequestService(h.root);
   const request = (input: Parameters<TaskRequestService['request']>[0]) => requests.request(input, h.asOwner, h.ownerCaller);
   const first = await request({ task: h.child.id, body: 'Do work', opId: 'owner-first',
-    selected: { model: 'small' }, expectedTaskHash: await hash(h.root, h.child.id),
+    selected: { model: 'small' }, placedAs: 'policy', expectedTaskHash: await hash(h.root, h.child.id),
     expectedPlacementRevision: placed.placement.revision });
   assert.equal(first.outcome.kind, 'request_accepted');
   const store = new RunStore(h.root, { busyTimeoutMs: 0 });
@@ -162,7 +162,7 @@ test('the parent responsible Run chooses launch values with each instruction to 
       { kind: 'placement', placementId: h.owner.id });
   } finally { store.close(); }
   const second = await request({ task: h.child.id, body: 'More', opId: 'owner-second',
-    selected: { model: 'large' }, expectedTaskHash: await hash(h.root, h.child.id),
+    selected: { model: 'large' }, placedAs: 'policy', expectedTaskHash: await hash(h.root, h.child.id),
     expectedPlacementRevision: placed.placement.revision });
   assert.equal(second.outcome.kind, 'request_accepted');
   const third = await request({ task: h.child.id, body: 'Again', opId: 'owner-third',
@@ -176,7 +176,7 @@ test('the parent responsible Run chooses launch values with each instruction to 
   } finally { later.close(); }
   // Sent again under its ID, an instruction keeps the choice it was admitted with.
   await assert.rejects(request({ task: h.child.id, body: 'More', opId: 'owner-second',
-    selected: { model: 'small' }, expectedTaskHash: second.task.hash,
+    selected: { model: 'small' }, placedAs: 'policy', expectedTaskHash: second.task.hash,
     expectedPlacementRevision: placed.placement.revision }), /another launch choice|different input/);
   // An automatic return carries no choice.
   await assert.rejects(new RequestService(h.root).request({ taskId: h.child.id, requestId: 'return-choice', body: 'Replies',
@@ -187,7 +187,7 @@ test('the parent responsible Run chooses launch values with each instruction to 
 
 test('HTTP run stop from the parent responsible Run stops a child and records who asked', async t => {
   const h = await setup(t);
-  const placed = await new PlacementCommands(h.root).placeNewResponsible({ taskId: h.child.id, profileKey: 'zeta',
+  const placed = await new PlacementCommands(h.root).placeNewResponsible({ placedAs: 'policy', taskId: h.child.id, profileKey: 'zeta',
     expectedTaskHash: await hash(h.root, h.child.id) }, h.asOwner);
   const childRun = runningRun(h.root, h.child.id, placed.placement.id);
   const grandchild = (await new ControlTaskCommands(h.root, human).create({ parentId: h.child.id, userRequested: false,

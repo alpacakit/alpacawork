@@ -6,6 +6,7 @@
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 import type { AnalysisEvidence, AnalysisFindingRule } from '@alpacawork/contract/analysis';
 import { analysisFindingRules } from '@alpacawork/contract/analysis';
+import { isRequestLog, needsCause, type TakenReason } from '@alpacawork/raw';
 import { questionsOf } from '@alpacawork/raw/questions';
 import { prLinks, questionKind, taskOutcome, userQuestions } from './rules.js';
 import { iso, segments, unionMs, type Interval, type TraceRecords, type TraceRun, type TraceStep } from './timeline.js';
@@ -35,7 +36,7 @@ const LONG_STEP_FACTOR = 3, LONG_STEP_FLOOR_MS = 30_000;
 const MINUTE = 60_000;
 
 export type Found = { rule: AnalysisFindingRule; anchor: string; at: number; durationMs: number; lane: string | null;
-  count: number | null; source: 'recorded' | 'inferred'; evidence: AnalysisEvidence[] };
+  count: number | null; source: 'recorded' | 'inferred'; evidence: AnalysisEvidence[]; taken?: TakenReason };
 
 const taskLane = (task: string) => `task:${task}`;
 const agentLane = (run: TraceRun) => `agent:${run.placement}`;
@@ -250,7 +251,24 @@ const rules: Record<AnalysisFindingRule, Rule> = {
     const outcome = taskOutcome(root!.log, records.rootState, iso(root!.created), questions);
     const replaced = new Map(records.tasks.flatMap(task => userQuestions(task.log)
       .filter(question => question.accept && question.replacedBy !== null).map(question => [question.replacedBy!, { question: question.id, task: task.id }])));
-    return outcome.rework.flatMap(({ id }) => {
+    const explicit = new Map(records.tasks.flatMap(task => task.log.flatMap(entry => entry.reason?.taken
+      ? [[entry.id, { task, entry, taken: entry.reason.taken }] as const] : [])));
+    const runById = new Map(records.runs.map(run => [run.id, run]));
+    const runByRequest = new Map(records.runs.filter(run => !run.supersededBy && run.state !== 'joined').map(run => [run.request, run]));
+    const classified = [...explicit].flatMap(([id, { task, entry, taken }]): Found[] => {
+      if (!needsCause(taken.code)) return [];
+      const witness = taken.of === null ? null : records.requests.get(taken.of)?.resultRun;
+      const judged = witness ? runById.get(witness) : taken.of === null ? undefined : runByRequest.get(taken.of);
+      const followUp = isRequestLog(entry.kind) ? runByRequest.get(entry.id) : undefined;
+      const instruction = isRequestLog(entry.kind) ? records.requests.get(entry.id) : undefined;
+      const at = Date.parse(entry.at);
+      return [{ rule: 'rework', anchor: id, at, durationMs: followUp ? Math.max(0, (followUp.ended ?? window.to) - at) : 0,
+        lane: taskLane(task.id), count: null, source: 'recorded', taken,
+        evidence: [{ log: entry.id, task: task.id, firstLine: instruction?.firstLine ?? entry.title },
+          ...(judged ? [{ run: judged.id }] : [])] }];
+    });
+    return [...classified, ...outcome.rework.flatMap(({ id }) => {
+      if (explicit.has(id)) return [];
       const task = records.tasks.find(item => item.log.some(entry => entry.id === id));
       if (!task) return [];
       const index = task.log.findIndex(entry => entry.id === id), at = Date.parse(task.log[index]!.at), question = replaced.get(id);
@@ -261,7 +279,7 @@ const rules: Record<AnalysisFindingRule, Rule> = {
       return [{ rule: 'rework' as const, anchor: id, at, durationMs: Math.max(0, (next ? Date.parse(next.at) : window.to) - at),
         lane: taskLane(task.id), count: null, source: 'recorded' as const,
         evidence: [logEvidence(records, task.id, id), ...question ? [question] : []] }];
-    });
+    })];
   },
   /** A stretch at least the threshold long when nothing ran, nothing waited in the queue and no question or review was open. */
   idle: (records, window, threshold) => segments(records, window).filter(part => part.key === 'idle' && part.to - part.from >= limitOf(threshold))

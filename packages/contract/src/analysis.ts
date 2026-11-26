@@ -2,7 +2,9 @@ import { z } from 'zod';
 import { projectIdSchema, taskIdSchema, taskStateSchema } from './fields.js';
 import { validTimeZone } from './personal-settings.js';
 import { analysisFindingRules, analysisSubjectSchema } from '@alpacawork/raw/analysis-subject';
-import { FIX_KINDS, INSTRUCTION_KINDS } from '@alpacawork/raw/task-log-schema';
+import { ASPECTS, CAUSES, TAKEN, placedReasonSchema, takenReasonSchema, triggerReasonSchema } from '@alpacawork/raw/reasons';
+
+export const isAnalysisCause = (key: string): key is (typeof CAUSES)[number] => CAUSES.some(cause => cause === key);
 
 export const analysisDaySchema = z.iso.date();
 export const analysisPeriodSchema = z.enum(['today', '7d', '28d', 'all']);
@@ -126,15 +128,14 @@ const waits = z.strictObject({ away: count, otherTasks: count, thisTask: count }
  */
 const answerItems = z.strictObject({ total: count, choice: count, recommended: count, recommendable: count,
   other: count, stop: count, unmatched: count });
-/**
- * The user's instructions and send-backs after the request, by what their senders said each was (`kinds`; `unlabeled`, those sent
- * with no label) and, for the fixes, what kind of fix (`fixes`, an instruction may name several).
- */
-const instructions = z.strictObject({
-  total: count, unlabeled: count,
-  kinds: z.array(z.strictObject({ kind: z.enum(INSTRUCTION_KINDS), count })),
-  fixes: z.array(z.strictObject({ kind: z.enum(FIX_KINDS as [typeof FIX_KINDS[number], ...typeof FIX_KINDS]), count })),
+const decisionCounts = z.strictObject({
+  taken: z.array(z.strictObject({ kind: z.enum(TAKEN), count })),
+  causes: z.array(z.strictObject({ kind: z.enum(CAUSES), count })),
+  aspects: z.array(z.strictObject({ kind: z.enum(ASPECTS), count })),
 });
+// Only recorded or confirmed decisions enter the denominator. Coverage of unclassified follow-ups is separate.
+const instructions = decisionCounts.extend({ total: count, unclassifiedInstructions: count,
+  by: z.strictObject({ user: decisionCounts, ai: decisionCounts }) });
 const clues = {
   waits, answerItems, instructions,
   /** Questions to the user withdrawn by an instruction that came in place of an answer. */
@@ -309,8 +310,7 @@ export const ANALYSIS_FINDING_RULE_MEANINGS: Readonly<Record<AnalysisFindingRule
     'durationMs: their time, count: how many',
   'queue-wait': 'a Run that waited this long before it started; at: when it was made, durationMs: the wait',
   'failed-run': 'a Run that failed or was stopped, with the Run that took its place; at: its start, durationMs: its length',
-  rework: 'work done again by the counts\' rule (a send-back, an instruction at review or after acceptance, one in place of answering a ' +
-    'question asking to take a result); at: the record, durationMs: until that task next puts a result to the user (waits for review or asks to take it) or is done',
+  rework: 'recorded fixes, redos or dropped results, or rework visible from a user review without a recorded cause',
   idle: 'a stretch this long with nothing running, queued, asked or in review in the task or under it; at: its start, durationMs: its length',
 };
 /**
@@ -369,7 +369,9 @@ export const analysisSpanSchema = z.discriminatedUnion('kind', [
     ...questionKindShape, closed: z.enum(['answered', 'withdrawn', 'expired']).nullable() }),
   z.strictObject({ ...spanBase, kind: z.literal('queued'), run: runId, behind: runId.nullable() }),
   z.strictObject({ ...spanBase, kind: z.literal('run'), run: runId, state: z.string(), reason: z.string().nullable(),
-    model: z.string().nullable(), effort: z.string().nullable(), steps: z.enum(['recorded', 'not-recorded']) }),
+    model: z.string().nullable(), effort: z.string().nullable(), steps: z.enum(['recorded', 'not-recorded']),
+    taken: z.strictObject({ code: z.enum([...TAKEN, 'undetermined']), source: z.enum(['recorded', 'inferred', 'pending']),
+      log: z.string().nullable(), cause: z.enum(CAUSES).nullable(), aspects: z.array(z.enum(ASPECTS)) }).optional() }),
   z.strictObject({ ...spanBase, kind: z.literal('thinking'), run: runId }),
   z.strictObject({ ...spanBase, kind: z.literal('step'), run: runId, step: count, tool: z.string(), line: z.string(),
     state: z.string(), source: z.string().nullable(), inside: z.string().nullable(), subagentSteps: count }),
@@ -381,12 +383,17 @@ const changeSchema = z.strictObject({
 });
 export const analysisMarkSchema = z.discriminatedUnion('kind', [
   z.strictObject({ ...markBase, kind: z.literal('instruction'), task: taskIdSchema, request: z.string(), by: instructionBy,
-    /** What its sender said it was (a fix names its kinds of fix); null when sent with no label. */
-    purpose: instructionPurpose, label: z.strictObject({ kind: z.enum(INSTRUCTION_KINDS), fixes: z.array(z.enum(FIX_KINDS as [typeof FIX_KINDS[number], ...typeof FIX_KINDS])) }).nullable(), answers: z.string().nullable(), firstLine: z.string().nullable() }),
+    purpose: instructionPurpose, taken: takenReasonSchema.nullable(), placed: placedReasonSchema.nullable(),
+    answers: z.string().nullable(), firstLine: z.string().nullable() }),
   z.strictObject({ ...markBase, kind: z.literal('answer'), task: taskIdSchema, question: z.string(), by: recipient }),
   z.strictObject({ ...markBase, kind: z.literal('question-withdrawn'), task: taskIdSchema, question: z.string(), log: z.string() }),
-  z.strictObject({ ...markBase, kind: z.literal('report'), task: taskIdSchema, log: z.string(), state: z.string().nullable(), title: z.string().nullable() }),
-  z.strictObject({ ...markBase, kind: z.enum(['assigned', 'moved', 'values-changed']), task: taskIdSchema, log: z.string() }),
+  z.strictObject({ ...markBase, kind: z.literal('report'), task: taskIdSchema, log: z.string(), state: z.string().nullable(), title: z.string().nullable(), taken: takenReasonSchema.nullable() }),
+  z.strictObject({ ...markBase, kind: z.literal('moved'), task: taskIdSchema, log: z.string() }),
+  z.strictObject({ ...markBase, kind: z.literal('assigned'), task: taskIdSchema, log: z.string(),
+    role: z.enum(['owner', 'member', 'released']).nullable(), model: z.string().nullable(), effort: z.string().nullable(),
+    placed: placedReasonSchema.nullable(), taken: takenReasonSchema.nullable() }),
+  z.strictObject({ ...markBase, kind: z.literal('values-changed'), task: taskIdSchema, log: z.string(),
+    fields: z.array(z.string()), trigger: triggerReasonSchema.nullable(), direction: z.boolean() }),
   z.strictObject({ ...markBase, kind: z.literal('compacted'), run: runId, beforeTokens: count.nullable(), afterTokens: count.nullable() }),
   z.strictObject({ ...markBase, kind: z.literal('command-stopped'), run: runId, seconds: count, signal: z.string() }),
   z.strictObject({ ...markBase, kind: z.literal('change'), run: runId, previous: runId, changes: z.array(changeSchema).min(1) }),
@@ -418,6 +425,7 @@ export const analysisFindingSchema = z.strictObject({
   id: z.string(), rule: z.enum(analysisFindingRules), at: instant, durationMs: count, lane: z.string().nullable(),
   count: count.nullable(), threshold: thresholdSchema, source: z.enum(['recorded', 'inferred']),
   evidence: z.array(analysisEvidenceSchema).min(1),
+  taken: takenReasonSchema.optional(),
   /** What its first record says in one line: the step's command, the question's title, or the record's first line. */
   line: z.string().nullable(), url: z.string(),
 });

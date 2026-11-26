@@ -1,3 +1,4 @@
+import { reconcileLinks } from './return-handling.fixture.ts';
 import { commandFetchWith } from './helpers/command-fetch.ts';
 import { fetchBuffered } from './helpers/buffered-http.ts';
 import { createFixtureRun } from './helpers/run-fixture.ts';
@@ -50,7 +51,7 @@ const taskHash = async (root: string, id: string) =>
 
 test('responsible Run places a new member, reuses its person ID, and releases an idle placement', async t => {
   const h = await setup(t);
-  const first = await h.commands.placeMember({ taskId: h.task.id, profileKey: 'claude', expectedTaskHash: h.task.hash,
+  const first = await h.commands.placeMember({ placedAs: 'policy', taskId: h.task.id, profileKey: 'claude', expectedTaskHash: h.task.hash,
     expectedResponsibleRevision: h.owner.revision }, h.actor);
   assert.deepEqual([first.agent.id, first.placement.responsible, first.placement.active],
     [first.placement.agentId, false, true]);
@@ -58,18 +59,25 @@ test('responsible Run places a new member, reuses its person ID, and releases an
     expectedTaskHash: await taskHash(h.root, h.task.id), expectedResponsibleRevision: h.owner.revision,
     expectedPlacementRevision: first.placement.revision }, h.actor);
   assert.deepEqual([ended.placement.id, ended.placement.active], [first.placement.id, false]);
-  const second = await h.commands.placeMember({ taskId: h.task.id, agentId: first.agent.id,
+  const second = await h.commands.placeMember({ placedAs: 'policy', taskId: h.task.id, agentId: first.agent.id,
     profileKey: 'claude', expectedTaskHash: await taskHash(h.root, h.task.id),
     expectedResponsibleRevision: h.owner.revision }, h.actor);
   assert.equal(second.agent.id, first.agent.id);
   assert.notEqual(second.placement.id, first.placement.id);
 });
 
+test('an AI placing a member must give a placement reason', async t => {
+  const h = await setup(t);
+  await assert.rejects(h.commands.placeMember({ taskId: h.task.id, profileKey: 'claude', expectedTaskHash: h.task.hash,
+    expectedResponsibleRevision: h.owner.revision }, h.actor),
+  { code: 'invalid_input', reason: { kind: 'reason_required', flag: '--placed-as', choices: 'policy|lighter|exception' } });
+});
+
 test('member mutations reject a current owner target and stale revision', async t => {
   const h = await setup(t);
   const base = { taskId: h.task.id, profileKey: 'claude',
     expectedTaskHash: h.task.hash, expectedResponsibleRevision: h.owner.revision };
-  await assert.rejects(h.commands.placeMember({ ...base, expectedResponsibleRevision: 2 }, h.actor),
+  await assert.rejects(h.commands.placeMember({ placedAs: 'policy', ...base, expectedResponsibleRevision: 2 }, h.actor),
     (error: { code: string }) => error.code === 'conflict');
   await assert.rejects(h.commands.releaseMember({ taskId: h.task.id, placementId: h.owner.id,
     expectedTaskHash: h.task.hash, expectedResponsibleRevision: h.owner.revision,
@@ -79,7 +87,7 @@ test('member mutations reject a current owner target and stale revision', async 
 
 test('member with a queued Run cannot be released', async t => {
   const h = await setup(t);
-  const member = await h.commands.placeMember({ taskId: h.task.id, profileKey: 'claude', expectedTaskHash: h.task.hash,
+  const member = await h.commands.placeMember({ placedAs: 'policy', taskId: h.task.id, profileKey: 'claude', expectedTaskHash: h.task.hash,
     expectedResponsibleRevision: h.owner.revision }, h.actor);
   const store = new RunStore(h.root, { busyTimeoutMs: 0 });
   try { store.write(tx => createFixtureRun(store, tx, { task: h.task.id, placementId: member.placement.id, requestId: globalThis.crypto.randomUUID(),
@@ -103,6 +111,7 @@ test('HTTP member assignment binds authorization to the request, not a shared se
   // Hold the managers' locks so periodic reconciliation cannot retire these request identities mid-test.
   const own = w.heldRun({ task: ownTask.id, placementId: ownPlacement.id });
   const other = w.heldRun({ task: otherTask.id, placementId: otherPlacement.id });
+  reconcileLinks(w.root, w.project);
   const url = await w.start(), conversation = 'member-request-context', words = 'Add a member to this team';
 
   const runHeaders = (run: typeof own): Record<string, string> =>
@@ -111,13 +120,13 @@ test('HTTP member assignment binds authorization to the request, not a shared se
   const post = async (headers: Record<string, string> = {}, quote?: string) =>
     fetch(new URL('/api/commands/agent/assign', url), { method: 'POST',
       headers: { 'content-type': 'application/json', ...headers },
-      body: JSON.stringify({ task: ownTask.id, role: 'member', profile: 'claude',
+      body: JSON.stringify({ task: ownTask.id, role: 'member', profile: 'claude', placedAs: 'policy',
         expectedTaskHash: (await tasks.get(ownTask.id)).hash, expectedResponsibleRevision: ownPlacement.revision,
         ...(quote === undefined ? {} : { quote }) }) });
   const accepts = async (headers: Record<string, string>, actor: object, quote?: string) => {
     const response = await post(headers, quote);
-    assert.equal(response.status, 200);
     const result = await response.json();
+    assert.equal(response.status, 200, JSON.stringify(result));
     assert.equal(placeMemberReceiptSchema.parse(result.agent).placement.responsible, false);
     assert.equal('log' in result.task, false);
     assert.deepEqual((await tasks.get(ownTask.id)).meta.log.at(-1)!.actor, actor);
@@ -149,8 +158,11 @@ test('HTTP member assignment binds authorization to the request, not a shared se
 });
 
 test('this PC\'s folders are listed for a person, never for a Run', async t => {
+  // Close the server before setup's cleanup removes the workspace it flushes into.
+  let close: (() => Promise<void>) | undefined;
+  t.after(async () => { await close?.(); });
   const h = await setup(t), server = await startServer(h.root, 0);
-  t.after(async () => { await server.close(); });
+  close = () => server.close();
   const list = (authorization?: string) => fetch(new URL(`/api/workspace/folders?path=${encodeURIComponent(tmpdir())}`, server.url),
     { headers: authorization ? { authorization } : {} });
   assert.equal((await list()).status, 200);

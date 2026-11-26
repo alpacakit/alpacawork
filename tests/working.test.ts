@@ -22,7 +22,7 @@ test('pending notices and returns stopped by the automatic limit add no working 
   assert.ok(h.store.readReturns().some(row => row.outcome === 'work_changed' && row.deliveries.length === 0));
   assert.deepEqual((await readControlTree(h.root)).working, [], 'an immediately deliverable notice is not a Run');
   const delivered = await h.deliver();
-  const worker = await h.delegate(delivered.run); await h.start(worker.runId);
+  const worker = await h.delegate(delivered.run, h.worker, 'addition'); await h.start(worker.runId);
   h.end(delivered.run); h.end(worker.runId);
   const { readFileSync, writeFileSync } = await import('node:fs');
   const { join } = await import('node:path');

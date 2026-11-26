@@ -191,7 +191,7 @@
       "title": "Conclusão"
     },
     "conditions": {
-      "hint": "Uma linha por condição: `<condição> — atendida|não atendida|não verificada (onde está a evidência)`. Detalhes da evidência e contagens de testes vão no arquivo vinculado.",
+      "hint": "Uma linha por condição: `<condição> — atendida|não atendida|não verificada (onde está a evidência)`. O texto antes do último ` — ` define a condição. Alterações depois do separador atualizam apenas o estado. Detalhes da evidência e contagens de testes vão no arquivo vinculado.",
       "title": "Condições de conclusão"
     },
     "decide": {

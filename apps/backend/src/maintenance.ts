@@ -6,10 +6,20 @@ import { snapshotGroup, inspectRecoveryFiles } from './release/recovery-data.js'
 import { inspectExecution } from './runs/execution-control.js';
 import { AGENT_SETTINGS_MIGRATION, applyAgentSettingsMigration, resumeAgentSettingsConfig } from './agents/migration-storage.js';
 import { applyTaskValuesMigration, planTaskValues, TASK_VALUES_MIGRATION } from './control/task-values-migration.js';
+import { DEFAULT_DIRECTION_FIELDS } from '@alpacawork/contract';
 import type { DatabaseSync } from 'node:sqlite';
 
 /** The data step a packaged control migration names, run inside its SQL transaction. */
 export function applyDataMigration(name: string, db: DatabaseSync, config: Buffer | null): void {
+  if (name === 'action-reasons-v1') {
+    const unmoved = db.prepare(`SELECT l.id FROM task_log l LEFT JOIN requests q ON q.id=json_extract(l.entry,'$.label.request')
+      WHERE l.kind='request_labeled' AND q.reason IS NULL LIMIT 1`).get();
+    if (unmoved) throw new Error(`Request label ${unmoved.id} has no request reason`);
+    db.prepare(`UPDATE field_defs SET definition=json_set(definition,'$.direction',json('true'))
+      WHERE id IN (SELECT value FROM json_each(?)) AND json_type(definition,'$.direction') IS NULL`)
+      .run(JSON.stringify(DEFAULT_DIRECTION_FIELDS));
+    return;
+  }
   if (name === TASK_VALUES_MIGRATION) { applyTaskValuesMigration(name, db); return; }
   if (name !== AGENT_SETTINGS_MIGRATION) throw new Error(`Unknown data migration ${name}`);
   if (!config) throw new Error('config.yaml is required for agent migration');

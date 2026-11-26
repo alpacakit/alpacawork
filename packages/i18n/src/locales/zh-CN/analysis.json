@@ -1,4 +1,12 @@
 {
+  "aspect": {
+    "behavior": "行为错误",
+    "look_feel": "外观与使用感",
+    "presentation": "展示方式",
+    "scope": "范围追加",
+    "speed": "速度",
+    "wording": "措辞"
+  },
   "breakdown": {
     "all_other": "显示全部 {{count}} 行",
     "since": "自 {{date}} 起",
@@ -48,7 +56,16 @@
     "shareFailed": "无法分享",
     "theme": "颜色"
   },
+  "cause": {
+    "external": "外部因素",
+    "misread": "误解请求",
+    "other": "其他",
+    "premise_changed": "前提变更",
+    "shortfall": "结果未达要求",
+    "unclear_request": "请求不明确"
+  },
   "causes": {
+    "aspects": "受影响的方面：{{items}}",
     "choice": "用选项回答",
     "firstRound": "首轮工作",
     "firstRoundTip": "各任务首次审阅及其回答之前使用的 Token",
@@ -58,8 +75,8 @@
     "laterTip": "各任务首次审阅之后返工和等待的部分",
     "meant": "是否符合预期",
     "noFixes": "此期间没有已分类的修改。",
-    "none": "此期间没有可显示的内容。",
     "noQuestions": "无提问即直接采用",
+    "none": "此期间没有可显示的内容。",
     "ofFixes_one": "你要求的 {{count}} 项修改中（按类别）",
     "ofFixes_other": "你要求的 {{count}} 项修改中（按类别）",
     "ofItems_one": "已回答的 {{count}} 项中",
@@ -157,16 +174,6 @@
     "analysis": "分析",
     "label": "画面",
     "use": "使用"
-  },
-  "fix": {
-    "behavior": "行为错误",
-    "intent": "误解意图",
-    "look_feel": "外观与使用感",
-    "other": "其他",
-    "review_flow": "展示方式",
-    "scope": "范围追加",
-    "speed": "速度",
-    "wording": "措辞"
   },
   "history": {
     "accepted": "已接受",

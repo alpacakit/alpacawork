@@ -1,3 +1,4 @@
+import type { ActionReason } from '@alpacawork/raw';
 import { TASK_POLICY, evaluate } from '@alpacawork/contract/task-policy';
 /**
  * Questions and the records that go to a requester at once: a question to its chosen destination, its
@@ -62,8 +63,8 @@ function notify(tx: ControlTx, project: string, kind: ReturnNotice, toTaskId: st
 export function ask(tx: ControlTx, input: { actor: TaskActor; runId: RunId; taskId: string; opId: string;
   expectedTaskHash: string; title: string; description: string; askTo: string;
   /** The write's values as sent (what its fingerprint keeps) and the Task's values after it, saved with the question. */
-  values?: unknown; written?: TaskValues; nextConversation?: 'new' | 'compact'; compactFocus?: string; checkpoint?: ConversationCheckpoint }): void {
-  const { checkpoint, written, ...operation } = input;
+  values?: unknown; written?: TaskValues; reason?: ActionReason; reasonInput?: unknown; nextConversation?: 'new' | 'compact'; compactFocus?: string; checkpoint?: ConversationCheckpoint }): void {
+  const { checkpoint, written, reason, ...operation } = input;
   const tasks = tasksIn(tx), read = tasks.get(input.taskId), fingerprint = operationFingerprint(operation);
   if (replayed(tx, read, input.opId, 'asked', fingerprint)) return;
   assertWritable(read, input.expectedTaskHash);
@@ -85,7 +86,7 @@ export function ask(tx: ControlTx, input: { actor: TaskActor; runId: RunId; task
   const project = tasks.projectFor(task.id), askedTo = questionDestination(input.askTo, task.id, questionSnapshot(tasks.related(task.id).tasks));
   transition.appendRecord(tx, task.id, { id: input.opId, kind: 'asked', at: now(), title: input.title,
     description: input.description, actor: input.actor, fromState: null, toState: null, runId: input.runId, askedTo,
-    decide, operationFingerprint: fingerprint, ...(checkpoint ? { checkpoint } : {}) }, undefined,
+    decide, ...(reason && { reason }), operationFingerprint: fingerprint, ...(checkpoint ? { checkpoint } : {}) }, undefined,
     written === undefined ? undefined : { values: written });
   if (askedTo !== null) notify(tx, project, 'question', askedTo, input.opId);
 }

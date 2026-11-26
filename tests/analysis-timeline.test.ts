@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { TaskLog } from '@alpacawork/raw/task-log-schema';
 import type { RunConditions } from '@alpacawork/contract/run';
-import { breakdown, changeMarks, segments, situationAt, thinkingIntervals, timedSteps, waited, type TraceRecords, type TraceRun,
+import { breakdown, changeMarks, segments, situationAt, spans, thinkingIntervals, timedSteps, waited, type TraceRecords, type TraceRequest, type TraceRun,
   type TraceStep, type TraceTask } from '@alpacawork/backend/test-dist/analysis/timeline.js';
 import { lastEndedAt, taskOutcome, userQuestions } from '@alpacawork/backend/test-dist/analysis/rules.js';
 import { DEFAULT_THRESHOLDS, findFindings, thresholdsOf } from '@alpacawork/backend/test-dist/analysis/findings.js';
@@ -35,7 +35,7 @@ function step(n: number, from: number, to: number | null, fields: Partial<TraceS
 }
 function records(tasks: TraceTask[], runs: TraceRun[], now = at(200)): TraceRecords {
   return { root: tasks[0]!.id, project: 'P1', scope: tasks.length > 1 ? 'subtree' : 'self', tasks, runs, requests: new Map(),
-    labels: new Map(), rootState: 'doing', activity: [], version: 'test', now };
+    rootState: 'doing', activity: [], version: 'test', now };
 }
 const window = (from: number, to: number) => ({ from: at(from), to: at(to) });
 const find = (data: TraceRecords, rule: Parameters<typeof findFindings>[2][number], to = 200, thresholds = DEFAULT_THRESHOLDS) =>
@@ -308,4 +308,18 @@ test('an item added to a recorded set is a change, as a removal is; the first co
     ['R4', [['instruction-file', null, 'aaaaaaaaaaaaaaaa']]]]);
   assert.deepEqual(changeEvents([run('R1', { started: at(0) }), run('R2', { started: at(10), conditions: conditions(['/home/AGENTS.md']) })],
     item => item.placement), []);
+});
+
+
+test('an unrecorded decision stays undetermined after the requester moves on', () => {
+  const owner = task('T1', [state('done', 20, 'done')]);
+  const pending = task('T2', [], 'T1');
+  const target = task('T3', [], 'T1');
+  const first = run('R1', { task: target.id }), second = run('R2', { task: target.id });
+  const data = records([owner, pending, target], [first, second]);
+  for (const [each, requester] of [[first, owner], [second, pending]] as const)
+    (data.requests as Map<string, TraceRequest>).set(each.request,
+      { id: each.request, task: target.id, authorTask: requester.id, at: at(0), by: 'parent', purpose: 'instruction', firstLine: 'Do the work', answers: null });
+  assert.deepEqual(spans(data).flatMap(span => span.kind === 'run' && span.taken ? [[span.taken.code, span.taken.source]] : []),
+    [['undetermined', 'inferred'], ['undetermined', 'pending']]);
 });

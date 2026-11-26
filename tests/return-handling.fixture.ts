@@ -76,9 +76,9 @@ export async function handlingFixture(t: { after(cleanup: () => void): unknown }
     if (result.outcome.kind !== 'request_accepted') throw new Error('Expected a work Request');
     return result.outcome.request; };
   /** The owner Run `caller` delegates to the worker: a Request in the seat's open wait cycle. */
-  const delegate = async (caller: string, member = worker) => { const result = await requests.request({ task: task.id, body: 'Investigate',
+  const delegate = async (caller: string, member = worker, taken?: 'addition') => { const result = await requests.request({ task: task.id, body: 'Investigate',
     opId: randomUUID(), agent: member.id, expectedTaskHash: (await current()).hash,
-    expectedPlacementRevision: member.revision }, { kind: 'placement', placementId: owner.id },
+    expectedPlacementRevision: member.revision, taken }, { kind: 'placement', placementId: owner.id },
   { kind: 'run', runId: caller, placementId: owner.id, taskId: task.id, role: 'owner', responsible: true });
     assert.equal(result.outcome.kind, 'request_accepted');
     if (result.outcome.kind !== 'request_accepted') throw new Error('Expected a worker Request');

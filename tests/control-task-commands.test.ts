@@ -11,6 +11,7 @@ import { controlDatabasePath } from '@alpacawork/db';
 import { questionsOf, type TaskActor } from '@alpacawork/raw';
 import { DEFAULT_SCHEMA } from '@alpacawork/contract';
 import { ControlTaskCommands } from '@alpacawork/backend/test-dist/control/task-commands.js';
+import { readValuesChange } from '@alpacawork/backend/test-dist/control/task-values-store.js';
 import { ControlTaskStore } from '@alpacawork/backend/test-dist/control/task-store.js';
 import { PlacementStore } from '@alpacawork/backend/test-dist/control/placements.js';
 
@@ -240,4 +241,28 @@ test('a project\'s own values are independent of the fields its Tasks use', asyn
   const run = new ControlTaskCommands(f.root, { kind: 'placement', placementId: owner.placementId });
   await run.setSchema({ task: f.project, fields: DEFAULT_SCHEMA.filter(id => id !== 'policy'), expectedTaskHash: (await f.get(f.project)).hash });
   assert.deepEqual((await f.get(f.project)).values, { ...values, project_policy: long.trim() });
+});
+
+test('direction triggers apply to rewrites and the exact value versions remain readable', async t => {
+  const f = await taskFlow(t);
+  const task = await f.task('Task');
+  const commands = new ControlTaskCommands(f.root, { kind: 'placement', placementId: task.placementId });
+  const update = async (values: object, trigger?: 'found' | 'refine') =>
+    commands.update({ id: task.id, values, trigger, expectedTaskHash: (await f.get(task.id)).hash });
+  await update({ goal: 'Deliver a useful preview', conditions: ['The link opens — 未'] });
+  await assert.rejects(update({ goal: 'Deliver a checked preview' }), { code: 'invalid_input' });
+  const progress = await update({ conditions: ['The link opens — met（手動確認）'] }, 'found');
+  assert.equal(progress.result, true);
+  assert.equal((await f.get(task.id)).meta.log.at(-1)?.reason, undefined);
+  await update({ goal: 'Deliver a checked preview', conditions: ['The link opens on mobile — unchecked'] }, 'found');
+  const changed = (await f.get(task.id)).meta.log.at(-1)!;
+  assert.deepEqual(changed.reason?.trigger, { code: 'found', fields: ['goal', 'conditions'] });
+  await update({ goal: 'Deliver a verified preview' }, 'refine');
+  const db = new DatabaseSync(controlDatabasePath(f.root), { readOnly: true });
+  try {
+    assert.deepEqual(readValuesChange(db, task.id, changed.id).fields, [
+      { id: 'conditions', before: ['The link opens — met（手動確認）'], after: ['The link opens on mobile — unchecked'] },
+      { id: 'goal', before: 'Deliver a useful preview', after: 'Deliver a checked preview' },
+    ]);
+  } finally { db.close(); }
 });

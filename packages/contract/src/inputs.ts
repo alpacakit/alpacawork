@@ -7,7 +7,7 @@ import { folderNameProblem } from './workspace-contract.js';
 import { parseDocument } from 'yaml';
 import { MAX_DOCUMENT } from '@alpacawork/raw/values';
 import { analysisSubjectSchema } from '@alpacawork/raw/analysis-subject';
-import { FIX_KINDS, INSTRUCTION_KINDS } from '@alpacawork/raw/task-log-schema';
+import { ASPECTS, CAUSES, PLACED_AS, TAKEN, TRIGGERS, aspectsSchema, needsCause, reasonNoteSchema } from '@alpacawork/raw/reasons';
 import { descriptionSchema, reportTitleSchema, digestSchema, estimateMinutesSchema, instructionSchema,
   logIdSchema, quoteTextSchema, reportStateSchema, runIdSchema, taskIdSchema, projectIdSchema, taskKindSchema, taskStateSchema,
   titleSchema, urgentReasonSchema } from './fields.js';
@@ -72,7 +72,7 @@ function checkRules<Value>(value: Value, context: z.RefinementCtx, rules: readon
 }
 
 export const taskGetIncludes = [
-  'agents', 'fields', 'closedQuestions', 'files', 'usage', 'estimateExamples', 'openObligations', 'instructionKinds',
+  'agents', 'fields', 'closedQuestions', 'files', 'usage', 'estimateExamples', 'openObligations', 'reasons',
 ] as const;
 export type TaskGetInclude = typeof taskGetIncludes[number];
 export const taskGetInput = z.object({ task: taskIdSchema, log: queryCount.optional(), runs: queryCount.optional(),
@@ -120,16 +120,37 @@ function checkTaskCreate(value: CreateChecks, context: z.RefinementCtx): void {
   if (value.cwd !== undefined) issue(context, 'cwd', 'project_only', 'Only a project has a cwd');
 }
 export const taskCreateInput = taskCreateFields.extend({ plan: taskPlan.optional() }).superRefine(checkTaskCreate);
+const causeFields = { cause: z.enum(CAUSES).optional(), aspects: aspectsSchema.optional(),
+  causeNote: reasonNoteSchema.optional() };
+const decisionFields = { taken: z.enum(TAKEN).optional(), ...causeFields };
+const directionFields = { trigger: z.enum(TRIGGERS).optional(), triggerNote: reasonNoteSchema.optional() };
+const placementFields = { placedAs: z.enum(PLACED_AS).optional(), placedNote: reasonNoteSchema.optional() };
+type ReasonOptions = { taken?: typeof TAKEN[number]; cause?: typeof CAUSES[number]; aspects?: Array<typeof ASPECTS[number]>;
+  causeNote?: string; placedAs?: typeof PLACED_AS[number]; placedNote?: string; trigger?: typeof TRIGGERS[number]; triggerNote?: string };
+function checkReasonOptions(value: ReasonOptions, context: z.RefinementCtx): void {
+  const cause = needsCause(value.taken);
+  if (cause !== (value.cause !== undefined))
+    issue(context, 'cause', 'invalid_combination', cause ? '--cause is required for fix, redo or dropped' : '--cause needs --taken fix, redo or dropped');
+  if (!cause && value.aspects?.length)
+    issue(context, 'aspects', 'invalid_combination', '--aspects needs --taken fix, redo or dropped');
+  if ((value.cause === 'other') !== (value.causeNote !== undefined))
+    issue(context, 'causeNote', 'invalid_combination', '--cause-note is required with --cause other and allowed only there');
+  if ((value.placedAs === 'exception') !== (value.placedNote !== undefined))
+    issue(context, 'placedNote', 'invalid_combination', '--placed-note is required with --placed-as exception and allowed only there');
+  if (value.triggerNote !== undefined && value.trigger === undefined)
+    issue(context, 'triggerNote', 'invalid_combination', '--trigger-note needs --trigger');
+}
+
 /** A project's cwd: null drops its own, so it inherits its parent project's. */
 export const taskUpdateShape = z.object({ task: taskIdSchema, title: titleSchema.optional(),
   values: valuesInputSchema.optional(), color: projectColorSchema.optional(), cwd: projectCwd.nullable().optional(),
-  fromUser: z.boolean().optional(), analysisSubject: analysisSubjectSchema.nullable().optional(), ...writeRecordShape, expectedTaskHash: digestSchema });
+  fromUser: z.boolean().optional(), analysisSubject: analysisSubjectSchema.nullable().optional(), ...directionFields, ...writeRecordShape, expectedTaskHash: digestSchema });
 export const taskUpdateRules: readonly InputRule<z.output<typeof taskUpdateShape>>[] = [
   { kind: 'some', keys: ['title', 'values',
     'cwd', 'color', 'fromUser', 'analysisSubject'] },
 ];
 const checkTaskUpdate = (value: z.output<typeof taskUpdateShape>, context: z.RefinementCtx) =>
-  checkRules(value, context, taskUpdateRules);
+  { checkRules(value, context, taskUpdateRules); checkReasonOptions(value, context); };
 export const taskUpdateInput = taskUpdateShape.superRefine(checkTaskUpdate);
 export const taskMoveShape = z.object({ task: taskIdSchema, parent, ...writeRecordShape, expectedTaskHash: digestSchema });
 export const taskMoveInput = taskMoveShape;
@@ -140,7 +161,8 @@ export const nextConversationSchema = z.enum(['new', 'compact']);
 /** What a compaction's summary should keep in focus, for an agent that takes it (AdapterDescription.compaction). */
 export const compactFocusSchema = z.string().trim().min(1).max(2000);
 /** task values: a Task's values as they were at a time. */
-export const taskValuesInput = z.object({ task: taskIdSchema, at: z.iso.datetime({ offset: true }) }).strict();
+export const taskValuesInput = z.object({ task: taskIdSchema, at: z.iso.datetime({ offset: true }).optional(), changeLog: logIdSchema.optional() }).strict()
+  .refine(value => (value.at === undefined) !== (value.changeLog === undefined), 'Choose --at or --change-log');
 export const taskReturnsInput = z.object({ task: taskIdSchema, after: z.string().optional(), limit: z.number().int().min(1).max(200).optional() });
 /**
  * task report: the Task's state, a question (--state waiting), or a question's withdrawal. Without `task` a Run reports
@@ -151,8 +173,8 @@ export const taskReportShape = z.object({ task: taskIdSchema.optional(), state: 
   askTo: z.union([z.literal('user'), taskIdSchema]).optional(), withdraw: logIdSchema.optional(), title: reportTitleSchema.optional(), description: descriptionSchema.optional(),
   urgent: urgentReasonSchema.optional(), aboutRun: runIdSchema.optional(),
   values: valuesInputSchema.optional(), nextConversation: nextConversationSchema.optional(), compactFocus: compactFocusSchema.optional(),
-  estimateMinutes: estimateMinutesSchema.optional(), ...writeRecordShape,
-  expectedTaskHash: digestSchema, expectedPlacementRevision: revision.optional() });
+  estimateMinutes: estimateMinutesSchema.optional(), ...directionFields, ...causeFields, ...writeRecordShape,
+  expectedTaskHash: digestSchema, expectedPlacementRevision: revision.optional() }).strict();
 /**
  * What a report's input alone decides. A question's --title and --description-file are the server's to require: the
  * same --state waiting returns a Task held from review, which needs neither. So are where a done report goes, the state
@@ -168,6 +190,10 @@ export const taskReportRules: readonly InputRule<z.output<typeof taskReportShape
   { kind: 'forbidden', scope: 'Other than an owner doing, waiting or done report',
     applies: value => value.withdraw !== undefined || value.aboutRun !== undefined || !['doing', 'waiting', 'done'].includes(value.state ?? ''),
     keys: ['values', 'nextConversation'] },
+  { kind: 'forbidden', scope: 'Other than {state} stopped', applies: value => value.state !== 'stopped',
+    keys: ['cause', 'aspects', 'causeNote'] },
+  { kind: 'required', scope: 'With {aspects} or {causeNote}', applies: value => value.aspects !== undefined || value.causeNote !== undefined,
+    keys: ['cause'] },
   { kind: 'one', keys: ['state', 'withdraw'] },
   { kind: 'required', scope: 'With {description}', applies: value => value.description !== undefined,
     keys: ['title'] },
@@ -181,8 +207,10 @@ export const taskReportRules: readonly InputRule<z.output<typeof taskReportShape
     applies: value => value.state === 'done' || value.withdraw !== undefined,
     keys: ['estimateMinutes'] },
 ];
-export const taskReportInput = taskReportShape.superRefine((value, context) =>
-  checkRules(value, context, taskReportRules));
+export const taskReportInput = taskReportShape.superRefine((value, context) => {
+  checkRules(value, context, taskReportRules);
+  checkReasonOptions({ ...value, taken: value.cause === undefined ? undefined : 'dropped' }, context);
+});
 /**
  * task request: an instruction to the Task's responsible (or, with `agent`, a member), or an answer to its
  * question (`answers`), all in `instruction`. Revisions are shared with the answer path, never an alias.
@@ -192,20 +220,14 @@ export const taskRequestShape = z.object({ task: taskIdSchema, instruction: inst
   compactFocus: compactFocusSchema.optional(),
   cwd: nonempty.optional(), selected: selectionSchema.optional(), aiStack: aiStackPrefixSchema.optional(), ...writeRecordShape,
   expectedTaskHash: digestSchema.optional(), expectedPlacementRevision: revision.optional(),
-  expectedHeadRun: runIdSchema.optional(),
-  /** What the instruction is (raw INSTRUCTION_KINDS), and for a fix what kind of fix (FIX_KINDS). */
-  instructionKind: z.enum(INSTRUCTION_KINDS).optional(),
-  fixes: z.array(z.enum(FIX_KINDS as [typeof FIX_KINDS[number], ...typeof FIX_KINDS[number][]])).min(1).max(FIX_KINDS.length).optional() });
+  expectedHeadRun: runIdSchema.optional(), ...decisionFields, ...placementFields });
 type RequestChecks = Omit<z.output<typeof taskRequestShape>, 'selected' | 'aiStack'> & { selected?: unknown; aiStack?: unknown };
 /** What a request's input alone decides; the question's asker, the review and who may request are the server's. */
 export const taskRequestRules: readonly InputRule<RequestChecks>[] = [
   { kind: 'forbidden', scope: 'With {answers}', applies: value => value.answers !== undefined,
     keys: ['agent', 'newConversation', 'compact', 'compactFocus',
       'cwd', 'selected', 'aiStack', 'expectedHeadRun',
-      'expectedTaskHash', 'expectedPlacementRevision', 'instructionKind', 'fixes'] },
-  // A fix says what kind of fix it is; nothing else names one.
-  { kind: 'required', scope: 'With {instructionKind} fix', applies: value => value.instructionKind === 'fix', keys: ['fixes'] },
-  { kind: 'forbidden', scope: 'Without {instructionKind} fix', applies: value => value.instructionKind !== 'fix', keys: ['fixes'] },
+      'expectedTaskHash', 'expectedPlacementRevision', 'taken', 'cause', 'aspects', 'causeNote', 'placedAs', 'placedNote'] },
   { kind: 'required', scope: 'Without {answers}', applies: value => value.answers === undefined, keys: ['expectedTaskHash'] },
   { kind: 'forbidden', scope: 'With {newConversation}', applies: value => value.newConversation === true, keys: ['compact'] },
   { kind: 'forbidden', scope: 'Without {compact}', applies: value => value.compact !== true, keys: ['compactFocus'] },
@@ -214,7 +236,7 @@ export const taskRequestRules: readonly InputRule<RequestChecks>[] = [
   { kind: 'required', scope: 'Without {answers}', applies: value => value.answers === undefined,
     keys: ['expectedPlacementRevision'] },
 ];
-const checkTaskRequest = (value: RequestChecks, context: z.RefinementCtx) => checkRules(value, context, taskRequestRules);
+const checkTaskRequest = (value: RequestChecks, context: z.RefinementCtx) => { checkRules(value, context, taskRequestRules); checkReasonOptions(value, context); };
 export const taskRequestInput = taskRequestShape.strict().superRefine(checkTaskRequest);
 /** `urgent` is why the comment goes to the requester now. */
 export const taskCommentInput = z.object({ task: taskIdSchema, title: reportTitleSchema,
@@ -222,7 +244,7 @@ export const taskCommentInput = z.object({ task: taskIdSchema, title: reportTitl
   expectedTaskHash: digestSchema });
 
 export const agentAssignShape = z.object({ task: taskIdSchema, role: z.enum(['responsible', 'member']),
-  person: nonempty.optional(), profile: nonempty.optional(), selected: selectionSchema.optional(), aiStack: aiStackPrefixSchema.optional(), ...writeRecordShape,
+  person: nonempty.optional(), profile: nonempty.optional(), selected: selectionSchema.optional(), aiStack: aiStackPrefixSchema.optional(), ...placementFields, ...writeRecordShape,
   expectedTaskHash: digestSchema, replace: nonempty.optional(),
   expectedPlacementRevision: revision.optional(), expectedResponsibleRevision: revision.optional() });
 const replaceKeys = ['replace', 'expectedPlacementRevision'] as const;
@@ -237,10 +259,13 @@ export const agentAssignRules: readonly InputRule<AssignChecks>[] = [
   { kind: 'forbidden', scope: 'With {role} member', applies: value => value.role === 'member', keys: replaceKeys },
 ];
 export const agentAssignInput = agentAssignShape.superRefine((value, context) =>
-  checkRules(value, context, agentAssignRules));
-export const agentHandoverInput = z.object({ task: taskIdSchema, agent: nonempty,
+  { checkRules(value, context, agentAssignRules); checkReasonOptions(value, context); });
+const placementTarget = z.object({ task: taskIdSchema, agent: nonempty,
   ...writeRecordShape, expectedTaskHash: digestSchema, expectedPlacementRevision: revision });
-export const agentReleaseInput = agentHandoverInput.extend({ expectedResponsibleRevision: revision.optional() });
+export const agentHandoverInput = placementTarget.extend(placementFields).strict().superRefine(checkReasonOptions);
+export const agentReleaseInput = placementTarget.extend({ expectedResponsibleRevision: revision.optional(),
+  ...decisionFields,
+}).strict().superRefine(checkReasonOptions);
 
 export const runGetInput = z.object({ run: runIdSchema, kind: runFileKindSchema.optional() });
 /** run list: the unfinished Runs, one page at a time in Run-number order, optionally below one Task. */
@@ -267,7 +292,7 @@ export const fieldGetInput = z.object({ version: z.string().optional(), task: ta
 export const fieldSetShape = z.object({ field: fieldIdSchema, title: z.string().optional(), type: z.enum(FIELD_TYPES).optional(),
   many: z.boolean().optional(), maxChars: z.number().int().positive().nullable().optional(),
   maxItems: z.number().int().positive().nullable().optional(), hint: z.string().optional(),
-  members: z.array(fieldIdSchema).optional(), required: z.boolean().optional(),
+  members: z.array(fieldIdSchema).optional(), required: z.boolean().optional(), direction: z.boolean().optional(),
   /** Only add: a field ID the workspace already has is refused (field_exists) rather than changed. */
   create: z.boolean().optional(), ...writeRecordShape });
 export const fieldSetInput = fieldSetShape;

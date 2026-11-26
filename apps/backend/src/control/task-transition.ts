@@ -9,11 +9,11 @@ import { questionSnapshot, questionApplicable } from './question-rules.js';
 import { lastStateReport } from './last-state-report.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { Problem, PROBLEM_CODE, type ProblemReason } from '@alpacawork/core';
-import { awaitsReview, startsEstimateRound } from '@alpacawork/contract';
+import { awaitsReview } from '@alpacawork/contract';
 import { activeBelow, type FinishedBranchIssue } from '@alpacawork/contract/branch';
 import type { RunId } from '@alpacawork/contract/fields';
 import { digest, openQuestions, questionsOf, speaksForUser, taskMetadata, validateAnalysisSubject, userRequestedOf, type TaskBaseState, type ControlMetadata, type ControlTask, type ProjectSettings,
-  type TaskActor, type TaskLifecycle, type TaskLog, type TaskState, type ConversationCheckpoint, type TaskValues } from '@alpacawork/raw';
+  type ActionReason, type TaskActor, type TaskLifecycle, type TaskLog, type TaskState, type ConversationCheckpoint, type TaskValues } from '@alpacawork/raw';
 import { RunStore, type RunTransaction, type StoredRequest } from '@alpacawork/runs';
 import { ControlStore } from '@alpacawork/db';
 import type { DatabaseSync } from 'node:sqlite';
@@ -24,6 +24,7 @@ import { evaluate, TASK_POLICY, terminal, type Operation, type OperationFacts } 
 import { hasOpenUserQuestion } from '@alpacawork/raw/questions';
 import { TaskRepository, assertActive, taskWriter } from './task-store.js';
 import { startPath, startDecision } from './task-start-facts.js';
+import { requestEvent } from './task-history.js';
 
 /** Translate policy outcomes at the application boundary; policy rules contain no UI words. */
 const refusalReasons = {
@@ -115,7 +116,7 @@ type TransitionFacts = {
 /** The record a report or a decision writes with its state change: the operation's ID and its words. */
 type TransitionRecord = {
   id: string; title: string | null; description: string | null; estimateMinutes?: number; operationFingerprint?: string;
-  values?: TaskValues; checkpoint?: ConversationCheckpoint;
+  values?: TaskValues; checkpoint?: ConversationCheckpoint; reason?: ActionReason;
 };
 /**
  * One state change: who makes it, on which Task, when (now, or a Run's start or end time, which the record keeps as its
@@ -218,11 +219,7 @@ export class TaskTransition {
     const placement = tx.runs.getPlacement(request.placementId);
     if (!placement) throw new Error('An admitted Request needs its placement');
     const role = placement.responsible ? 'owner' : 'worker';
-    if (request.purpose !== 'return_continuation') meta.log.push({ id: request.id,
-      kind: request.purpose === 'review_send_back' ? 'review_sent_back' : 'request_accepted', at: request.submittedAt, actor: request.author,
-      title: note.title ?? null, description: note.description ?? null, fromState: task.meta.state, toState: null,
-      startsEstimateRound: startsEstimateRound(request, { role }), ...(request.answersQuestion ? { answers: request.answersQuestion } : {}),
-      ...(request.purpose === 'review_send_back' && request.aboutRunId ? { runId: request.aboutRunId } : {}) });
+    if (request.purpose !== 'return_continuation') meta.log.push(requestEvent(request, role, task.meta.state, note));
     this.write(read, [{ task, meta, ...(role === 'owner' ? { replyInput: 'request' as const } : {}) }], null, { id: request.id, at: request.submittedAt, actor: request.author }, false);
     return { ...task, meta };
   }
@@ -514,6 +511,7 @@ function report(task: ControlTask, meta: ControlMetadata, transition: Transition
     ...(record?.estimateMinutes === undefined ? {} : { estimateMinutes: record.estimateMinutes }),
     ...(record?.operationFingerprint === undefined ? {} : { operationFingerprint: record.operationFingerprint }),
     ...(record?.checkpoint === undefined ? {} : { checkpoint: record.checkpoint }),
+    ...(record?.reason === undefined ? {} : { reason: record.reason }),
     ...(transition.action === 'report_done' && transition.urgentReason !== undefined
       ? { urgentReason: transition.urgentReason } : {}) });
 }

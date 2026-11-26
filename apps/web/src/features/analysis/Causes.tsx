@@ -10,8 +10,8 @@ type Accepted = TasksView["accepted"]["value"];
 type Cause = { key: string; name: string; value: string; share: number | null; bar: number; note?: string; open?: Parameters<Open>[0] };
 
 /**
- * The main causes of the span's accepted tasks, one column per axis, the largest three first. As you meant: the kinds of
- * fix you asked for (one fix may name several kinds, so they are counted, not shared), then how your questions were
+ * The main causes of the span's accepted tasks, one column per axis, the largest three first. The result's causes
+ * and affected aspects are counted separately, then how your questions were
  * answered. Time: where the time from request to acceptance went (parts that do not overlap), and under it how much of
  * it the rounds after the first review took. Tokens: the first review round and the rounds after it. Every number is
  * an analysis answer as it comes; only its share of the whole it is part of is written here. A row whose number a list
@@ -19,7 +19,8 @@ type Cause = { key: string; name: string; value: string; share: number | null; b
  */
 export function Causes({ accepted, open }: { accepted: Accepted; open: Open }) {
   const { t } = useTranslation("analysis");
-  const { fixes } = accepted.instructions, fixed = accepted.instructions.kinds.find(kind => kind.kind === "fix")?.count ?? 0;
+  const { causes, aspects } = accepted.instructions.by.user;
+  const fixed = causes.reduce((sum, cause) => sum + cause.count, 0);
   const time = accepted.time.review + accepted.time.answer + accepted.time.ai + accepted.time.other;
   const tokens = accepted.rounds.first.tokens + accepted.rounds.later.tokens;
   const top = (causes: Cause[]) => causes.filter(cause => cause.bar > 0).sort((a, b) => b.bar - a.bar).slice(0, 3);
@@ -37,12 +38,14 @@ export function Causes({ accepted, open }: { accepted: Accepted; open: Open }) {
   ] as const;
   const axes: { key: string; name: string; of: string; causes: Cause[]; none: string; after?: React.ReactNode }[] = [
     { key: "meant", name: t("causes.meant"), of: t("causes.ofFixes", { count: fixed }), none: t("causes.noFixes"),
-      causes: top(fixes.map(fix => ({ key: fix.kind, name: t(`fix.${fix.kind}`), value: format("tasks", fix.count), share: null,
-        bar: fixed ? fix.count / fixed : 0 }))),
-      after: <dl className="mt-4 grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 text-xs">
+      causes: top(causes.map(cause => ({ key: cause.kind, name: t(`cause.${cause.kind}`), value: format("tasks", cause.count), share: null,
+        bar: fixed ? cause.count / fixed : 0 }))),
+      after: <>{aspects.length > 0 && <p className="mt-3 text-xs text-muted">{t("causes.aspects", {
+        items: aspects.map(aspect => `${t(`aspect.${aspect.kind}`)} ×${aspect.count}`).join(t("sep")),
+      })}</p>}<dl className="mt-4 grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 text-xs">
         {clues.map(([name, value, base]) => <div key={name} className="contents" {...tip(base)} data-tip-tap="">
           <dt className="text-muted">{name}</dt><dd className="text-end font-semibold tabular-nums">{value}</dd></div>)}
-      </dl> },
+      </dl></> },
     { key: "time", name: t("causes.time"), of: t("causes.ofTime", { time: duration(time) }), none: t("causes.none"),
       causes: top([
         part("away", t("waits.away"), accepted.waits.away, null, t("waits.awayTip")),

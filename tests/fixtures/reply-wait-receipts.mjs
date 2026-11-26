@@ -59,7 +59,7 @@ const human={kind:'human'};
  await report.report({task:reviewTask.id,state:'done',title:'Ready', description: 'The result is ready for review.',opId:randomUUID(),expectedTaskHash:(await tasks.get(reviewTask.id)).hash},
    {kind:'placement',placementId:reviewPlacement.id},{kind:'run',runId:reviewRun,placementId:reviewPlacement.id,taskId:reviewTask.id,role:'owner',responsible:true});
  runBoundary(tx=>tx.finish({...tx.get(reviewRun),state:'succeeded',ended_at:new Date().toISOString()},{state:'present',text:'Ready'}));
- const sendback=await call(url,['task','request','--task',reviewTask.id,'--instruction-file','-','--expected-task-hash',(await tasks.get(reviewTask.id)).hash,'--expected-placement-revision',String(reviewPlacement.revision)],env,'Revise this');
+ const sendback=await call(url,['task','request','--task',reviewTask.id,'--taken','fix','--cause','shortfall','--instruction-file','-','--expected-task-hash',(await tasks.get(reviewTask.id)).hash,'--expected-placement-revision',String(reviewPlacement.revision)],env,'Revise this');
  const sendbackResult=take();
  // Actual refusal from an expired question, recorded by the normal CLI operation owner.
  const q3=await ask();await call(url,['task','report','--task',task.id,'--state','stopped','--expected-task-hash',(await tasks.get(task.id)).hash],env);

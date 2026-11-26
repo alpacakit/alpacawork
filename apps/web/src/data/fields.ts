@@ -8,8 +8,8 @@ import { useWorkspaceInfo } from "./queries";
 
 /** One field as `field list` answers it: its definition and what it is to the app and the workspace. */
 export type FieldView = z.infer<typeof fieldListResultSchema>["fields"][number];
-const definition = ({ id, title, type, many, maxChars, maxItems, hint, members, required }: FieldView): FieldDef =>
-  ({ id, title, type, many, maxChars, maxItems, hint, members, required });
+const definition = ({ id, title, type, many, maxChars, maxItems, hint, members, required, direction }: FieldView): FieldDef =>
+  ({ id, title, type, many, maxChars, maxItems, hint, members, required, direction });
 
 const SHIPPED = fieldCatalog([]);
 const fieldsKey = (root: string) => ["fields", root] as const;

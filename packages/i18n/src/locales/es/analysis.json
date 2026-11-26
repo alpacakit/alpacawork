@@ -1,4 +1,12 @@
 {
+  "aspect": {
+    "behavior": "Comportamiento erróneo",
+    "look_feel": "Aspecto y uso",
+    "presentation": "Cómo se mostró",
+    "scope": "Alcance añadido",
+    "speed": "Velocidad",
+    "wording": "Redacción"
+  },
   "breakdown": {
     "all_one": "Mostrar las {{count}} filas",
     "all_many": "Mostrar las {{count}} filas",
@@ -58,7 +66,16 @@
     "shareFailed": "No se pudo compartir",
     "theme": "Color"
   },
+  "cause": {
+    "external": "Factor externo",
+    "misread": "Solicitud malinterpretada",
+    "other": "Otro",
+    "premise_changed": "Cambio de premisas",
+    "shortfall": "Resultado insuficiente",
+    "unclear_request": "Solicitud poco clara"
+  },
   "causes": {
+    "aspects": "Aspectos afectados: {{items}}",
     "choice": "Respondidas con una opción",
     "firstRound": "Primera ronda",
     "firstRoundTip": "Tokens usados hasta la primera revisión de cada tarea y su respuesta",
@@ -68,8 +85,8 @@
     "laterTip": "El trabajo rehecho y esperado tras la primera revisión de cada tarea",
     "meant": "Como querías",
     "noFixes": "No hay arreglos clasificados en este periodo.",
-    "none": "Nada que mostrar en este periodo.",
     "noQuestions": "Aceptadas sin preguntas ni arreglos",
+    "none": "Nada que mostrar en este periodo.",
     "ofFixes_one": "Del {{count}} arreglo que pediste, por tipo",
     "ofFixes_other": "De los {{count}} arreglos que pediste, por tipo",
     "ofItems_one": "De {{count}} elemento respondido",
@@ -169,16 +186,6 @@
     "analysis": "Análisis",
     "label": "Pantalla",
     "use": "Usar"
-  },
-  "fix": {
-    "behavior": "Comportamiento erróneo",
-    "intent": "Solicitud malinterpretada",
-    "look_feel": "Aspecto y uso",
-    "other": "Otro",
-    "review_flow": "Cómo se mostró",
-    "scope": "Alcance añadido",
-    "speed": "Velocidad",
-    "wording": "Redacción"
   },
   "history": {
     "accepted": "Aceptada",

@@ -33,6 +33,8 @@ export const fieldDefShape = z.object({
   members: z.array(fieldIdSchema).max(FIELD_LIMITS.members),
   /** Needed by the end: a done report is refused while it has no value (a write of some fields alone never is). */
   required: z.boolean().default(false),
+  /** A rewrite of an existing value can change the task's direction. */
+  direction: z.boolean().default(false),
 }).strict();
 export const fieldDefSchema = fieldDefShape.superRefine((def, context) => {
   const issue = (path: string, message: string) => context.addIssue({ code: 'custom', path: [path], message });
@@ -72,28 +74,42 @@ export const isProjectValue = (id: string) => PROJECT_SCHEMA.includes(id);
 export const isPlaceableField = (id: string) => !isProjectValue(id) && !QUESTION_PARTS.includes(id);
 
 const text = (id: string, title: string, maxChars: number, hint = '', maxItems: number | null = null, required = false): FieldDef =>
-  ({ id, title, type: 'text', many: maxItems !== null, maxChars, maxItems, hint, members: [], required });
+  ({ id, title, type: 'text', many: maxItems !== null, maxChars, maxItems, hint, members: [], required, direction: false });
 /**
- * The fields every workspace starts with (shipped). Their definitions are the app's: a workspace sets only whether
- * one is required (`shippedField`). Their sizes are what a writer aims for; the hints leave the size words to `sizeNote`.
+ * The fields every workspace starts with (shipped). Their definitions are the app's: a workspace sets whether
+ * one is required or marks direction (`shippedField`). Their sizes are what a writer aims for; the hints leave the size words to `sizeNote`.
  */
+const CONDITION_SEPARATOR = ' — ';
+export const CONDITION_STATUS_RULE = 'Only the text before the last ` — ` defines the condition. A change after it only updates the status.';
+/** The wording of a done condition, without the status after the last separator. */
+export function conditionWording(value: string): string {
+  const separator = value.lastIndexOf(CONDITION_SEPARATOR);
+  return separator === -1 ? value : value.slice(0, separator);
+}
+
+/** The part of a value whose rewrite changes direction. The done conditions' statuses are progress. */
+export function directionWording(field: string, value: unknown): unknown {
+  return field === 'conditions' && Array.isArray(value) && value.every(item => typeof item === 'string')
+    ? value.map(conditionWording) : value;
+}
+
 export const DEFAULT_FIELDS: readonly FieldDef[] = [
-  text('goal', 'Goal', 60, 'One deciding sign that the task is done: what must be in place. Means go in Policy; what not to do goes in Forbidden.'),
-  text('policy', 'Policy', 60, 'Key points of how this task is approached. History and reasons go in the notes. Do not copy the project policy.', 5),
-  text('forbidden', 'Forbidden', 60, 'What this task alone must not do. Leave out what the project policy already forbids. Write nothing if there is none.', 3),
+  { ...text('goal', 'Goal', 60, 'One deciding sign that the task is done: what must be in place. Means go in Policy; what not to do goes in Forbidden.'), direction: true },
+  { ...text('policy', 'Policy', 60, 'Key points of how this task is approached. History and reasons go in the notes. Do not copy the project policy.', 5), direction: true },
+  { ...text('forbidden', 'Forbidden', 60, 'What this task alone must not do. Leave out what the project policy already forbids. Write nothing if there is none.', 3), direction: true },
   text('user_instructions', 'User instructions', 150, 'On the top task, the user’s statements and decisions that still apply, as `<date hh:mm> “original words”` (the user’s local time, 24-hour clock, e.g. `2026-11-11 09:06 “…”`). Fold the same point into its latest one and add how it got there, like “(3 options → B → option 1)”. Quote only the key part of a long statement. Leave out replaced statements, interim options, commands and attachment descriptions (the original stays in History). Goes into the launch prompts of every task below.', 10),
   text('conclusion', 'Conclusion', 120, 'What the parent and the list need to know, in 3 sentences: what was found, what was decided, the recommendation, and whether an answer is awaited. Screen details and numbers go in the notes or deliverables. Do not repeat what a question says.', null, true),
   text('remaining', 'Remaining work', 80, 'One per piece of work left: `<what> — <who / waiting for what>` (the condition to resume). Steps and commands go in files in the task folder. Remove what is done.', 5),
   text('left_running', 'Running processes', 100, 'One per thing running now: what, where, when it stops, and the one command that stops it. Write `none` if there is none. How to restart and clean up goes in files in the task folder.', 3, true),
-  text('conditions', 'Done conditions', 100, 'One per condition: `<condition> — met|not met|unchecked (where the evidence is)`. Evidence details and test counts go in the linked file.', 6),
+  { ...text('conditions', 'Done conditions', 100, 'One per condition: `<condition> — met|not met|unchecked (where the evidence is)`. ' + CONDITION_STATUS_RULE + ' Evidence details and test counts go in the linked file.', 6), direction: true },
   text('artifact', 'Deliverables', 100, 'One per deliverable: `[name](location) — what it is, revision`. The location is a relative path inside the task folder, an absolute path for code, otherwise a URL or a branch and commit. Put the description of the contents in the linked file. Attach a diff as `![diff](changes.patch)` only when the user decides by reading the wording itself.', 8),
   text('pr', 'PR (MR)', 100, 'Only when a PR (MR) was opened: one URL per PR.', 15),
-  { id: 'decide', title: 'Questions', type: 'schema', many: true, required: false, maxChars: null, maxItems: 7,
+  { id: 'decide', title: 'Questions', type: 'schema', many: true, required: false, direction: false, maxChars: null, maxItems: 7,
     members: ['decide_question', 'decide_choices', 'decide_note', 'decide_stop', 'decide_kind'],
     hint: 'Write only when something needs deciding. One question at a time: what to decide, the choices (name and description) and a note. Numbers follow the order. The first word of a choice’s name (up to its first space) becomes its answer button and answer word; do not repeat it within a question, and do not start a name with `stop` or `other`, which the app keeps. The answer arrives as `<number>-<first word of the name>` with any words added; `<number>-other` says none of the choices, with what to do instead. Clear it with null once answered.' },
   text('decide_question', 'What to decide', 60, 'One sentence on what to choose. Background goes in the note.'),
   text('decide_kind', 'Question kind', 6, '`accept` when it asks whether to take a result this task made as it is (merge it, adopt it); `choose` for every other decision (options, permission to publish or deploy, a question without choices). Required when asking.'),
-  { id: 'decide_choices', title: 'Choices', type: 'schema', many: true, required: false, maxChars: null, maxItems: 3,
+  { id: 'decide_choices', title: 'Choices', type: 'schema', many: true, required: false, direction: false, maxChars: null, maxItems: 3,
     members: ['decide_choice', 'decide_choice_detail', 'decide_choice_recommended'], hint: '' },
   text('decide_choice', 'Name', 20),
   text('decide_choice_detail', 'Description', 180, 'In 3 lines: what changes if chosen and what is weak. Images as `![subject or action](relative path in the task)`, one per line. Review history and the steps after choosing go in the notes.'),
@@ -101,10 +117,11 @@ export const DEFAULT_FIELDS: readonly FieldDef[] = [
   text('decide_note', 'Note', 250, 'Shared assumptions, links to samples and when things stop. Do not repeat the choices’ descriptions or review notes.'),
   text('decide_stop', 'Stop', 180, 'Only when stopping the task is one of the options: what stopping means here, in 3 lines. It is offered as a choice of its own (`<number>-stop`), and whoever picks it stops the task instead of answering. Do not write it as one of the choices.'),
   text(PROJECT_SUMMARY, 'Project summary', PROJECT_SUMMARY_SIZE, 'One sentence on what this project is for: the kind of work that belongs in it. It is listed beside the project’s name, where it is read to choose the project a new request goes under, and it goes above the project policy into the instructions of every piece of work in this project. How the work is done goes in the project policy.'),
-  { id: PROJECT_POLICY, title: 'Project policy', type: 'text', many: false, required: false, maxChars: null, maxItems: null, members: [],
+  { id: PROJECT_POLICY, title: 'Project policy', type: 'text', many: false, required: false, direction: false, maxChars: null, maxItems: null, members: [],
     hint: 'What you write here goes as is into the instructions of every piece of work in this project. For example: how you like work done (what may be left to agents and what to ask you about), and what must not be done.' },
   text('notes', 'Notes', 600, 'What the next agent needs to carry on: the decisions in effect and why, one line on how a decision changed (rejected options and why), unchecked points that could change a decision, and the next step and where. Commands, test counts and work steps go in files in the task folder, linked from the deliverables.'),
 ];
+export const DEFAULT_DIRECTION_FIELDS = DEFAULT_FIELDS.filter(def => def.direction).map(def => def.id);
 /**
  * The most a write may hold for a size a person set: about 30% over it, rounded up, so even a count of 1 lets one
  * more through and the writer who aims for the size and overshoots a little is not refused.
@@ -129,30 +146,30 @@ export const DEFAULT_SCHEMA: readonly string[] = ['goal', 'policy', 'forbidden',
   'left_running', 'conditions', 'artifact', 'pr', 'decide', 'notes'];
 const SHIPPED: ReadonlyMap<string, FieldDef> = new Map(DEFAULT_FIELDS.map(def => [def.id, def]));
 export const isDefaultField = (id: string) => SHIPPED.has(id);
-/** What of a shipped field's definition is the app's and never changes: everything but `required`. */
+/** What of a shipped field's definition is the app's and never changes: everything but `required` and `direction`. */
 const FIXED_KEYS = ['title', 'type', 'many', 'maxChars', 'maxItems', 'hint', 'members'] as const;
 /**
- * A shipped field as the workspace has it: the app's definition with the workspace's `required`. Null when `def`
+ * A shipped field as the workspace has it: the app's definition with the workspace's `required` and `direction`. Null when `def`
  * changes any other part of it (the definition is the app's; a field of other wording or sizes is a field of its own).
  */
 export function shippedField(def: FieldDef): FieldDef | null {
   const shipped = SHIPPED.get(def.id);
   if (!shipped || FIXED_KEYS.some(key => JSON.stringify(def[key]) !== JSON.stringify(shipped[key]))) return null;
-  return withRequired(shipped, def);
+  return withFieldFlags(shipped, def);
 }
-/** A shipped definition with the one part a workspace sets: `required`, taken from `set`. */
-const withRequired = (shipped: FieldDef, set: FieldDef): FieldDef => ({ ...shipped, required: set.required });
+/** A shipped definition with the parts a workspace can set. */
+const withFieldFlags = (shipped: FieldDef, set: FieldDef): FieldDef => ({ ...shipped, required: set.required, direction: set.direction });
 
 export type FieldCatalog = ReadonlyMap<string, FieldDef>;
 /**
- * The workspace's fields: the shipped ones, taking only `required` from a stored row of the same ID (a row of older
+ * The workspace's fields: the shipped ones, taking only the flags from a stored row of the same ID (a row of older
  * workspaces may hold other words; they are not read), then the stored others.
  */
 export function fieldCatalog(stored: readonly FieldDef[]): FieldCatalog {
   const catalog = new Map(SHIPPED);
   for (const def of stored) {
     const shipped = SHIPPED.get(def.id);
-    catalog.set(def.id, shipped ? withRequired(shipped, def) : def);
+    catalog.set(def.id, shipped ? withFieldFlags(shipped, def) : def);
   }
   return catalog;
 }
@@ -272,10 +289,14 @@ export function schemaOf(ids: readonly string[], catalog: FieldCatalog): z.ZodTy
     const def = fieldOf(catalog, id), field = described(def, valueShape(def, catalog).nullable().optional());
     // A write sends only what it changes, so a required field is not in the JSON Schema's `required`: it is marked on
     // itself, and its description starts by saying so.
-    return [id, def.required ? field.meta({ [REQUIRED_MARK]: true, description: howToWrite(def, REQUIRED_NOTE) }) : field];
+    return [id, !def.direction && !def.required ? field : field.meta({
+      ...(def.direction ? { [DIRECTION_MARK]: true } : {}),
+      ...(def.required ? { [REQUIRED_MARK]: true, description: howToWrite(def, REQUIRED_NOTE) } : {}),
+    })];
   }))).strict() as z.ZodType<ValuesPatch>;
 }
 /** The JSON Schema keyword marking a field a done report needs, and the words its description starts with. */
+export const DIRECTION_MARK = 'x-direction';
 export const REQUIRED_MARK = 'x-required-at-done';
 const REQUIRED_NOTE = 'Required by the final report.';
 /** The required fields of a schema that have no value: what keeps a done report from being saved. */
@@ -397,7 +418,7 @@ export const fieldGetResultSchema = z.object({
 /** One field as field list shows it: its definition and what it is to the app and the workspace. */
 export const fieldViewSchema = fieldDefShape.extend({
   /** In every schema, never deleted (SYSTEM_FIELDS). */ system: z.boolean(),
-  /** Shipped with the app (DEFAULT_FIELDS): only `required` changes; `stored` when the workspace set it or added it. */
+  /** Shipped with the app (DEFAULT_FIELDS): only `required` and `direction` change; `stored` when the workspace set it or added it. */
   default: z.boolean(), stored: z.boolean(),
   /** Projects whose own schema names it and fields it is a member of; whether the default schema names it. */
   use: z.object({ projects: z.array(z.string()), fields: z.array(fieldIdSchema), defaultSchema: z.boolean() }).strict(),
@@ -420,6 +441,10 @@ export const taskValuesViewSchema = z.object({ values: z.record(fieldIdSchema, z
  */
 export const taskValuesAtSchema = z.object({ task: z.string(), at: z.string(), values: z.record(fieldIdSchema, z.unknown()).nullable(),
   reason: z.enum(['not-created', 'not-recorded']).optional(), recordedSince: z.string() }).strict();
+export const taskValuesChangeSchema = z.strictObject({
+  task: z.string(), changeLog: z.string(), at: z.string(),
+  fields: z.array(z.strictObject({ id: fieldIdSchema, before: z.json(), after: z.json() })),
+});
 export type TaskValuesAt = z.infer<typeof taskValuesAtSchema>;
 
 /**
