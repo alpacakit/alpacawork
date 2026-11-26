@@ -65,7 +65,7 @@ La carpeta de datos (`~/alpacawork`) se conserva. Si no la necesitas, bórrala t
 
 ## Dónde se guardan los datos y qué se envía fuera
 
-Las tareas, las conversaciones y los archivos que crea la IA están en la carpeta de datos del PC (al principio, `~/alpacawork`). Pueden quedar secretos que leyó la IA, así que no se la des a nadie.
+Las tareas, las conversaciones y los archivos que crea la IA están en la carpeta de datos del PC (al principio, `~/alpacawork`). Pueden quedar secretos que leyó la IA, así que no se la des a nadie. Cuando se reescriben o se vacían los valores de una tarea (su objetivo, conclusión, notas, etc.), los valores anteriores también quedan ahí, para poder leer la tarea tal como estaba en un momento pasado. No escribas contraseñas ni claves en ellos: vaciar un valor no borra sus versiones anteriores.
 
 Al desarrollador no se le envía el contenido de las tareas ni de las conversaciones. Lo que sale fuera es lo siguiente:
 

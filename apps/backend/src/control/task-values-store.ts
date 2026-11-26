@@ -9,7 +9,7 @@ import { touch } from '@alpacawork/db';
 import { Problem, PROBLEM_CODE, toIssues, type Issue } from '@alpacawork/core';
 import { catalogProblems, DEFAULT_SCHEMA, PROJECT_SCHEMA, fieldCatalog, fieldDefSchema, isDefaultField, shippedField,
   missingRequired, schemaOf, schemaProblems, applyValues, type FieldCatalog, type FieldDef, type FieldProblem, type TaskValues } from '@alpacawork/contract';
-import type { TaskKind } from '@alpacawork/raw';
+import { now, type TaskKind } from '@alpacawork/raw';
 import type { BranchTask } from '@alpacawork/contract/branch';
 import type { TaskTree } from './task-store.js';
 
@@ -91,9 +91,9 @@ export function deleteFieldDef(db: DatabaseSync, id: string): { field: string; v
   const use = fieldUse(db, id), users = [...use.projects, ...use.fields];
   if (users.length) throw new Problem(PROBLEM_CODE.invalidInput, `Field ${id} is in use`, { field: id, users },
     { reason: { kind: 'field_in_use', field: id, users: users.join(', ') } });
-  const removed = db.prepare('SELECT task_id FROM task_values WHERE field_id=?').all(id);
-  const values = Number(db.prepare('DELETE FROM task_values WHERE field_id=?').run(id).changes);
-  for (const row of removed) touch(db, { kind: 'task_value', id: JSON.stringify([row.task_id, id]) });
+  const removed = db.prepare('SELECT task_id,value FROM task_values WHERE field_id=?').all(id), at = now();
+  for (const row of removed) replaceValue(db, String(row.task_id), id, String(row.value), null, at);
+  const values = removed.length;
   db.prepare('DELETE FROM field_defs WHERE id=?').run(id);
   touch(db, { kind: 'field_def', id });
   return { field: id, values };
@@ -179,20 +179,68 @@ export function readTaskValues(db: DatabaseSync, taskIds?: readonly string[]): M
   }
   return values;
 }
-/** Stores a Task's values whole: a row per field with a value, none for the rest. */
-export function writeTaskValues(db: DatabaseSync, taskId: string, values: TaskValues): void {
+/**
+ * Stores a Task's values whole as of `at` (the time of the log record the write goes with, else now): a row per field with a value,
+ * none for the rest. Only the fields whose value changes are written, each through replaceValue, so the value it had
+ * before stays in task_value_versions.
+ */
+export function writeTaskValues(db: DatabaseSync, taskId: string, values: TaskValues, at: string = now()): void {
   const row = db.prepare('SELECT id FROM tasks WHERE external_id=?').get(taskId);
   if (!row) throw new Problem(PROBLEM_CODE.notFound, 'Task does not exist', { task: taskId }, { reason: { kind: 'task_does_not_exist' } });
   const uuid = String(row.id);
-  const previous = db.prepare('SELECT field_id FROM task_values WHERE task_id=?').all(uuid);
-  db.prepare('DELETE FROM task_values WHERE task_id=?').run(uuid);
-  for (const old of previous) touch(db, { kind: 'task_value', id: JSON.stringify([uuid, old.field_id]) });
-  const insert = db.prepare('INSERT INTO task_values(task_id,field_id,value) VALUES (?,?,?)');
-  for (const [field, value] of Object.entries(values)) {
-    insert.run(uuid, field, JSON.stringify(value));
-    touch(db, { kind: 'task_value', id: JSON.stringify([uuid, field]) });
-  }
+  const previous = new Map(db.prepare('SELECT field_id,value FROM task_values WHERE task_id=?').all(uuid)
+    .map(old => [String(old.field_id), String(old.value)]));
+  const next = new Map(Object.entries(values).map(([field, value]) => [field, JSON.stringify(value)]));
+  for (const field of new Set([...previous.keys(), ...next.keys()]))
+    if (previous.get(field) !== next.get(field)) replaceValue(db, uuid, field, previous.get(field) ?? null, next.get(field) ?? null, at);
 }
+/**
+ * The time a save's values hold from: the earliest of the log records the save appends (`appended`; they need not be in
+ * time order), so every one of them reads the new values; now when it appends none.
+ */
+export function valuesWriteTime(appended: readonly { at: string }[]): string {
+  return appended.reduce<string | null>((first, entry) =>
+    first === null || Date.parse(entry.at) < Date.parse(first) ? entry.at : first, null) ?? now();
+}
+/**
+ * The only change of one stored value (task_values): keeps what the field held (`previous`, JSON or null for none) as a
+ * version replaced at `at`, then stores `next` (JSON, or null to remove the field's value).
+ */
+function replaceValue(db: DatabaseSync, taskUuid: string, field: string, previous: string | null, next: string | null, at: string): void {
+  db.prepare('INSERT INTO task_value_versions(task_id,field_id,replaced_at,value) VALUES (?,?,?,?)').run(taskUuid, field, at, previous);
+  if (next === null) db.prepare('DELETE FROM task_values WHERE task_id=? AND field_id=?').run(taskUuid, field);
+  else db.prepare('INSERT INTO task_values(task_id,field_id,value) VALUES (?,?,?) ON CONFLICT(task_id,field_id) DO UPDATE SET value=excluded.value')
+    .run(taskUuid, field, next);
+  touch(db, { kind: 'task_value', id: JSON.stringify([taskUuid, field]) });
+}
+
+/**
+ * A Task's values as they were at `at`: its current values with each later change undone (task_value_versions, newest
+ * first). `values` is null when they are not known: before the Task existed (`not-created`), or before versions began to
+ * be kept for a Task created earlier (`not-recorded`). `recordedSince` is when the Task's values are known from.
+ */
+export function readValuesAt(db: DatabaseSync, taskId: string, at: string): ValuesAt {
+  // A Task begins at its created record; its row's created_at is taken a moment later in the same write.
+  const task = db.prepare(`SELECT t.id,coalesce((SELECT l.at FROM task_log l WHERE l.task_id=t.id AND l.kind='created'),t.created_at) AS created_at
+    FROM tasks t WHERE t.external_id=?`).get(taskId);
+  if (!task) throw new Problem(PROBLEM_CODE.notFound, 'Task does not exist', { task: taskId }, { reason: { kind: 'task_does_not_exist' } });
+  const since = db.prepare('SELECT at FROM task_value_versions_since').get();
+  const created = String(task.created_at), time = Date.parse(at);
+  const recordedSince = since && Date.parse(String(since.at)) > Date.parse(created) ? String(since.at) : created;
+  if (time < Date.parse(created)) return { task: taskId, at, values: null, reason: 'not-created', recordedSince };
+  if (time < Date.parse(recordedSince)) return { task: taskId, at, values: null, reason: 'not-recorded', recordedSince };
+  const values: Record<string, string> = Object.fromEntries(db.prepare('SELECT field_id,value FROM task_values WHERE task_id=?')
+    .all(String(task.id)).map(row => [String(row.field_id), String(row.value)]));
+  for (const version of db.prepare('SELECT field_id,replaced_at,value FROM task_value_versions WHERE task_id=? ORDER BY id DESC')
+    .all(String(task.id))) {
+    if (Date.parse(String(version.replaced_at)) <= time) continue;
+    if (version.value === null) delete values[String(version.field_id)];
+    else values[String(version.field_id)] = String(version.value);
+  }
+  return { task: taskId, at, values: Object.fromEntries(Object.entries(values).sort(([a], [b]) => a.localeCompare(b))
+    .map(([field, value]) => [field, JSON.parse(value)])), recordedSince };
+}
+export type ValuesAt = { task: string; at: string; values: TaskValues | null; reason?: 'not-created' | 'not-recorded'; recordedSince: string };
 
 /**
  * A write's values checked against the fields the Task uses (contract schemaOf) and applied to `current`; a refusal

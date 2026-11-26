@@ -414,6 +414,15 @@ export const taskValuesViewSchema = z.object({ values: z.record(fieldIdSchema, z
   from: z.string().nullable(), context: z.string() }).strict();
 
 /**
+ * task values: a Task's values as they were at `at` (each later write undone from the versions kept when it replaced a
+ * value). `values` is null with `reason` when they are not known then: `not-created` before the Task existed,
+ * `not-recorded` before versions began to be kept. `recordedSince` is the earliest time they are known for this Task.
+ */
+export const taskValuesAtSchema = z.object({ task: z.string(), at: z.string(), values: z.record(fieldIdSchema, z.unknown()).nullable(),
+  reason: z.enum(['not-created', 'not-recorded']).optional(), recordedSince: z.string() }).strict();
+export type TaskValuesAt = z.infer<typeof taskValuesAtSchema>;
+
+/**
  * The one reading of an answer's words against the question as it was asked (its `decide` items). Items are named by
  * `<n>-<word>` labels that lead a line (after a task mark `T3（…）` or `T3` there, as the screen writes it), one after
  * another; the first words after them end the labels of that line. Its word is the first word of one of its choices

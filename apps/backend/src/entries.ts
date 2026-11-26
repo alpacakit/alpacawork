@@ -35,6 +35,7 @@ import { readConditionsView } from './runs/conditions.js';
 import { RUN_STEPS_PAGE_LIMIT } from '@alpacawork/contract/run';
 import { emptyInput, configSetInput, chooseFolderInput, foldersInput, makeFolderInput } from '@alpacawork/contract/inputs';
 import { deleteField, listFields, readSchema, setField } from './control/field-commands.js';
+import { readValuesAt } from './control/task-values-store.js';
 import { now } from '@alpacawork/raw';
 import { ReturnRouter } from './control/return-router.js';
 import { readTaskReturns } from './control/return-views.js';
@@ -357,6 +358,13 @@ export const taskCommands = {
   'task/returns': {
     run: async (root, input, context) =>
     readTaskReturns(root, input, authorizeRead(root, context, { name: 'task.read' }, input.task).readScope ?? undefined),
+    readThread: () => true,
+  },
+  'task/values': {
+    run: async (root, input, context) => {
+      authorizeRead(root, context, { name: 'task.read' }, input.task);
+      return readControl(root, db => readValuesAt(db, input.task, input.at));
+    },
     readThread: () => true,
   },
   'task/new': {

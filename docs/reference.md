@@ -88,7 +88,7 @@ The screen and these read commands use the same counts. A person or the coordina
 | `alpacawork analysis task --task <task>` | One top-level Task's values, including the requested child when it resolves to that parent |
 | `alpacawork analysis trace --task <task>` | One Task's timeline: lanes, spans, marks, a breakdown of its wall time and which Runs have step times |
 | `alpacawork analysis findings --task <task>` | Places in that timeline worth a look, each by a rule with its threshold and evidence |
-| `alpacawork analysis at --task <task> --at <ISO>` | The situation at one instant: states, Runs and their steps, the queue, open questions, recent history |
+| `alpacawork analysis at --task <task> --at <ISO>` | The situation at one instant: states, Runs and their steps, the queue, open questions, recent history, and the Task's values then (as `task values --at` reads them; null with `valuesReason` when not known) |
 | `alpacawork analysis changes --period 28d` | When what Runs ran under changed (version, skills, instruction files, a seat's model or effort) |
 
 Periods are `today`, `7d`, `28d` and `all`. Use `--end YYYY-MM-DD` to move the first three periods.

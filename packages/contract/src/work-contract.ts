@@ -49,9 +49,10 @@ export const runStepTextSchema = z.object({ text: z.string().max(RUN_STEP_FULL_T
 export type RunStepText = z.infer<typeof runStepTextSchema>;
 /**
  * Where a step's time came from: `reported`, the agent's own output line said it; `observed`, the Run's manager read the line
- * at that time (within its poll interval of when it was written).
+ * at that time (within its poll interval of when it was written); `transcript`, read afterwards from the agent's own
+ * conversation record, for a Run from before step times were kept as they happen.
  */
-export const stepTimeSourceSchema = z.enum(['reported', 'observed']);
+export const stepTimeSourceSchema = z.enum(['reported', 'observed', 'transcript']);
 export type StepTimeSource = z.infer<typeof stepTimeSourceSchema>;
 /** A step's input with paths, digests, IDs and numbers replaced, and a digest of the whole input when it has more lines. */
 export const stepFingerprintSchema = z.object({ line: z.string().max(RUN_STEP_TEXT_LIMIT), bodyDigest: z.string().regex(/^[0-9a-f]{16}$/).nullable() }).strict();
