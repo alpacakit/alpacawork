@@ -150,6 +150,8 @@ export function useRunSteps(run: string | undefined, shown: boolean, signal: str
   useEffect(() => {
     told.current = signal;
     if (!run || !shown) return;
+    // Opened again, a failure of the last time is not said again before this read answers.
+    setState(previous => previous.failed ? { ...previous, failed: false } : previous);
     const abort = new AbortController();
     readRunSteps(run, { limit: FIRST }, abort.signal).then(page =>
       setState({ run, failed: false, listed: takeIn(null, page, { caughtUp: page.version }) }),
@@ -306,7 +308,7 @@ export const StepList = memo(function StepList({ steps, open, className }: { ste
   const unfolded = open && (!!listed || steps.failed || waited);
   return <DisclosureBody open={unfolded} swap={listed ? "read" : steps.failed ? "failed" : "wait"} className="mr-0 pr-0">
     {listed && run ? (listed.steps.length
-      ? <LogBox listed={listed} className={className}><ol data-run-steps={open ? "open" : "folded"} className="m-0 flex list-none flex-col p-0 text-xs">
+      ? <LogBox listed={listed} open={open} className={className}><ol data-run-steps={open ? "open" : "folded"} className="m-0 flex list-none flex-col p-0 text-xs">
         {listed.from > 0 && <li><button type="button" data-run-steps-more onClick={steps.earlier}
           className={cn("cursor-pointer rounded-sm underline-offset-2 outline-none hover:text-ink hover:underline focus-visible:outline-2 focus-visible:outline-ring", NOTE)}>
           {t("now.step.older", { count: Math.min(EARLIER, listed.from), rest: listed.from })}</button></li>}
@@ -324,7 +326,7 @@ export const StepList = memo(function StepList({ steps, open, className }: { ste
  * in sight however long the Run worked. It opens at its foot (the latest step, as a terminal does), stays at its foot
  * while new steps come if it was there, and keeps the reader's place when earlier steps are added at its top.
  */
-function LogBox({ listed, className, children }: { listed: ListedSteps; className?: string; children: ReactNode }) {
+function LogBox({ listed, open, className, children }: { listed: ListedSteps; open: boolean; className?: string; children: ReactNode }) {
   const box = useRef<HTMLDivElement>(null);
   // Where the reader was when the steps last changed or they last scrolled: at the foot, or how high the list was.
   const at = useRef<{ from: number; height: number; foot: boolean } | null>(null);
@@ -337,6 +339,13 @@ function LogBox({ listed, className, children }: { listed: ListedSteps; classNam
     // Lines above what is shown fade in at the top, so a box opened at its foot says there is more before (no redraw).
     element.toggleAttribute("data-above", element.scrollTop > 4);
   }, []);
+  // Opened again, it opens at its foot as it first did, with what was read before, before it is read anew.
+  useLayoutEffect(() => {
+    const element = box.current;
+    if (!open || !element) return;
+    element.scrollTop = element.scrollHeight;
+    remember();
+  }, [open, remember]);
   useLayoutEffect(() => {
     const element = box.current;
     if (!element) return;

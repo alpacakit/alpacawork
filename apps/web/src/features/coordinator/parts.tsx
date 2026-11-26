@@ -166,7 +166,7 @@ function useListedInSight(read: unknown, block: RefObject<HTMLElement | null>, t
     const body = element.querySelector<HTMLElement>('[data-disclosure-body]');
     const grows = body ? Math.max(0, body.scrollHeight - body.getBoundingClientRect().height) : 0;
     const drawn = element.getBoundingClientRect(), box = { top: drawn.top, bottom: drawn.bottom + grows, height: drawn.height + grows };
-    if (box.top < area.top || box.height > area.bottom - area.top || (top && box.bottom > area.bottom)) scrollThreadTo(element, element, { block: 'start' });
+    if (box.top < area.top || box.height > area.bottom - area.top || (top && box.bottom > area.bottom)) scrollThreadTo(element, element, { block: 'start' }, grows);
     else if (box.bottom > area.bottom) scrollThreadTo(element, element, { block: 'end' }, grows);
   }, [read, block, top]);
 }
