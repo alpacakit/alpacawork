@@ -118,7 +118,8 @@ export function TurnWork({ turn }: { turn: Pick<CoordinatorTurn, 'id' | 'at' | '
   // Opened after the answer, the pill goes to the top where it must move, so the answer's start stays in sight under it.
   // Brought into sight as it is shown: at once with what was read before, else once the first read answers.
   useListedInSight(open ? steps.listed : null, block, !running);
-  const count = stepCount(steps);
+  // How many steps, said on the line while they are listed under it; folded, the line says the latest step.
+  const count = open ? stepCount(steps) : undefined;
   if (!running && !turn.workedBy) return null;
   const toggle = () => setOpen(!open);
   return <div>
