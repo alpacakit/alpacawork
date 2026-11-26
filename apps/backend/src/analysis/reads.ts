@@ -586,7 +586,8 @@ class ScopedAnalysis {
   }
 
   async tasks(input: AnalysisTasksInput, slices: Slices): Promise<Omit<AnalysisTasksView, 'activeWork'>> {
-    const head = this.head(input), lifetime = this.head({}).period;
+    // The record's days, none while nothing is recorded (`ever` is null then, as for any span without a record).
+    const head = this.head(input), lifetime = head.firstDay === null ? null : this.head({}).period;
     const taskTotals = this.taskTotals;
     const prCounts = creditAcceptedPrs(this.datedUnits);
     const units = this.datedUnits.map(item => ({ ...item, prCount: prCounts.get(item.unit) ?? 0 }));
@@ -626,7 +627,7 @@ class ScopedAnalysis {
     }
     const count = (range: AnalysisDays | null) => daily?.count(range, this.now) ?? this.useCounts([...this.launchesIn(range, input)]);
     const value = count(head.period);
-    const ever = chart.history ? input.period === 'all' ? value : count(chart.history) : null;
+    const ever = chart.history && head.firstDay !== null ? input.period === 'all' ? value : count(chart.history) : null;
     const series = { bucket: input.bucket, points: daily ? chart.points
       .map(point => ({ ...point, counts: daily.count(point, this.now) })) : [] };
     return { head, counts: { value, previous: head.previous && count(head.previous) }, ever, series,

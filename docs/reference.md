@@ -112,6 +112,8 @@ overridden with `--time-zone <IANA-zone>`. Trend buckets are `day`, `week` and `
 A comparison uses the immediately preceding period of equal length when there is enough history.
 Both commands return `ever` for the same scope from the first day of the record through today. It matches the totals
 for `--period all` and is `null` when the scope has no records.
+A scope with no records yet has `head.firstDay` `null`; it is counted as if its record began today, so the period still
+spans the chosen days with every count zero, and `--period all` is today alone.
 
 Task counts use Tasks the user directly requested. A review round (`submits`) is a submit for review, or a question to
 the user from the Task or any Task under it that asks whether to take a result as it is (one of its items has

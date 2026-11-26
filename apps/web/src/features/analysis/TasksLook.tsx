@@ -157,7 +157,7 @@ export const TasksLook = memo(function TasksLook({ view, span, root, days, open,
           { color: "bg-stopped-part", name: t("outcome.stopped"), ...part("tasks", now.stopped, { set: "stopped", value: null }) }]}
           line={{ name: t("chart.share"), value: <ShareValue value={now.share} onOpen={now.accepted ? () => open({ set: "accepted", value: null }) : undefined} />,
             gap: before && gap(now.share, before.share, "pt", "up") }} />
-        <div className="mt-6 narrow:mt-4"><Grass from={view.grass.from} counts={view.grass.finished} firstDay={view.head.firstDay} today={today} span={days} /></div>
+        <div className="mt-6 narrow:mt-4"><Grass from={view.grass.from} counts={view.grass.finished} firstDay={analysisRecordStart(view.head)} today={today} span={days} /></div>
       </>}>
         <BarChart row={0} height="h-76 narrow:h-32" scale={scales.finished} grow overlay={overlays.share}
           values={i => [["bg-done", at(i).counts.passed, 0], ["bg-reworked", at(i).counts.reworked, 1], ["bg-stopped-part", at(i).counts.stopped, 2]]} />
