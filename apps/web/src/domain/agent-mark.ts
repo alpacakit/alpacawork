@@ -48,16 +48,20 @@ const MODEL_FAMILIES: readonly [RegExp, BuiltinAdapterId][] = [
 ];
 
 /**
- * Who a model name says ran, for a place that knows only the model (History's tags, the analysis by model): the agent
- * whose setting offers that model, else the kind whose models it is among or is named after; null when nothing says.
+ * Who a model name says ran, for a place that knows only the model (History's tags, the analysis by model): the kind
+ * whose models it is among or is named after, else the agent whose setting offers it; null when nothing says. A place
+ * that knows the Run's agent names it instead.
  */
 export function modelAgent(model: string, agents: Agents | undefined): { name: string; kind: BuiltinAdapterId | null } | null {
   const bare = model.replace(/\(.*\)$/, "").replace(/^[^/]+\//, "");
-  for (const [name, setting] of Object.entries(agents ?? {}))
-    if (setting.params?.model?.includes(bare)) return { name, kind: agentKind(name, setting.adapter) };
+  // A kind's own models and families first: another kind's agent offering them (Copilot running a Claude model) does
+  // not make every Run of that model its own.
   for (const kind of BUILTIN_ADAPTER_IDS)
     if (AGENT_ADAPTERS[kind].defaultParams.model?.includes(bare) || Object.hasOwn(AGENT_ADAPTERS[kind].contextDefaults, bare))
       return { name: kind, kind };
   const family = MODEL_FAMILIES.find(([pattern]) => pattern.test(bare))?.[1];
-  return family ? { name: family, kind: family } : null;
+  if (family) return { name: family, kind: family };
+  for (const [name, setting] of Object.entries(agents ?? {}))
+    if (setting.params?.model?.includes(bare)) return { name, kind: agentKind(name, setting.adapter) };
+  return null;
 }

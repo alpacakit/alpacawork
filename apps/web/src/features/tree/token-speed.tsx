@@ -226,9 +226,9 @@ export function AgentCounts({ tasks }: { tasks: readonly Task[] }) {
   const key = useWorkspaceSelector((data) => JSON.stringify(runningAgents(tasks, data)));
   const agents = JSON.parse(key) as [string | null, number][];
   const box = useRef<HTMLSpanElement>(null);
-  // How many marks fit; all of them while measuring, after the agents or the row's width change.
-  const [fit, setFit] = useState({ key, count: agents.length });
-  const measuring = fit.key !== key || fit.count >= agents.length;
+  // How many marks fit; all of them while measuring (count unknown), after the agents or the row's width change.
+  const [fit, setFit] = useState({ key, count: Number.MAX_SAFE_INTEGER });
+  const measuring = fit.key !== key || fit.count === Number.MAX_SAFE_INTEGER;
   useLayoutEffect(() => {
     const el = box.current;
     if (!el || !measuring) return;
