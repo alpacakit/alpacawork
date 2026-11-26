@@ -9,7 +9,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 import { ControlStore } from '@alpacawork/db';
 import { RUN_FILES, RUN_STEPS_PAGE_LIMIT, runFolder, type RunRecord } from '@alpacawork/contract/run';
-import { analysisStepsMissingSchema } from '@alpacawork/contract/analysis';
+import { analysisStepsMissingSchema, type AnalysisEvidence } from '@alpacawork/contract/analysis';
 import type { AnalysisAtInput, AnalysisAtView, AnalysisChangesInput, AnalysisChangesView, AnalysisHead, AnalysisFindingsInput, AnalysisFindingsView, AnalysisTraceInput,
   AnalysisTraceScope, AnalysisTraceView } from '@alpacawork/contract/analysis';
 import type { TaskLog } from '@alpacawork/raw/task-log-schema';
@@ -227,6 +227,13 @@ export async function readTrace(root: string, input: AnalysisTraceInput, activit
 }
 
 const FINDINGS = 20;
+/** What a finding's first record says, in one line: the step's command, the question's title, or the record's first line. */
+function evidenceLine(records: TraceRecords, evidence: AnalysisEvidence): string | null {
+  if ('run' in evidence) return records.runs.find(run => run.id === evidence.run)?.steps?.find(step => step.n === evidence.step)?.line ?? null;
+  if ('question' in evidence) return records.tasks.find(task => task.id === evidence.task)?.log
+    .find(entry => entry.id === evidence.question)?.title ?? null;
+  return evidence.firstLine;
+}
 export async function readFindings(root: string, input: AnalysisFindingsInput): Promise<AnalysisFindingsView> {
   const scope = input.scope ?? 'self', records = await readTimelineRecords(root, input.task, scope), window = windowOf(records, {});
   const thresholds = thresholdsOf(input.threshold), chosen = input.rules ?? allRules;
@@ -235,7 +242,8 @@ export async function readFindings(root: string, input: AnalysisFindingsInput): 
   const findings = found.slice(0, input.limit ?? FINDINGS).map(item => {
     const id = `${item.rule}:${item.anchor}`;
     return { id, rule: item.rule, at: iso(item.at), durationMs: item.durationMs, lane: item.lane, count: item.count,
-      threshold: thresholds[item.rule], source: item.source, evidence: item.evidence, url: sceneUrl(records.root, scope, { at: item.at, finding: id }) };
+      threshold: thresholds[item.rule], source: item.source, evidence: item.evidence, line: evidenceLine(records, item.evidence[0]!),
+      url: sceneUrl(records.root, scope, { at: item.at, finding: id }) };
   });
   return {
     head: { ...headOf(records, input.timeZone), from: iso(window.from), to: iso(window.to) },
@@ -248,7 +256,10 @@ export async function readFindings(root: string, input: AnalysisFindingsInput): 
 export async function readAt(root: string, input: AnalysisAtInput): Promise<AnalysisAtView> {
   const scope = input.scope ?? 'self', at = Date.parse(input.at);
   const records = await readTimelineRecords(root, input.task, scope);
-  return { head: { ...headOf(records, input.timeZone), at: iso(at) }, ...situationAt(records, at), url: sceneUrl(records.root, scope, { at }) };
+  // Which part of the wall time the instant is in, as the trace's breakdown gives it (none outside the task's period).
+  const found = segments(records, wholePeriod(records)).find(each => each.from <= at && at < each.to)?.key ?? null;
+  const part = found === 'answer-user' || found === 'answer-task' ? 'waiting-answer' as const : found;
+  return { head: { ...headOf(records, input.timeZone), at: iso(at) }, part, ...situationAt(records, at), url: sceneUrl(records.root, scope, { at }) };
 }
 
 /** Ended Runs that kept no conditions (from before they were kept): they never will, so their folders are not read again. */

@@ -1,6 +1,8 @@
 import { commandRoute } from '@alpacawork/contract/command-path';
 import { agentLimitsResponseSchema } from "@alpacawork/contract/agent-limits";
-import { analysisUnitListSchema, analysisUnitValuesSchema } from "@alpacawork/contract/analysis";
+import { analysisTraceViewSchema, analysisUnitListSchema, analysisUnitValuesSchema } from "@alpacawork/contract/analysis";
+/** The most pages of one timeline read at once (500 spans and marks each). */
+const TRACE_PAGES = 20;
 import { AGENT_CHECK_READ_MS, foldersSchema, hostEpisodeMinutesSchema, hostStatusSchema, noticeStateResponseSchema, personalSettingsResponseSchema, placeHomeRows, pushDevicesSchema, pushKeySchema, serverSettingsSchema } from "@alpacawork/contract";
 import { projectedIndexSchema, controlRunFilesSchema, projectShelfSchema, taskProjectedPageSchema, taskRowFields, taskProjectedSearchSchema, taskShelvedDetailSchema, taskProjectedTimelineAxisSchema, taskTimelineLanesSchema, type ProjectedIndexDTO, type ControlTaskHeadDTO, type IndexPatchDTO, type TaskRowDTO, type TaskProjectedViewDTO } from "@alpacawork/contract/control";
 import { CancelledError, QueryObserver, infiniteQueryOptions, keepPreviousData, queryOptions, type QueryClient, type QueryKey, type Query as QueryRecord } from "@tanstack/react-query";
@@ -177,7 +179,7 @@ export const resources = {
    * One task's timeline reads (`analysis trace`, `findings`, `at`), each for what it is asked, kept as the face's are. A
    * trace is read a page at a time, all its pages in turn (one window of it has a few hundred spans at most).
    */
-  analysisTimeline: <T,>(root: string, name: 'trace' | 'findings' | 'at' | 'changes', input: Record<string, string | readonly string[] | null>, schema: z.ZodType<T>) => {
+  analysisTimeline: <T,>(root: string, name: 'findings' | 'at' | 'changes', input: Record<string, string | readonly string[] | null>, schema: z.ZodType<T>) => {
     const query = new URLSearchParams();
     for (const [key, value] of Object.entries(input))
       for (const each of typeof value === 'string' ? [value] : value ?? []) if (each !== '') query.append(key, each);
@@ -185,6 +187,29 @@ export const resources = {
       queryKey: ['analysis-view', root, name, query.toString()] as const,
       queryFn: ({ client, queryKey, signal }) => readResource(client, queryKey,
         () => api.request(`${commandRoute(`analysis/${name}`)}?${queryKey[3]}`, schema, signal)),
+      placeholderData: keepPreviousData,
+    });
+  },
+  /**
+   * One task's timeline (`analysis trace`) read whole: its pages in turn, each spans and marks after the last, up to
+   * TRACE_PAGES pages; `cursor` stays set when more were left (a window too long to read whole at that detail).
+   */
+  analysisTrace: (root: string, input: Record<string, string | readonly string[] | null>) => {
+    const query = new URLSearchParams();
+    for (const [key, value] of Object.entries(input))
+      for (const each of typeof value === 'string' ? [value] : value ?? []) if (each !== '') query.append(key, each);
+    return queryOptions({
+      queryKey: ['analysis-view', root, 'trace', query.toString()] as const,
+      queryFn: ({ client, queryKey, signal }) => readResource(client, queryKey, async () => {
+        const route = `${commandRoute('analysis/trace')}?${queryKey[3]}`;
+        const first = await api.request(route, analysisTraceViewSchema, signal);
+        let page = first;
+        for (let read = 1; page.cursor && read < TRACE_PAGES; read++) {
+          page = await api.request(`${route}&cursor=${encodeURIComponent(page.cursor)}`, analysisTraceViewSchema, signal);
+          first.spans.push(...page.spans); first.marks.push(...page.marks);
+        }
+        return { ...first, cursor: page.cursor };
+      }),
       placeholderData: keepPreviousData,
     });
   },

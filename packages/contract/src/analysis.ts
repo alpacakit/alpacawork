@@ -299,7 +299,7 @@ export const ANALYSIS_FINDING_RULE_MEANINGS: Readonly<Record<AnalysisFindingRule
   'queue-wait': 'a Run that waited this long before it started; at: when it was made, durationMs: the wait',
   'failed-run': 'a Run that failed or was stopped, with the Run that took its place; at: its start, durationMs: its length',
   rework: 'work done again by the counts\' rule (a send-back, an instruction at review or after acceptance, one in place of answering a ' +
-    'question asking to take a result); at: the record, durationMs: until that task next waits for review or is done',
+    'question asking to take a result); at: the record, durationMs: until that task next puts a result to the user (waits for review or asks to take it) or is done',
   idle: 'a stretch this long with nothing running, queued, asked or in review in the task or under it; at: its start, durationMs: its length',
 };
 /**
@@ -407,7 +407,9 @@ const thresholdSchema = z.strictObject({ value: measurement, unit: z.enum(['minu
 export const analysisFindingSchema = z.strictObject({
   id: z.string(), rule: z.enum(analysisFindingRules), at: instant, durationMs: count, lane: z.string().nullable(),
   count: count.nullable(), threshold: thresholdSchema, source: z.enum(['recorded', 'inferred']),
-  evidence: z.array(analysisEvidenceSchema).min(1), url: z.string(),
+  evidence: z.array(analysisEvidenceSchema).min(1),
+  /** What its first record says in one line: the step's command, the question's title, or the record's first line. */
+  line: z.string().nullable(), url: z.string(),
 });
 export const analysisFindingsViewSchema = z.strictObject({
   head: timelineHead.extend({ from: instant, to: instant }),
@@ -422,6 +424,8 @@ export const analysisFindingsViewSchema = z.strictObject({
 const stepAt = z.strictObject({ step: count, tool: z.string(), line: z.string(), from: instant.nullable(), to: instant.nullable() });
 export const analysisAtViewSchema = z.strictObject({
   head: timelineHead.extend({ at: instant }),
+  /** The part of the wall time the instant is in, as the trace's breakdown gives it; null outside the task's period. */
+  part: z.enum(analysisBreakdownKeys).nullable(),
   tasks: z.array(z.strictObject({ task: taskIdSchema, title: z.string(), state: z.string() })),
   runs: z.array(z.strictObject({
     run: runId, task: taskIdSchema, role: z.enum(['owner', 'member']), agent: z.string(), model: z.string().nullable(),

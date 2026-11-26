@@ -277,9 +277,9 @@ export function clocks(log: readonly TaskLog[], own: readonly UserQuestion[], de
 /**
  * A unit's review rounds as time and tokens (`analysis task` rounds, and the accepted tasks' first and later rounds): a
  * round is the work up to one review (a submit for review or a question asking to take a result, as `submits` counts
- * them) and the wait until the user answered it, withdrew it or sent it back. The first round starts at the request,
- * each next one where the one before closed, and the last runs until the unit finished (or `now`). A launch counts
- * toward the round it started in, with all its tokens.
+ * them) and the wait until the user answered it, withdrew it or sent it back (a hold in review keeps it open). The first
+ * round starts at the request, each next one where the one before closed, and the last runs until the unit finished (or
+ * `now`). A launch counts toward the round it started in, with all its tokens; one started after the end, toward none.
  */
 export type Round = { from: number; to: number; tokens: number };
 export function reviewRounds(log: readonly TaskLog[], questions: readonly UserQuestion[], launches: readonly Launch[],
@@ -288,7 +288,8 @@ export function reviewRounds(log: readonly TaskLog[], questions: readonly UserQu
   log.forEach((entry, index) => {
     const at = Date.parse(entry.at);
     if (!isReviewMark(entry) || at < from || at > to) return;
-    const leaving = log.slice(index + 1).find(later => later.toState !== null && later.toState !== 'waiting');
+    // A hold and its release while in review keep the review open; it closes when the task leaves review otherwise.
+    const leaving = log.slice(index + 1).find(later => later.toState !== null && later.toState !== 'waiting' && later.toState !== 'held');
     closes.push(leaving ? Date.parse(leaving.at) : to);
   });
   for (const question of questions)
@@ -303,8 +304,9 @@ export function reviewRounds(log: readonly TaskLog[], questions: readonly UserQu
     rounds.push({ from: start, to: end, tokens: 0 });
     start = end;
   }
+  // A Run started after the unit finished (work after its acceptance) is in no round.
   for (const run of launches) {
-    if (!run.tokens) continue;
+    if (!run.tokens || run.started >= to) continue;
     let round = rounds[0]!;
     for (const each of rounds) if (run.started >= each.from) round = each;
     round.tokens += run.tokens.input + run.tokens.cacheRead + run.tokens.cacheWrite + run.tokens.output;

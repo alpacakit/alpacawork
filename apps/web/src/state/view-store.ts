@@ -179,7 +179,7 @@ export function readerFocusReturn(): () => void {
   const { selected, reader } = useViewStore.getState();
   if (!selected || !reader.open) return () => {};
   const element = reader.returnTo?.element ?? null;
-  return () => focusReturn(element, [`[data-open-reader="${CSS.escape(selected)}"]`, `[data-read="${CSS.escape(selected)}"]`]);
+  return () => focusReturn(element, [`[data-open-reader="${CSS.escape(selected)}"]`, `[data-read="${CSS.escape(selected)}"]`, `[data-unit-row="${CSS.escape(selected)}"]`]);
 }
 
 /**
@@ -214,6 +214,10 @@ const queryEdit = (state: Pick<ViewState, "navigationReady" | "queryEditedBefore
 function intent<A extends unknown[]>(change: (...args: A) => void, bound: boolean | ((...args: NoInfer<A>) => boolean) = false) {
   return (...args: A) => navigate(() => change(...args), { bound: typeof bound === "boolean" ? bound : bound(...args) });
 }
+
+/** Whether one analysis place is another only by its look. */
+const otherLookOnly = (before: AnalysisPlace | null, after: AnalysisPlace) =>
+  !!before && JSON.stringify({ ...before, look: after.look }) === JSON.stringify(after);
 
 /** What closes with the reader or a move in it: every surface over it (`surfacesOf`, state/history-step.ts). */
 const NO_SURFACE = { image: null, view: null } as const;
@@ -283,7 +287,7 @@ export const useViewStore = create<ViewState>((set, get) => ({
       ...NO_SURFACE, event: null,
       reader: current.reader.open ? closedReader(current.reader) : current.reader,
     }));
-    focusReturn(returnTo?.element ?? null, [`[data-read="${CSS.escape(shown)}"]`]);
+    focusReturn(returnTo?.element ?? null, [`[data-read="${CSS.escape(shown)}"]`, `[data-unit-row="${CSS.escape(shown)}"]`]);
   }),
   openReader: (id) => get().openTask(id, { pane: "task", reader: true, event: null }),
   closeReader: intent(() => {
@@ -305,9 +309,10 @@ export const useViewStore = create<ViewState>((set, get) => ({
   analysis: null,
   // Coming to the analysis closes the task open and ends a search, as the search's own button does: the analysis takes
   // the list's place. A search begun on it goes back to the list, where its results are (setQuery).
+  // Another look under a task open over the face is no move: the task stays open over it, as the look is no step.
   showAnalysis: intent((analysis) => set((state) => !analysis ? { analysis }
     : { analysis, searchOpen: false, query: "", ...state.query ? queryEdit(state) : {},
-      ...state.reader.open ? { selected: null, ...NO_SURFACE, event: null, reader: closedReader(state.reader) } : {} })),
+      ...state.reader.open && !otherLookOnly(state.analysis, analysis) ? { selected: null, ...NO_SURFACE, event: null, reader: closedReader(state.reader) } : {} })),
   /** The URL shown into the store (state/bootstrap.ts): the only other writer of what the URL holds. */
   applyNavigation: (navigation) => {
     const { project, task, taskAddress, full, pane, path, query, image, view, event, turnSequence, analysis, scene } = navigation;

@@ -181,7 +181,7 @@ a record carries its first line. The rules:
 - `fan-out`: one fingerprint with differing arguments many times in one Run (one by one where one read could do); at: the first, durationMs: their time, count: how many.
 - `queue-wait`: a Run that waited this long before it started; at: when it was made, durationMs: the wait.
 - `failed-run`: a Run that failed or was stopped, with the Run that took its place; at: its start, durationMs: its length.
-- `rework`: work done again by the counts' rule (a send-back, an instruction at review or after acceptance, one in place of answering a question asking to take a result); at: the record, durationMs: until that task next waits for review or is done.
+- `rework`: work done again by the counts' rule (a send-back, an instruction at review or after acceptance, one in place of answering a question asking to take a result); at: the record, durationMs: until that task next puts a result to the user (waits for review or asks to take it) or is done.
 - `idle`: a stretch this long with nothing running, queued, asked or in review in the task or under it; at: its start, durationMs: its length.
 
 An `instruction` mark's `label` is what its sender said it was (`kind`, and `fixes` for a fix), or `null` when it was sent with none.

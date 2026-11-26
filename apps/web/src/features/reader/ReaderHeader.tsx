@@ -54,7 +54,9 @@ export function ReaderHeader({ task, mode, canDock, onFollow, walking, pane, rul
   const parentId = ancestors.at(-1)?.id;
   const behind = useReaderBehind();
   // A walk through the waiting questions goes on by itself: going back to the question before is not this Back.
-  const back = !!behind && !(walking && behind.task !== task.id) || pane !== "task";
+  // Over the analysis face, Back goes back to it (and its list) from any pane.
+  const overAnalysis = useViewStore(state => state.analysis !== null);
+  const back = !!behind && !(walking && behind.task !== task.id) || pane !== "task" || overAnalysis;
   return (
     // On a phone's sheet the header moves the sheet as its grip does.
     <header {...sheet?.grip} className={`${readerHeadBox(mode)} @container/reader ${ruled ? "border-rule" : "border-transparent"}`}>

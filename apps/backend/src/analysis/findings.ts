@@ -7,7 +7,7 @@ import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 import type { AnalysisEvidence, AnalysisFindingRule } from '@alpacawork/contract/analysis';
 import { analysisFindingRules } from '@alpacawork/contract/analysis';
 import { questionsOf } from '@alpacawork/raw/questions';
-import { prLinks, taskOutcome, userQuestions } from './rules.js';
+import { prLinks, questionKind, taskOutcome, userQuestions } from './rules.js';
 import { iso, segments, unionMs, type Interval, type TraceRecords, type TraceRun, type TraceStep } from './timeline.js';
 
 export type Threshold = { value: number; unit: 'minutes' | 'count' };
@@ -242,7 +242,7 @@ const rules: Record<AnalysisFindingRule, Rule> = {
    * Work done again, by the counts' rule (rules.ts taskOutcome, as `analysis task` counts sendBacks,
    * instructionsAtReview and instructionsAfterAccept): a result sent back, an instruction at review or after acceptance,
    * and an instruction given in place of answering a question asking to take a result. Its time runs until the task the
-   * record is on next waits for review or is done.
+   * record is on next puts a result to the user (waits for review, or asks to take it) or is done.
    */
   rework: (records, window) => {
     const [root, ...below] = records.tasks, own = userQuestions(root!.log);
@@ -254,8 +254,10 @@ const rules: Record<AnalysisFindingRule, Rule> = {
       const task = records.tasks.find(item => item.log.some(entry => entry.id === id));
       if (!task) return [];
       const index = task.log.findIndex(entry => entry.id === id), at = Date.parse(task.log[index]!.at), question = replaced.get(id);
+      // It runs until the task next puts a result to the user (a submit for review, or a question asking to take it) or is done.
       const next = task.log.slice(index + 1).find(later => later.toState === 'waiting' || later.toState === 'done' ||
-        later.stage?.baseState === 'waiting' || later.stage?.baseState === 'done');
+        later.stage?.baseState === 'waiting' || later.stage?.baseState === 'done' ||
+        later.kind === 'asked' && later.askedTo === null && questionKind(later.decide ?? []).accept);
       return [{ rule: 'rework' as const, anchor: id, at, durationMs: Math.max(0, (next ? Date.parse(next.at) : window.to) - at),
         lane: taskLane(task.id), count: null, source: 'recorded' as const,
         evidence: [logEvidence(records, task.id, id), ...question ? [question] : []] }];

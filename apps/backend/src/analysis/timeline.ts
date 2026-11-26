@@ -96,12 +96,17 @@ export function isOpen(records: TraceRecords) {
   return records.runs.some(isMoving) || (state !== 'done' && state !== 'stopped');
 }
 
-/** The scope's whole period: from the root's creation to now while it can change, else to its last record. */
+const MOVES: ReadonlySet<string> = new Set(['request_accepted', 'review_sent_back', 'answered', 'asked', 'question_withdrawn', 'review_approved']);
+/**
+ * The scope's whole period: from the root's creation to now while it can change, else to the last thing that moved it
+ * (a change of state, an instruction, an answer, a question, a Run): a comment or a values edit after the end does not
+ * stretch it with idle time.
+ */
 export function wholePeriod(records: TraceRecords): Interval {
   const from = Math.min(...records.tasks.map(task => task.created), ...records.runs.map(run => run.created));
   if (isOpen(records)) return { from, to: Math.max(from, records.now) };
   let to = from;
-  for (const task of records.tasks) for (const entry of task.log) to = Math.max(to, Date.parse(entry.at));
+  for (const task of records.tasks) for (const entry of task.log) if (MOVES.has(entry.kind) || entry.toState !== null) to = Math.max(to, Date.parse(entry.at));
   for (const run of records.runs) to = Math.max(to, run.ended ?? run.started ?? run.created);
   return { from, to };
 }
@@ -381,7 +386,7 @@ const stepAt = (step: TraceStep): NonNullable<StepAt> => ({ step: step.n, tool: 
   from: step.from === null ? null : iso(step.from), to: step.to === null ? null : iso(step.to) });
 
 /** The situation at `at`: each task's state, the Runs running and their steps, the queue, the open questions, the last history lines. */
-export function situationAt(records: TraceRecords, at: number): Omit<AnalysisAtView, 'head' | 'url'> {
+export function situationAt(records: TraceRecords, at: number): Omit<AnalysisAtView, 'head' | 'url' | 'part'> {
   const shown = shownTasks(records);
   records = { ...records, tasks: records.tasks.filter(task => shown.has(task.id)), runs: records.runs.filter(run => shown.has(run.task)) };
   const tasks = records.tasks.flatMap(task => { const state = stateAt(task, at); return state === null ? [] : [{ task: task.id, title: task.title, state }]; });

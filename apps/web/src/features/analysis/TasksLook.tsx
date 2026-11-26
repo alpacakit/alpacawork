@@ -38,7 +38,9 @@ export const TasksLook = memo(function TasksLook({ view, span, root, days, open,
   const ever = whole ? null : view.ever;
   const time = accepted.time, you = time.review + time.answer, total = you + time.ai + time.other;
   const project = useViewStore(state => state.project);
-  const changes = useChangeMarks(useChanges(project, span).data, view.head.timeZone);
+  const changeRead = useChanges(project, span);
+  // Another project's or span's changes are never drawn on these charts while this one's are read.
+  const changes = useChangeMarks(changeRead.isPlaceholderData ? undefined : changeRead.data, view.head.timeZone);
 
   const countGap = before ? delta("tasks", now.passed, before.passed) : null;
   const shareGap = before ? shareDelta(now.share, before.share) : null;
@@ -202,7 +204,7 @@ export const TasksLook = memo(function TasksLook({ view, span, root, days, open,
     <ChartHead />
     {changes.length > 0 && <ChangeLegend changes={changes} />}
     {rows}
-    <Causes accepted={accepted} />
+    <Causes accepted={accepted} open={open} />
     <TasksBreakdown span={span} root={root} open={open} />
     {/* Every name the look shows, in cards in the order the rows show them. */}
     <Rules>
@@ -267,7 +269,17 @@ function useChangeMarks(view: ChangesView | undefined, zone: string): ChangeMark
   if (!view) return [];
   const day = new Intl.DateTimeFormat("en-CA", { timeZone: zone, year: "numeric", month: "2-digit", day: "2-digit" });
   return view.changes.map(change => ({ day: day.format(new Date(change.at)),
-    words: change.changes.map(each => [t(`change.${each.what}`), each.name, each.to ?? t("change.gone")].filter(Boolean).join(" ")).join(t("sep")) }));
+    words: change.changes.map(each => changeWords(each, t)).join(t("sep")) }));
+}
+/**
+ * One change in words: a skill or an instruction file by its name (its versions are digests, which say nothing), the
+ * others from what to what.
+ */
+function changeWords(change: ChangesView["changes"][number]["changes"][number], t: (key: string, options?: Record<string, unknown>) => string) {
+  const what = t(`change.${change.what}`);
+  if (change.what === "skill" || change.what === "instruction-file")
+    return t(change.from === null ? "change.added" : change.to === null ? "change.removed" : "change.updated", { what, name: change.name ?? "" });
+  return t("change.fromTo", { what, from: change.from ?? "—", to: change.to ?? "—" });
 }
 function ChangeLegend({ changes }: { changes: ChangeMark[] }) {
   const { t } = useTranslation("analysis");

@@ -19,6 +19,7 @@ const LEAST = 5 * MINUTE;
 
 /** The window around a finding: its own time, with a fifth of it (and at least a few minutes) on each side. */
 export function windowAround(at: number, length: number, whole: Window): Window {
+  at = Math.min(Math.max(at, whole.from), whole.to);
   const pad = Math.max(length / 5, 5 * MINUTE), from = Math.max(whole.from, at - pad), to = Math.min(whole.to, at + length + pad);
   return to - from >= LEAST ? { from, to } : { from: Math.max(whole.from, at - LEAST / 2), to: Math.min(whole.to, at + LEAST / 2) };
 }
@@ -38,12 +39,9 @@ export function zoomed(window: Window, factor: number, at: number, whole: Window
 export function Timeline({ task, trace, findings }: { task: string; trace: TraceView; findings: Finding[] }) {
   const { t } = useTranslation("analysis");
   const zone = trace.head.timeZone;
-  // The whole task: from its start to its last record (a task that can still change reads on to now, with nothing after).
-  const whole = useMemo(() => {
-    const from = Date.parse(trace.head.from);
-    const last = Math.max(...trace.marks.map(mark => Date.parse(mark.at)), ...trace.spans.map(span => Date.parse(span.to ?? trace.head.to)), from);
-    return { from, to: Math.max(last, from + LEAST) };
-  }, [trace]);
+  // The whole task, as the trace reads it: to now while it can change, else to the last thing that moved it.
+  const whole = useMemo(() => ({ from: Date.parse(trace.head.from), to: Math.max(Date.parse(trace.head.to), Date.parse(trace.head.from) + LEAST) }),
+    [trace.head.from, trace.head.to]);
   const scene = useViewStore(state => state.scene);
   const finding = findings.find(each => each.id === scene?.finding) ?? null;
   const [window, setWindow] = useState<Window>(whole);
@@ -57,12 +55,13 @@ export function Timeline({ task, trace, findings }: { task: string; trace: Trace
   const steps = window.to - window.from <= STEPS_WITHIN;
   const detail = useTrace(task, { from: new Date(window.from).toISOString(), to: new Date(window.to).toISOString() }, true, steps);
   const shown = steps && detail.data && !detail.isPlaceholderData ? detail.data : trace;
-  const setAt = (ms: number) => useViewStore.getState().setScene({ finding: scene?.finding ?? null, at: new Date(Math.round(ms / 1000) * 1000).toISOString() });
-  // The events one steps between: every mark and the start of every span, in time order.
-  const events = useMemo(() => [...new Set([...trace.marks.map(mark => Date.parse(mark.at)), ...trace.spans.map(span => Date.parse(span.from))])].sort((a, b) => a - b), [trace]);
+  const setAt = (ms: number) => useViewStore.getState().setScene({ finding: scene?.finding ?? null, at: new Date(Math.round(ms)).toISOString() });
+  // The events one steps between: every mark and the start of every span drawn (the steps too, where they are), in time order.
+  const events = useMemo(() => [...new Set([...trace.marks, ...shown.marks].map(mark => Date.parse(mark.at))
+    .concat([...trace.spans, ...shown.spans].map(span => Date.parse(span.from))))].sort((a, b) => a - b), [trace, shown]);
   const step = (direction: -1 | 1) => {
     const from = shownAt ?? (direction > 0 ? whole.from - 1 : whole.to + 1);
-    const next = direction > 0 ? events.find(ms => ms > from + 999) : [...events].reverse().find(ms => ms < from - 999);
+    const next = direction > 0 ? events.find(ms => ms > from) : [...events].reverse().find(ms => ms < from);
     if (next === undefined) return;
     setAt(next);
     if (next < window.from || next > window.to) setWindow(zoomed({ from: next - (window.to - window.from) / 2, to: next + (window.to - window.from) / 2 }, 1, next, whole));
@@ -71,22 +70,73 @@ export function Timeline({ task, trace, findings }: { task: string; trace: Trace
   return <section data-timeline className="mt-10 scroll-mt-4">
     <h3 className="mb-3 text-heading font-semibold">{t("timeline.title")}</h3>
     <Parts trace={trace} />
-    {finding && <p className="mt-5 font-semibold">{t(`rule.${finding.rule}`)}<span className="ms-2 font-normal text-muted">{duration(finding.durationMs)}</span></p>}
+    {finding && <FindingSteps finding={finding} findings={findings} onAt={at === Date.parse(finding.at)} />}
     <div className="mt-4 flex flex-wrap items-center gap-2">
       <b className="me-auto text-base font-semibold tabular-nums">{shownAt !== null ? instant(new Date(shownAt).toISOString(), zone) : t("timeline.pick")}
         {shownAt !== null && <span className="ms-2 text-xs font-normal text-soft">{t("timeline.since", { time: duration(shownAt - whole.from) })}</span>}</b>
-      <Button variant="outline" onClick={() => step(-1)}><Icon name="left" className="size-3.5" />{t("timeline.previous")}</Button>
-      <Button variant="outline" onClick={() => step(1)}>{t("timeline.next")}<Icon name="right" className="size-3.5" /></Button>
-      <Button variant="outline" aria-label={t("timeline.zoomOut")} title={t("timeline.zoomOut")} onClick={() => zoom(2)}>−</Button>
-      <Button variant="outline" aria-label={t("timeline.zoomIn")} title={t("timeline.zoomIn")} onClick={() => zoom(0.5)}>+</Button>
-      <Button variant="outline" onClick={() => setWindow(whole)}>{t("timeline.whole")}</Button>
+      <span className="flex gap-2">
+        <Button variant="outline" onClick={() => step(-1)}><Icon name="left" className="size-3.5" />{t("timeline.previous")}</Button>
+        <Button variant="outline" onClick={() => step(1)}>{t("timeline.next")}<Icon name="right" className="size-3.5" /></Button>
+      </span>
+      <span className="flex gap-2">
+        <Button variant="outline" aria-label={t("timeline.zoomOut")} title={t("timeline.zoomOut")} onClick={() => zoom(2)}>−</Button>
+        <Button variant="outline" aria-label={t("timeline.zoomIn")} title={t("timeline.zoomIn")} onClick={() => zoom(0.5)}>+</Button>
+        <Button variant="outline" onClick={() => setWindow(whole)}>{t("timeline.whole")}</Button>
+      </span>
     </div>
+    {at !== null && <Moment task={task} at={scene!.at!} />}
     <Lanes trace={shown} lanes={trace.lanes} window={window} findings={findings} at={shownAt} zone={zone}
       onDrag={ms => setDragging(ms)} onLetGo={ms => { setDragging(null); setAt(ms); }} />
     {!steps && <p className="mt-1 text-xs text-soft">{t("timeline.stepsHidden")}</p>}
     {steps && shown.cursor && <p className="mt-1 text-xs text-soft">{t("timeline.partial")}</p>}
+    <Legend />
     {at !== null && <Situation task={task} at={scene!.at!} zone={zone} />}
   </section>;
+}
+
+/**
+ * The finding the timeline was entered from, while its instant is the one shown, with the way to the finding before or
+ * after it (in the causes' order), so the next place is a press away, not a scroll back to the list.
+ */
+function FindingSteps({ finding, findings, onAt }: { finding: Finding; findings: Finding[]; onAt: boolean }) {
+  const { t } = useTranslation("analysis");
+  const at = findings.indexOf(finding);
+  const go = (to: Finding | undefined) => { if (to) useViewStore.getState().setScene({ finding: to.id, at: to.at }); };
+  return <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2">
+    <p className={cn("me-auto min-w-0 font-semibold", !onAt && "text-muted")}>
+      <span className="me-2 text-xs font-normal text-soft">{at + 1}/{findings.length}</span>{t(`rule.${finding.rule}`)}
+      <span className="ms-2 font-normal text-muted">{duration(finding.durationMs)}</span>
+      {finding.line && <span dir="auto" className="block text-xs font-normal text-muted line-clamp-2">「{finding.line}」</span>}</p>
+    <span className="flex gap-2">
+      <Button variant="outline" disabled={at <= 0} onClick={() => go(findings[at - 1])}><Icon name="up" className="size-3.5" />{t("timeline.previousFinding")}</Button>
+      <Button variant="outline" disabled={at >= findings.length - 1} onClick={() => go(findings[at + 1])}>{t("timeline.nextFinding")}<Icon name="down" className="size-3.5" /></Button>
+    </span>
+  </div>;
+}
+
+/** The instant shown in one line, over the lanes: its part of the wall time, the AIs running and the questions open. */
+function Moment({ task, at }: { task: string; at: string }) {
+  const { t } = useTranslation("analysis");
+  const view = useAt(task, at).data;
+  if (!view) return <p className="mt-3 h-5" />;
+  return <p data-moment="" className="mt-3 flex flex-wrap items-center gap-x-3 text-xs text-muted">
+    {view.part && <span className="inline-flex items-center"><Square className={PART_COLOR[view.part]} /><b className="font-semibold text-ink">{t(`part.${view.part}`)}</b></span>}
+    <span>{t("timeline.runningCount", { count: view.runs.length })}</span>
+    <span>{t("timeline.openCount", { count: view.questions.length })}</span>
+  </p>;
+}
+
+/** What the lanes' colours are, by the kinds of span and mark drawn (SPAN_LOOKS, MARK_COLOR). */
+function Legend() {
+  const { t } = useTranslation("analysis");
+  const items: [string, string, "bar" | "mark"][] = [["bg-working", t("span.run"), "bar"], ["bg-error", t("legend.failedRun"), "bar"],
+    ["bg-turn", t("span.question"), "bar"], ["bg-new", t("span.queued"), "bar"], ["bg-ink/70", t("span.step"), "mark"],
+    ["bg-turn", t("mark.instruction"), "mark"], ["bg-done", t("mark.answer"), "mark"], ["bg-reworked", t("mark.question-withdrawn"), "mark"]];
+  return <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">{items.map(([color, name, shape]) =>
+    <li key={name} className="inline-flex items-center">
+      <i aria-hidden className={cn("me-1.5 inline-block rounded-[1px]", color, shape === "bar" ? "h-2 w-3" : "h-2.5 w-0.5")} />{name}</li>)}
+    <li className="inline-flex items-center"><i aria-hidden className="me-1.5 inline-block h-1 w-3 rounded-[1px] bg-working" />{t("legend.state")}</li>
+  </ul>;
 }
 
 /** The wall time of the task and those under it, split into parts that do not overlap, each with its time and share. */
@@ -105,11 +155,18 @@ function Parts({ trace }: { trace: TraceView }) {
   </div>;
 }
 
+/** The step between round instants on the axis of a window: about five of them. */
+const axisStep = (window: Window) => [MINUTE, 5 * MINUTE, 10 * MINUTE, 15 * MINUTE, 30 * MINUTE, HOUR, 2 * HOUR, 3 * HOUR, 6 * HOUR, 12 * HOUR, 24 * HOUR]
+  .find(each => (window.to - window.from) / each <= 6) ?? 48 * HOUR;
+/** A tick's words: the day for a step of a day or more; else the clock, with the day where the day changes (and first). */
+function tickWords(ticks: number[], written: (at: number) => string, step: number, tick: number) {
+  const at = ticks.indexOf(tick), [day, clock] = written(at).split(" ");
+  if (step >= 24 * HOUR) return day;
+  return at === 0 || written(at - 1).split(" ")[0] !== day ? `${day} ${clock}` : clock;
+}
 /** Round instants for the axis of a window: about five, on whole minutes, hours or days. */
 function axisTicks(window: Window): number[] {
-  const length = window.to - window.from;
-  const step = [MINUTE, 5 * MINUTE, 10 * MINUTE, 15 * MINUTE, 30 * MINUTE, HOUR, 2 * HOUR, 3 * HOUR, 6 * HOUR, 12 * HOUR, 24 * HOUR]
-    .find(each => length / each <= 6) ?? 48 * HOUR;
+  const step = axisStep(window);
   const out: number[] = [];
   for (let at = Math.ceil(window.from / step) * step; at <= window.to; at += step) out.push(at);
   return out;
@@ -156,11 +213,12 @@ function Lanes({ trace, lanes, window, findings, at, zone, onDrag, onLetGo }: {
     onDrag(msAt(event));
   };
   const lit = at !== null && at >= window.from && at <= window.to;
+  const ticks = axisTicks(window);
   const names = lanes.map(lane => <span key={lane.id} style={{ paddingInlineStart: `${depth(lane) * 0.5}rem` }}
-    className="block h-7 truncate leading-7 text-muted" title={lane.label}>{lane.label}</span>);
+    className="flex h-7 items-center text-[0.6875rem] leading-tight text-muted" title={lane.label}><span className="line-clamp-2">{lane.label}</span></span>);
   return <div className="mt-3 flex gap-x-2 text-xs">
     {/* The lanes' names, beside their tracks, under the axis's height. */}
-    <div className="w-32 flex-none pt-9 narrow:w-16">{names}</div>
+    <div className="w-36 flex-none pt-9 narrow:w-20">{names}</div>
     <div ref={track} role="slider" tabIndex={0} aria-label={t("timeline.seek")} aria-valuemin={window.from} aria-valuemax={window.to}
       aria-valuenow={at ?? window.from} aria-valuetext={at !== null ? instant(new Date(at).toISOString(), zone) : undefined}
       onPointerDown={press} onPointerMove={event => { if (event.currentTarget.hasPointerCapture(event.pointerId)) onDrag(msAt(event)); }}
@@ -170,12 +228,12 @@ function Lanes({ trace, lanes, window, findings, at, zone, onDrag, onLetGo }: {
       className="relative min-w-0 flex-1 cursor-col-resize touch-none rounded-xs focus-visible:outline-2 focus-visible:outline-ring">
       {/* The axis: round instants, and the findings by their numbers. */}
       <div className="relative h-9 border-b border-rule">
-        {axisTicks(window).map(tick => <span key={tick} style={{ left: `${left(tick)}%` }} className="absolute bottom-0.5 -translate-x-1/2 whitespace-nowrap text-soft tabular-nums">
-          {instant(new Date(tick).toISOString(), zone).split(" ")[length > 20 * HOUR ? 0 : 1]}</span>)}
+        {ticks.map(tick => <span key={tick} style={{ left: `${left(tick)}%` }} className="absolute bottom-0.5 -translate-x-1/2 whitespace-nowrap text-soft tabular-nums">
+          {tickWords(ticks, at => instant(new Date(ticks[at]!).toISOString(), zone), axisStep(window), tick)}</span>)}
         {findings.map((finding, n) => { const ms = Date.parse(finding.at); return ms >= window.from && ms <= window.to &&
           <button key={finding.id} type="button" style={{ left: `${left(ms)}%` }} onPointerDown={event => event.stopPropagation()}
             onClick={() => useViewStore.getState().setScene({ finding: finding.id, at: finding.at })}
-            className="absolute top-0 grid size-4.5 -translate-x-1/2 place-items-center rounded-full bg-turn text-[0.625rem] font-semibold text-bg"
+            className="absolute top-0 grid size-5.5 -translate-x-1/2 place-items-center rounded-full bg-turn text-[0.6875rem] font-semibold text-bg"
             {...tip(`${n + 1} ${t(`rule.${finding.rule}`)} ${duration(finding.durationMs)}`)}>{n + 1}</button>; })}
       </div>
       {lanes.map(lane => {
@@ -236,12 +294,13 @@ function Situation({ task, at, zone }: { task: string; at: string; zone: string 
       </li>)}</ul> : <p className="text-soft">{t("timeline.noQuestions")}</p>}
       <h5 className="mt-4 mb-1 text-xs text-soft">{t("timeline.history")}</h5>
       <ul className="space-y-1">{view.history.filter(line => line.kind !== "request_labeled").map(line => <li key={line.log} className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-2 text-xs">
-        <span className="text-soft tabular-nums">{instant(line.at, zone)}</span><span dir="auto" className="truncate">{line.title ?? historyWords(line.kind, t)}</span></li>)}</ul>
+        <span className="text-soft tabular-nums">{instant(line.at, zone)}</span><span dir="auto" className="line-clamp-2">{line.title ?? historyWords(line.kind, t)}</span></li>)}</ul>
     </div>
   </div>;
 }
 
 /** A history line with no title, named by its kind as the timeline's marks name it where one does. */
 const HISTORY_KINDS: Record<string, string> = { question_withdrawn: "mark.question-withdrawn", answered: "mark.answer", request_accepted: "mark.instruction",
-  review_sent_back: "mark.instruction", reported: "mark.report", moved: "mark.moved", body_updated: "mark.values-changed" };
+  review_sent_back: "mark.instruction", reported: "mark.report", moved: "mark.moved", body_updated: "mark.values-changed", linked: "history.linked",
+  created: "history.created", asked: "span.question", review_approved: "history.accepted", responsible_changed: "mark.assigned", placement_changed: "mark.assigned" };
 const historyWords = (kind: string, t: Say) => HISTORY_KINDS[kind] ? t(HISTORY_KINDS[kind]) : kind;
