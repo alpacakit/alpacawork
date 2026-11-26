@@ -43,7 +43,7 @@ const accessExamples: Readonly<Record<string, readonly Example[]>> = {
     example('task.new', '--kind project', { kind: 'project' }),
   ],
   'task.update': [
-    example('task.update', '--title / --values-file', { title: 'Title', values: {} }),
+    example('task.update', '--title / --values-file / --analysis-subject', { title: 'Title', values: {}, analysisSubject: { kind: 'cause', key: 'idle' } }),
     example('task.update', '--cwd / --color / --from-user / --no-from-user', { cwd: '', color: '#39659b', fromUser: false }),
   ],
   'task.report': [
