@@ -25,16 +25,20 @@ export const AgentMark = memo(function AgentMark({ name, model, kind: given, lab
   if (!who) return null;
   const logo = who.kind ? AGENT_LOGOS[who.kind] : undefined;
   const words = label ? name ?? model : undefined;
-  const a11y = { role: words ? "img" : undefined, "aria-label": words, "aria-hidden": words ? undefined : true, title: words } as const;
+  const a11y = { role: words ? "img" : undefined, "aria-label": words, "aria-hidden": words ? undefined : true } as const;
+  // A drawing's own title is what a pointer's tip shows on it.
+  const tip = words && <title>{words}</title>;
   if (logo) return <svg data-agent-mark={who.kind} viewBox="0 0 24 24" fill="currentColor" {...a11y}
     className={cn("inline-block size-[1.15em] flex-none", className)}>
+    {tip}
     {logo.map((path, i) => <path key={i} d={path.d} fill={path.fill} fillRule={path.fillRule} clipRule={path.clipRule} />)}
   </svg>;
   const letters = agentLetters(who.name);
   // One drawing, circle and letters: the letters' middle is the circle's (their capitals' middle at 0.35em below the
   // centre line), whatever font the page has.
   return <svg data-agent-mark={letters} viewBox="0 0 24 24" {...a11y} className={cn("inline-block size-[1.15em] flex-none select-none", className)}>
+    {tip}
     <circle cx={12} cy={12} r={12} fill={agentColor(who.name, who.kind)} />
-    <text x={12} y={12} dy="0.35em" textAnchor="middle" fontSize={11} fontWeight={600} fill="#fff" letterSpacing={-0.2}>{letters}</text>
+    <text x={12} y={12} dy="0.35em" textAnchor="middle" fontSize={13} fontWeight={600} fill="#fff" letterSpacing={-0.4}>{letters}</text>
   </svg>;
 });

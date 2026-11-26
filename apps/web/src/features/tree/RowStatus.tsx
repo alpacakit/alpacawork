@@ -295,7 +295,7 @@ export function RowKindWord({ task }: { task: Task }) {
 function StoppedAgent({ task }: { task: Task }) {
   const people = usePeopleFor(task.id, true);
   const owner = crewOf(task.id, people).responsible;
-  return owner ? <AgentMark name={owner.profileKey} label className="size-[1.1em] flex-none self-center opacity-50 grayscale" /> : null;
+  return owner ? <AgentMark name={owner.profileKey} label className="size-[1.1em] flex-none self-center opacity-65 grayscale" /> : null;
 }
 
 function KindWord({ task }: { task: Task }) {
