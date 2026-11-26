@@ -50,7 +50,9 @@ async function fixture(conversation: CoordinatorConversation = answered()) {
   const server = new ServerConversation('/fixture'); let current: CoordinatorConversation = conversation, failure = 0;
   vi.spyOn(server, 'read').mockImplementation(() => current);
   vi.spyOn(server, 'ask').mockImplementation(() => current);
-  vi.spyOn(server, 'warm').mockImplementation(() => current);
+  vi.spyOn(server, 'messageStatus').mockImplementation(id => ({
+    id, status: current.turns.find(turn => turn.id === id)?.status ?? 'missing',
+  }));
   vi.spyOn(server, 'clear').mockImplementation(() => { current = { ...empty(), id: 'cleared-conversation' }; return current; });
   vi.spyOn(server, 'withdraw').mockImplementation(() => current); vi.spyOn(server, 'sendNow').mockImplementation(() => current);
   vi.spyOn(server, 'markSeen').mockImplementation(async (_id, seen) => ({ conversationId: current.id, seen: [...seen] }));
