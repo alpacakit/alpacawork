@@ -27,9 +27,9 @@
     "barUnknown": "Limites de uso da IA: não foi possível ler os limites de {{agent}}",
     "barUnlimited": "Limites de uso da IA: nenhum limite se aplica a {{agent}} agora",
     "none": "Nenhum limite agora",
+    "openStack": "Abrir “{{title}}” nas configurações",
     "place": {
       "model": "{{role}} ({{model}})",
-      "note": "O que o cabeçalho mostra depende da ordem em “{{title}}” nas configurações e do uso.",
       "notListed": "Não está em “{{title}}”"
     },
     "readAgo_one": "Atualizado há {{count}} min",
