@@ -85,8 +85,8 @@ export function Timeline({ task, trace, findings }: { task: string; trace: Trace
         <Button variant="outline" onClick={() => step(1)}>{t("timeline.next")}<Icon name="right" className="size-3.5" /></Button>
       </span>
       <span className="flex gap-2">
-        <Button variant="outline" className="min-w-10" aria-label={t("timeline.zoomOut")} title={t("timeline.zoomOut")} onClick={() => zoom(2)}>−</Button>
-        <Button variant="outline" className="min-w-10" aria-label={t("timeline.zoomIn")} title={t("timeline.zoomIn")} onClick={() => zoom(0.5)}>+</Button>
+        <Button variant="outline" className="narrow:min-w-10" aria-label={t("timeline.zoomOut")} title={t("timeline.zoomOut")} onClick={() => zoom(2)}>−</Button>
+        <Button variant="outline" className="narrow:min-w-10" aria-label={t("timeline.zoomIn")} title={t("timeline.zoomIn")} onClick={() => zoom(0.5)}>+</Button>
         <Button variant="outline" onClick={() => setWindow(whole)}>{t("timeline.whole")}</Button>
       </span>
     </div>

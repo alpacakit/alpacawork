@@ -25,13 +25,14 @@ export function WorkBand({ work }: { work: Work[] }) {
     <ul>{shown.map(item => <li key={item.id}>
       <button type="button" data-work-row={item.id}
         onClick={event => useViewStore.getState().openTask(item.id, { reader: true, returnTo: event.currentTarget })}
-        className="grid min-h-9 w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 rounded-sm text-start hover:bg-hover narrow:grid-cols-[auto_minmax(0,1fr)]">
+        className="grid min-h-8 w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 rounded-sm text-start hover:bg-hover narrow:items-start narrow:py-1">
         <span className="text-muted">{item.id}</span>
-        <span className="min-w-0">
-          <span dir="auto" className="block truncate">{item.title}</span>
-          <span className="block truncate text-xs text-soft">{subjectWords(item.analysisSubject, t)}</span>
+        {/* One line on a computer (title, then what it is about); two under a finger, what it is about under the title. */}
+        <span className="flex min-w-0 items-baseline gap-x-3 narrow:block">
+          <span dir="auto" className="truncate narrow:block">{item.title}</span>
+          <span className="flex-none truncate text-xs text-soft narrow:block">{subjectWords(item.analysisSubject, t)}</span>
         </span>
-        <span className={cn("text-xs whitespace-nowrap narrow:col-start-2", item.userTurn ? "font-semibold text-turn" : "text-muted")}>
+        <span className={cn("text-xs whitespace-nowrap", item.userTurn ? "font-semibold text-turn" : "text-muted")}>
           {item.userTurn ? t("work.yourTurn") : t(`state.${item.state}`)}</span>
       </button>
     </li>)}</ul>
