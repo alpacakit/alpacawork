@@ -58,7 +58,7 @@ import { useConnection } from "@/data/connection";
 import { PullMark, usePullToRefresh } from "./pull-refresh";
 import { ReadFailure, ReadNote } from "@/components/ui/loadable";
 import { useDeviceValue } from "@/lib/device-storage";
-import { HeadingAgents, HeadingTokenSpeed, StripTokenSpeed } from "./token-speed";
+import { HeadingAgents, HeadingTokenSpeed, RowTokenSpeed, SPEED_LANE, SpeedLane, speedLane } from "./token-speed";
 import { isOpen, SECTION_START, sectionFold, sectionsOpen, storedWith } from "./section-fold";
 import { useOfflineShown } from "@/data/reach";
 import { useListEntrance } from "./list-entrance";
@@ -124,6 +124,8 @@ type Group = { nodes: Node[] };
 type Shared = {
   drawing: DrawingSource;
   index: TaskIndex; people: PeopleIndex; timePeople: TimePeopleIndex | null; narrow: boolean; selected: string | null; screen: number; lead: number;
+  /** The speed column's width at the title column's end, within `lead`; 0 when there is none. */
+  lane: number;
   /** The strips are always beside the rows on a wide sheet; on a narrow one only when asked for (Time). */
   strips: boolean;
 };
@@ -348,7 +350,9 @@ export function TimeTree({ entering = false }: { entering?: boolean }) {
   const startAt = (ms: number) => Math.min(earliest, now - ms) - 5 * MINUTE;
   const list = useListWidth(box, 1200), { width: sheet, zoomWidth } = list;
   // The title column: narrower when the sheet itself is narrow (the detail is open beside it), so the time keeps its room.
-  const lead = narrow ? 0 : Math.min(titleColumnWidth(sheet), Math.max(0, sheet - 120));
+  // Beside it, before the time, the column of the In progress rows' output speed (speedLane).
+  const lane = narrow || !strips ? 0 : speedLane(sheet);
+  const lead = narrow ? 0 : Math.min(titleColumnWidth(sheet) + lane, Math.max(0, sheet - 120));
   // The width the zoom is for (useStrip): a reader past half the screen only hides the strip's oldest part.
   const laid = Math.max(sheet, zoomWidth) - lead;
   // Hidden strips need only the clock-width minimum, not each row's end prediction.
@@ -403,8 +407,8 @@ export function TimeTree({ entering = false }: { entering?: boolean }) {
   const keys = (event: KeyboardEvent<HTMLDivElement>) => stripKeys(event, strip, showAll,
     (box.current?.getBoundingClientRect().left ?? 0) + lead + strip.screen / 2);
   const shared = useMemo<Shared>(() => ({ drawing, index, people, timePeople, narrow, selected: readerOpen ? selected : null,
-    screen: strip.screen, lead, strips: strips && axisReady }),
-    [drawing, index, people, timePeople, narrow, readerOpen, selected, strip.screen, lead, strips, axisReady]);
+    screen: strip.screen, lead, lane, strips: strips && axisReady }),
+    [drawing, index, people, timePeople, narrow, readerOpen, selected, strip.screen, lead, lane, strips, axisReady]);
   const stripRef = useRef(strip);
   stripRef.current = strip;
   const showTime = useMemo(() => (start: number, end: number) => stripRef.current.show(start, end), []);
@@ -528,9 +532,9 @@ function SectionHead({ section, first, shared, onToggle }: { section: Section; f
   const { t } = useTranslation("tree");
   const name = { doing: t("home.running"), error: t("home.error"), review: t("home.turn"), awaited: t("home.awaited"), held: t("home.held"), todo: t("home.todo"), done: t("home.finished") }[section.section];
   return <div data-section={section.section} data-motion-key={`section:${section.section}`} className="flex border-b border-rule">
-    <div style={frozen(shared)} className={cn("sticky left-0 flex h-8 bg-bg pl-list-text items-end pr-2 pb-1.5 text-base font-semibold text-ink narrow:h-11 narrow:items-center narrow:pb-0",
+    <div style={frozen(shared)} className={cn("sticky left-0 flex h-8 bg-bg pl-list-text items-end pb-1.5 text-base font-semibold text-ink narrow:h-11 narrow:items-center narrow:pb-0",
       !first && "h-12 pt-4 narrow:h-13 narrow:pt-2", columnEdge(shared))}>
-      <h2 className="m-0 flex min-w-0 flex-1 text-base font-semibold">
+      <h2 className="m-0 flex min-w-0 flex-1 pr-2 text-base font-semibold">
         <button type="button" aria-expanded={section.open} onClick={onToggle} className={cn(HEAD_LINE, HEAD_PRESS, "flex-none")}>
           {/* The square stands on the list's mark line, where a row's unread dot does; the name starts on the rows' icons. */}
           <span aria-hidden="true" className="relative -mr-1.5 flex w-0 flex-none items-center self-stretch">
@@ -543,8 +547,8 @@ function SectionHead({ section, first, shared, onToggle }: { section: Section; f
         {section.section === "done" && <TodayMarks />}
         {section.section === "doing" && <span className={cn(HEAD_LINE, "ml-auto flex-none narrow:pr-1.5")}><HeadingAgents tops={sectionTops(section)} narrow={shared.narrow} /></span>}
       </h2>
+      {shared.lane > 0 && <SpeedLane width={shared.lane}>{section.section === "doing" && <HeadingTokenSpeed tops={sectionTops(section)} compact={shared.lane < SPEED_LANE} />}</SpeedLane>}
     </div>
-    {section.section === "doing" && !shared.narrow && shared.strips && <HeadingTokenSpeed tops={sectionTops(section)} lead={shared.lead} className="items-end pb-1.5" />}
   </div>;
 }
 
@@ -569,7 +573,7 @@ const sameRowScope = (a: TaskRowProps, b: TaskRowProps) => {
   if (id !== b.node.task.id || a.node.task !== b.node.task ||
     a.node.lifted !== b.node.lifted || a.node.row !== b.node.row || a.node.dated !== b.node.dated || !sameRowItems(a.node.path, b.node.path)) return false;
   const x = a.shared, y = b.shared;
-  if (!sameDrawingSource(x.drawing, y.drawing) || x.narrow !== y.narrow || x.screen !== y.screen || x.lead !== y.lead || x.strips !== y.strips ||
+  if (!sameDrawingSource(x.drawing, y.drawing) || x.narrow !== y.narrow || x.screen !== y.screen || x.lead !== y.lead || x.lane !== y.lane || x.strips !== y.strips ||
     (x.selected === id) !== (y.selected === id) ||
     (a.visibleRows?.has(id) ?? true) !== (b.visibleRows?.has(id) ?? true)) return false;
   // Node props and viewport membership live outside Shared and must be checked first.
@@ -666,8 +670,8 @@ const TaskRow = memo(function TaskRow({ node, shared, visibleRows }: TaskRowProp
                 is a press of its own; the press's cover lies over the rest of it, so a press there still opens the task. */}
             <RowEnd id={endId} task={task} childCount={progress ? `${progress.done}/${progress.total}` : null} />
           </div>}
+          {shared.lane > 0 && <SpeedLane width={shared.lane} className="items-center"><RowTokenSpeed task={task} compact={shared.lane < SPEED_LANE} /></SpeedLane>}
         </div>
-        {!narrow && shared.strips && <StripTokenSpeed task={task} lead={shared.lead} height={h} />}
         {shared.strips && (visibleRows === null || visibleRows.has(task.id)
           ? <RowStrip node={node} shared={shared} height={h} title={title} enter={enter} />
           : <EmptyStrip height={h} />)}
