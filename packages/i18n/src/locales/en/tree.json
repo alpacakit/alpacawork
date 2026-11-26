@@ -73,8 +73,10 @@
     "restore": "Restore"
   },
   "speed": {
-    "idle": "No output {{length}}",
-    "idleShort": "Idle",
+    "help": "How to read the output speed",
+    "helpBars": "The bars show the last minute in 5-second steps.",
+    "helpSpeed": "How fast the working agents output tokens (last 5 seconds' average).",
+    "helpZero": "A 0 that stays may mean the agent is waiting for a command or the like to finish (a screen recording, a GitHub run). Open the task to see what it waits on.",
     "perSecond": "/s",
     "rowTip": "Output speed {{rate}} tok/s (last 5 seconds' average)\nLast minute: average {{mean}}, peak {{peak}}",
     "totalTip_one": "Total output speed of {{count}} task in progress (last 5 seconds' average)",
