@@ -76,7 +76,9 @@
     "perSecond": "/s",
     "rowTip": "输出速度 {{rate}} tok/s（最近 5 秒平均）\n最近 1 分钟：平均 {{mean}}，最高 {{peak}}",
     "totalTip_other": "{{count}} 个进行中任务的输出速度合计（最近 5 秒平均）",
-    "unit": "tok/s"
+    "unit": "tok/s",
+    "waited": "正在运行 {{name}}",
+    "waitedTip": "正在等待 {{name}} 结束（{{length}}）。在此期间智能体没有输出。\n{{line}}"
   },
   "status": {
     "cause": {

@@ -10,6 +10,7 @@ import { RegionSkeleton } from "@/components/ui/skeleton";
 import { useWaited } from "@/components/ui/loadable";
 import { reducedMotion } from "@/lib/motion";
 import { keepPressedRow } from "@/features/reader/reading-position";
+import { toolName } from "@/domain/run-activity";
 
 /* Hallmark · component: an agent's work line and its steps · genre: modern-minimal · theme: the app's own tokens (ink,
  * soft, muted, error, working, line) · states: folded (one line: the moving mark and the agent's words for its step,
@@ -17,9 +18,6 @@ import { keepPressedRow } from "@/features/reader/reading-position";
  * full) · a step done (✓), failed (red ✗) or of an unknown outcome (?) · reading · not readable · reduced motion (the
  * mark's three dots stand still) */
 
-/** Codex names its items by their type; said as the tool names other agents give. Any other tool keeps its own name. */
-const ITEM_NAMES: Record<string, string> = { command_execution: "Bash", file_change: "Edit", web_search: "WebSearch", mcp_tool_call: "MCP", collab_tool_call: "Agent" };
-const toolName = (tool: string) => ITEM_NAMES[tool] ?? tool;
 /** A file's name is at the end of its path: cut short, these lose their start. */
 const atEnd = (kind: string) => kind === "file" || kind === "edit";
 /** What was run, on one line as written: its spaces kept, cut at the end. */
