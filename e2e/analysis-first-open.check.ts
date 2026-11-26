@@ -47,10 +47,18 @@ test("in a short window the share card's picture keeps its size when its code ar
     const frame = card.getByRole("status", { name: "Loading" }).locator("..");
     await expect(frame).toBeVisible();
     await settleMotion(page, card, true);
+    const body = card.locator("[data-analysis-layer]");
+    // [the room kept for the scrollbar, taller than the window]. The room is there while the card waits.
+    const scroll = () => body.evaluate(node => [node.offsetWidth - node.clientWidth, node.scrollHeight > node.clientHeight]);
+    const [barWhileWaiting] = await scroll();
     const waiting = (await frame.boundingBox())!;
     releaseCardCode();
     const picture = card.getByRole("img", { name: /^Work handed to AI/ });
     await expect(picture).toBeVisible();
+    await expect(card.getByRole("button", { name: "Share on X" })).toBeVisible();
+    // The picture and its controls overflow the window, so the bar is really there once they have come.
+    expect(await scroll()).toEqual([barWhileWaiting, true]);
+    expect(barWhileWaiting).toBeGreaterThan(0);
     const drawn = (await picture.boundingBox())!;
     expect([drawn.x, drawn.width, drawn.height]).toEqual([waiting.x, waiting.width, waiting.height]);
   } finally {
