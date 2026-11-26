@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { CoordinatorConversation } from '@alpacawork/backend/test-dist/coordinator/conversation.js';
 import { coordinatorCwd } from '@alpacawork/backend/test-dist/runs/execution-control.js';
-import { messagePart, type View, eventually, records, fixture } from './helpers/coordinator-http-fixture.ts';
+import { messagePart, type View, records, fixture } from './helpers/coordinator-http-fixture.ts';
 
 test('card API runs a real server child without a credential in its own folder, resumes, clears and passes an attachment', async t => {
   const h = await fixture(t);
@@ -63,7 +63,8 @@ test('card API runs a real server child without a credential in its own folder, 
   assert.equal(await httpStatus(oldFile), 200);
   assert.equal((await h.post('/api/coordinator/clear', { conversationId: next.id })).status, 200);
   assert.equal(await httpStatus(oldFile), 404, 'clear revokes the old image');
-  await eventually(() => !existsSync(folder), 'serve sweeps the cleared conversation\'s files');
+  new CoordinatorConversation(h.root).sweepAttachments();
+  assert.equal(existsSync(folder), false, 'maintenance sweeps the cleared conversation’s files');
   assert.equal(await httpStatus(new URL(`/api/coordinator/attachments?conversationId=${next.id}&requestId=${id3}&name=sample.png`, h.url()), {
     method: 'POST', headers: { 'X-Alpacawork-Op-Id': crypto.randomUUID() }, body: image }), 409);
 });
@@ -98,7 +99,8 @@ test('clear removes attachments that were uploaded but never sent', async t => {
   assert.equal(await httpStatus(file), 200);
   assert.equal((await h.post('/api/coordinator/clear', { conversationId: conversation.id })).status, 200);
   assert.equal(await httpStatus(file), 404);
-  await eventually(() => !existsSync(join(h.root, '.alpacawork/coordinator', conversation.id)), 'serve sweeps the draft');
+  new CoordinatorConversation(h.root).sweepAttachments();
+  assert.equal(existsSync(join(h.root, '.alpacawork/coordinator', conversation.id)), false, 'maintenance sweeps the draft');
   await h.restart();
   assert.equal(await httpStatus(new URL(file.pathname + file.search, h.url())), 404);
 });
@@ -246,8 +248,9 @@ test('answer links publish bounded owned snapshots, survive source removal and r
   assert.equal(captureAnswerFiles(h.root, conversation.id, id, `![Screen](${source}/screen.png)`)[0]!.state, 'ready');
   assert.equal((await h.post('/api/coordinator/clear', { conversationId: conversation.id })).status, 200);
   assert.equal(await httpStatus(fileUrl(note.name)), 404);
-  await eventually(() => !existsSync(join(h.root, '.alpacawork/coordinator', conversation.id, 'answers', id)),
-    'serve sweeps the cleared conversation\'s answer files');
+  new CoordinatorConversation(h.root).sweepAttachments();
+  assert.equal(existsSync(join(h.root, '.alpacawork/coordinator', conversation.id, 'answers', id)), false,
+    'maintenance sweeps the cleared conversation’s answer files');
 });
 
 test('answer capture bounds files and counts, ignores code and delivery URLs, and follows linked parents', async t => {

@@ -95,16 +95,21 @@ function turnRows(rows: Row[]): TurnRow[] { return rows as TurnRow[]; }
 
 function coordinatorLane(db: DatabaseSync, store: RunStore, conversation: string, active: readonly CoordinatorRunRecord[]) {
   const sessions = active.flatMap(run => run.session ? [run.session.id] : []);
-  const related = '(r.conversation_id=? OR r.session_id IN (SELECT value FROM json_each(?)))';
   const scope = [conversation, JSON.stringify(sessions)] as const;
-  const candidates = db.prepare(`SELECT r.id FROM runs r
+  const diagnosed = 'a.run_no=r.id AND a.diagnostic IS NOT NULL';
+  const candidates = db.prepare(`SELECT r.id FROM runs r INDEXED BY runs_conversation
     CROSS JOIN run_attempts a INDEXED BY coordinator_delivery_diagnostics
-    WHERE a.run_no=r.id AND a.diagnostic IS NOT NULL AND ${related}
+    WHERE r.conversation_id=? AND ${diagnosed}
+    UNION
+    SELECT r.id FROM runs r INDEXED BY runs_session
+    CROSS JOIN run_attempts a INDEXED BY coordinator_delivery_diagnostics
+    WHERE r.session_id IN (SELECT value FROM json_each(?)) AND ${diagnosed}
     UNION
     SELECT r.id FROM run_inputs i INDEXED BY coordinator_delivery_inputs
     CROSS JOIN run_attempts a CROSS JOIN runs r
     WHERE i.state IN ('reserved','attempted','uncertain') AND a.attempt_id=i.attempt_id
-      AND r.id=a.run_no AND ${related}`).all(...scope, ...scope).map(row => `R${row.id}`);
+      AND r.id=a.run_no AND (r.conversation_id=? OR r.session_id IN (SELECT value FROM json_each(?)))
+    `).all(...scope, ...scope).map(row => `R${row.id}`);
   const activeIds = active.map(run => run.id);
   const blocked = blockedInvocations(store, candidates);
   const lane: RuntimeRunRecord[] = [...active];
