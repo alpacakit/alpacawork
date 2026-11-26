@@ -5,11 +5,13 @@ import { readRunStep, readRunSteps } from "@/data/run-steps";
 import { ApiError } from "@/data/client";
 import { Message } from "@/components/ui/message";
 import { cn } from "@/lib/utils";
+import { commandLine } from "@/domain/step-line";
 
 /* Hallmark · component: an agent's work line and its steps · genre: modern-minimal · theme: the app's own tokens (ink,
- * soft, muted, error, working, line) · states: folded (one line: the moving mark, the tool and what it runs) · open
- * (every step so far, one line each) · a step opened (what it ran and what came back, in full) · a step done (✓),
- * failed (red ✗) or of an unknown outcome (?) · reading · not readable · reduced motion (the mark's three dots stand still) */
+ * soft, muted, error, working, line) · states: folded (one line: the moving mark and the agent's words for its step,
+ * else what it runs) · open (every step so far, one line each) · a step opened (what it ran and what came back, in
+ * full) · a step done (✓), failed (red ✗) or of an unknown outcome (?) · reading · not readable · reduced motion (the
+ * mark's three dots stand still) */
 
 /** Codex names its items by their type; said as the tool names other agents give. Any other tool keeps its own name. */
 const ITEM_NAMES: Record<string, string> = { command_execution: "Bash", file_change: "Edit", web_search: "WebSearch", mcp_tool_call: "MCP", collab_tool_call: "Agent" };
@@ -21,7 +23,7 @@ const ONE_LINE = "min-w-0 overflow-hidden text-ellipsis whitespace-pre font-mono
 /** What it ran keeps at least a few letters in sight on one line, however long the tool's name and the agent's words. */
 const TARGET = "flex-1 min-w-[8ch]";
 /** A tool's name gives way before what it ran: it never takes more than this of the line. */
-const TOOL = "max-w-[40%] flex-none truncate font-medium";
+const TOOL = "max-w-[40%] flex-none truncate text-muted";
 
 /**
  * An agent at work: three dots go once round, gather into one and part again. It says only that the agent is going,
@@ -41,18 +43,25 @@ export const WorkMark = memo(function WorkMark({ className }: { className?: stri
   </span>;
 });
 
-type Line = Pick<RunStep, "tool" | "kind" | "about" | "text">;
-/** The tool, the agent's own words for it when it gave them, then as much of what it ran as fits: one line. */
+type Line = Pick<RunStep, "tool" | "kind" | "about" | "text" | "more">;
 const sameLine = (a: { line: Line }, b: { line: Line }) => a.line.tool === b.line.tool && a.line.kind === b.line.kind &&
-  a.line.about === b.line.about && a.line.text === b.line.text;
-/** Drawn again only when what it says changes, not each time the activity it comes from is read anew. */
+  a.line.about === b.line.about && a.line.text === b.line.text && a.line.more === b.line.more;
+/**
+ * A step on one line, the same in the chat and the detail: the agent's own words for it when it gave them, alone, as
+ * what it does reads before how; else what it ran, a command after `$` (its plain leading `cd` left off) and any other
+ * tool after its name, with how many lines follow. Opened, the step shows what it ran in full. Drawn again only when
+ * what it says changes, not each time the activity it comes from is read anew.
+ */
 const LineWords = memo(function LineWords({ line }: { line: Line }) {
+  const { t } = useTranslation("people");
+  if (line.about) return <span dir="auto" className="min-w-0 flex-1 truncate">{line.about}</span>;
+  const command = line.kind === "command";
   return <>
-    <span className={TOOL}>{toolName(line.tool)}</span>
-    {line.about && <span dir="auto" className="min-w-0 max-w-[62%] truncate">{line.about}</span>}
+    {command ? <span aria-hidden className="flex-none font-mono text-muted">$</span> : <span className={TOOL}>{toolName(line.tool)}</span>}
     {atEnd(line.kind)
       ? <span dir="rtl" className={cn(ONE_LINE, TARGET, "text-left")}><bdi>{line.text}</bdi></span>
-      : <span dir="auto" className={cn(ONE_LINE, TARGET, line.about && "text-muted")}>{line.text}</span>}
+      : <span dir="auto" className={cn(ONE_LINE, TARGET)}>{command ? commandLine(line.text) : line.text}</span>}
+    {line.more > 0 && <span className="flex-none text-muted">{t("now.step.moreLines", { count: line.more })}</span>}
   </>;
 }, sameLine);
 
