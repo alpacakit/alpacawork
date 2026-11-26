@@ -21,6 +21,7 @@ import { agentDraftIssueText } from './agent-settings-issues';
 import { STACK_FIELDS, serverAgentDraftSchema, serverAgentsYaml, stackKind, type StackField } from './server-agent-draft';
 import { apiError } from "@/data/client";
 import type { WriteBasis } from "@/data/connection";
+import { RegionSkeleton } from "@/components/ui/skeleton";
 import { useAgentStatus, useSaveServerSettings, useServerSettings, useWorkspaceInfo, useWriteDisabled } from "@/data/queries";
 import { intentKey, useWriteIntent } from "@/data/write-intent";
 import { useAnswerGuard } from "@/features/forms/answer-guard";
@@ -82,6 +83,8 @@ type ServerDraftContextValue = {
   form: ServerForm<ServerDraft>;
   /** What stands in the draft's place while config.yaml is read, or when it can't be: null once the draft is ready. */
   unready: ReactNode;
+  /** The draft is still being read (no failure): the places it fills show their placeholders. */
+  loading: boolean;
   /** What can be pressed or typed now (serverDraftActions), read by every field and button of both places. */
   actions: ServerDraftActions;
   reload: () => Promise<void>;
@@ -222,9 +225,11 @@ export function ServerDraftProvider({ show, focusStack, children }: {
   };
   const unready = server.data?.error ? <ReadFailure what={t("settings.server.readError")} error={apiError(server.data.error)} retry={() => void reload()} disabled={!actions.reread} />
     : server.isError ? <ReadFailure what={t("settings.personal.loadError")} error={server.error} retry={() => void reload()} disabled={!actions.reread} />
-    : !loaded || base === null ? <FieldHint role="status">{t("settings.personal.loading")}</FieldHint> : null;
+    : null;
+  // Still reading: each place the draft fills draws its own shape meanwhile (`unready` is only a read that failed).
+  const loading = !unready && (!loaded || base === null);
 
-  return <ServerDraftContext.Provider value={{ form, unready, actions, reload,
+  return <ServerDraftContext.Provider value={{ form, unready, loading, actions, reload,
     unconfirmed: intent.status === "unconfirmed", unproven: intent.unproven, save, showStack, advancedOpen, setAdvancedOpen,
     environmentFile }}>
     <FormProvider {...form}>{children}</FormProvider>
@@ -299,8 +304,9 @@ function keepFieldsClear(block: HTMLDivElement | null) {
  */
 export function AiSettingsTab() {
   const { t } = useTranslation("panels");
-  const { unready, actions, environmentFile } = useServerDraft();
+  const { unready, loading, actions, environmentFile } = useServerDraft();
   const scope = <FieldHint className="mb-6">{t("settings.scope.server")}</FieldHint>;
+  if (loading) return <>{scope}<RegionSkeleton shape="settingsAi" /></>;
   if (unready) return <>{scope}{unready}<WorkspaceFolderLine /></>;
   return <>
     {scope}
@@ -375,14 +381,14 @@ function AiFields({ disabled, environmentFile }: { disabled: boolean; environmen
  */
 export function AdvancedServerOptions() {
   const { t } = useTranslation("panels");
-  const { unready, advancedOpen, setAdvancedOpen } = useServerDraft();
+  const { unready, loading, advancedOpen, setAdvancedOpen } = useServerDraft();
   return <details id="server-advanced" className="border-t border-line" open={advancedOpen}
     onToggle={(event) => setAdvancedOpen(event.currentTarget.open)}>
     {/* Closed, the fold is a row of the tab's list: the same line over it and the same height. */}
     <DisclosureSummary className={cn(SETTING_ROW_SIZE, "flex-wrap content-center gap-x-2 text-base font-semibold")}>
       <Caret open={advancedOpen} />{t("settings.server.advanced")}</DisclosureSummary>
     <FieldHint>{t("settings.server.advancedNote")}</FieldHint>
-    <div className="mt-2 pb-6">{unready ?? <>
+    <div className="mt-2 pb-6">{loading ? <RegionSkeleton shape="settingRows" rows={3} /> : unready ?? <>
       <LimitFields />
       <ServerYamlExample />
       <ServerDraftFoot />

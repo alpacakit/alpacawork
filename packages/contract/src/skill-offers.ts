@@ -11,11 +11,18 @@ export const SKILL_OFFERS = [
   { name: 'alpacawork-betterquality', from: { kind: 'bundled' }, recommended: false, cost: true, beta: true },
   { name: 'alpacawork-modelpickoptimization', from: { kind: 'bundled' }, recommended: false, cost: false, beta: true },
 ] as const;
-export type SkillName = typeof SKILL_OFFERS[number]['name'];
+type SkillOffer = typeof SKILL_OFFERS[number];
+export type SkillName = SkillOffer['name'];
+export type RepositorySkillOffer = Extract<SkillOffer, { from: { kind: 'repo' } }>;
+export const REPOSITORY_SKILL_OFFERS = SKILL_OFFERS.filter((offer): offer is RepositorySkillOffer => offer.from.kind === 'repo');
+export const repositorySkillNameSchema = z.enum(REPOSITORY_SKILL_OFFERS.map(offer => offer.name));
 export const skillNameSchema = z.enum(SKILL_OFFERS.map(skill => skill.name));
+export const skillVersionDateSchema = z.iso.datetime({ offset: true }).nullable();
 export const skillStatusSchema = z.object({
   name: skillNameSchema, installed: z.boolean(), available: z.enum(['yes', 'no', 'unknown']),
   claudeLink: z.enum(['ok', 'missing', 'conflict', 'none']),
+  /** Committer date of the repository version installed on this machine. */
+  installedAt: skillVersionDateSchema,
 }).strict();
 export type SkillStatus = z.infer<typeof skillStatusSchema>;
 export const skillFailureReasonSchema = z.enum(['unreachable', 'link_conflict', 'npm', 'timeout', 'other']);
@@ -32,6 +39,11 @@ export const skillsResponseSchema = z.object({
   skills: z.array(skillStatusSchema).length(SKILL_OFFERS.length).refine(uniqueNames), place: z.string().min(1), job: skillJobSchema.nullable(),
 }).strict();
 export type SkillsResponse = z.infer<typeof skillsResponseSchema>;
+export const skillsLatestResponseSchema = z.object({
+  skills: z.array(z.object({ name: repositorySkillNameSchema, latestAt: skillVersionDateSchema }).strict())
+    .length(REPOSITORY_SKILL_OFFERS.length).refine(uniqueNames),
+}).strict();
+export type SkillsLatestResponse = z.infer<typeof skillsLatestResponseSchema>;
 export const skillInstallRequestSchema = z.object({ names: z.array(skillNameSchema).min(1).max(SKILL_OFFERS.length).refine(names => new Set(names).size === names.length) }).strict();
 export const skillInstallResponseSchema = z.object({ job: skillJobSchema }).strict();
 /** Remote offers are selectable without probing their origin; only an explicit install may fetch them. */

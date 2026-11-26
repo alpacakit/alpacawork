@@ -3,41 +3,54 @@ import { useTranslation } from "react-i18next";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCoarsePointer } from "@/lib/input-capabilities";
 import { FieldHint } from "@/components/ui/field";
-import { useDialogStore, type SettingsFocus, type SettingsTab } from "@/state/dialog-store";
+import { useDialogBack, useDialogStore, type SettingsFocus, type SettingsTab } from "@/state/dialog-store";
+import { BackButton } from "@/components/ui/back-button";
 import { HostTab } from "./HostTab";
-import { DialogBody } from "@/components/ui/dialog";
+import { DialogBody, DialogCloseButton, DialogTitle } from "@/components/ui/dialog";
 import { PanelDialog } from "./PanelDialog";
 import { GeneralSettingsTab, NotificationSettingsTab } from "./PersonalSettingsTab";
 import { AdvancedServerOptions, AiSettingsTab, ServerDraftProvider, ServerFolderLines } from "./ServerSettingsTab";
 import { AppGuideTab } from "./AppGuideTab";
 import { ProjectsSettingsTab } from "./ProjectsSettingsTab";
-import { UpdateConfirmDialog, UpdateStateLine, VersionLine } from "@/features/update/UpdateView";
+import { SkillsSettingsTab } from "./SkillsSettingsTab";
+import { cn } from "@/lib/utils";
+import { useNarrow } from "@/state/view-store";
+import { UpdateConfirmDialog, UpdateSettingsTab, useUpdateMarked, VersionLine } from "@/features/update/UpdateView";
 
 /**
- * Settings, in tabs named for what they hold, in the order they are looked for. This PC's config.yaml is one draft for
+ * Settings, in sections named for what they hold, in the order they are looked for: down a side list on a computer, in
+ * a row of tabs on a phone. This PC's config.yaml is one draft for
  * the dialog, read with its hash when it opens: AI shows its AI and agents, General's Advanced options its limits, each
  * with the same save row, and General ends on the folder the server reads. Notifications and General's own values save
  * at once; Projects lists every project, archived ones marked, each opening its own settings, which are the project
  * dialog's, not here; App & phone guides installing the app and opening it from a phone; Resources is read-only.
- * Updates have no tab: their one status line (with its one action) above the tabs and the running version at the foot.
+ * Recommended skills installs and updates the skills setup offers; Update is where the app's update is read and done.
  */
 export function SettingsDialog({ initialTab = "ai", request, focus }: { initialTab?: SettingsTab; request?: number; focus?: SettingsFocus } = {}) {
   const { t } = useTranslation("panels");
+  const narrow = useNarrow();
   return (
-    <PanelDialog title={t("settings.title")} size="large" ownBody>
-      <SettingsBody initialTab={initialTab} request={request} focus={focus} />
+    <PanelDialog title={t("settings.title")} size="large" wide heading={narrow} ownBody>
+      <SettingsBody initialTab={initialTab} request={request} focus={focus} inDialog />
       <UpdateConfirmDialog />
     </PanelDialog>
   );
 }
 
-const TABS = ["ai", "notifications", "projects", "general", "apps", "host"] as const satisfies readonly SettingsTab[];
+/** The top line of both columns on a computer: the dialog's title over the side list, the section's name over the page. */
+const HEAD_ROW = "flex h-16 flex-none items-center";
 
-export function SettingsBody({ initialTab = "ai", request, focus }: { initialTab?: SettingsTab; request?: number; focus?: SettingsFocus }) {
+const TABS = ["ai", "skills", "notifications", "projects", "general", "apps", "host", "update"] as const satisfies readonly SettingsTab[];
+
+export function SettingsBody({ initialTab = "ai", request, focus, inDialog = false }: { initialTab?: SettingsTab; request?: number; focus?: SettingsFocus; inDialog?: boolean }) {
   const focusNotifications = focus === "notifications";
   const focusStack = focus === "tasksAi" ? "tasks" : focus === "coordinatorAi" ? "coordinator" : undefined;
   const { t } = useTranslation("panels");
   const coarsePointer = useCoarsePointer();
+  const narrow = useNarrow();
+  const updateMarked = useUpdateMarked();
+  const back = useDialogBack();
+  const { t: tt } = useTranslation();
   // The guide is read at a computer: a phone that opens this is past every step of it.
   const availableTabs = TABS.filter((value) => value !== "apps" || !coarsePointer);
   const [selected, setTab] = useState<SettingsTab>(initialTab);
@@ -70,25 +83,37 @@ export function SettingsBody({ initialTab = "ai", request, focus }: { initialTab
   }, [tab]);
   return (
     <ServerDraftProvider show={setTab} focusStack={focusStack ? { kind: focusStack, request: request ?? 0 } : undefined}>
-    <Tabs value={tab} onValueChange={(value) => setTab(value as SettingsTab)} className="min-h-0 flex-1">
-      {/* The tabs stay with the head; only the tab shown scrolls under them. */}
-      <div className="flex-none px-6 narrow:px-4.5">
-        <UpdateStateLine />
-        {/* The rule under the tabs is as wide as the rows below; the row itself reaches a little past both ends, so
-            the first tab's face starts on the title's edge and its focus ring is drawn whole. */}
-        <div className="border-b border-line">
-          <TabsList ref={list} className="-mx-1 border-b-0">
+    <Tabs value={tab} orientation={narrow ? "horizontal" : "vertical"} onValueChange={(value) => setTab(value as SettingsTab)} className={cn("min-h-0 flex-1", !narrow && "flex-row")}>
+      {/* A computer lists the sections down a tinted side, the dialog's title on its top line; a phone keeps them in a
+          row that scrolls sideways, under the title. */}
+      <div className={cn("flex-none px-6 narrow:px-4.5", !narrow && "flex w-56 flex-col border-e border-line bg-[color:color-mix(in_oklab,var(--ink)_3%,transparent)] px-3")}>
+        {!narrow && <div className={cn(HEAD_ROW, "px-2")}>{inDialog ? <DialogTitle className="font-semibold">{t("settings.title")}</DialogTitle>
+          : <h2 className="m-0 text-lg font-semibold">{t("settings.title")}</h2>}</div>}
+        <div className={cn("border-b border-line", !narrow && "border-b-0 pt-1")}>
+          <TabsList ref={list} className={cn("-mx-1 border-b-0", !narrow && "mx-0 flex-col items-stretch gap-0.5 overflow-visible py-0")}>
             {/* Mapped over TABS itself: i18n:extract reads each `settings.tabs.*` key from this constant list, not a filtered copy. */}
-            {TABS.map((value) => availableTabs.includes(value) && <TabsTrigger key={value} value={value}>
+            {TABS.map((value) => availableTabs.includes(value) && <TabsTrigger key={value} value={value} className={cn(!narrow && "h-8 justify-start",
+              // Update carries the gear's mark while something there waits for the person.
+              value === "update" && updateMarked && "pe-5 before:absolute before:end-2 before:top-1/2 before:size-2 before:-translate-y-1/2 before:rounded-full before:bg-new")}>
               {t(`settings.tabs.${value}`)}
             </TabsTrigger>)}
           </TabsList>
         </div>
+        {!narrow && <div className="mt-auto px-2 pb-5"><VersionLine /></div>}
       </div>
-      <DialogBody ref={body} className="flex flex-col border-t-0 pt-5">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      {/* The section's name on the title's line, at the title's size, with the close button at its end. */}
+      {!narrow && <div className={cn(HEAD_ROW, "gap-1 px-8 pe-5")}>
+        {/* Opened from another dialog, Back leads to it, as every dialog's head does. */}
+        {inDialog && back && <BackButton data-dialog-back label={tt("dialog.back")} onClick={back} className="-ms-2 me-1" />}
+        <h3 className="m-0 me-auto min-w-0 text-lg font-semibold">{t(`settings.tabs.${tab}`)}</h3>{inDialog && <DialogCloseButton />}</div>}
+      <DialogBody ref={body} className={cn("flex flex-col border-t-0 pt-5", !narrow && "pt-1 [--pane-side:--spacing(8)]")}>
       {/* The two tabs showing the draft stay mounted while hidden, so a refused save can take the eye into either. */}
       <TabsContent value="ai" forceMount hidden={tab !== "ai"}>
         <AiSettingsTab />
+      </TabsContent>
+      <TabsContent value="skills">
+        <SkillsSettingsTab />
       </TabsContent>
       <TabsContent value="notifications">
         <NotificationSettingsTab focusNotifications={focusNotifications} />
@@ -103,12 +128,16 @@ export function SettingsBody({ initialTab = "ai", request, focus }: { initialTab
       {availableTabs.includes("apps") && <TabsContent value="apps">
         <AppGuideTab />
       </TabsContent>}
+      <TabsContent value="update">
+        <UpdateSettingsTab />
+      </TabsContent>
       <TabsContent value="host">
         <HostTab />
       </TabsContent>
-      {/* At the foot of the box when the tab shown is short, after its last line when it is long. */}
-      <div className="mt-auto"><VersionLine /></div>
+      {/* On a phone at the foot of the box when the tab shown is short, after its last line when it is long; a computer keeps it under the side list. */}
+      {narrow && <div className="mt-auto"><VersionLine /></div>}
       </DialogBody>
+      </div>
     </Tabs>
     </ServerDraftProvider>
   );

@@ -270,13 +270,13 @@ test("fields are moved and taken out in place, a system field cannot be, and the
   expect(JSON.parse(String((fieldSet[1] as RequestInit).body))).not.toHaveProperty("title");
 });
 
-test("settings have six tabs, AI holds nothing of a project, and the gear reopens the tab it was last on", async () => {
+test("settings have eight sections, AI holds nothing of a project, and the gear reopens the tab it was last on", async () => {
   vi.spyOn(globalThis, "fetch").mockImplementation(async (url: unknown) =>
     String(url).includes("/api/commands/config/get") ? answer(serverSettings()) : refusal(404));
   render(<TestWorkspace data={screenData(tree())}><DialogHost /></TestWorkspace>);
   act(() => useDialogStore.getState().open("settings", { tab: "ai" }));
   const tabs = await screen.findAllByRole("tab");
-  expect(tabs.map((tab) => tab.textContent)).toEqual(["AI", "Notifications", "Projects", "General", "App & phone", "Resources"]);
+  expect(tabs.map((tab) => tab.textContent)).toEqual(["AI", "Recommended skills", "Notifications", "Projects", "General", "App & phone", "Resources", "Update"]);
   await waitFor(() => expect(document.getElementById("server-limits")).toBeTruthy());
   expect(screen.queryByLabelText("Name")).toBeNull();
   expect(document.getElementById("project-policy")).toBeNull();

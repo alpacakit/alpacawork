@@ -17,7 +17,7 @@ import { ProjectMenu } from "./ProjectMenu";
 import { FaceSwitch } from "@/features/analysis/FaceSwitch";
 import { OfflineMark } from "./OfflineMark";
 import { useOfflineShown } from "@/data/reach";
-import { UpdateMark, useGearLabel } from "@/features/update/UpdateView";
+import { UpdateMark, useGearLabel, useOpenSettingsFromGear } from "@/features/update/UpdateView";
 import { BarMenu } from "./BarMenu";
 import { usePresenceActivity } from "@/data/presence";
 import { useLayoutEffect, useRef, useState } from "react";
@@ -81,6 +81,7 @@ export function AppBar({ docked = false }: { docked?: boolean }) {
   const { open } = useDialogStore.getState();
   const offline = useOfflineShown();
   const gearLabel = useGearLabel();
+  const openSettings = useOpenSettingsFromGear();
   const bar = useRef<HTMLElement>(null);
   const folded = useFolded(bar);
   const [menu, setMenu] = useState(false);
@@ -134,7 +135,7 @@ export function AppBar({ docked = false }: { docked?: boolean }) {
                 aria-label={gearLabel}
                 title={gearLabel}
                 data-guide-part="settings"
-                onClick={() => open("settings")}
+                onClick={openSettings}
               >
                 {/* A new version, one under way or one that failed is told by the gear's corner mark. */}
                 <span className="relative inline-flex"><Icon name="settings" /><UpdateMark /></span>

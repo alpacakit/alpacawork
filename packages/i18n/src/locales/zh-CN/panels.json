@@ -531,10 +531,29 @@
       "general": "通用",
       "host": "资源",
       "notifications": "通知",
-      "projects": "项目"
+      "projects": "项目",
+      "skills": "推荐技能",
+      "update": "更新"
     },
     "title": "设置",
-    "up": "上移"
+    "up": "上移",
+    "skills": {
+      "install": "安装",
+      "installing": "正在安装",
+      "retry": "重试",
+      "update": "更新",
+      "updating": "正在更新",
+      "upToDate": "已是最新",
+      "versions": {
+        "checking": "正在检查最新版本…",
+        "day": "{{date}} 更新",
+        "installed": "已安装的版本 {{version}}",
+        "latest": "最新 {{version}}",
+        "unchecked": "无法检查最新版本",
+        "unknown": "未知"
+      },
+      "withApp": "随 alpacawork 一起更新"
+    }
   },
   "telemetry": {
     "blocked": {
@@ -655,23 +674,7 @@
       "unread": "正在等待更新切换。",
       "wait": "结束后界面会恢复。"
     },
-    "line": {
-      "applying": "正在切换到 {{version}}…",
-      "attention": "向 {{version}} 的切换已中断。点击“继续”即可从中断处恢复",
-      "attentionUnknown": "向新版本的切换已中断。点击“继续”即可从中断处恢复",
-      "available": "可更新到 {{version}}（当前为 {{current}}）",
-      "availableAfterRuns_other": "没有智能体工作后才能安装 {{version}}（目前有 {{count}} 个在工作）。把暂停指示发给协调员，它会让它们在合适的节点暂停",
-      "done": "新版本已就绪。重新加载即可使用。如果你为了更新暂停了智能体，请让协调员恢复它们",
-      "failed": "无法安装 {{version}}。当前版本仍可继续使用",
-      "failedDisk": "这台电脑的磁盘空间不足，无法安装 {{version}}。请腾出空间后重试。当前版本仍可继续使用",
-      "failedNetwork": "无法下载 {{version}}。请检查这台电脑的网络连接后重试。当前版本仍可继续使用",
-      "fetching": "正在下载 {{version}}…",
-      "recovering": "正在撤销向 {{version}} 的切换…",
-      "runsActive_other": "有 {{count}} 个智能体在工作时无法切换到 {{version}}。当前版本仍可继续使用。把暂停指示发给协调员，等它们结束后再重试",
-      "waiting_other": "正在等待 {{count}} 个智能体结束",
-      "withdrawn": "{{version}} 已被撤回"
-    },
-    "notes": "更新内容",
+    "notes": "版本说明",
     "pauseInstruction": "我要把 alpacawork 更新到 {{version}}。请搁置有智能体正在工作的任务，让它们在合适的节点停下（正在运行的先做完手头的事）。",
     "postpone": "推迟",
     "reload": "重新加载",
@@ -682,7 +685,42 @@
       "on": "未能保存开启“下次仍显示此确认”这一更改。请先检查之前的保存，然后在“通用”标签页开启“更新前确认”。"
     },
     "start": "更新",
-    "unavailable": "现在无法开始更新。请稍后重试。"
+    "unavailable": "现在无法开始更新。请稍后重试。",
+    "card": {
+      "afterRuns": "智能体停止后即可安装",
+      "afterRunsBody_other": "此版本需在正在工作的智能体（{{count}} 个）停止后才能安装。把暂停指示发给协调者，它会在合适的时机让它们停下。",
+      "applying": "正在切换到新版本…",
+      "applyingBody": "界面会暂时不可用，结束后恢复。",
+      "attention": "切换中途停止了",
+      "attentionBody": "继续会从停下的地方接着进行。",
+      "available": "有新版本",
+      "done": "已是新版本",
+      "doneBody": "重新加载后此界面也会变为新版本。如果为更新暂停了智能体，请让协调者恢复它们。",
+      "doneHeld": "此页面会重新加载为新版本。由于有尚未保存的输入，正在等待：请保存或放弃后重新加载。",
+      "failed": "更新未完成",
+      "fetching": "正在下载…",
+      "latest": "已是最新版本",
+      "recovering": "正在撤销切换…",
+      "runsActive": "智能体工作期间无法切换",
+      "runsActiveBody_other": "正在工作的智能体（{{count}} 个）完成后即可切换。把暂停指示发给协调者，待它们停下后重试。你可以继续使用当前版本。",
+      "waiting": "正在等待智能体完成工作",
+      "waitingBody_other": "正在工作的智能体（{{count}} 个）完成后会自动切换。",
+      "withdrawn": "{{version}} 已撤回，因此保持当前版本。",
+      "withdrawnBefore": "之前的 {{version}} 已撤回。",
+      "failedBody": {
+        "network": "下载失败。请检查这台电脑的网络连接后重试。你可以继续使用当前版本。",
+        "disk": "这台电脑的磁盘空间不足。请腾出空间后重试。你可以继续使用当前版本。",
+        "other": "请重试。你可以继续使用当前版本。"
+      }
+    },
+    "page": {
+      "app": "alpacawork 本体",
+      "appSkill": "使用 alpacawork 的技能",
+      "handEdits": "如果你手动改过这些技能，新版本会覆盖你的修改。",
+      "skill": "技能",
+      "targets": "更新后会换新的内容",
+      "targetsNote": "alpacawork 及其附带的技能会一起换成新版本，无需逐个更新技能。"
+    }
   },
   "workspaceStop": {
     "failed": "无法显示界面。",

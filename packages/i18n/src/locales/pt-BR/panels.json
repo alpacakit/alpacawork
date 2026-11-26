@@ -545,10 +545,29 @@
       "general": "Geral",
       "host": "Recursos",
       "notifications": "Notificações",
-      "projects": "Projetos"
+      "projects": "Projetos",
+      "skills": "Habilidades recomendadas",
+      "update": "Atualização"
     },
     "title": "Configurações",
-    "up": "Subir"
+    "up": "Subir",
+    "skills": {
+      "install": "Instalar",
+      "installing": "Instalando",
+      "retry": "Tentar de novo",
+      "update": "Atualizar",
+      "updating": "Atualizando",
+      "upToDate": "Atualizada",
+      "versions": {
+        "checking": "Verificando a mais recente…",
+        "day": "versão de {{date}}",
+        "installed": "Instalada: {{version}}",
+        "latest": "Mais recente: {{version}}",
+        "unchecked": "Não foi possível verificar a mais recente",
+        "unknown": "desconhecida"
+      },
+      "withApp": "Atualizada com o alpacawork"
+    }
   },
   "telemetry": {
     "blocked": {
@@ -673,29 +692,7 @@
       "unread": "Aguardando a troca de versão.",
       "wait": "A tela volta quando isso terminar."
     },
-    "line": {
-      "applying": "Trocando para a versão {{version}}…",
-      "attention": "A troca para a versão {{version}} parou. Continue para retomar de onde ela parou",
-      "attentionUnknown": "A troca para a nova versão parou. Continue para retomar de onde ela parou",
-      "available": "A versão {{version}} está disponível (você tem a {{current}})",
-      "availableAfterRuns_one": "A versão {{version}} poderá ser instalada quando nenhum agente estiver trabalhando ({{count}} trabalhando agora). Envie a instrução de pausa ao coordenador, e ele pausa o agente em um momento adequado",
-      "availableAfterRuns_many": "A versão {{version}} poderá ser instalada quando nenhum agente estiver trabalhando ({{count}} trabalhando agora). Envie a instrução de pausa ao coordenador, e ele pausa os agentes em um momento adequado",
-      "availableAfterRuns_other": "A versão {{version}} poderá ser instalada quando nenhum agente estiver trabalhando ({{count}} trabalhando agora). Envie a instrução de pausa ao coordenador, e ele pausa os agentes em um momento adequado",
-      "done": "A nova versão está pronta. Recarregue para usá-la. Se você pausou agentes para a atualização, peça ao coordenador para retomá-los",
-      "failed": "Não foi possível instalar a versão {{version}}. A versão atual continua funcionando",
-      "failedDisk": "Não há espaço em disco suficiente neste PC para instalar a versão {{version}}. Libere espaço e tente novamente. A versão atual continua funcionando",
-      "failedNetwork": "Não foi possível baixar a versão {{version}}. Verifique a conexão deste PC com a internet e tente novamente. A versão atual continua funcionando",
-      "fetching": "Baixando a versão {{version}}…",
-      "recovering": "Desfazendo a troca para a versão {{version}}…",
-      "runsActive_one": "Não é possível trocar para a versão {{version}} enquanto um agente está trabalhando. A versão atual continua funcionando. Envie a instrução de pausa ao coordenador e tente novamente quando o agente terminar",
-      "runsActive_many": "Não é possível trocar para a versão {{version}} enquanto {{count}} agentes estão trabalhando. A versão atual continua funcionando. Envie a instrução de pausa ao coordenador e tente novamente quando eles terminarem",
-      "runsActive_other": "Não é possível trocar para a versão {{version}} enquanto {{count}} agentes estão trabalhando. A versão atual continua funcionando. Envie a instrução de pausa ao coordenador e tente novamente quando eles terminarem",
-      "waiting_one": "Aguardando {{count}} agente terminar",
-      "waiting_many": "Aguardando {{count}} agentes terminarem",
-      "waiting_other": "Aguardando {{count}} agentes terminarem",
-      "withdrawn": "A versão {{version}} foi retirada"
-    },
-    "notes": "Novidades",
+    "notes": "Notas da versão",
     "pauseInstruction": "Estou atualizando o alpacawork para a versão {{version}}. Adie as tarefas que têm agentes trabalhando, para que eles parem em um momento adequado (deixe os que estão em execução terminarem o que estão fazendo).",
     "postpone": "Mais tarde",
     "reload": "Recarregar",
@@ -706,7 +703,48 @@
       "on": "Não foi possível salvar a ativação de “Mostrar esta confirmação na próxima vez”. Verifique o salvamento anterior e ative “Confirmar antes de atualizar” na aba Geral."
     },
     "start": "Atualizar",
-    "unavailable": "Não é possível iniciar a atualização agora. Tente novamente em alguns instantes."
+    "unavailable": "Não é possível iniciar a atualização agora. Tente novamente em alguns instantes.",
+    "card": {
+      "afterRuns": "Pode ser instalada quando os agentes pararem",
+      "afterRunsBody_one": "Esta versão só é instalada depois que o agente em execução parar. Envie ao coordenador a instrução de pausa e ele o para em um bom momento.",
+      "afterRunsBody_many": "Esta versão só é instalada depois que os {{count}} agentes em execução pararem. Envie ao coordenador a instrução de pausa e ele os para em um bom momento.",
+      "afterRunsBody_other": "Esta versão só é instalada depois que os {{count}} agentes em execução pararem. Envie ao coordenador a instrução de pausa e ele os para em um bom momento.",
+      "applying": "Trocando para a nova versão…",
+      "applyingBody": "A tela fica indisponível por um momento e volta ao terminar.",
+      "attention": "A troca parou no meio",
+      "attentionBody": "Continuar retoma de onde parou.",
+      "available": "Há uma nova versão",
+      "done": "Você está na nova versão",
+      "doneBody": "Recarregue para levar esta tela a ela também. Se você pausou agentes para a atualização, peça ao coordenador para retomá-los.",
+      "doneHeld": "Esta página recarrega na nova versão. Está aguardando porque há algo digitado não salvo: salve ou descarte e recarregue.",
+      "failed": "A atualização não foi concluída",
+      "fetching": "Baixando…",
+      "latest": "Você está na versão mais recente",
+      "recovering": "Desfazendo a troca…",
+      "runsActive": "Não é possível trocar enquanto agentes trabalham",
+      "runsActiveBody_one": "Poderá trocar quando o trabalho acabar (há um agente trabalhando). Envie ao coordenador a instrução de pausa e tente de novo quando ele parar. Você pode continuar usando esta versão.",
+      "runsActiveBody_many": "Poderá trocar quando o trabalho acabar (há {{count}} agentes trabalhando). Envie ao coordenador a instrução de pausa e tente de novo quando pararem. Você pode continuar usando esta versão.",
+      "runsActiveBody_other": "Poderá trocar quando o trabalho acabar (há {{count}} agentes trabalhando). Envie ao coordenador a instrução de pausa e tente de novo quando pararem. Você pode continuar usando esta versão.",
+      "waiting": "Aguardando os agentes terminarem",
+      "waitingBody_one": "Troca sozinha quando o agente em execução terminar.",
+      "waitingBody_many": "Troca sozinha quando os {{count}} agentes em execução terminarem.",
+      "waitingBody_other": "Troca sozinha quando os {{count}} agentes em execução terminarem.",
+      "withdrawn": "A {{version}} foi retirada, então esta versão continua.",
+      "withdrawnBefore": "A {{version}} anterior foi retirada.",
+      "failedBody": {
+        "network": "O download falhou. Verifique a conexão deste PC com a internet e tente de novo. Você pode continuar usando esta versão.",
+        "disk": "Falta espaço em disco neste PC. Libere espaço e tente de novo. Você pode continuar usando esta versão.",
+        "other": "Tente de novo. Você pode continuar usando esta versão."
+      }
+    },
+    "page": {
+      "app": "alpacawork (o aplicativo)",
+      "appSkill": "A habilidade para usar o alpacawork",
+      "handEdits": "Se você editou alguma dessas habilidades à mão, a nova versão substitui suas edições.",
+      "skill": "Habilidade",
+      "targets": "O que é atualizado",
+      "targetsNote": "O alpacawork e as habilidades que vêm com ele passam juntos para a nova versão. Nenhuma habilidade precisa ser atualizada sozinha."
+    }
   },
   "workspaceStop": {
     "failed": "Não foi possível mostrar a tela.",

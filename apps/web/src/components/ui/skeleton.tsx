@@ -32,6 +32,14 @@ function GroupHead({ first }: { first: boolean }) {
   </div>;
 }
 
+/** A setting's row: its name and hint, and its control at the right, as SettingRow lays them out. */
+function SettingLine({ row }: { row: number }) {
+  return <div className="flex min-h-13 items-center gap-6 border-t border-line py-2 first:border-t-0 narrow:min-h-14">
+    <div className="flex-1 space-y-2"><Bar className={cn("h-4", ["w-28", "w-36", "w-24", "w-32"][row % 4])} /><Bar className={cn("h-3", length(row + 2))} /></div>
+    <Bar className="h-8 w-28 flex-none rounded-md" />
+  </div>;
+}
+
 /** A quiet line of the report feed: when, and what happened, in one line. */
 function FeedLine({ row }: { row: number }) {
   return <li className="flex min-h-11 items-center gap-2 border-b border-rule pl-4"><Bar className="h-2.5 w-7.5 flex-none" /><Bar className={cn("h-3.5", length(row))} /></li>;
@@ -147,6 +155,22 @@ const SHAPES = {
   runStep: () => <div className="space-y-2 rounded-sm border border-line bg-bg px-2.5 py-2.5">
     {[0, 1, 2].map(row => <Bar key={row} className={cn("h-3", length(row))} />)}
   </div>,
+  // A list of settings (General, Notifications, Advanced options): rows of a name over its hint, the control at the right.
+  settingRows: (rows = 4) => <div>{Array.from({ length: rows }, (_, row) => <SettingLine key={row} row={row} />)}</div>,
+  // AI: the two stacks in their boxes (a title, what it does, an add button), then the agents' heading and one agent.
+  settingsAi: () => <div className="space-y-6">
+    {[0, 1].map(box => <div key={box} className="rounded-lg border border-line">
+      <div className="space-y-2.5 px-5 pt-5 pb-4"><Bar className="h-4.5 w-40" /><Bar className={cn("h-3.5", length(box + 1))} /></div>
+      <div className="border-t border-line px-5 py-4"><Bar className="h-8 w-36 rounded-md" /></div>
+    </div>)}
+    <div className="space-y-2.5"><Bar className="h-4.5 w-44" /><Bar className="h-3.5 w-2/3" /></div>
+    <div className="flex h-17 items-center gap-3 rounded-lg border border-line px-5"><Bar className="h-4 w-20" /><Bar className="h-3.5 w-24" /><Bar className="ms-auto h-6 w-11 rounded-full" /></div>
+  </div>,
+  // The offered skills, as setup and Settings list them: what it changes, how, its name; its action at the right.
+  skills: () => <div>{[0, 1, 2].map(row => <div key={row} className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-6 border-b border-line py-5 last:border-b-0 narrow:grid-cols-1">
+    <div className="space-y-2.5"><Bar className={cn("h-4.5", ["w-56", "w-48", "w-64"][row])} /><Bar className="h-3.5 w-full" /><Bar className={cn("h-3.5", length(row))} /><Bar className="h-3 w-32" /></div>
+    <Bar className="h-9 w-24 rounded-md narrow:hidden" />
+  </div>)}</div>,
   // A written body (a request's text).
   text: () => <div className="space-y-2.5"><Bar className="h-4 w-full" /><Bar className="h-4 w-11/12" /><Bar className="h-4 w-4/6" /></div>,
 };
@@ -169,6 +193,6 @@ export function RegionSkeleton({ shape, rows, className, waitFrom }: { shape: Sk
   const [at] = useState(() => waitFrom === undefined ? undefined
     : { "--placeholder-at": `${Math.round(waitFrom + PLACEHOLDER_WAIT_MS - performance.now())}ms` } as CSSProperties);
   return <div role="status" aria-label={t("loading")} aria-busy="true" data-skeleton={shape} data-placeholder-at={at ? "" : undefined} style={at} className={className}>
-    {shape === "rows" ? SHAPES.rows(rows) : SHAPES[shape]()}
+    {shape === "rows" ? SHAPES.rows(rows) : shape === "settingRows" ? SHAPES.settingRows(rows) : SHAPES[shape]()}
   </div>;
 }

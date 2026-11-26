@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { skillInstallRequestSchema, skillInstallResponseSchema, skillJobSchema, skillsResponseSchema,
+import { skillInstallRequestSchema, skillInstallResponseSchema, skillJobSchema, skillsLatestResponseSchema, skillsResponseSchema,
   type SkillJob, type SkillName } from "@alpacawork/contract";
 import { ApiError, retryOf } from "./client";
 import { workspaceWriteBasis } from "./connection";
@@ -18,9 +18,24 @@ export function useSkills() {
   });
 }
 
+/**
+ * The latest version of each skill fetched from GitHub (the day its folder there last changed), read as Settings opens
+ * apart from the list, so the list never waits on GitHub; a day not read is null.
+ */
+export function useSkillLatest() {
+  const root = useWorkspaceInfo((info) => info.root);
+  return useQuery({
+    queryKey: ["skills-latest", root] as const,
+    queryFn: ({ signal }) => api.request("skills/latest", skillsLatestResponseSchema, signal),
+    staleTime: 0,
+  });
+}
+
 /** Where an install stands: not asked; running or finished (its rows); or a request whose answer did not come. */
 export type SkillInstall =
   | { phase: "idle" }
+  /** Asked, its answer not come yet: nothing else is asked meanwhile. */
+  | { phase: "sending" }
   | { phase: "running" | "finished"; job: SkillJob }
   | { phase: "failed"; error: unknown };
 
@@ -60,6 +75,7 @@ export function useSkillInstall() {
     const same = sent.current && sent.current.names.join() === names.join() ? sent.current : null;
     const request = same ?? { names: [...names], opId: crypto.randomUUID() };
     sent.current = request;
+    setInstall({ phase: "sending" });
     let job: SkillJob;
     try {
       ({ job } = await api.request("skills/install", skillInstallResponseSchema, undefined,

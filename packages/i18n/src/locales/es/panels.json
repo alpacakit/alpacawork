@@ -545,10 +545,29 @@
       "general": "General",
       "host": "Recursos",
       "notifications": "Notificaciones",
-      "projects": "Proyectos"
+      "projects": "Proyectos",
+      "skills": "Habilidades recomendadas",
+      "update": "Actualización"
     },
     "title": "Configuración",
-    "up": "Subir"
+    "up": "Subir",
+    "skills": {
+      "install": "Instalar",
+      "installing": "Instalando",
+      "retry": "Reintentar",
+      "update": "Actualizar",
+      "updating": "Actualizando",
+      "upToDate": "Al día",
+      "versions": {
+        "checking": "Buscando la última…",
+        "day": "versión del {{date}}",
+        "installed": "Instalada: {{version}}",
+        "latest": "Última: {{version}}",
+        "unchecked": "No se pudo comprobar la última",
+        "unknown": "desconocida"
+      },
+      "withApp": "Se actualiza con alpacawork"
+    }
   },
   "telemetry": {
     "blocked": {
@@ -673,29 +692,7 @@
       "unread": "Esperando a que la actualización haga el cambio.",
       "wait": "La pantalla vuelve cuando esto termine."
     },
-    "line": {
-      "applying": "Cambiando a {{version}}…",
-      "attention": "El cambio a {{version}} se detuvo. Continúa para retomarlo donde se quedó",
-      "attentionUnknown": "El cambio a la nueva versión se detuvo. Continúa para retomarlo donde se quedó",
-      "available": "{{version}} está disponible (tienes {{current}})",
-      "availableAfterRuns_one": "{{version}} se puede instalar cuando no haya ningún agente trabajando ({{count}} trabajando ahora). Envía al coordinador la instrucción de pausa y lo pausará en un buen momento",
-      "availableAfterRuns_many": "{{version}} se puede instalar cuando no haya ningún agente trabajando ({{count}} trabajando ahora). Envía al coordinador la instrucción de pausa y los pausará en un buen momento",
-      "availableAfterRuns_other": "{{version}} se puede instalar cuando no haya ningún agente trabajando ({{count}} trabajando ahora). Envía al coordinador la instrucción de pausa y los pausará en un buen momento",
-      "done": "La nueva versión está lista. Recarga para usarla. Si pausaste agentes para la actualización, pide al coordinador que los reanude",
-      "failed": "No se pudo instalar {{version}}. La versión actual sigue funcionando",
-      "failedDisk": "No hay suficiente espacio en disco en este PC para instalar {{version}}. Libera espacio y vuelve a intentarlo. La versión actual sigue funcionando",
-      "failedNetwork": "No se pudo descargar {{version}}. Comprueba la conexión a internet de este PC y vuelve a intentarlo. La versión actual sigue funcionando",
-      "fetching": "Descargando {{version}}…",
-      "recovering": "Deshaciendo el cambio a {{version}}…",
-      "runsActive_one": "No se puede cambiar a {{version}} mientras un agente está trabajando. La versión actual sigue funcionando. Envía al coordinador la instrucción de pausa y vuelve a intentarlo cuando termine",
-      "runsActive_many": "No se puede cambiar a {{version}} mientras {{count}} agentes están trabajando. La versión actual sigue funcionando. Envía al coordinador la instrucción de pausa y vuelve a intentarlo cuando terminen",
-      "runsActive_other": "No se puede cambiar a {{version}} mientras {{count}} agentes están trabajando. La versión actual sigue funcionando. Envía al coordinador la instrucción de pausa y vuelve a intentarlo cuando terminen",
-      "waiting_one": "Esperando a que termine {{count}} agente",
-      "waiting_many": "Esperando a que terminen {{count}} agentes",
-      "waiting_other": "Esperando a que terminen {{count}} agentes",
-      "withdrawn": "{{version}} se retiró"
-    },
-    "notes": "Novedades",
+    "notes": "Notas de la versión",
     "pauseInstruction": "Voy a actualizar alpacawork a {{version}}. Pon en pausa las tareas que tienen agentes trabajando para que se detengan en un buen momento (deja que los que están en ejecución terminen lo que están haciendo).",
     "postpone": "Posponer",
     "reload": "Recargar",
@@ -706,7 +703,48 @@
       "on": "No se pudo guardar la activación de “Mostrar esta confirmación la próxima vez”. Comprueba el guardado anterior y activa “Confirmar antes de actualizar” en la pestaña General."
     },
     "start": "Actualizar",
-    "unavailable": "La actualización no se puede iniciar ahora mismo. Vuelve a intentarlo dentro de un rato."
+    "unavailable": "La actualización no se puede iniciar ahora mismo. Vuelve a intentarlo dentro de un rato.",
+    "card": {
+      "afterRuns": "Se puede instalar cuando paren los agentes",
+      "afterRunsBody_one": "Esta versión solo se instala cuando para el agente en marcha. Envía al coordinador la instrucción de pausa y lo detendrá en un buen momento.",
+      "afterRunsBody_many": "Esta versión solo se instala cuando paran los {{count}} agentes en marcha. Envía al coordinador la instrucción de pausa y los detendrá en un buen momento.",
+      "afterRunsBody_other": "Esta versión solo se instala cuando paran los {{count}} agentes en marcha. Envía al coordinador la instrucción de pausa y los detendrá en un buen momento.",
+      "applying": "Cambiando a la nueva versión…",
+      "applyingBody": "La pantalla no estará disponible un momento y volverá al terminar.",
+      "attention": "El cambio se detuvo a medias",
+      "attentionBody": "Continuar retoma desde donde se detuvo.",
+      "available": "Hay una nueva versión",
+      "done": "Ya tienes la nueva versión",
+      "doneBody": "Recarga para llevar también esta pantalla a ella. Si pausaste agentes para la actualización, pide al coordinador que los reanude.",
+      "doneHeld": "Esta página se recarga con la nueva versión. Está esperando porque hay algo escrito sin guardar: guárdalo o descártalo y recarga.",
+      "failed": "La actualización no se completó",
+      "fetching": "Descargando…",
+      "latest": "Tienes la última versión",
+      "recovering": "Deshaciendo el cambio…",
+      "runsActive": "No se puede cambiar mientras trabajan agentes",
+      "runsActiveBody_one": "Podrá cambiar cuando termine el trabajo (hay un agente trabajando). Envía al coordinador la instrucción de pausa y reintenta cuando se detenga. Puedes seguir usando esta versión.",
+      "runsActiveBody_many": "Podrá cambiar cuando termine el trabajo (hay {{count}} agentes trabajando). Envía al coordinador la instrucción de pausa y reintenta cuando se detengan. Puedes seguir usando esta versión.",
+      "runsActiveBody_other": "Podrá cambiar cuando termine el trabajo (hay {{count}} agentes trabajando). Envía al coordinador la instrucción de pausa y reintenta cuando se detengan. Puedes seguir usando esta versión.",
+      "waiting": "Esperando a que terminen los agentes",
+      "waitingBody_one": "Cambia sola cuando termine el agente en marcha.",
+      "waitingBody_many": "Cambia sola cuando terminen los {{count}} agentes en marcha.",
+      "waitingBody_other": "Cambia sola cuando terminen los {{count}} agentes en marcha.",
+      "withdrawn": "{{version}} se retiró, así que sigues con esta versión.",
+      "withdrawnBefore": "La {{version}} anterior se retiró.",
+      "failedBody": {
+        "network": "La descarga falló. Comprueba la conexión a internet de este PC y reintenta. Puedes seguir usando esta versión.",
+        "disk": "Falta espacio en disco en este PC. Libera espacio y reintenta. Puedes seguir usando esta versión.",
+        "other": "Inténtalo de nuevo. Puedes seguir usando esta versión."
+      }
+    },
+    "page": {
+      "app": "alpacawork (la aplicación)",
+      "appSkill": "La habilidad para usar alpacawork",
+      "handEdits": "Si editaste a mano alguna de estas habilidades, la nueva versión reemplaza tus cambios.",
+      "skill": "Habilidad",
+      "targets": "Lo que se actualiza",
+      "targetsNote": "alpacawork y las habilidades que trae pasan juntos a la nueva versión. No hace falta actualizar ninguna habilidad por separado."
+    }
   },
   "workspaceStop": {
     "failed": "No se pudo mostrar la pantalla.",

@@ -538,10 +538,29 @@
       "general": "General",
       "host": "Resources",
       "notifications": "Notifications",
-      "projects": "Projects"
+      "projects": "Projects",
+      "skills": "Recommended skills",
+      "update": "Update"
     },
     "title": "Settings",
-    "up": "Up"
+    "up": "Up",
+    "skills": {
+      "install": "Install",
+      "installing": "Installing",
+      "retry": "Retry",
+      "update": "Update",
+      "updating": "Updating",
+      "upToDate": "Up to date",
+      "versions": {
+        "checking": "Checking for the latest…",
+        "day": "{{date}} version",
+        "installed": "Installed: {{version}}",
+        "latest": "Latest: {{version}}",
+        "unchecked": "Couldn't check for the latest",
+        "unknown": "unknown"
+      },
+      "withApp": "Updated with alpacawork"
+    }
   },
   "telemetry": {
     "blocked": {
@@ -664,26 +683,7 @@
       "unread": "Waiting for the update to switch.",
       "wait": "The screen comes back once this ends."
     },
-    "line": {
-      "applying": "Switching to {{version}}…",
-      "attention": "The switch to {{version}} has stopped. Continue to resume where it left off",
-      "attentionUnknown": "The switch to the new version has stopped. Continue to resume where it left off",
-      "available": "{{version}} is available (you have {{current}})",
-      "availableAfterRuns_one": "{{version}} can be installed once no agent is working ({{count}} working now). Send the coordinator the pause instruction and it pauses them at a good point",
-      "availableAfterRuns_other": "{{version}} can be installed once no agent is working ({{count}} working now). Send the coordinator the pause instruction and it pauses them at a good point",
-      "done": "The new version is ready. Reload to use it. If you paused agents for the update, ask the coordinator to resume them",
-      "failed": "Could not install {{version}}. The current version keeps working",
-      "failedDisk": "Not enough disk space on this PC to install {{version}}. Free up space, then try again. The current version keeps working",
-      "failedNetwork": "Could not download {{version}}. Check this PC's internet connection, then try again. The current version keeps working",
-      "fetching": "Downloading {{version}}…",
-      "recovering": "Undoing the switch to {{version}}…",
-      "runsActive_one": "Can't switch to {{version}} while an agent is working. The current version keeps working. Send the coordinator the pause instruction, then try again once it finishes",
-      "runsActive_other": "Can't switch to {{version}} while {{count}} agents are working. The current version keeps working. Send the coordinator the pause instruction, then try again once they finish",
-      "waiting_one": "Waiting for {{count}} agent to finish",
-      "waiting_other": "Waiting for {{count}} agents to finish",
-      "withdrawn": "{{version}} was withdrawn"
-    },
-    "notes": "What's new",
+    "notes": "Release notes",
     "pauseInstruction": "I'm updating alpacawork to {{version}}. Put the tasks with working agents on hold so they stop at a good point (let the running ones finish what they are doing).",
     "postpone": "Postpone",
     "reload": "Reload",
@@ -694,7 +694,45 @@
       "on": "Could not save turning on “Show this confirmation next time”. Check the earlier save, then turn on “Confirm before updating” on the General tab."
     },
     "start": "Update",
-    "unavailable": "The update cannot start right now. Try again in a while."
+    "unavailable": "The update cannot start right now. Try again in a while.",
+    "card": {
+      "afterRuns": "Can be installed once agents stop",
+      "afterRunsBody_one": "This version installs only after the working agent stops. Send the coordinator the pause instruction and it stops it at a good point.",
+      "afterRunsBody_other": "This version installs only after the {{count}} working agents stop. Send the coordinator the pause instruction and it stops them at a good point.",
+      "applying": "Switching to the new version…",
+      "applyingBody": "The screen is unavailable for a moment and comes back when it ends.",
+      "attention": "The switch stopped partway",
+      "attentionBody": "Continue picks up where it stopped.",
+      "available": "A new version is available",
+      "done": "You're on the new version",
+      "doneBody": "Reload to bring this screen to it too. If you paused agents for the update, ask the coordinator to resume them.",
+      "doneHeld": "This page reloads into the new version. It is waiting because something typed is not saved yet: save or discard it, then reload.",
+      "failed": "The update didn't go through",
+      "fetching": "Downloading…",
+      "latest": "You're on the latest version",
+      "recovering": "Undoing the switch…",
+      "runsActive": "Can't switch while agents are working",
+      "runsActiveBody_one": "It can switch when the work ends (an agent is working). Send the coordinator the pause instruction, then retry once it stops. You can keep using this version.",
+      "runsActiveBody_other": "It can switch when the work ends ({{count}} agents are working). Send the coordinator the pause instruction, then retry once they stop. You can keep using this version.",
+      "waiting": "Waiting for agents to finish",
+      "waitingBody_one": "It switches by itself once the working agent finishes.",
+      "waitingBody_other": "It switches by itself once the {{count}} working agents finish.",
+      "withdrawn": "{{version}} was withdrawn, so this version stays.",
+      "withdrawnBefore": "The earlier {{version}} was withdrawn.",
+      "failedBody": {
+        "network": "The download failed. Check this PC's internet connection, then retry. You can keep using this version.",
+        "disk": "This PC is short of disk space. Free some, then retry. You can keep using this version.",
+        "other": "Try again. You can keep using this version."
+      }
+    },
+    "page": {
+      "app": "alpacawork (the app)",
+      "appSkill": "The skill for using alpacawork",
+      "handEdits": "If you edited any of these skills by hand, the new version replaces your edits.",
+      "skill": "Skill",
+      "targets": "What gets updated",
+      "targetsNote": "alpacawork and the skills that come with it move to the new version together. No skill needs updating on its own."
+    }
   },
   "workspaceStop": {
     "failed": "Couldn't show the screen.",
