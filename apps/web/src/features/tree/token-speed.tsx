@@ -6,7 +6,7 @@
  * cells follow the clock: each reads the workspace once a second and re-renders only when what it shows has changed,
  * so a tick neither re-renders the rows nor changes any layout (every number sits in a fixed-width slot).
  */
-import { useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useLayoutEffect, useSyncExternalStore, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { runOutputSpeed, type RunOutputSpeed } from "@alpacawork/contract/run";
 import { AgentMark } from "@/components/ui/agent-mark";
@@ -212,67 +212,32 @@ export const TIME_SLOT = "inline-block min-w-[4.5em] text-right narrow:min-w-[3.
 /** The speed's slot on a phone, held while agents run so the columns stay put before a count arrives. */
 const NARROW_SPEED_SLOT = "inline-block min-w-[5ch] text-right tabular-nums";
 
-/** The gap between agents (gap-2). */
-const AGENT_GAP = 8;
+/** The most logos a stack shows; the total counts the rest. */
+const STACK = 3;
 
 /**
- * Which agents run and how many: each agent's mark (AgentMark) and its count, most first, so a row says at a glance
- * which AI works on it. It takes the room the row leaves it: the marks that do not fit stand as one "+count" of their
- * agents (none fitting, the square and the total), and its press lists the names. A count no loaded Run names keeps
- * the square. Read as words, it is the total and then each agent's name and count.
+ * Which AIs run and how many, as a list has room for: their logos laid over one another, most first, each on a faint
+ * disc ringed in the row's ground so each disc's edge shows, then the total past one. Its press lists each agent's count,
+ * and a reader hears the total and each agent's name and count. A Run no read has brought counts in the total only.
  */
 export function AgentCounts({ tasks }: { tasks: readonly Task[] }) {
   const { t } = useTranslation("tree");
   const key = useWorkspaceSelector((data) => JSON.stringify(runningAgents(tasks, data)));
   const agents = JSON.parse(key) as [string | null, number][];
-  const box = useRef<HTMLSpanElement>(null);
-  // How many marks fit; all of them while measuring (count unknown), after the agents or the row's width change.
-  const [fit, setFit] = useState({ key, count: Number.MAX_SAFE_INTEGER });
-  const measuring = fit.key !== key || fit.count === Number.MAX_SAFE_INTEGER;
-  useLayoutEffect(() => {
-    const el = box.current;
-    if (!el || !measuring) return;
-    const widths = [...el.querySelectorAll<HTMLElement>("[data-agent]")].map((item) => item.offsetWidth);
-    let count = widths.length;
-    if (el.scrollWidth > el.clientWidth + 1) {
-      // Room for the "+count" of all of them, its widest: a figure is about 0.6em, the plus about as wide.
-      const figure = 0.62 * parseFloat(getComputedStyle(el).fontSize);
-      let used = Math.ceil((String(agents.reduce((sum, [, n]) => sum + n, 0)).length + 1) * figure) + 2;
-      count = 0;
-      while (count < widths.length && used + widths[count]! + AGENT_GAP <= el.clientWidth) used += widths[count++]! + AGENT_GAP;
-    }
-    if (fit.key !== key || fit.count !== count) setFit({ key, count });
-  });
-  // Measure again when the row's width changes, or when what stands beside it (a time that arrives) squeezes it.
-  useLayoutEffect(() => {
-    // The title column's cell on a computer (its row's width does not follow the column), the heading, or a phone's row.
-    const el = box.current, row = el?.closest("[data-row-label], h2, li");
-    if (!el || !row || typeof ResizeObserver === "undefined") return;
-    let width = row.clientWidth;
-    const observer = new ResizeObserver(() => {
-      if (row.clientWidth === width && el.scrollWidth <= el.clientWidth + 1) return;
-      width = row.clientWidth;
-      setFit((was) => ({ key: was.key, count: Number.MAX_SAFE_INTEGER }));
-    });
-    observer.observe(row);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
   if (!agents.length) return null;
   const total = agents.reduce((sum, [, count]) => sum + count, 0);
   const words = agents.map(([agent, count]) => `${agent ?? "?"} ${count}`).join(", ");
-  const named = measuring ? agents : agents.slice(0, fit.count);
-  const rest = agents.slice(named.length).reduce((sum, [, count]) => sum + count, 0);
-  return <span ref={box} data-agent-counts title={words} className="flex min-w-0 shrink items-center gap-2 self-center overflow-hidden whitespace-nowrap tabular-nums">
+  const shown = agents.flatMap(([agent]) => agent === null ? [] : [agent]).slice(0, STACK);
+  return <span data-agent-counts title={words} className="flex flex-none items-center gap-1 self-center whitespace-nowrap tabular-nums">
     <span className="sr-only">{`${t("status.runningRuns", { count: total })}: ${words}`}</span>
-    {/* One agent of a kind is its logo alone; more say how many, small, beside it. */}
-    {named.map(([agent, count]) => <span key={agent ?? ""} data-agent aria-hidden="true" className="flex flex-none items-center gap-0.5">
-      {agent === null ? <Icon name="runningRuns" className="size-[0.7em] text-muted" /> : <AgentMark name={agent} className="size-[1.05em]" />}
-      {(count > 1 || agent === null) && <span className="translate-y-[0.08em] text-[0.85em] leading-none text-muted">{count}</span>}
-    </span>)}
-    {rest > 0 && <span aria-hidden="true" className="flex-none text-[0.85em] text-muted">
-      {named.length ? `+${rest}` : <><Icon name="runningRuns" className="mr-0.5 inline size-[0.7em] align-[-0.02em]" />{rest}</>}
-    </span>}
+    <span aria-hidden="true" className="flex items-center">
+      {shown.length ? shown.map((agent, i) => <span key={agent} data-agent style={{ zIndex: STACK - i }}
+        className={cn("relative grid size-[1.45em] place-items-center overflow-hidden rounded-full ring-2 ring-[var(--row-ground,var(--bg))]",
+          "bg-[color-mix(in_oklab,var(--color-ink)_13%,var(--row-ground,var(--bg)))] [&>svg:has(circle)]:size-full", i > 0 && "-ml-[0.28em]")}>
+        <AgentMark name={agent} className="size-[0.85em]" />
+      </span>) : <Icon name="runningRuns" className="size-[0.7em] text-muted" />}
+    </span>
+    {(total > 1 || !shown.length) && <span aria-hidden="true" className="text-[0.9em] leading-none text-muted">{total}</span>}
   </span>;
 }
 
