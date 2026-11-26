@@ -351,6 +351,8 @@ export const taskShelvedInput = z.object({ scope: projectScope,
 export const taskTimelineAxisInput = z.object({ lanes: z.string().max(8192) });
 export const taskTimelineInput = z.object({
   lanes: z.string().max(8192),
+  /** The strips the reader holds, as `<row>:<token>` by commas: those rows are answered with what changed since. */
+  bases: z.string().max(32768).optional(),
   from: z.iso.datetime({ offset: true }), to: z.iso.datetime({ offset: true }),
   limit: z.string().regex(/^[0-9]+$/).transform(Number).pipe(z.number().int().min(1).max(2000)).optional(),
 }).refine(value => Date.parse(value.from) <= Date.parse(value.to), 'Invalid time range');

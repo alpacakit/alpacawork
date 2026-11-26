@@ -1,10 +1,12 @@
 /** Pages, scoped search and timeline reads from a published frame. */
+import { randomBytes } from 'node:crypto';
 import { valuesText, historyEventKey, joinBusy, reportDisplay, reportMark, runSpan, timeMarkAt, timelineLogOf,
   timelineNoteOf, timelinePlacementOf, timelineRunOf, type LayoutRecord, type TaskValues } from '@alpacawork/contract';
 import { isFinished } from '@alpacawork/contract/branch';
 import { closedPageScope, finishedBy, standingRecord, type ControlRunDTO, type PlacementDTO, type TaskPageRowDTO, type TaskTimelineAxisDTO,
   type TaskProjectedPageDTO, type TaskProjectedSearchDTO, type TaskTimelineLaneDTO, type TaskTimelineLanesDTO, type TaskProjectedTimelineAxisDTO,
-  type ProjectionResourceKind, type ProjectionVersion, type ControlTreeDTO, type TaskRowDTO } from '@alpacawork/contract/control';
+  type ProjectionResourceKind, type ProjectionVersion, type ControlTreeDTO, type TaskRowDTO, type TaskTimelineLanePatchDTO,
+  diffTimelineItems, timelineEventOrder } from '@alpacawork/contract/control';
 import { byMoved } from '@alpacawork/contract/moved';
 import { PROBLEM_CODE, Problem } from '@alpacawork/core';
 import { lineWithText, matchesTaskText } from '../control/task-views.js';
@@ -71,19 +73,19 @@ export function timelineAxis(state: PageReadState, lanes: readonly string[]): Ta
 }
 
 type TimelineEvent = TaskTimelineLaneDTO['events'][number];
-type TimelineLane = Omit<TaskTimelineLaneDTO, 'row' | 'generation' | 'sourcePv'>;
+type TimelineLane = Omit<TaskTimelineLaneDTO, 'row' | 'generation' | 'sourcePv' | 'token'>;
 /**
  * Each requested row's strip over [from, to], made from that row's own subtree alone (its History events, log entries,
  * Runs and placements, and the ended Runs below it), so a row's strip changes only with what changes in its subtree.
  */
 export function timelineLanes(state: PageReadState, lanes: readonly string[], from: number, to: number): Map<string, TimelineLane> {
   const tasks = new Map(current(state).tasks.map(task => [task.id, task]));
-  const result = new Map<string, TimelineLane & { stamped: { at: number; id: string; value: TimelineEvent }[] }>();
+  const result = new Map<string, TimelineLane>();
   for (const id of lanes) {
     const row = state.rows.get(id)?.value, task = tasks.get(id);
     if (!row || !task) continue;
     const prior = [...row.stateLog].reverse().find(log => log.toState !== null && Date.parse(log.at) < from);
-    const stamped: { at: number; id: string; value: TimelineEvent }[] = [];
+    const events: TimelineEvent[] = [];
     // The notes are the Task's History events; a note made from a log entry comes with that entry.
     const logs = new Map(task.log.map(log => [log.id, log]));
     const notes = eventsFor(state, task).map(event => ({ ...event, at: timeMarkAt(event, logs) })).filter(event => {
@@ -99,13 +101,13 @@ export function timelineLanes(state: PageReadState, lanes: readonly string[], fr
     for (const event of notes) {
       const note = timelineNoteOf(event);
       if (!shown.has(historyEventKey(event))) note.displayed = false;
-      stamped.push({ at: Date.parse(event.at), id: `${id}:note:${event.kind}:${event.id}`, value: { kind: 'note', taskId: id, event: note } });
+      events.push({ kind: 'note', taskId: id, event: note });
     }
     for (const entry of row.stateLog) {
       const at = Date.parse(entry.causeAt ?? entry.at);
-      if (at >= from && at <= to) stamped.push({ at, id: `${id}:log:${entry.id}`, value: { kind: 'log', taskId: id, entry: timelineLogOf(entry) } });
+      if (at >= from && at <= to) events.push({ kind: 'log', taskId: id, entry: timelineLogOf(entry) });
     }
-    result.set(id, { lane: id, anchor: prior && !isFinished(prior.toState) ? timelineLogOf(prior) : null, events: [], belowRuns: [], placements: [], stamped });
+    result.set(id, { lane: id, anchor: prior && !isFinished(prior.toState) ? timelineLogOf(prior) : null, events, belowRuns: [], placements: [] });
   }
   const lanesAbove = lanesAboveFor(state, new Set(result.keys()));
   for (const { value: run } of state.runs.values()) {
@@ -113,18 +115,17 @@ export function timelineLanes(state: PageReadState, lanes: readonly string[], fr
     const created = Date.parse(run.createdAt), started = run.startedAt ? Date.parse(run.startedAt) : created;
     const ended = run.endedAt ? Date.parse(run.endedAt) : Number.POSITIVE_INFINITY;
     if (own && (created >= from && created <= to || started <= to && ended >= from))
-      own.stamped.push({ at: Math.max(from, Math.min(started, to)), id: `${run.taskId}:run:${run.id}`,
-        value: { kind: 'run', taskId: run.taskId, run: timelineRunOf(run) } });
+      own.events.push({ kind: 'run', taskId: run.taskId, run: timelineRunOf(run) });
     const span = runSpan(run, null);
     if (!span || span.to === null || span.from > to || span.to < from) continue;
     for (const lane of lanesAbove(run.taskId)) result.get(lane)!.belowRuns.push([run.id, span.from, span.to]);
   }
   for (const lane of result.values()) {
-    lane.events = lane.stamped.sort((a, b) => a.at - b.at || a.id.localeCompare(b.id)).map(item => item.value);
+    lane.events.sort(timelineEventOrder);
     const placementIds = new Set(lane.events.flatMap(event => event.kind === 'run' ? [event.run.placementId] : []));
     lane.placements = [...state.placements.values()].map(item => item.value).filter(item => placementIds.has(item.id)).map(item => timelinePlacementOf(item));
   }
-  return new Map([...result].map(([id, { stamped: _stamped, ...lane }]) => [id, lane]));
+  return result;
 }
 
 /** The aggregate is the sole owner of descendant facts; both closed pages and time/search rows add them here. */
@@ -148,16 +149,28 @@ const lanesVersion = (frame: PublishedFrame, lanes: readonly string[]) =>
   `${frame.generation}:${Math.max(0, ...lanes.map(id => frame.requiredPv.timeline[id] ?? 0))}`;
 const invalidLanes = () => new Problem(PROBLEM_CODE.invalidInput, 'Invalid visible Task IDs', undefined, { reason: { kind: 'invalid_visible_task_ids' } });
 
+/** Strips kept to send changes against: per row and range, per row, and in all. */
+const SENT_PER_RANGE = 2, SENT_PER_ROW = 8, SENT_STRIPS = 512;
 /** Server-prepared time and search resources expire only when their rows' or scope's requiredPv changes. */
 export class ProjectedPages {
   private generation: string | undefined;
   private readonly axes = new Map<string, { lanes: string[]; version: string; value: TaskProjectedTimelineAxisDTO }>();
   private readonly lanes = new Map<string, { lane: string; version: string; value: TaskTimelineLaneDTO }>();
   private readonly searches = new Map<string, { scope: string; version: string; sourcePv: ProjectionVersion; ids: string[] }>();
+  /**
+   * The strips sent lately, by their token, so a reader holding one is sent only what changed since (any range). A
+   * reader holds the newest strip it was sent for its range, so each row keeps the newest few of each range it was
+   * read for, and a few in all, as a row's strip can be large; a strip no longer kept is sent whole.
+   */
+  private readonly sent = new Map<string, TaskTimelineLaneDTO>();
+  /** Each row's kept strips, oldest first, with the range each was read for. */
+  private readonly sentOf = new Map<string, { range: string; token: string }[]>();
+  /** Each item's text, written once per item object: a strip kept for its version shares its items with the next. */
+  private readonly texts = new WeakMap<object, string>();
 
   private invalidate(frame: PublishedFrame): void {
     if (this.generation !== frame.generation) {
-      this.axes.clear(); this.lanes.clear(); this.searches.clear(); this.generation = frame.generation;
+      this.axes.clear(); this.lanes.clear(); this.searches.clear(); this.sent.clear(); this.sentOf.clear(); this.generation = frame.generation;
     }
     for (const [key, cached] of this.axes)
       if (cached.version !== lanesVersion(frame, cached.lanes)) this.axes.delete(key);
@@ -283,11 +296,41 @@ export class ProjectedPages {
     return value;
   }
 
+  private keep(value: TaskTimelineLaneDTO, range: string): void {
+    const sent = [...(this.sentOf.get(value.lane) ?? []).filter(item => item.token !== value.token), { range, token: value.token }];
+    const kept: typeof sent = [], perRange = new Map<string, number>();
+    for (const item of sent.reverse()) {
+      const count = perRange.get(item.range) ?? 0;
+      if (count < SENT_PER_RANGE && kept.length < SENT_PER_ROW) { perRange.set(item.range, count + 1); kept.unshift(item); }
+      else this.sent.delete(item.token);
+    }
+    this.sent.delete(value.token); this.sent.set(value.token, value); this.sentOf.set(value.lane, kept);
+    while (this.sent.size > SENT_STRIPS) {
+      const [token, { lane }] = this.sent.entries().next().value!;
+      this.sent.delete(token);
+      const left = this.sentOf.get(lane)?.filter(item => item.token !== token) ?? [];
+      if (left.length) this.sentOf.set(lane, left); else this.sentOf.delete(lane);
+    }
+  }
+
+  /** What `value` changes in the strip the reader holds (`base`), or the whole strip when that one is no longer kept. */
+  private patch(value: TaskTimelineLaneDTO, base: string | undefined): TaskTimelineLanePatchDTO {
+    const held = base === undefined ? undefined : this.sent.get(base);
+    if (!held || held.lane !== value.lane) return { ...value, base: null, drop: [] };
+    const text = (item: object) => {
+      let written = this.texts.get(item);
+      if (written === undefined) { written = JSON.stringify(item); this.texts.set(item, written); }
+      return written;
+    };
+    return { ...value, ...diffTimelineItems(held, value, text), base: held.token };
+  }
+
   /**
-   * Rows' strips over one range, each whole and as new as its own version: a strip already made for its row's current
-   * version is not made again. Rows are answered in the order asked until about `limit` events (at least one row).
+   * Rows' strips over one range, each as new as its own version: a strip already made for its row's current version is
+   * not made again. A row whose held strip is named in `bases` is sent only what changed from it. Rows are answered in
+   * the order asked until about `limit` events (at least one row).
    */
-  timeline(frame: PublishedFrame, input: { lanes: string; from: string; to: string; limit?: number }): TaskTimelineLanesDTO {
+  timeline(frame: PublishedFrame, input: { lanes: string; bases?: string; from: string; to: string; limit?: number }): TaskTimelineLanesDTO {
     this.invalidate(frame);
     const asked = [...new Set(input.lanes.split(',').filter(Boolean))];
     if (asked.length > 200) throw invalidLanes();
@@ -304,18 +347,24 @@ export class ProjectedPages {
     if (missing.length) for (const [id, lane] of timelineLanes(this.readState(frame, missing), missing, from, to)) {
       // The row as the list holds it: what its current state is drawn from (a held row has derived facts, readsRow). Its
       // chronology is the strip's own events.
-      const value = { ...lane, row: liveRow(frame.derived(id)!.row), generation: frame.generation, sourcePv: frame.pv };
+      const value = { ...lane, row: liveRow(frame.derived(id)!.row), token: randomBytes(12).toString('base64url'), generation: frame.generation, sourcePv: frame.pv };
       values.set(id, value);
       this.lanes.set(key(id), { lane: id, version: lanesVersion(frame, [id]), value });
     }
     while (this.lanes.size > 512) this.lanes.delete(this.lanes.keys().next().value!);
-    const answered: TaskTimelineLaneDTO[] = [], budget = input.limit ?? 2000;
+    const bases = new Map((input.bases ?? '').split(',').flatMap(item => {
+      const at = item.indexOf(':');
+      return at > 0 ? [[item.slice(0, at), item.slice(at + 1)] as const] : [];
+    }));
+    const answered: TaskTimelineLanePatchDTO[] = [], budget = input.limit ?? 2000;
     let events = 0;
     for (const id of asked) {
       const value = values.get(id);
       if (!value) continue;
-      if (answered.length && events + value.events.length > budget) break;
-      answered.push(value); events += value.events.length;
+      const sent = this.patch(value, bases.get(id));
+      if (answered.length && events + sent.events.length > budget) break;
+      answered.push(sent); events += sent.events.length;
+      this.keep(value, key(id));
     }
     return { lanes: answered, gone: asked.filter(id => !values.has(id)) };
   }
