@@ -113,7 +113,7 @@ function Way({ name, label, face, disabled, onClick, describedBy, children }: {
   return <button type="button" disabled={disabled} onClick={onClick} aria-label={label} aria-describedby={describedBy}
     className="group flex w-16 flex-none cursor-pointer touch-manipulation flex-col items-center gap-1.5 rounded-md py-1 text-xs text-muted outline-offset-2 hover:text-ink disabled:cursor-default disabled:opacity-38 disabled:hover:text-muted narrow:w-auto narrow:min-w-0 narrow:flex-1">
     <span className={cn("grid size-12 place-items-center rounded-full narrow:size-11 transition-[filter,transform] group-hover:brightness-110 group-active:translate-y-px group-disabled:brightness-100", face)}>{children}</span>
-    <span className="whitespace-nowrap">{name}</span>
+    <span className="text-center leading-tight [word-break:keep-all]">{name}</span>
   </button>;
 }
 
@@ -176,7 +176,8 @@ export function CardPane({ place, reads: { face, tasks, usage }, waitFrom }: {
   const share = async () => {
     try {
       const picture = await drawn();
-      if (picture) await navigator.share({ files: [new File([picture.png], picture.name, { type: "image/png" })] });
+      // The card's sentence goes along too, for the apps that take words beside a picture (those that do not drop it).
+      if (picture && facts) await navigator.share({ files: [new File([picture.png], picture.name, { type: "image/png" })], text: cardPostText(facts, choice, card.length === "all") });
     } catch (error) {
       // Closed by the person: nothing to say.
       if (!(error instanceof DOMException && error.name === "AbortError")) notify.error(t("card.shareFailed"));
@@ -225,7 +226,7 @@ export function CardPane({ place, reads: { face, tasks, usage }, waitFrom }: {
       <Way name={t("card.copy")} face={DEVICE} disabled={!current} onClick={copy}><Icon name="copy" className="size-5" /></Way>
       <Way name={t("card.save")} face={DEVICE} disabled={!current} onClick={() => void save()}><Icon name="download" className="size-5" /></Way>
     </div>
-    <p id={postHint} className="mt-2 text-xs text-soft">{copying ? t("card.postHintCopy") : t("card.postHintSave")}</p>
+    <p id={postHint} className="mt-2 text-xs text-muted">{copying ? t("card.postHintCopy") : t("card.postHintSave")}</p>
     <div className="mt-8 grid gap-6">
       {row(t("period.label"), <Seg label={t("period.label")} value={card.length} className={fold}
         onChange={length => useViewStore.getState().showAnalysis({ ...place, card: { ...card, length } })}
