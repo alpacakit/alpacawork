@@ -13,6 +13,7 @@ export function PanelDialog({
   size,
   ownBody = false,
   wide = false,
+  heading = true,
   children,
 }: {
   title: string;
@@ -21,6 +22,8 @@ export function PanelDialog({
   size?: "default" | "large";
   /** Wider than a large one, for a side list of sections beside the page (settings on a computer). */
   wide?: boolean;
+  /** False where the children draw the title and the close button themselves (settings on a computer, beside its side list). */
+  heading?: boolean;
   /** The children bring their own DialogBody (settings: its tabs stay with the head, over the part that scrolls). */
   ownBody?: boolean;
   children: React.ReactNode;
@@ -31,7 +34,7 @@ export function PanelDialog({
     <Dialog open onOpenChange={(open) => !open && close()}>
       {/* Without a description, Radix is told so explicitly rather than pointed at nothing. */}
       <DialogContent size={size} className={wide ? "data-[size=large]:w-[56rem]" : undefined} {...(description ? {} : { "aria-describedby": undefined })}>
-        <DialogHeading title={title} description={description} back={back} />
+        {heading && <DialogHeading title={title} description={description} back={back} />}
         {ownBody ? children : <DialogBody>{children}</DialogBody>}
       </DialogContent>
     </Dialog>

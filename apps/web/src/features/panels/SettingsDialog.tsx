@@ -5,7 +5,7 @@ import { useCoarsePointer } from "@/lib/input-capabilities";
 import { FieldHint } from "@/components/ui/field";
 import { useDialogStore, type SettingsFocus, type SettingsTab } from "@/state/dialog-store";
 import { HostTab } from "./HostTab";
-import { DialogBody } from "@/components/ui/dialog";
+import { DialogBody, DialogCloseButton, DialogTitle } from "@/components/ui/dialog";
 import { PanelDialog } from "./PanelDialog";
 import { GeneralSettingsTab, NotificationSettingsTab } from "./PersonalSettingsTab";
 import { AdvancedServerOptions, AiSettingsTab, ServerDraftProvider, ServerFolderLines } from "./ServerSettingsTab";
@@ -26,13 +26,17 @@ import { UpdateConfirmDialog, UpdateStateLine, VersionLine } from "@/features/up
  */
 export function SettingsDialog({ initialTab = "ai", request, focus }: { initialTab?: SettingsTab; request?: number; focus?: SettingsFocus } = {}) {
   const { t } = useTranslation("panels");
+  const narrow = useNarrow();
   return (
-    <PanelDialog title={t("settings.title")} size="large" wide ownBody>
+    <PanelDialog title={t("settings.title")} size="large" wide heading={narrow} ownBody>
       <SettingsBody initialTab={initialTab} request={request} focus={focus} />
       <UpdateConfirmDialog />
     </PanelDialog>
   );
 }
+
+/** The top line of both columns on a computer: the dialog's title over the side list, the section's name over the page. */
+const HEAD_ROW = "flex h-16 flex-none items-center";
 
 const TABS = ["ai", "skills", "notifications", "projects", "general", "apps", "host"] as const satisfies readonly SettingsTab[];
 
@@ -75,8 +79,11 @@ export function SettingsBody({ initialTab = "ai", request, focus }: { initialTab
     <ServerDraftProvider show={setTab} focusCoordinatorAi={focus === "coordinatorAi" ? request ?? 0 : undefined}>
     <Tabs value={tab} orientation={narrow ? "horizontal" : "vertical"} onValueChange={(value) => setTab(value as SettingsTab)} className={cn("min-h-0 flex-1", !narrow && "flex-row")}>
       {/* A computer lists the sections down the side, under the title; a phone keeps them in a row that scrolls sideways. */}
-      <div className={cn("flex-none px-6 narrow:px-4.5", !narrow && "flex w-52 flex-col border-e border-line px-3 pt-1")}>
-        <div className={cn("border-b border-line", !narrow && "border-b-0")}>
+      {/* A computer lists the sections down a tinted side, the dialog's title on its top line; a phone keeps them in a
+          row that scrolls sideways, under the title. */}
+      <div className={cn("flex-none px-6 narrow:px-4.5", !narrow && "flex w-56 flex-col border-e border-line bg-[color:color-mix(in_oklab,var(--ink)_3%,transparent)] px-3")}>
+        {!narrow && <div className={cn(HEAD_ROW, "px-2")}><DialogTitle className="font-semibold">{t("settings.title")}</DialogTitle></div>}
+        <div className={cn("border-b border-line", !narrow && "border-b-0 pt-1")}>
           <TabsList ref={list} className={cn("-mx-1 border-b-0", !narrow && "mx-0 flex-col items-stretch gap-0.5 overflow-visible py-0")}>
             {/* Mapped over TABS itself: i18n:extract reads each `settings.tabs.*` key from this constant list, not a filtered copy. */}
             {TABS.map((value) => availableTabs.includes(value) && <TabsTrigger key={value} value={value} className={cn("", !narrow && "h-8 justify-start")}>
@@ -87,11 +94,13 @@ export function SettingsBody({ initialTab = "ai", request, focus }: { initialTab
         {!narrow && <div className="mt-auto px-2 pb-5"><VersionLine /></div>}
       </div>
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      {!narrow && <UpdateStateLine className="mx-8 mt-5 flex-none" />}
-      <DialogBody ref={body} className={cn("flex flex-col border-t-0 pt-5", !narrow && "pt-6 [--pane-side:--spacing(8)]")}>
-      {/* On a computer the page says which section it is, as the side list does beside it; a phone's row of tabs is right above. */}
+      {/* The section's name on the title's line, at the title's size, with the close button at its end. */}
+      {!narrow && <div className={cn(HEAD_ROW, "justify-between gap-3 px-8 pe-5")}>
+        <h3 className="m-0 min-w-0 text-lg font-semibold">{t(`settings.tabs.${tab}`)}</h3><DialogCloseButton /></div>}
+      {!narrow && <UpdateStateLine className="mx-8 mb-4 flex-none" />}
+      <DialogBody ref={body} className={cn("flex flex-col border-t-0 pt-5", !narrow && "pt-1 [--pane-side:--spacing(8)]")}>
       {/* On a phone the update's band opens the page and scrolls away with it, so the tabs keep their place. */}
-      {narrow ? <UpdateStateLine className="mb-4" /> : <h3 className="m-0 mb-1.5 text-lg font-semibold">{t(`settings.tabs.${tab}`)}</h3>}
+      {narrow && <UpdateStateLine className="mb-4" />}
       {/* The two tabs showing the draft stay mounted while hidden, so a refused save can take the eye into either. */}
       <TabsContent value="ai" forceMount hidden={tab !== "ai"}>
         <AiSettingsTab />
