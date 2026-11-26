@@ -81,3 +81,28 @@ export function faceAnswer(face: Pick<UsageSeriesView, "head">, bins: { from: st
       && view.head.period?.from === face.head.period?.from && view.head.period?.to === face.head.period?.to,
   };
 }
+
+/** One colour of a breakdown's chart by name: a name with the most counts (`key`), or the rest together (`key` null, `count` names). */
+export type NamePart = { key: string | null; label: string; color: string; count: number };
+
+/**
+ * The colours of the skills, tools or MCP of a breakdown's chart, from its names as the server ordered them (the most
+ * counted over the chart's days first): the first five each a colour of the models' and the rest one grey part, or the
+ * sixth in grey under its own name when it is the only one left. `partOf` gives a name's part (none for a name the chart
+ * does not hold); `binParts` a bin's nonzero
+ * [name index, count] pairs added up by part, the parts with counts in their order.
+ */
+export function nameParts(groups: { key: string; label: string }[]) {
+  const named = groups.length <= MODEL_COLORS.length + 1 ? groups.length : MODEL_COLORS.length;
+  const parts: NamePart[] = groups.slice(0, named).map((group, at) =>
+    ({ key: group.key, label: group.label, color: MODEL_COLORS[at] ?? REST, count: 1 }));
+  if (named < groups.length) parts.push({ key: null, label: "", color: REST, count: groups.length - named });
+  const index = new Map(groups.map((group, at) => [group.key, Math.min(at, named)]));
+  const partOf = (key: string): number | undefined => index.get(key);
+  const binParts = (counts: [number, number][]) => {
+    const sums = parts.map(() => 0);
+    for (const [group, count] of counts) sums[Math.min(group, named)]! += count;
+    return sums.flatMap((value, part) => value > 0 ? [{ part: parts[part]!, value }] : []);
+  };
+  return { parts, partOf, binParts };
+}

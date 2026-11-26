@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { colourBook, faceAnswer, partsOf } from "../src/features/analysis/series";
+import { colourBook, faceAnswer, nameParts, partsOf } from "../src/features/analysis/series";
 import { analysisValues, readAnalysis } from "../src/features/analysis/place";
 import type { UsageSeriesView } from "../src/features/analysis/contract";
 
@@ -56,4 +56,17 @@ test("a list opened under a filter keeps it in the URL", () => {
     list: { set: "used" as const, value: "launches" as const, group: "model" as const, member: "k", filter: { model: "Opus 5.5", effort: "-" } } };
   const url = new URLSearchParams(analysisValues(place));
   expect(readAnalysis(url)?.list?.filter).toEqual({ model: "Opus 5.5", effort: "-" });
+});
+
+test("a breakdown's names past the fifth stack as one grey part, and a bin's parts add up to its count", () => {
+  const names = (count: number) => Array.from({ length: count }, (_, at) => ({ key: `k${at}`, label: `n${at}` }));
+  const many = nameParts(names(8));
+  expect(many.parts.map(part => [part.key, part.count])).toEqual([["k0", 1], ["k1", 1], ["k2", 1], ["k3", 1], ["k4", 1], [null, 3]]);
+  expect(new Set(many.parts.slice(0, 5).map(part => part.color)).size).toBe(5);
+  expect(many.partOf("k7")).toBe(5);
+  expect(many.partOf("gone")).toBeUndefined();
+  const bin = many.binParts([[0, 4], [5, 2], [7, 1]]);
+  expect(bin.map(({ part, value }) => [part.key, value])).toEqual([["k0", 4], [null, 3]]);
+  // A sixth name alone keeps its own name rather than "1 other".
+  expect(nameParts(names(6)).parts.map(part => part.key)).toEqual(["k0", "k1", "k2", "k3", "k4", "k5"]);
 });

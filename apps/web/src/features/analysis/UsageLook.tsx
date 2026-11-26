@@ -12,6 +12,7 @@ import { tokenTotal, type TasksView, type UsageCounts, type UsageView } from "./
 import type { Span } from "./place";
 import { useBreakdown, useNear } from "./data";
 import { useViewStore } from "@/state/view-store";
+import { nameParts, type NamePart } from "./series";
 import { LaunchControls, launchesParts, launchesSay, useLaunches, type LaunchAnswers } from "./Launches";
 
 type Days = { from: string; to: string };
@@ -253,23 +254,39 @@ function Breakdown({ view, span, root, group, days, open, choose }: {
           cell(VALUES[key].kind, VALUES[key].read(c), () => open({ set: "used", value: key, ...member(row.key) }))), tasks];
     return { key: row.key, name: rowName(row, t("tasks.noAgent")), bar: by === "skill" ? c.launches : counted ? row.calls ?? 0 : tokens(c), cells };
   });
-  const name = by === "skill" ? t("usage.skillLaunches") : t("usage.calls");
-  const read = (value: { calls: number; launches: number }) => by === "skill" ? value.launches : value.calls;
+  const name = by === "skill" ? t("usage.skillUses") : t("usage.calls");
   const series = breakdown?.series ?? null, points = view.series.points;
-  const scale = useScale(spanMost(points, days, i => series?.[i] ? read(series[i]!) : 0), 1, unitWord("times"), true);
+  const scale = useScale(spanMost(points, days, i => series?.[i]?.calls ?? 0), 1, unitWord("times"), true);
   const sinceAt = since ? points.findIndex(point => point.to >= since) : -1;
-  const valueOf = by === "skill" ? "launches" as const : "calls" as const;
+  // Each bin stacked by name, the most counted at the foot, in the colours the span's parts on the left take.
+  const { parts, partOf, binParts } = nameParts(breakdown?.groups ?? []);
+  const partName = (part: NamePart) => part.key === null ? t("usage.otherNames", { count: part.count }) : part.label;
+  const onBin = (at: number) => series?.[at] ? binParts(series[at]!.counts) : [];
+  const share = (value: number, all: number) => all ? `${Math.round(value / all * 100)}%` : "";
+  const spanSums = parts.map(() => 0);
+  for (const row of rows) { const part = partOf(row.key); if (part !== undefined) spanSums[part]! += row.calls ?? 0; }
+  const spanAll = breakdown?.counted ? breakdown.counted.value.calls : 0;
+  const spanParts = parts.flatMap((part, at) => spanSums[at]! > 0 ? [{
+    color: part.color, name: partName(part), value: <b className="font-semibold tabular-nums">{format("times", spanSums[at]!)}</b>,
+    share: share(spanSums[at]!, spanAll),
+    onOpen: part.key === null ? undefined : () => open({ set: "used", value: "calls", group: by, member: part.key }),
+  }] : []);
   const chart = counted && since && series && series.length === points.length && <ChartGroup bins={points} span={days} today={view.head.today} bucket={bucket}
-    rows={[{ name, total: i => series[i] ? format("times", read(series[i]!)) : t("chart.notCounted"),
+    rows={[{ name, total: i => series[i] ? format("times", series[i]!.calls) : t("chart.notCounted"),
+      parts: i => onBin(i).map(({ part, value }) => ({ color: part.color, name: partName(part), value: format("times", value),
+        share: share(value, series[i]!.calls),
+        list: part.key === null ? undefined : (bin: { from: string; to: string }) => ({ set: "used" as const, value: "calls" as const, group: by, member: part.key, from: bin.from, to: bin.to }) })),
       // A bin before counting began has no tasks to open.
-      list: (bin, at) => series[at] === null ? null : { set: "used", value: valueOf, group: by, member: null, from: bin.from, to: bin.to } }]}
-    open={list => open({ set: list.set, value: list.value, group: list.group ?? null, member: null, days: { from: list.from, to: list.to } })}>
+      list: (bin, at) => series[at] === null ? null : { set: "used", value: "calls", group: by, member: null, from: bin.from, to: bin.to } }]}
+    open={list => open({ set: list.set, value: list.value, group: list.group ?? null, member: list.member ?? null, days: { from: list.from, to: list.to } })}>
     <Row row={0} className="mb-2" left={before ? <><RowName>{name}</RowName><p className="mt-1 text-soft">{t("usage.none")}</p></>
-      : <Num className="" label={name} kind="times" value={breakdown?.counted ? read(breakdown.counted.value) : 0}
-        previous={breakdown?.counted?.previous ? read(breakdown.counted.previous) : null} length={daysBetween(days.from, days.to)}
-        onOpen={() => open({ set: "used", value: by === "skill" ? "launches" : "calls", group: by, member: null })} />}>
-      <BarChart row={0} height="h-16 narrow:h-12" scale={scale} uncounted={i => series[i] === null}
-        partial={i => points[i]!.from < since && points[i]!.to >= since} tone="working" values={i => [["", series[i] ? read(series[i]!) : 0]]} />
+      : <><Num className="" label={name} kind="times" value={breakdown?.counted ? breakdown.counted.value.calls : 0}
+        previous={breakdown?.counted?.previous ? breakdown.counted.previous.calls : null} length={daysBetween(days.from, days.to)}
+        onOpen={() => open({ set: "used", value: "calls", group: by, member: null })} />
+        <Parts items={spanParts} /></>}>
+      <BarChart row={0} height="h-30 narrow:h-24" scale={scale} uncounted={i => series[i] === null}
+        partial={i => points[i]!.from < since && points[i]!.to >= since}
+        values={i => onBin(i).map(({ part, value }, at) => [part.color, value, at] as [string, number, number])} />
       <DayAxis strong={sinceAt >= 0 ? { at: sinceAt, day: since } : null} />
     </Row>
   </ChartGroup>;

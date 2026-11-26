@@ -370,13 +370,14 @@ test('analysis commands share selection, contribution and tally rules over a sma
       const toolTotals = { calls: 4, launches: 2 };
       assert.equal(tools?.breakdown?.since, '2026-09-25');
       assert.deepEqual(tools?.breakdown?.counted, { value: toolTotals, previous: null });
-      assert.deepEqual(tools?.breakdown?.series?.[0], toolTotals);
+      const totalsOf = (point: { calls: number; launches: number } | null | undefined) => point && { calls: point.calls, launches: point.launches };
+      assert.deepEqual(totalsOf(tools?.breakdown?.series?.[0]), toolTotals);
       const crossingKey = JSON.stringify(['fixture', 'crossing']);
       assert.ok(!tools?.breakdown?.rows.some(row => row.key === crossingKey));
       const split = await read<AnalysisUsageView>('usage', { ...acceptanceRange, from: '2026-09-26', to: '2026-09-27', by: 'tool', view: 'history' });
       assert.ok(split.head.previous);
       assert.deepEqual(split.breakdown?.counted, { value: { calls: 0, launches: 0 }, previous: null });
-      assert.deepEqual(split.breakdown?.series?.slice(0, 3), [null, toolTotals, { calls: 0, launches: 0 }]);
+      assert.deepEqual(split.breakdown?.series?.slice(0, 3).map(totalsOf), [null, toolTotals, { calls: 0, launches: 0 }]);
       for (const [view, points] of [['period', 2], ['summary', 0]] as const) {
         const projected = await read<{ breakdown: NonNullable<AnalysisUsageView['breakdown']> }>('breakdown', {
           ...acceptanceRange, from: '2026-09-26', to: '2026-09-27', look: 'usage', by: 'tool', view,
@@ -388,11 +389,19 @@ test('analysis commands share selection, contribution and tally rules over a sma
       assert.deepEqual(after.breakdown?.counted?.previous, toolTotals);
       const [skill, mcp] = await Promise.all([read<AnalysisUsageView>('usage', { ...trend, by: 'skill' }),
         read<AnalysisUsageView>('usage', { ...trend, by: 'mcp' })]);
-      assert.deepEqual(skill.breakdown?.counted?.value, { calls: 0, launches: 2 });
+      assert.deepEqual(skill.breakdown?.counted?.value, { calls: 3, launches: 2 });
       assert.deepEqual(mcp.breakdown?.counted?.value, { calls: 3, launches: 1 });
+      await t.test('each bin of skills, tools and MCP splits into names that add up to it, named as the rows are', () => {
+        for (const view of [skill, tools, mcp]) {
+          const { groups, series, rows } = view.breakdown!;
+          for (const point of series!) if (point) assert.equal(point.counts.reduce((sum, [, count]) => sum + count, 0), point.calls);
+          assert.deepEqual(groups!.map(group => [group.key, group.total]).sort(),
+            rows.map(row => [row.key, row.calls]).sort());
+        }
+      });
       await t.test('lists without a key add up to each collected usage total', async () => {
         for (const [by, view, values] of [
-          ['skill', skill, ['launches']],
+          ['skill', skill, ['calls', 'launches']],
           ['tool', tools, ['calls', 'launches']],
           ['mcp', mcp, ['calls', 'launches']],
         ] as const) {
@@ -450,7 +459,7 @@ test('analysis commands share selection, contribution and tally rules over a sma
       const params = { period: 'all', bucket: 'week' } as const;
       assert.equal((await reader.tasks(params, actor)).counts.value.accepted, 2);
       assert.deepEqual((await reader.usage({ ...params, by: 'tool' }, actor)).breakdown,
-        { by: 'tool', since: null, counted: null, series: null, rows: [] });
+        { by: 'tool', since: null, counted: null, groups: null, series: null, rows: [] });
       await t.test('a late tally updates the first owner model without a change to cached Run facts', async t => {
         store.write(() => {
           store.connection.prepare("UPDATE runs SET record=json_set(record,'$.started_at',?) WHERE id=2").run(tallySince);
