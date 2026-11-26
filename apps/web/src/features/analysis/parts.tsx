@@ -16,14 +16,18 @@ import { NO_FILTER, type LaunchFilter, type SeriesBy } from "./series";
 /**
  * How the analysis is drawn, kept while the page stands (not in the URL: Back does not undo them): the step of time
  * on the charts, how each look is broken down, which value the use chart draws, whether a table shows every row and
- * `grow` says the next drawing of the charts grows their bars.
  */
 export type TaskGroup = "model" | "agent" | "project";
 export type UsageGroup = "model" | "agent" | "skill" | "tool" | "mcp";
-/** `launchBy`, `launchFilter`: what the launches chart is coloured by, and the model and effort it is filtered to. */
-type Choices = { bucket: Bucket; taskGroup: TaskGroup; usageGroup: UsageGroup; all: boolean; grow: number; launchBy: SeriesBy; launchFilter: LaunchFilter };
+/** What the calls row of the use counts. */
+export type CallsBy = "skill" | "tool" | "mcp";
+/**
+ * `launchBy`, `launchFilter`: what the launches chart is coloured by, and the model and effort it is filtered to.
+ * `callsBy`: whether the calls row counts skills, tools or MCP.
+ */
+type Choices = { bucket: Bucket; taskGroup: TaskGroup; usageGroup: UsageGroup; all: boolean; launchBy: SeriesBy; launchFilter: LaunchFilter; callsBy: CallsBy };
 export const useChoices = create<Choices & { choose: (next: Partial<Choices>) => void }>((set) => ({
-  bucket: "day", taskGroup: "model", usageGroup: "model", all: false, grow: 0, launchBy: "model", launchFilter: NO_FILTER,
+  bucket: "day", taskGroup: "model", usageGroup: "model", all: false, launchBy: "model", launchFilter: NO_FILTER, callsBy: "skill",
   choose: (next) => set(next),
 }));
 
@@ -126,13 +130,13 @@ export function Num({ label, square, kind, value, previous, length, onOpen, afte
  */
 export function ChartHead() {
   const { t } = useTranslation("analysis");
-  const { bucket, grow } = useChoices();
+  const { bucket } = useChoices();
   return <div className="mt-14 flex flex-wrap items-center justify-between gap-x-4 gap-y-3 narrow:mt-10">
     {/* A way to a place on the page, not a way into tasks (no ›): pressed, the rules come into view and take the focus. */}
     <a href={`#${RULES}`} onClick={event => { event.preventDefault(); toRules(); }}
       className="-ms-1 rounded-sm px-1 text-base whitespace-nowrap text-muted decoration-ink underline-offset-4 hover:bg-hover hover:text-ink hover:underline">
       {t("tasks.howCounted")}</a>
-    <Seg label={t("bucket.label")} value={bucket} onChange={next => useChoices.getState().choose({ bucket: next, grow: grow + 1 })}
+    <Seg label={t("bucket.label")} value={bucket} onChange={next => useChoices.getState().choose({ bucket: next })}
       items={[["day", t("bucket.day")], ["week", t("bucket.week")], ["month", t("bucket.month")]]} />
   </div>;
 }

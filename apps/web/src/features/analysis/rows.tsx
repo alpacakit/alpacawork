@@ -125,8 +125,8 @@ function measureParts(root: HTMLElement, force = false) {
  * its legend), and goes when they leave it.
  */
 export function Row({ row, left, children, className }: { row?: number; left: ReactNode; children?: ReactNode; className?: string }) {
-  const group = useContext(GroupContext);
-  const day = group && !group.narrow && row !== undefined && group.pointed?.row === row ? group.pointed.at : null;
+  const group = useContext(GroupContext), { pointed } = usePointed();
+  const day = group && !group.narrow && row !== undefined && pointed?.row === row ? pointed.at : null;
   const leave = (to: EventTarget | null) => {
     if (day === null || to instanceof Node && (self.current?.contains(to) || to instanceof Element && to.closest("[data-day-column]"))) return;
     group!.point(null);
@@ -210,17 +210,30 @@ type Box = { left: number; right: number; top: number; bottom: number };
 type Pointed = { at: number; row: number; box: Box | null };
 /** A change of what Runs ran under (`analysis changes`), on its local day, with each thing that changed in words. */
 export type ChangeMark = { day: string; words: string[] };
-type GroupState = { bins: Bin[]; span: Days; bucket: Bucket; rows: RowSay[]; hovered: number | null; narrow: boolean; changes: ChangeMark[];
-  /** The bin whose tasks the open list holds: it stays lit while the list stands beside the charts. */
-  chosen: number | null;
-  pointed: Pointed | null; dayName: (at: number) => string; names: string[]; openDay: (list: (bin: Bin) => DayList) => void;
+/**
+ * What the group's charts are drawn from, the same while a day is pointed at, so pointing redraws none of their bars.
+ * `pointedNow`: the day pointed at as of now, for what a key or a press does.
+ */
+type GroupState = { bins: Bin[]; span: Days; bucket: Bucket; rows: RowSay[]; narrow: boolean; changes: ChangeMark[];
+  pointedNow: () => Pointed | null; dayName: (at: number) => string; names: string[]; openDay: (list: (bin: Bin) => DayList) => void;
   /** Shows a day (null: none) at once, dropping a day waiting to be shown. */
   point: (at: number | null, row?: number, box?: Box) => void;
   /** Shows a day after a moment (the pointer passing on its way to the legend), unless anything else comes first. */
   pointSoon: (at: number, row: number) => void; cancel: () => void;
   press: (at: number, row: number, part?: number) => void; chartOf: (row: number) => HTMLElement | null };
 const GroupContext = createContext<GroupState | null>(null);
+/**
+ * The day pointed at, read only by what draws it (the band, the points over the bars, the left's legend, the changes'
+ * line). `hovered`: the day the band and points stand on, which follows the pointer at once, even while the legend's
+ * day (`pointed`) waits for the pointer passing on its way to the legend. `chosen`: the bin whose tasks the open list
+ * holds; it stays lit while the list stands beside the charts.
+ */
+type PointedState = { hovered: number | null; chosen: number | null; pointed: Pointed | null };
+const PointedContext = createContext<PointedState>({ hovered: null, chosen: null, pointed: null });
+const usePointed = () => useContext(PointedContext);
 
+/** No changes, one and the same each time, so a group without them keeps what its charts are drawn from. */
+const NO_CHANGES: ChangeMark[] = [];
 /**
  * The charts drawn on the same days (`bins`), and what each row says of a day (`rows`, by the row's number). A day is
  * read, never chosen, from a chart. On a computer nothing is laid over the charts: the day pointed at lights its column
@@ -229,10 +242,12 @@ const GroupContext = createContext<GroupState | null>(null);
  * leads to its tasks. The span changes only from the period's switch. Between two charts the row last pointed at
  * stays. Another step of time, a scroll or a move to another step lets go of the day.
  */
-export function ChartGroup({ bins, span, today, bucket, rows, open, changes = [], children }: {
+export function ChartGroup({ bins, span, today, bucket, rows, open, changes = NO_CHANGES, children }: {
   bins: Bin[]; span: Days; today: string; bucket: Bucket; rows: RowSay[]; open: (list: DayList) => void; changes?: ChangeMark[]; children: ReactNode;
 }) {
   const [pointed, setPointed] = useState<Pointed | null>(null);
+  // The day the pointer is passing over while the legend's day waits for it (`pointSoon`): the band stands on it.
+  const [passing, setPassing] = useState<number | null>(null);
   const narrow = useNarrow();
   const binName = useBinName();
   // The one place that says which day is shown. The last thing done wins, on the whole screen: a day waiting for the
@@ -243,6 +258,7 @@ export function ChartGroup({ bins, span, today, bucket, rows, open, changes = []
   // drops the day.
   const [cancel] = useState(() => {
     const drop = () => {
+      setPassing(null);
       if (!waiting.current) return;
       clearTimeout(waiting.current); waiting.current = null;
       for (const kind of OTHER_INPUT) removeEventListener(kind, drop, true);
@@ -259,6 +275,7 @@ export function ChartGroup({ bins, span, today, bucket, rows, open, changes = []
   const point = (at: number | null, row = -1, box?: Box) => { cancel(); show(at, row, box); };
   const pointSoon = (at: number, row: number) => {
     cancel();
+    setPassing(at);
     waiting.current = setTimeout(() => { cancel(); show(at, row); }, INTENT_MS);
     for (const kind of OTHER_INPUT) addEventListener(kind, cancel, true);
   };
@@ -302,7 +319,7 @@ export function ChartGroup({ bins, span, today, bucket, rows, open, changes = []
     const from = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const part = from?.closest<HTMLElement>("[data-part-index]")?.dataset.partIndex, list = !!from?.closest("[data-window-list]");
     const ours = !!from && (!!self.current?.contains(from) || !!from.closest("[data-day-window]"));
-    opener.current = { at, row, part: ours && part !== undefined ? Number(part) : ours && list ? "list" : null, box: shown?.box ?? null };
+    opener.current = { at, row, part: ours && part !== undefined ? Number(part) : ours && list ? "list" : null, box: now.current?.box ?? null };
     if (!narrow) chartOf(row)?.focus({ preventScroll: true });
   };
   const layerOpen = useViewStore(state => !!state.analysis?.list);
@@ -336,6 +353,8 @@ export function ChartGroup({ bins, span, today, bucket, rows, open, changes = []
     if (list) { remember(at, row); close(); open(list); }
   };
   const shown = pointed && bins[pointed.at] && rows[pointed.row] ? pointed : null;
+  const now = useRef(shown);
+  now.current = shown;
   const listDays = useViewStore(state => state.analysis?.list?.days ?? null);
   const chosen = listDays ? bins.findIndex(bin => bin.from === listDays.from && bin.to === listDays.to) : -1;
   // The days' names, made when the days change (not as a day is chosen).
@@ -345,12 +364,34 @@ export function ChartGroup({ bins, span, today, bucket, rows, open, changes = []
   // A row's room (legendRoom) is made once for its days and words, not again at each day a finger steps to.
   const rooms = useMemo(() => new WeakMap<RowSay, ReturnType<typeof legendRoom>>(), [names]);
   const roomOf = (say: RowSay) => { let room = rooms.get(say); if (!room) rooms.set(say, room = legendRoom(say, names)); return room; };
-  const openDay = (list: (bin: Bin) => DayList) => { if (!shown) return; remember(shown.at, shown.row); close(); open(list(bins[shown.at]!)); };
+  const openDay = (list: (bin: Bin) => DayList) => { const day = now.current; if (!day) return; remember(day.at, day.row); close(); open(list(bins[day.at]!)); };
   // What the day chosen says, read out as it changes (the keys move it a day at a time).
   const said = shown ? [dayName(shown.at), rows[shown.row]!.name, rows[shown.row]!.total(shown.at),
     ...(rows[shown.row]!.parts?.(shown.at) ?? []).map(part => `${part.name} ${part.value}`),
     ...rows[shown.row]!.line ? [`${rows[shown.row]!.line!.name} ${rows[shown.row]!.line!.value(shown.at)}`] : []].join(", ") : "";
-  return <GroupContext value={{ bins, span, bucket, rows, changes, hovered: shown?.at ?? null, chosen: chosen < 0 ? null : chosen, narrow, pointed: shown, dayName, names, openDay, point, pointSoon, cancel, press, chartOf }}>
+  // What the charts are drawn from changes with their days and rows, not with the day pointed at; what acts reads the
+  // latest of the group through `acts`, so the one value stays the same while a day is pointed at.
+  const acts = useRef({ point, pointSoon, press, openDay });
+  acts.current = { point, pointSoon, press, openDay };
+  const group = useMemo<GroupState>(() => ({ bins, span, bucket, rows, changes, narrow, names, dayName: (at: number) => names[at]!,
+    pointedNow: () => now.current, cancel, chartOf: (row: number) => self.current?.querySelector<HTMLElement>(`[data-row="${row}"] [data-chart-row]`) ?? null,
+    point: (...args) => acts.current.point(...args), pointSoon: (...args) => acts.current.pointSoon(...args),
+    press: (...args) => acts.current.press(...args), openDay: list => acts.current.openDay(list) }), [bins, span, bucket, rows, changes, narrow, names, cancel]);
+  const hover = useMemo<PointedState>(() => ({ hovered: passing ?? shown?.at ?? null, chosen: chosen < 0 ? null : chosen, pointed: shown }), [passing, shown, chosen]);
+  // The day pointed at and the day whose list is open light their bins (`data-bin`) in every chart, the band behind them
+  // and their change mark: only those elements are marked (`data-lit`, `data-chosen`), so following the pointer draws
+  // none of the charts' bins again, however many days they show.
+  useLayoutEffect(() => {
+    const root = self.current;
+    if (!root) return;
+    const mark = (name: string, days: number[]) => {
+      for (const element of root.querySelectorAll<HTMLElement>(`[${name}]`)) if (!days.includes(Number(element.dataset.bin))) element.removeAttribute(name);
+      for (const at of days) for (const element of root.querySelectorAll<HTMLElement>(`[data-bin="${at}"]`)) element.setAttribute(name, "");
+    };
+    mark("data-lit", [hover.hovered, hover.chosen].filter((at): at is number => at !== null));
+    mark("data-chosen", hover.chosen === null ? [] : [hover.chosen]);
+  }, [hover.hovered, hover.chosen, bins]);
+  return <GroupContext value={group}><PointedContext value={hover}>
     {!narrow && <span aria-live="polite" className="sr-only">{said}</span>}
     <div ref={self} className="relative" onMouseLeave={narrow ? undefined : close} onKeyDownCapture={cancel} onFocusCapture={cancel}>
       {!narrow && <Columns layer="back" />}
@@ -364,7 +405,7 @@ export function ChartGroup({ bins, span, today, bucket, rows, open, changes = []
       onStep={step => { const box = shown.box!, width = box.right - box.left, next = shown.at + step;
         if (bins[next]) point(next, shown.row, { ...box, left: box.left + step * width, right: box.right + step * width }); }}
       first={shown.at === 0} last={shown.at === bins.length - 1} />}
-  </GroupContext>;
+  </PointedContext></GroupContext>;
 }
 const useGroup = () => useContext(GroupContext)!;
 
@@ -387,8 +428,8 @@ function Columns({ layer }: { layer: "back" | "front" }) {
   const move = (at: number, row: number, trace: Trace) => {
     const from = last.current;
     last.current = trace;
-    const same = group.pointed && (row < 0 || row === group.pointed.row);
-    if (group.pointed?.at === at && same) { group.cancel(); return; }
+    const pointed = group.pointedNow(), same = pointed && (row < 0 || row === pointed.row);
+    if (pointed?.at === at && same) { group.cancel(); return; }
     if (same && dayIntent(from, trace) === "wait") group.pointSoon(at, row);
     else group.point(at, row);
   };
@@ -396,13 +437,13 @@ function Columns({ layer }: { layer: "back" | "front" }) {
     {/* Leaving the day columns lets go of the day, unless for the same row (its legend, on the left). */}
     <div className={cn(RIGHT, "grid auto-cols-[minmax(0,1fr)] grid-flow-col")} onMouseLeave={layer === "front" ? event => {
       group.cancel();
-      const row = group.pointed?.row, to = event.relatedTarget;
+      const row = group.pointedNow()?.row, to = event.relatedTarget;
       if (!(to instanceof Element && row !== undefined && to.closest(`[data-row="${row}"]`))) group.point(null);
     } : undefined}>
       {group.bins.map((bin, at) => layer === "back"
         // The day whose list is open is boxed, so it stays apart from the day pointed at.
-        ? <i key={bin.from} className={cn("block", group.hovered === at || group.chosen === at ? "bg-day-band" : lit(bin, group.span) && "bg-span-band",
-          group.chosen === at && "outline outline-1 -outline-offset-1 outline-ink/50")} />
+        ? <i key={bin.from} data-bin={at} className={cn("block data-lit:bg-day-band data-chosen:outline data-chosen:outline-1 data-chosen:-outline-offset-1 data-chosen:outline-ink/50",
+          lit(bin, group.span) && "bg-span-band")} />
         : <span key={bin.from} data-day-column="" className="pointer-events-auto cursor-pointer"
           onMouseMove={event => move(at, under(event.clientX, event.clientY, event.currentTarget).row, { x: event.clientX, y: event.clientY, time: event.timeStamp })}
           onClick={event => { const { row, part } = under(event.clientX, event.clientY, event.currentTarget); if (row >= 0) group.press(at, row, part); }} />)}
@@ -554,6 +595,11 @@ const lit = (bin: Bin, span: Days) => bin.from <= span.to && bin.to >= span.from
  */
 export const spanMost = (bins: Bin[], span: Days, amount: (at: number) => number) =>
   Math.max(0, ...bins.map((bin, at) => lit(bin, span) ? amount(at) : 0));
+/**
+ * The days a chart's bins stand on, as a key: the charts are drawn anew, and their bars grow, when the days they show
+ * change (another step of time or record has come), not when one is chosen and its numbers are still on their way.
+ */
+export const binsKey = (bins: Bin[]) => `${bins.length}:${bins[0]?.from ?? ""}:${bins.at(-1)?.to ?? ""}`;
 /** The bins within the chosen span, by number. */
 export const inSpanOf = (bins: Bin[], span: Days) => (at: number) => !!bins[at] && lit(bins[at]!, span);
 
@@ -566,11 +612,11 @@ function Frame({ row, scale, lineScale, height, children }: { row: number; scale
   const keys = group.narrow ? {} : {
     tabIndex: 0, role: "group", "aria-label": `${group.rows[row]?.name ?? ""}${t("sep")}${t("chart.keys")}`,
     onKeyDown: (event: React.KeyboardEvent) => {
-      const at = group.pointed?.row === row ? group.pointed.at : null, last = group.bins.length - 1, start = lastLit(group.bins, group.span);
+      const pointed = group.pointedNow(), at = pointed?.row === row ? pointed.at : null, last = group.bins.length - 1, start = lastLit(group.bins, group.span);
       const to = { ArrowLeft: at === null ? start : at - 1, ArrowRight: at === null ? start : at + 1, Home: 0, End: last }[event.key];
       if (to !== undefined) { event.preventDefault(); group.point(Math.max(0, Math.min(last, to)), row); }
       else if (event.key === "Enter" && at !== null) { event.preventDefault(); group.press(at, row); }
-      else if (event.key === "Escape" && group.pointed) { event.preventDefault(); group.point(null); }
+      else if (event.key === "Escape" && pointed) { event.preventDefault(); group.point(null); }
     },
   };
   return <>{row === 0 && <ChangeStrip />}<div data-chart-row={row} {...keys} className="rounded-xs pt-4 outline-offset-2 focus-visible:outline-2 focus-visible:outline-ink narrow:pt-4.5">
@@ -610,11 +656,11 @@ const changeDays = (bins: readonly Bin[], changes: readonly ChangeMark[]) =>
  */
 function ChangeStrip() {
   const { t } = useTranslation("analysis");
-  const group = useGroup();
+  const group = useGroup(), { hovered } = usePointed();
   const marks = useMemo(() => changesByBin(group.bins, group.changes), [group.bins, group.changes]);
   const line = useRef<HTMLParagraphElement>(null);
   const [cut, setCut] = useState(false);
-  const at = group.hovered, words = at === null ? undefined : marks.get(at);
+  const at = hovered, words = at === null ? undefined : marks.get(at);
   useLayoutEffect(() => { setCut(!!words && !!line.current && line.current.scrollWidth > line.current.clientWidth); }, [words]);
   if (!marks.size) return null;
   return <div data-change-strip="" className="relative">
@@ -628,7 +674,7 @@ function ChangeStrip() {
     </ul>}
     <div aria-hidden className="mt-1 grid h-2 auto-cols-[minmax(0,1fr)] grid-flow-col">
       {group.bins.map((bin, each) => <span key={bin.from} className="flex items-center justify-center">
-        {marks.has(each) && <i className={cn("block size-1.5 rotate-45 bg-muted transition-transform duration-(--motion-base)", group.hovered === each && "scale-150 bg-ink")} />}
+        {marks.has(each) && <i data-bin={each} className="block size-1.5 rotate-45 bg-muted transition-transform duration-(--motion-base) data-lit:scale-150 data-lit:bg-ink" />}
       </span>)}
     </div>
   </div>;
@@ -639,7 +685,9 @@ function ChangeStrip() {
  * inside), a dashed box when the bin is not whole, lit while pointed at. Under a finger a bin is the press that says its
  * day. `uncounted` bins (before counting began) lie on a hatched ground, with nothing drawn on them, and open nothing.
  */
-function Bins({ row, uncounted, partial, children }: { row: number; uncounted?: (at: number) => boolean; partial?: (at: number) => boolean; children: (at: number) => ReactNode }) {
+function Bins({ row, uncounted, partial, drawn }: { row: number; uncounted?: (at: number) => boolean; partial?: (at: number) => boolean;
+  /** Each bin's bars, made by the chart: the same while a day is pointed at, so only the bins' own lighting is drawn again. */
+  drawn: ReactNode[] }) {
   const group = useGroup();
   const { t } = useTranslation("analysis");
   const wide = group.bucket !== "day";
@@ -649,17 +697,17 @@ function Bins({ row, uncounted, partial, children }: { row: number; uncounted?: 
       const edge = off && !(uncounted?.(at + 1) ?? true);
       const look = cn("relative flex h-full flex-col-reverse gap-0.5 opacity-40 transition-opacity duration-(--motion-base) ease-out",
         wide ? "px-[max(min(3px,20%),calc(50%-26px))]" : "px-[clamp(1px,12%,6px)]",
-        lit(bin, group.span) && "opacity-100", (group.hovered === at || group.chosen === at) && "opacity-100",
+        lit(bin, group.span) && "opacity-100", "data-lit:opacity-100",
         // Under a finger the band and the pressed day are drawn in each chart (a phone's rows stack their names between).
-        group.narrow && (group.hovered === at || group.chosen === at ? "bg-day-band" : lit(bin, group.span) && "bg-span-band"),
+        group.narrow && cn("data-lit:bg-day-band", lit(bin, group.span) && "bg-span-band"),
         (!bin.complete || partial?.(at)) && "outline outline-dashed outline-lit-line -outline-offset-1",
         off && "bg-[repeating-linear-gradient(135deg,var(--rule)_0_1px,transparent_1px_6px)]",
         edge && "border-e border-lit-line");
-      if (!group.narrow || off) return <div key={bin.from} className={look}>{!off && children(at)}</div>;
+      if (!group.narrow || off) return <div key={bin.from} data-bin={at} className={look}>{!off && drawn[at]}</div>;
       return <button key={bin.from} type="button" data-day-column="" aria-label={t("chart.binLabel", { day: spanLabel(bin.from, bin.to), name: group.rows[row]?.name ?? "", value: group.rows[row]?.total(at) ?? "" })}
         onClick={event => { const box = event.currentTarget.getBoundingClientRect();
-          group.point(group.hovered === at ? null : at, row, { left: box.left, right: box.right, top: box.top, bottom: box.bottom }); }}
-        className={look}>{children(at)}</button>;
+          group.point(group.pointedNow()?.at === at ? null : at, row, { left: box.left, right: box.right, top: box.top, bottom: box.bottom }); }}
+        data-bin={at} className={look}>{drawn[at]}</button>;
     })}
   </div>;
 }
@@ -738,26 +786,35 @@ export function BarChart({ row, height, scale, values, tone, overlay, uncounted,
       className={cn("flex flex-none origin-bottom flex-col-reverse overflow-hidden", grow && "animate-bar")}>{parts}</span> : parts;
   };
   return <div ref={box}><Frame row={row} scale={scale} lineScale={overlay?.label} height={height}>
-    <Bins row={row} uncounted={uncounted} partial={partial}>{bars}</Bins>
+    <Bins row={row} uncounted={uncounted} partial={partial} drawn={group.bins.map((_, at) => bars(at))} />
     {line && <svg aria-hidden className="pointer-events-none absolute inset-0 h-full w-full overflow-visible">
       {line.lines.map(({ from, to, at }) => { const within = inSpan(at) && inSpan(at - 1);
         return <line key={`${from.x}-${to.x}`} x1={`${from.x}%`} y1={`${from.y}%`} x2={`${to.x}%`} y2={`${to.y}%`}
           className={cn("stroke-trend [stroke-linecap:round]", within ? "[stroke-width:2]" : "[stroke-width:1] [stroke-opacity:.68] dark:[stroke-opacity:.45]")} />; })}
     </svg>}
-    {line && <div aria-hidden className="pointer-events-none absolute inset-0">
-      {line.dots.map((dot, at) => {
-        // On a computer a point over the top stands on it as a small caret up, in the span or out of it; under a finger
-        // (and where bins are too narrow for points) the line only lies flat on the top where it is cut.
-        if (!dot || !points) return null;
-        if (dot.over) return !group.narrow && <svg key={at} data-cut="" viewBox="0 0 8 5" style={{ left: `${dot.x}%`, top: 0 }}
-          className={cn("absolute h-1.25 w-2 -translate-x-1/2 -translate-y-full overflow-visible", !inSpan(at) && group.hovered !== at && "opacity-45")}>
-          <path d="M0.5 4.5 L4 1 L7.5 4.5" className="fill-none stroke-trend [stroke-linecap:round] [stroke-linejoin:round] [stroke-width:1.5]" /></svg>;
-        return (inSpan(at) || group.hovered === at) && <em key={at} style={{ left: `${dot.x}%`, top: `${dot.y}%` }}
-          className={cn("absolute -translate-1/2 rounded-full ring-2 ring-bg", group.hovered === at ? "size-2.25" : "size-1.75",
-            dot.faint ? "border-[1.5px] border-trend bg-bg" : "bg-trend")} />;
-      })}
-    </div>}
+    {line && <Dots dots={line.dots} points={points} inSpan={inSpan} />}
   </Frame></div>;
+}
+
+/**
+ * The per-task line's points over a chart: within the chosen span, and the day pointed at (larger) anywhere. The only
+ * part of a chart drawn again as a day is pointed at.
+ */
+function Dots({ dots, points, inSpan }: { dots: ReturnType<typeof lineDots>["dots"]; points: boolean; inSpan: (at: number) => boolean }) {
+  const group = useGroup(), { hovered } = usePointed();
+  return <div aria-hidden className="pointer-events-none absolute inset-0">
+    {dots.map((dot, at) => {
+      // On a computer a point over the top stands on it as a small caret up, in the span or out of it; under a finger
+      // (and where bins are too narrow for points) the line only lies flat on the top where it is cut.
+      if (!dot || !points) return null;
+      if (dot.over) return !group.narrow && <svg key={at} data-cut="" viewBox="0 0 8 5" style={{ left: `${dot.x}%`, top: 0 }}
+        className={cn("absolute h-1.25 w-2 -translate-x-1/2 -translate-y-full overflow-visible", !inSpan(at) && hovered !== at && "opacity-45")}>
+        <path d="M0.5 4.5 L4 1 L7.5 4.5" className="fill-none stroke-trend [stroke-linecap:round] [stroke-linejoin:round] [stroke-width:1.5]" /></svg>;
+      return (inSpan(at) || hovered === at) && <em key={at} style={{ left: `${dot.x}%`, top: `${dot.y}%` }}
+        className={cn("absolute -translate-1/2 rounded-full ring-2 ring-bg", hovered === at ? "size-2.25" : "size-1.75",
+          dot.faint ? "border-[1.5px] border-trend bg-bg" : "bg-trend")} />;
+    })}
+  </div>;
 }
 
 /**

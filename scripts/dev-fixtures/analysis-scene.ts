@@ -18,7 +18,11 @@ import { record } from '../../tests/runs-fixtures.ts';
 const DAY = 86_400_000, MINUTE = 60_000;
 const MODELS: Record<'claude' | 'codex', [string, string | null][]> = {
   claude: [['opus', 'high'], ['sonnet', 'medium'], ['fable', 'high']], codex: [['gpt-6.2-sol', 'high'], ['gpt-6.1-terra', null]] };
-const TOOLS = ['Bash', 'Read', 'Edit', 'Grep', 'Write', 'mcp__github__get_pull_request', 'Skill'];
+const TOOLS = ['Bash', 'Read', 'Edit', 'Grep', 'Write', 'MCP', 'Skill'];
+/** Several skills and MCP tools, some used more than others, so their breakdown has names past the fifth. */
+const SKILLS = ['example-skill', 'example-skill', 'example-skill', 'review-notes', 'review-notes', 'plan-steps', 'write-docs', 'check-screens', 'draft-reply', 'sort-files'];
+const MCPS = [['github', 'get_pull_request'], ['github', 'get_pull_request'], ['notes', 'search'], ['notes', 'search'], ['calendar', 'list_events'],
+  ['files', 'read'], ['files', 'read'], ['tracker', 'get_issue']] as const;
 
 function random(seed: string) {
   let state = createHash('sha256').update(seed).digest().readUInt32LE(0);
@@ -43,13 +47,16 @@ function writeOutput(path: string, adapter: 'claude' | 'codex', model: string, s
     else line({ type: 'item.completed', item: { id: `cfg-${n}`, type: 'agent_configuration', model } });
     do {
       const tool = TOOLS[(n + call) % TOOLS.length]!, id = `call-${n}-${call++}`;
+      const skill = SKILLS[(n * 7 + call * 3) % SKILLS.length]!, [server, mcpTool] = MCPS[(n * 5 + call) % MCPS.length]!;
+      const read = `cat /fictional/skills/${skill}/SKILL.md`;
       if (adapter === 'claude') {
-        const input = tool === 'Skill' ? { skill: 'example-skill' } : tool === 'Bash' ? { command: call % 5 ? 'ls' : 'cat /fictional/skills/example-skill/SKILL.md' } : { file_path: '/fictional/file.ts' };
-        line({ type: 'assistant', session_id: session, message: { content: [{ type: 'tool_use', id, name: tool, input }] } });
+        const input = tool === 'Skill' ? { skill } : tool === 'Bash' ? { command: call % 5 ? 'ls' : read } : tool === 'MCP' ? {} : { file_path: '/fictional/file.ts' };
+        const name = tool === 'MCP' ? `mcp__${server}__${mcpTool}` : tool;
+        line({ type: 'assistant', session_id: session, message: { content: [{ type: 'tool_use', id, name, input }] } });
         line({ type: 'user', session_id: session, message: { content: [{ type: 'tool_result', tool_use_id: id, content: filler }] } });
       } else {
-        const item = tool.startsWith('mcp__') ? { id, type: 'mcp_tool_call', server: 'github', tool: 'get_pull_request' }
-          : { id, type: 'command_execution', command: call % 5 ? 'ls' : 'cat /fictional/skills/example-skill/SKILL.md' };
+        const item = tool === 'MCP' ? { id, type: 'mcp_tool_call', server, tool: mcpTool }
+          : { id, type: 'command_execution', command: call % 5 ? 'ls' : read };
         line({ type: 'item.started', item });
         line({ type: 'item.completed', item: { ...item, aggregated_output: filler } });
       }

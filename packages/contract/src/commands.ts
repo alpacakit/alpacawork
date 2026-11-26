@@ -281,7 +281,7 @@ const definitions = {
     text('set', 'Task set (passed, reworked, stopped, doneUnaccepted: done by its owner without the user accepting, accepted, finished, unfinished: not ended as of now whatever the period, used)'),
     text('by', `Breakdown (used: ${analysisUsageGroups}. Other sets: ${analysisTaskGroups})`),
     text('key', 'Key from the selected row. Omit for skill, tool or MCP totals since collection began. Tool and MCP keys are JSON arrays [provider, name]'),
-    text('value', `Per-task value (used: ${analysisUsageValues.join(', ')}. Other sets: ${analysisTaskValues.join(', ')}). Tokens sum output, input and cache. Use calls to sum tool or MCP calls and launches to count each matching Run once`),
+    text('value', `Per-task value (used: ${analysisUsageValues.join(', ')}. Other sets: ${analysisTaskValues.join(', ')}). Tokens sum output, input and cache. Use calls to sum tool or MCP calls (a skill counts once for each Run that used it) and launches to count each matching Run once`),
     text('cursor', 'Cursor from the preceding page'), number('limit', 'Maximum rows per page (up to 100)'),
   ], { output: analysisUnitListSchema }),
   'analysis/task': command('read', 'Read the analysis values behind one task', analysisTaskInput, [

@@ -83,7 +83,7 @@ export const analysisListInput = z.strictObject({
   if (input.set !== 'used' && hasAnalysisUsageFilters(input)) issue('model', 'Model and effort filters apply to AI usage');
   if (input.value && !(input.set === 'used' ? analysisUsageValues : analysisTaskValues).some(value => value === input.value))
     issue('value', 'Choose a value for this set');
-  if (input.value === 'calls' && input.by !== 'tool' && input.by !== 'mcp') issue('value', 'Calls require a tool or MCP breakdown');
+  if (input.value === 'calls' && !isAnalysisTallyBy(input.by)) issue('value', 'Calls require a skill, tool or MCP breakdown');
 });
 export const analysisTaskInput = z.strictObject({ ...scope, task: taskIdSchema });
 
@@ -194,7 +194,14 @@ export const analysisUsageSeriesViewSchema = z.strictObject({
 });
 const usageBreakdown = z.strictObject({
   by: analysisUsageBySchema, since: analysisDaySchema.nullable(),
-  counted: pair(counted).nullable(), series: z.array(counted.nullable()).nullable(),
+  counted: pair(counted).nullable(),
+  /**
+   * Skills, tools and MCP: every name counted on the chart's days, the most counted first, with its count over them; and
+   * each bin's count (null before counting began) with its nonzero [name index, count] pairs. A skill counts once for
+   * each launch that used it, so a bin's names add up to its `calls`.
+   */
+  groups: z.array(z.strictObject({ ...group, total: count })).nullable(),
+  series: z.array(counted.extend({ counts: z.array(z.tuple([count, count.positive()])) }).nullable()).nullable(),
   rows: z.array(z.strictObject({ ...group, model: z.strictObject({ name: z.string() }).optional(),
     effort: z.string().nullable().optional(), counts: analysisUsageCountsSchema, calls: count.nullable() })),
 });

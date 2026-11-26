@@ -22,7 +22,7 @@ const tasks = { head: { ...head, project: "P9" }, counts: { value: taskCounts, p
   breakdown: { by: "project", rows: [{ key: "P9", label: "Secret project", finished: 3, accepted: 3, passed: 3, share: null, leadMedianMs: null, submitsPerAccepted: null }] },
   activeWork: [], unfinished: { tasks: 0, time: { review: 0, answer: 0 }, waits: { away: 0, otherTasks: 0, thisTask: 0 } } } as TasksView;
 const usage = { head, counts: { value: usageCounts, previous: null }, ever: null, series: { bucket: "day", points: [] },
-  breakdown: { by: "model", since: null, counted: null, series: null, rows: [
+  breakdown: { by: "model", since: null, counted: null, groups: null, series: null, rows: [
     { key: "a", label: "claude-opus-5-5-extended", model: { name: "claude-opus-5-5-extended" }, counts: usageCounts, calls: null },
     { key: "b", label: "opus", model: { name: "opus" }, counts: { ...usageCounts, launches: 1 }, calls: null }] } } as UsageView;
 
