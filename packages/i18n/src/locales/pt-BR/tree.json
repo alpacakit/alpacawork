@@ -83,7 +83,8 @@
     "totalTip_one": "Velocidade de saída total de {{count}} tarefa em andamento (média dos últimos 5 segundos)",
     "totalTip_other": "Velocidade de saída total de {{count}} tarefas em andamento (média dos últimos 5 segundos)",
     "unit": "tok/s",
-    "waited": "Executando {{name}}",
+    "waited": "Executando {{name}} {{length}}",
+    "waitedShort": "Executando {{name}}",
     "waitedTip": "Aguardando {{name}} terminar ({{length}}). Enquanto isso, o agente não produz saída.\n{{line}}"
   },
   "status": {

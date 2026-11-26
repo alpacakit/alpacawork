@@ -10,6 +10,11 @@ describe("what a silent Run waits on", () => {
     expect(programOf("cd /repo && gh run watch 123 --exit-status")).toBe("gh");
     expect(programOf("FOO=1 timeout 600 /usr/bin/ffmpeg -f x11grab -i :0 out.mp4 | tail -1")).toBe("ffmpeg");
     expect(programOf("sudo -E pnpm test:quick; echo done")).toBe("pnpm");
+    expect(programOf("cd /work/kit; rm -rf take; kit/run-take.sh; grep -c frame take/log")).toBe("run-take.sh");
+    expect(programOf("until gh run view 1 --json status | grep -q completed; do sleep 30; done")).toBe("gh");
+    expect(programOf("for v in a b; do ffmpeg -i $v.mov $v.mp4; done")).toBe("ffmpeg");
+    expect(programOf("bash -lc 'cd /repo && ffmpeg -y -i in.mov out.mp4'")).toBe("ffmpeg");
+    expect(programOf("ls -la")).toBe("ls");
   });
 
   it("is the latest step still running, and nothing once every step has ended", () => {
