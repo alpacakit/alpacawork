@@ -66,7 +66,7 @@ function AgentBlock({ agent, stack, now, shown }: { agent: AgentLimits; stack: A
   const note = agent.state === "unsupported" ? t("limits.unsupported") : agent.state === "unavailable" ? t("limits.unavailable")
     : agent.windows.length === 0 ? t("limits.none") : null;
   return <section data-limit-agent={agent.adapter} aria-label={name} className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 not-first:border-t not-first:border-line">
-    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
       <h3 className="m-0 flex items-center gap-1.5 text-sm font-semibold"><AgentMark name={agent.adapter} kind={agent.adapter} />{name}</h3>
       <span data-limit-place className="text-xs text-muted">{placeWords(agent, stack, t)}</span>
       {/* Whose limits these are: the account the agent is signed in as, cut to the menu's width (whole in the tooltip). */}

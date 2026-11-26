@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { AgentMark } from "@/components/ui/agent-mark";
+import { AgentMark, INLINE_MARK } from "@/components/ui/agent-mark";
 import { useTranslation } from "react-i18next";
 import { create } from "zustand";
 import { TAB, TabLabel, TabMarker } from "@/components/ui/tabs";
@@ -61,7 +61,7 @@ export function Seg<K extends string>({ label, items, value, onChange, onAgain, 
  * no brackets. The card writes it the same way (card-draw.ts).
  */
 export const ModelName = ({ model }: { model: AnalysisModel }) =>
-  <><AgentMark model={model.name} className="me-1 inline-block align-[-0.2em]" />{model.name}{model.effort && <span className="ms-1 text-xs text-soft">{model.effort}</span>}</>;
+  <><AgentMark model={model.name} className={INLINE_MARK} />{model.name}{model.effort && <span className="ms-1 text-xs text-soft">{model.effort}</span>}</>;
 
 /**
  * A breakdown's row by its name: a task no AI was given says so, a model is named as `ModelName` names it, any other
@@ -70,7 +70,7 @@ export const ModelName = ({ model }: { model: AnalysisModel }) =>
  */
 export const rowName = (row: { label: string; model?: { name: string } | AnalysisModel; noOwnerRun?: true }, noAgent: string, agent = false): ReactNode =>
   row.noOwnerRun ? noAgent : row.model && "effort" in row.model ? <ModelName model={row.model} />
-    : row.model || agent ? <><AgentMark name={row.model ? undefined : row.label} model={row.model?.name} className="me-1 inline-block align-[-0.2em]" />{row.label}</>
+    : row.model || agent ? <><AgentMark name={row.model ? undefined : row.label} model={row.model?.name} className={INLINE_MARK} />{row.label}</>
     : row.label;
 
 /** A small square of a chart's colour before a name: the legend and the name at once. */

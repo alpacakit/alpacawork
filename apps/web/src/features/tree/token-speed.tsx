@@ -240,10 +240,10 @@ export function AgentCounts({ tasks }: { tasks: readonly Task[] }) {
   };
   const ordered = [...agents].sort(([a], [b]) => place(a) - place(b));
   const shown = ordered.slice(0, KINDS_SHOWN), rest = ordered.slice(KINDS_SHOWN).reduce((sum, [, count]) => sum + count, 0);
-  return <span data-agent-counts title={words} className="flex flex-none items-center gap-2 self-center whitespace-nowrap tabular-nums">
+  return <span data-agent-counts title={words} className="flex flex-none items-center gap-x-2.5 self-center whitespace-nowrap tabular-nums">
     <span className="sr-only">{`${t("status.runningRuns", { count: total })}: ${words}`}</span>
     {/* A logo and its count share one middle: the count's box is trimmed to its figures, so their middle is the logo's. */}
-    {shown.map(([agent, count]) => <span key={agent ?? ""} data-agent aria-hidden="true" className="flex flex-none items-center gap-[3px]">
+    {shown.map(([agent, count]) => <span key={agent ?? ""} data-agent aria-hidden="true" className="flex flex-none items-center gap-1">
       {agent === null ? <Icon name="runningRuns" className="size-[0.7em] text-muted" /> : <AgentMark name={agent} className="size-[1.05em]" />}
       {(count > 1 || agent === null) && <span className="text-[0.8em] font-medium text-ink/70 [text-box:trim-both_cap_alphabetic]">{count}</span>}
     </span>)}

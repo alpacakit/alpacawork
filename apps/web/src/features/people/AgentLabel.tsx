@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 export function AgentLabel({ label, agent, markClassName, className, ...props }: ComponentProps<"span"> & { label: ModelLabel; agent?: string; markClassName?: string }) {
   return <span {...props} title={label.full} aria-label={label.full}
     className={cn("inline-grid min-w-0 max-w-full grid-cols-[auto_minmax(0,1fr)_auto] items-baseline", className)}>
-    <AgentMark name={agent} model={agent ? undefined : label.name} className={cn("mr-1 self-center", markClassName)} />
+    <AgentMark name={agent} model={agent ? undefined : label.name} className={cn("mr-[0.35em] self-center", markClassName)} />
     <span data-agent-name className="col-start-2 min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap">{label.name}</span>
     <span data-agent-effort className="col-start-3 whitespace-nowrap">{label.suffix}</span>
   </span>;

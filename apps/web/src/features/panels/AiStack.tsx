@@ -95,8 +95,8 @@ function StackRow({ row, index, count, agents, enabled, issues, refused, repeats
     <span aria-hidden className={cn('whitespace-nowrap narrow:self-center', index === 0 ? 'font-semibold' : 'text-muted')}>{name}</span>
     {/* The agent's logo stands inside its box, before its name (a choice's own words cannot carry a drawing). */}
     <div className="relative min-w-28 narrow:col-span-2 narrow:row-start-2 narrow:mt-1">
-    <AgentMark name={row.agent} className="pointer-events-none absolute top-1/2 left-2.5 z-1 -translate-y-1/2" />
-    <NativeSelect variant="field" className="w-full pl-8 font-semibold" value={row.agent} aria-invalid={issues.some(issue => issue.kind !== 'value') || !!refused || undefined}
+    <AgentMark name={row.agent} className="pointer-events-none absolute top-1/2 left-2.5 z-1 size-4 -translate-y-1/2" />
+    <NativeSelect variant="field" className="w-full pl-[1.8rem] font-semibold" value={row.agent} aria-invalid={issues.some(issue => issue.kind !== 'value') || !!refused || undefined}
       aria-label={t('agentSettings.aiStack.agentFor', { role: name })}
       onChange={event => { const next = agents.find(each => each.name === event.target.value); if (next) onChange(withRowAgent(next, row)); }}>
       {!listed && <option value={row.agent}>{row.agent}</option>}

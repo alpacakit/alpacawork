@@ -10,6 +10,12 @@ import { AGENT_LOGOS } from "./agent-logos";
  * Copilot) wears that logo; any other, a round badge of two letters in a colour of its own (domain/agent-mark). Its
  * size follows the text around it, so it sits on the line wherever it stands.
  */
+/**
+ * A mark set in running text (a table's name, a line of words): a step over the text, its middle on the capitals'
+ * middle, and a little room before the name.
+ */
+export const INLINE_MARK = "me-[0.4em] inline-block size-[1.07em] align-[-0.2em]";
+
 export const AgentMark = memo(function AgentMark({ name, model, kind: given, label, className }: {
   /** The agent's name as configured (claude, codex, inkling), or a kind's own id where only the kind is known. */
   name?: string;

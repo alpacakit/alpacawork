@@ -1,5 +1,5 @@
 import { useLineClip, wholeLinesHeight } from "@/lib/use-line-clip";
-import { AgentMark } from "@/components/ui/agent-mark";
+import { AgentMark, INLINE_MARK } from "@/components/ui/agent-mark";
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { orderRecordWords } from './StartOrder';
 import { readQuery } from '@/data/read-model';
@@ -810,7 +810,7 @@ function PartyTag({ end, whole, tight, onOpen }: { end: NameEnd; whole?: boolean
   const parts = [
     word && <span key="party" data-row-party className={`flex-none ${end.party === "self" ? "" : "font-semibold"}`}>{word}</span>,
     task && end.taskId && (whole || !kin) && <span key="task" data-row-task className="flex-none font-semibold tabular-nums">{end.taskId}</span>,
-    agent && (whole ? <span key="agent" data-row-agent title={agent.full} className="whitespace-nowrap"><AgentMark model={agent.name} className="me-1 inline-block align-[-0.2em]" />{agent.full}</span>
+    agent && (whole ? <span key="agent" data-row-agent title={agent.full} className="whitespace-nowrap"><AgentMark model={agent.name} className={INLINE_MARK} />{agent.full}</span>
       // A phone's row between two AIs has room for their names only: the names stay, the marks give way.
       : <AgentLabel key="agent" data-row-agent label={agent} markClassName={tight ? "narrow:hidden" : undefined} />),
   ].filter(Boolean);

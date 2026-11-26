@@ -93,7 +93,7 @@ export function StatusTime({ task }: { task: Task }) {
 export function RunningRuns({ task }: { task: Task }) {
   const narrow = useNarrow();
   if (!runningRunsSaid(task)) return null;
-  return <span data-row-running-runs={runningRunsSaid(task)} className="ml-1.5 flex min-w-0 shrink items-baseline gap-1.5 whitespace-nowrap">
+  return <span data-row-running-runs={runningRunsSaid(task)} className="ml-1.5 flex min-w-0 shrink items-center gap-1.5 self-center whitespace-nowrap">
     <AgentCounts tasks={[task]} />
     {narrow && <NarrowTokenSpeed task={task} />}
   </span>;
@@ -295,7 +295,7 @@ export function RowKindWord({ task }: { task: Task }) {
 function StoppedAgent({ task }: { task: Task }) {
   const people = usePeopleFor(task.id, true);
   const owner = crewOf(task.id, people).responsible;
-  return owner ? <AgentMark name={owner.profileKey} label className="size-[1em] flex-none self-center opacity-40" /> : null;
+  return owner ? <AgentMark name={owner.profileKey} label className="mr-[-0.1em] size-[1em] flex-none self-center opacity-55" /> : null;
 }
 
 function KindWord({ task }: { task: Task }) {
