@@ -2,14 +2,18 @@ import { memo } from "react";
 import { useTranslation } from "react-i18next";
 import { RegionSkeleton } from "@/components/ui/skeleton";
 import { i18n } from "@alpacawork/i18n";
-import { daysBetween, decimalText, delta, format, inUnit, parts, share, shareDelta, previousName, unitOf, type Kind } from "./format";
+import { dayLabel, daysBetween, decimalText, delta, format, inUnit, parts, share, shareDelta, previousName, unitOf, type Kind } from "./format";
 import { Grass } from "./charts";
 import { BreakdownTable, type Cell } from "./BreakdownTable";
 import { BarChart, ChartGroup, DayAxis, inSpanOf, Lead, Leads, lineTop, Parts, Row, spanMost, useLineLabel, useScale, type DayList, type RowSay } from "./rows";
 import { ReadPart, useReadSet, ChartHead, Compare, gapTone, Num, OPEN, OpenMark, Rule, RuleCard, Rules, rowName, Section, Seg, Value, tip, useChoices, type TaskGroup } from "./parts";
 import type { ListSet, ListValue, TasksView } from "./contract";
 import type { ListPlace, Span } from "./place";
-import { useBreakdown, useNear } from "./data";
+import { useBreakdown, useChanges, useNear } from "./data";
+import { Causes } from "./Causes";
+import { Waits } from "./Waits";
+import type { ChangeMark } from "./rows";
+import type { ChangesView } from "./contract";
 import { useViewStore } from "@/state/view-store";
 
 type Days = { from: string; to: string };
@@ -33,6 +37,10 @@ export const TasksLook = memo(function TasksLook({ view, span, root, days, open,
   const whole = view.head.firstDay === days.from && view.head.today === days.to;
   const ever = whole ? null : view.ever;
   const time = accepted.time, you = time.review + time.answer, total = you + time.ai + time.other;
+  const project = useViewStore(state => state.project);
+  const changeRead = useChanges(project, span);
+  // Another project's or span's changes are never drawn on these charts while this one's are read.
+  const changes = useChangeMarks(changeRead.isPlaceholderData ? undefined : changeRead.data, view.head.timeZone);
 
   const countGap = before ? delta("tasks", now.passed, before.passed) : null;
   const shareGap = before ? shareDelta(now.share, before.share) : null;
@@ -134,7 +142,7 @@ export const TasksLook = memo(function TasksLook({ view, span, root, days, open,
   const perGap = (value: number, previous: number) => { const g = Math.round((value - previous) * 100) / 100;
     return g === 0 ? t("same") : `${g > 0 ? "+" : "−"}${decimalText(Math.abs(g), 2)}`; };
   const openDay = (list: DayList) => open({ set: list.set, value: list.value, group: list.group ?? null, member: list.member ?? null, days: { from: list.from, to: list.to } });
-  const rows = <ChartGroup bins={points} span={days} today={today} bucket={bucket} rows={say} open={openDay}>
+  const rows = <ChartGroup bins={points} span={days} today={today} bucket={bucket} rows={say} open={openDay} changes={changes}>
     <div key={grow}>
       {/* A row whose number is a lead's above says no span before again (the lead says it). */}
       <Row row={0} className="border-t-0" left={<>
@@ -161,6 +169,8 @@ export const TasksLook = memo(function TasksLook({ view, span, root, days, open,
           { color: "bg-rest", name: t("time.other"), ...part("hours", time.other, { set: "accepted", value: "other" }), share: share_(time.other, total) }]}
           line={{ name: t("line.median"), value: <Value small kind="hours" value={accepted.leadMedianMs} onOpen={() => open({ set: "accepted", value: "lead" })} />,
             gap: gap(accepted.leadMedianMs, acceptedBefore?.leadMedianMs ?? null, "hours") }} />
+        {/* Your turn, by where you were while it waited. */}
+        {you > 0 && <><p className="mt-3 text-xs text-soft">{t("waits.title")}</p><Waits waits={accepted.waits} total={you} className="mt-1" /></>}
       </>}>
         <BarChart row={1} height="h-30 narrow:h-22" scale={scales.total} overlay={overlays.median}
           values={i => { const [y, a, o] = spent(i); return [["bg-turn", y, 0], ["bg-working", a, 1], ["bg-rest", o, 2]]; }} />
@@ -192,7 +202,9 @@ export const TasksLook = memo(function TasksLook({ view, span, root, days, open,
   return <>
     {leads}
     <ChartHead />
+    {changes.length > 0 && <ChangeLegend changes={changes} />}
     {rows}
+    <Causes accepted={accepted} open={open} />
     <TasksBreakdown span={span} root={root} open={open} />
     {/* Every name the look shows, in cards in the order the rows show them. */}
     <Rules>
@@ -249,6 +261,32 @@ function TasksBreakdown({ span, root, open }: { span: Span; root: HTMLElement | 
         ] }))} />
     </>}</ReadPart>
   </Section></div>;
+}
+
+/** The changes of what Runs ran under, by their local days and in words, as the charts' dotted lines (`analysis changes`). */
+function useChangeMarks(view: ChangesView | undefined, zone: string): ChangeMark[] {
+  const { t } = useTranslation("analysis");
+  if (!view) return [];
+  const day = new Intl.DateTimeFormat("en-CA", { timeZone: zone, year: "numeric", month: "2-digit", day: "2-digit" });
+  return view.changes.map(change => ({ day: day.format(new Date(change.at)),
+    words: change.changes.map(each => changeWords(each, t)).join(t("sep")) }));
+}
+/**
+ * One change in words: a skill or an instruction file by its name (its versions are digests, which say nothing), the
+ * others from what to what.
+ */
+function changeWords(change: ChangesView["changes"][number]["changes"][number], t: (key: string, options?: Record<string, unknown>) => string) {
+  const what = t(`change.${change.what}`);
+  if (change.what === "skill" || change.what === "instruction-file")
+    return t(change.from === null ? "change.added" : change.to === null ? "change.removed" : "change.updated", { what, name: change.name ?? "" });
+  return t("change.fromTo", { what, from: change.from ?? "—", to: change.to ?? "—" });
+}
+function ChangeLegend({ changes }: { changes: ChangeMark[] }) {
+  const { t } = useTranslation("analysis");
+  return <p data-change-legend="" className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
+    <span className="inline-flex items-center"><i aria-hidden className="me-1.5 inline-block h-3 border-s border-dashed border-changed" />{t("change.legend")}</span>
+    {changes.map((change, at) => <span key={at} className="whitespace-nowrap"><b className="font-semibold text-ink">{dayLabel(change.day)}</b> {change.words}</span>)}
+  </p>;
 }
 
 /** A table's column heading with its unit once (none in a language that writes no count word). */

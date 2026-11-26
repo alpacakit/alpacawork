@@ -56,6 +56,19 @@ Originals record per-file SHA-256 hashes and counts in `.dev-fixture.json` and a
 
 `copy` refuses even existing empty directories. `remove` accepts only an exact root marked by this script; a writer lease blocks removal of an active copy. There is no command to delete the whole shared cache or another developer's roots in bulk. Originals with modified files are not reused.
 
+## Analysis overview and task timeline
+
+```sh
+node scripts/dev-fixtures/analysis-trace-scene.ts --dest /tmp/my-analysis-trace-scene
+node apps/backend/dist/backend.js --workspace /tmp/my-analysis-trace-scene workspace serve --port 0
+```
+
+Open Analysis and choose 28 days or 7 days. The scene includes 30 accepted tasks over 28 days, change marks,
+labelled fixes, and three tasks waiting for the user. The generator prints `showcaseTask` for the task to open
+in the timeline, and `overnightAt` and `runAt` for inspecting a 9-hour review wait and concurrent Runs.
+All saved Runs have ended and use inert launches. Stop the server before running
+`node scripts/dev-fixtures/fixture.ts remove --root /tmp/my-analysis-trace-scene`.
+
 ## Counts and uses
 
 | Profile | Task rows (including projects) | History | Runs | Use |

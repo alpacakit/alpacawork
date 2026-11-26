@@ -38,7 +38,8 @@ function standIn(span: Span, bucket: Bucket) {
   const head = { timeZone: "UTC", today: last, firstDay, project: null, period: days, previous };
   const counts = { passed: 8, reworked: 2, stopped: 1, doneUnaccepted: 0, accepted: 10, finished: 11, share: 0.8 };
   const accepted = { leadMedianMs: 3_600_000, submits: 12, questions: 3, prs: 4, time: { review: 3_600_000, answer: 600_000, ai: 7_200_000, other: 1_800_000 },
-    waits: { away: 0, otherTasks: 0, thisTask: 0 }, answerItems: { total: 0, choice: 0, recommended: 0, recommendable: 0, other: 0, stop: 0, unmatched: 0 }, answersWithoutParts: 0, instructions: { total: 0, unlabeled: 0, kinds: [], fixes: [] }, questionsReplaced: 0, noQuestions: 0, passedNoQuestions: 0, submitsEstimated: 0 };
+    waits: { away: 0, otherTasks: 0, thisTask: 0 }, answerItems: { total: 0, choice: 0, recommended: 0, recommendable: 0, other: 0, stop: 0, unmatched: 0 }, answersWithoutParts: 0, instructions: { total: 0, unlabeled: 0, kinds: [], fixes: [] }, questionsReplaced: 0, noQuestions: 0, passedNoQuestions: 0, submitsEstimated: 0,
+    rounds: { first: { ms: 0, tokens: 0 }, later: { ms: 0, tokens: 0 } } };
   const used: AnalysisUsageCounts = { launches: 120, runMs: 36_000_000, live: 0, newConversations: 12,
     tokens: { output: 1_000_000, input: 2_000_000, cache: 40_000_000 }, tokensUnknown: 0, tasks: 11 };
   const points: { from: string; to: string; complete: boolean }[] = [];
@@ -46,7 +47,7 @@ function standIn(span: Span, bucket: Bucket) {
     points.push({ from: day, to: day, complete: true });
   const tasks: TasksView = { head, counts: { value: counts, previous: previous && counts }, accepted: { value: accepted, previous: previous && accepted },
     ever: whole ? null : { counts, accepted }, series: { bucket, points: points.map(point => ({ ...point, counts, accepted })) },
-    grass: { from: firstDay, finished: Array.from({ length: daysBetween(addDays(firstDay, -6), last) }, () => 1) }, breakdown: null,
+    grass: { from: firstDay, finished: Array.from({ length: daysBetween(addDays(firstDay, -6), last) }, () => 1) }, breakdown: null, activeWork: [],
     unfinished: { tasks: 0, time: { review: 0, answer: 0 }, waits: { away: 0, otherTasks: 0, thisTask: 0 } } };
   const usage: UsageView = { head, counts: { value: used, previous: previous && used }, ever: whole ? null : used,
     series: { bucket, points: points.map(point => ({ ...point, counts: used })) }, breakdown: null };

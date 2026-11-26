@@ -3,7 +3,7 @@ import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-quer
 import { commandRoute } from "@alpacawork/contract/command-path";
 import { api, resources } from "@/data/resources";
 import { useWorkspaceInfo } from "@/data/queries";
-import { breakdownViewSchema, tasksViewSchema, unitListSchema, unitValuesSchema, usageSeriesViewSchema, usageViewSchema, type Bucket, type Group, type UnitList } from "./contract";
+import { atViewSchema, breakdownViewSchema, changesViewSchema, findingsViewSchema, tasksViewSchema, unitListSchema, unitValuesSchema, usageSeriesViewSchema, usageViewSchema, type Bucket, type Group, type UnitList } from "./contract";
 import { filterQuery, type LaunchFilter, type SeriesBy } from "./series";
 import { cardDays, spanQuery, type CardSpan, type ListPlace, type Span } from "./place";
 
@@ -168,3 +168,30 @@ export function useAnalysisFreshness() {
   useEffect(() => () => { if (waiting.current) clearTimeout(waiting.current); }, []);
 }
 export const FRESH_AFTER_MS = 4000;
+
+/**
+ * One task's timeline (`analysis trace`) over the whole task or one window of it, always with every task under it: the
+ * lanes, spans and marks the timeline draws. `steps`: with the Runs' steps and thinking (only for a window short enough
+ * to show them); without, the window's Runs, questions and states. Read whole (`cursor` set: more were left out).
+ */
+const OVERVIEW_KINDS = ["task-state", "question", "queued", "run", "instruction", "answer", "question-withdrawn", "report", "assigned", "compacted", "command-stopped", "change"];
+export function useTrace(task: string, window: { from: string; to: string } | null, steps: boolean, enabled = true) {
+  const root = useWorkspaceInfo(info => info.root);
+  return useQuery({ ...resources.analysisTrace(root, { task, scope: "subtree", from: window?.from ?? null, to: window?.to ?? null,
+    kinds: steps ? null : OVERVIEW_KINDS, limit: "500" }), enabled });
+}
+/** The places worth a look in one task's timeline (`analysis findings`), the longest first. */
+export function useFindings(task: string) {
+  const root = useWorkspaceInfo(info => info.root);
+  return useQuery({ ...resources.analysisTimeline(root, "findings", { task, limit: "30" }, findingsViewSchema) });
+}
+/** The situation at one instant of a task (`analysis at`), or nothing while no instant is chosen. */
+export function useAt(task: string, at: string | null) {
+  const root = useWorkspaceInfo(info => info.root);
+  return useQuery({ ...resources.analysisTimeline(root, "at", { task, scope: "subtree", at }, atViewSchema), enabled: !!at });
+}
+/** When what Runs ran under changed (`analysis changes`) over the face's span, read with the face. */
+export function useChanges(project: string | null, span: Span) {
+  const root = useWorkspaceInfo(info => info.root);
+  return useQuery({ ...resources.analysisTimeline(root, "changes", { ...scope(project, span), limit: "100" }, changesViewSchema) });
+}

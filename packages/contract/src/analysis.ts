@@ -1,6 +1,7 @@
 import { z } from 'zod';
-import { projectIdSchema, taskIdSchema } from './fields.js';
+import { projectIdSchema, taskIdSchema, taskStateSchema } from './fields.js';
 import { validTimeZone } from './personal-settings.js';
+import { analysisFindingRules, analysisSubjectSchema } from '@alpacawork/raw/analysis-subject';
 import { FIX_KINDS, INSTRUCTION_KINDS } from '@alpacawork/raw/task-log-schema';
 
 export const analysisDaySchema = z.iso.date();
@@ -139,6 +140,7 @@ const clues = {
   /** Questions to the user withdrawn by an instruction that came in place of an answer. */
   questionsReplaced: count,
 };
+const roundSum = z.strictObject({ ms: count, tokens: count });
 export const analysisAcceptedTotalsSchema = z.strictObject({
   leadMedianMs: measurement.nullable(), submits: count, questions: count, prs: count, time: times, ...clues,
   /**
@@ -148,6 +150,11 @@ export const analysisAcceptedTotalsSchema = z.strictObject({
   noQuestions: count, passedNoQuestions: count,
   /** Accepted tasks whose count of review rounds rests on reading a question's words (asked before its kind was recorded). */
   submitsEstimated: count,
+  /**
+   * The accepted tasks' time from request to acceptance and the tokens of their Runs, split into each task's first review
+   * round and the rounds after it (the work redone and waited on after the first review; `analysis task` rounds).
+   */
+  rounds: z.strictObject({ first: roundSum, later: roundSum }),
 });
 const taskTotals = { counts: analysisTaskCountsSchema, accepted: analysisAcceptedTotalsSchema };
 const tasksBreakdown = z.strictObject({
@@ -155,11 +162,19 @@ const tasksBreakdown = z.strictObject({
   rows: z.array(z.strictObject({ ...breakdownRow, noOwnerRun: z.literal(true).optional(), finished: count, accepted: count, passed: count, share,
     leadMedianMs: measurement.nullable(), submitsPerAccepted: measurement.nullable() })),
 });
+const analysisWorkSchema = z.strictObject({
+  id: taskIdSchema, title: z.string(), state: taskStateSchema,
+  analysisSubject: analysisSubjectSchema, userTurn: z.boolean(),
+});
+export type AnalysisWork = z.infer<typeof analysisWorkSchema>;
+
 export const analysisTasksViewSchema = z.strictObject({
   head: analysisHeadSchema, counts: pair(analysisTaskCountsSchema), accepted: pair(analysisAcceptedTotalsSchema),
   ever: z.strictObject(taskTotals).nullable(),
   series: series(point.extend(taskTotals)), grass: z.strictObject({ from: analysisDaySchema, finished: z.array(count) }),
   breakdown: tasksBreakdown.nullable(),
+  /** Analysis and improvement work open now in the project scope, regardless of the selected dates. */
+  activeWork: z.array(analysisWorkSchema),
   /**
    * As of the read, whatever the period: the requested tasks open now (with no acceptance, stop or owner's done yet, or
    * reopened after one, counted from that end), and the time they have waited for the user
@@ -216,6 +231,12 @@ export const analysisUnitValuesSchema = z.strictObject({
   answers: count, workers: count, children: count, usage: analysisUsageCountsSchema, ...clues,
   /** Whether its count of review rounds rests on reading a question's words (asked before its kind was recorded). */
   submitsEstimated: z.boolean(),
+  /**
+   * Its review rounds in order: the work up to one review (a submit for review or a question asking to take a result) and
+   * the wait until the user answered, withdrew or sent it back; the last runs to its end (or now). `tokens`: of the Runs
+   * of it and under it that started in the round.
+   */
+  rounds: z.array(z.strictObject({ from: z.iso.datetime({ offset: true }), to: z.iso.datetime({ offset: true }), ms: count, tokens: count })),
   models: z.array(z.strictObject({ ...group, model, launches: count, runMs: count, output: count })),
   prs: z.array(z.string()), skills: z.array(z.string()), tools: z.array(tallyTool), tallied,
 });
@@ -264,8 +285,7 @@ export const analysisMarkKinds = ['instruction', 'answer', 'question-withdrawn',
 /** Non-overlapping parts of the wall time, in the order an instant is given to the first that holds (they sum to `wall`). */
 export const analysisBreakdownKeys = ['owner-working', 'member-working', 'child-working', 'held', 'waiting-answer', 'waiting-review',
   'queued', 'idle'] as const;
-export const analysisFindingRules = ['long-wait', 'repeated-question', 'long-step', 'limit-hit', 'repeated-failure', 'same-result',
-  'fan-out', 'queue-wait', 'failed-run', 'rework', 'idle'] as const;
+export { analysisFindingRules };
 export type AnalysisFindingRule = typeof analysisFindingRules[number];
 /**
  * What each rule finds, and what its finding's `at`, `durationMs` and `count` are: the one wording the command help and
@@ -287,7 +307,7 @@ export const ANALYSIS_FINDING_RULE_MEANINGS: Readonly<Record<AnalysisFindingRule
   'queue-wait': 'a Run that waited this long before it started; at: when it was made, durationMs: the wait',
   'failed-run': 'a Run that failed or was stopped, with the Run that took its place; at: its start, durationMs: its length',
   rework: 'work done again by the counts\' rule (a send-back, an instruction at review or after acceptance, one in place of answering a ' +
-    'question asking to take a result); at: the record, durationMs: until that task next waits for review or is done',
+    'question asking to take a result); at: the record, durationMs: until that task next puts a result to the user (waits for review or asks to take it) or is done',
   idle: 'a stretch this long with nothing running, queued, asked or in review in the task or under it; at: its start, durationMs: its length',
 };
 /**
@@ -359,7 +379,8 @@ const changeSchema = z.strictObject({
 });
 export const analysisMarkSchema = z.discriminatedUnion('kind', [
   z.strictObject({ ...markBase, kind: z.literal('instruction'), task: taskIdSchema, request: z.string(), by: instructionBy,
-    purpose: instructionPurpose, label: z.string().nullable(), answers: z.string().nullable(), firstLine: z.string().nullable() }),
+    /** What its sender said it was (a fix names its kinds of fix); null when sent with no label. */
+    purpose: instructionPurpose, label: z.strictObject({ kind: z.enum(INSTRUCTION_KINDS), fixes: z.array(z.enum(FIX_KINDS as [typeof FIX_KINDS[number], ...typeof FIX_KINDS])) }).nullable(), answers: z.string().nullable(), firstLine: z.string().nullable() }),
   z.strictObject({ ...markBase, kind: z.literal('answer'), task: taskIdSchema, question: z.string(), by: recipient }),
   z.strictObject({ ...markBase, kind: z.literal('question-withdrawn'), task: taskIdSchema, question: z.string(), log: z.string() }),
   z.strictObject({ ...markBase, kind: z.literal('report'), task: taskIdSchema, log: z.string(), state: z.string().nullable(), title: z.string().nullable() }),
@@ -394,7 +415,9 @@ const thresholdSchema = z.strictObject({ value: measurement, unit: z.enum(['minu
 export const analysisFindingSchema = z.strictObject({
   id: z.string(), rule: z.enum(analysisFindingRules), at: instant, durationMs: count, lane: z.string().nullable(),
   count: count.nullable(), threshold: thresholdSchema, source: z.enum(['recorded', 'inferred']),
-  evidence: z.array(analysisEvidenceSchema).min(1), url: z.string(),
+  evidence: z.array(analysisEvidenceSchema).min(1),
+  /** What its first record says in one line: the step's command, the question's title, or the record's first line. */
+  line: z.string().nullable(), url: z.string(),
 });
 export const analysisFindingsViewSchema = z.strictObject({
   head: timelineHead.extend({ from: instant, to: instant }),
@@ -409,6 +432,8 @@ export const analysisFindingsViewSchema = z.strictObject({
 const stepAt = z.strictObject({ step: count, tool: z.string(), line: z.string(), from: instant.nullable(), to: instant.nullable() });
 export const analysisAtViewSchema = z.strictObject({
   head: timelineHead.extend({ at: instant }),
+  /** The part of the wall time the instant is in, as the trace's breakdown gives it; null outside the task's period. */
+  part: z.enum(analysisBreakdownKeys).nullable(),
   tasks: z.array(z.strictObject({ task: taskIdSchema, title: z.string(), state: z.string() })),
   runs: z.array(z.strictObject({
     run: runId, task: taskIdSchema, role: z.enum(['owner', 'member']), agent: z.string(), model: z.string().nullable(),

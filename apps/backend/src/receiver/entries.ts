@@ -27,6 +27,7 @@ import { updateNode } from './update-entries.js';
 import { workspaceUrl } from './workspace-url.js';
 
 import type { AnalysisReader } from '../analysis/reads.js';
+import { activeAnalysisWork } from '../analysis/active-work.js';
 import { readAt, readFindings, readTrace } from '../analysis/timeline-reads.js';
 
 export interface Context extends TaskContext {
@@ -363,7 +364,8 @@ const implementations = {
   'help': { run: (_root, input) => mcpCommandHelp(input.commands) },
   'guide': { run: (_root, input) => mcpSkill(input.name) },
   ...taskCommands,
-  'analysis/tasks': { run: (_root, input, context) => context.analysis!.tasks(input, requireCaller(context)) },
+  'analysis/tasks': { run: (_root, input, context) => context.analysis!.tasks(input, requireCaller(context),
+    async (allows, slices) => activeAnalysisWork(await requireReadFrame(context), allows, slices)) },
   'analysis/usage': { run: (_root, input, context) => context.analysis!.usage(input, requireCaller(context)) },
   'analysis/usage-series': { run: (_root, input, context) => context.analysis!.usageSeries(input, requireCaller(context)) },
   'analysis/breakdown': { run: (_root, input, context) => context.analysis!.breakdown(input, requireCaller(context)) },

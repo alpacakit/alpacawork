@@ -14,6 +14,7 @@ import { AnalysisLayers } from "./AnalysisLayers";
 import { TasksLook } from "./TasksLook";
 import { FaceSkeleton } from "./FaceSkeleton";
 import { UsageLook } from "./UsageLook";
+import { WorkBand } from "./WorkBand";
 import type { Head, Period, TasksView, UsageSeriesView, UsageView } from "./contract";
 import type { LaunchAnswers } from "./Launches";
 
@@ -64,7 +65,7 @@ export function AnalysisView({ place }: { place: AnalysisPlace }) {
   const preset = "period" in place.span ? place.span.period : null;
   // The arrows move from the span chosen now, even while the answer for it is still on its way.
   const earlier = head ? stepChosen(place.span, head, -1) : null, later = head ? stepChosen(place.span, head, 1) : null;
-  const step = (direction: -1 | 1) => { const to = direction < 0 ? earlier : later; if (to) show({ span: to, list: null, unit: null, card: null }); };
+  const step = (direction: -1 | 1) => { const to = direction < 0 ? earlier : later; if (to) show({ span: to, list: null, card: null }); };
   const canEarlier = !!earlier, canLater = !!later;
 
   // The page scrolls as the list does, under the bar and clear of what stands at the screen's foot (--list-foot).
@@ -77,7 +78,7 @@ export function AnalysisView({ place }: { place: AnalysisPlace }) {
       {/* The card's way in stands at the row's end: beside the span on a computer, beside the looks on a phone, where
           the span takes a line of its own. */}
       <div className="ms-auto flex flex-wrap items-center gap-x-4 gap-y-2 narrow:order-last narrow:ms-0 narrow:w-full">
-        <Seg label={t("period.label")} value={preset ?? ""} onChange={period => show({ span: { period: period as Period }, list: null, unit: null, card: null })}
+        <Seg label={t("period.label")} value={preset ?? ""} onChange={period => show({ span: { period: period as Period }, list: null, card: null })}
           items={PRESETS.map(each => [each.period, t(`period.${each.period}`)] as const)} />
         <div className="flex items-center gap-0.5 whitespace-nowrap narrow:w-full">
           <button type="button" aria-label={t("period.earlier")} title={t("period.earlier")} disabled={!canEarlier} onClick={() => step(-1)}
@@ -97,7 +98,7 @@ export function AnalysisView({ place }: { place: AnalysisPlace }) {
     <ReadPart set={set}
       skeleton={<FaceSkeleton look={place.look} span={place.span} bucket={bucket} />}>
       {([first, finished]) => !days || !head ? <p className="text-soft">{t("usage.none")}</p>
-        : place.look === "tasks" ? <TasksLook view={first as TasksView} span={place.span} root={root} days={days} open={open} zone={zoneName(head.timeZone)} />
+        : place.look === "tasks" ? <><WorkBand work={(first as TasksView).activeWork} /><TasksLook view={first as TasksView} span={place.span} root={root} days={days} open={open} zone={zoneName(head.timeZone)} /></>
           : <UsageLook view={first as UsageView} span={place.span} root={root} tasks={finished as TasksView} days={days} open={open} zone={zoneName(head.timeZone)}
             series={series} />}
     </ReadPart>
@@ -110,6 +111,6 @@ export function AnalysisView({ place }: { place: AnalysisPlace }) {
 /** The analysis's way to the card: over the page, for the span and the project in view. */
 function ShareCardButton({ place }: { place: AnalysisPlace }) {
   const { t } = useTranslation("analysis");
-  return <Button variant="outline" className="flex-none" onClick={() => useViewStore.getState().showAnalysis({ ...place, list: null, unit: null, card: cardSpanOf(place.span) })}>
+  return <Button variant="outline" className="flex-none" onClick={() => useViewStore.getState().showAnalysis({ ...place, list: null, card: cardSpanOf(place.span) })}>
     <Icon name="image" className="size-3.5" />{t("card.make")}</Button>;
 }

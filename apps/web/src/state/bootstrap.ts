@@ -11,7 +11,7 @@ import { resources, shelvedReadDetail } from "@/data/resources";
 import type { TaskDetail, WorkspaceInfo } from "@/data/types";
 import { taskAtAddress, withinProject, type TaskIndex } from "@/domain/tasks";
 import { fileOpening, fileShelves, folderSheet, isFolderPath, isMedia, pathExists, sheetOfFile } from "@/domain/task-files";
-import { NARROW_QUERY, readerOn, readerPlace, readerShows, screenNavigation, useViewStore, type Navigation, type ReaderPane } from "./view-store";
+import { NARROW_QUERY, readerOn, readerPlace, readerShows, screenNavigation, useViewStore, type Navigation, type ReaderPane, type Scene } from "./view-store";
 import { belowSurface, currentEntry, isStep, isTurnSequenceNavigation, stepEntry, surfacesOf, writeStep } from "./history-step";
 import { leavePlace, noteReaderPlace, readerHistoryPosition, takeFollowedReference, whileShowingEntry } from "./reader-position";
 import { rememberNavigation, resumeLanding, type Resume } from "./resume";
@@ -42,7 +42,13 @@ export function openScreenLink(href: string) {
  * before (a link opened afresh), the tab is kept and the reader shows the task pane if it is empty.
  */
 function validPane(value: string | null, task: string | null): ReaderPane {
-  return task && (value === "files" || value === "about") ? value : "task";
+  return task && (value === "files" || value === "about" || value === "analysis") ? value : "task";
+}
+
+/** A scene the URL names: an instant that reads as one, and a finding's ID as the analysis writes it. */
+function validScene(at: string | null, finding: string | null): Scene | null {
+  const instant = at && !Number.isNaN(Date.parse(at)) ? at : null, named = finding && finding.length <= 512 ? finding : null;
+  return instant || named ? { at: instant, finding: named } : null;
 }
 
 function validPath(value: string | null, task: string | null, pane: ReaderPane, detail: TaskDetail | undefined, root: string): string | null {
@@ -136,9 +142,9 @@ function detailOf(task: string | null, row: Parameters<typeof taskDetail>[0] | u
  */
 function readNavigation(url: URL, index: TaskIndex, root: string, projects: Projects, missing: ReadonlySet<string>,
   turnSequence = isTurnSequenceNavigation()): Navigation {
-  // The analysis face shows no task: one the URL names beside it is left out.
+  // A task the URL names beside the analysis face is the reader over it.
   const analysis = readAnalysis(url.searchParams);
-  const requestedTask = analysis ? null : urlValue("task", url);
+  const requestedTask = urlValue("task", url);
   const row = requestedTask ? taskAtAddress(requestedTask, index) ?? readerTask(queryClient, root, requestedTask) : undefined;
   const refusal = requestedTask ? readQuery(queryClient, ['task', root, requestedTask])?.state.error : undefined;
   const task = row?.id ?? (refusal instanceof ApiError && refusal.code === 'forbidden' ? requestedTask : null);
@@ -165,6 +171,7 @@ function readNavigation(url: URL, index: TaskIndex, root: string, projects: Proj
     image: shown ? validImage(image, pane, path, detail, root) : null,
     view: validView(view),
     event: shown && pane === "task" ? validEvent(urlValue("event", url)) : null,
+    scene: shown && pane === "analysis" ? validScene(urlValue("at", url), urlValue("finding", url)) : null,
     query: urlValue("q", url) ?? "", turnSequence, analysis };
 }
 
@@ -186,7 +193,7 @@ function writeNavigation(url: URL, navigation: Navigation): URL {
   // The navigation's keys are written afresh in one order, so one navigation has one URL whatever URL it came from
   // (the repair below compares them). Only full/partial mode belongs to the URL.
   // A task and the project are named by their Task IDs.
-  for (const key of ["project", "task", "width", "tab", "path", "q", "image", "view", "event", ...ANALYSIS_KEYS] as const) setUrlValue(key, null, url);
+  for (const key of ["project", "task", "width", "tab", "path", "q", "image", "view", "event", "at", "finding", ...ANALYSIS_KEYS] as const) setUrlValue(key, null, url);
   const task = readerOn(navigation);
   const full = !!task && navigation.full;
   if (navigation.project) setUrlValue("project", navigation.project, url);
@@ -198,6 +205,8 @@ function writeNavigation(url: URL, navigation: Navigation): URL {
   if (task && navigation.image) setUrlValue("image", navigation.image, url);
   if (task && navigation.view) setUrlValue("view", navigation.view, url);
   if (task && navigation.pane === "task" && navigation.event) setUrlValue("event", navigation.event, url);
+  if (task && navigation.pane === "analysis" && navigation.scene?.at) setUrlValue("at", navigation.scene.at, url);
+  if (task && navigation.pane === "analysis" && navigation.scene?.finding) setUrlValue("finding", navigation.scene.finding, url);
   for (const [key, value] of analysisValues(navigation.analysis)) setUrlValue(key, value, url);
   return url;
 }

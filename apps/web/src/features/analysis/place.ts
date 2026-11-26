@@ -4,8 +4,9 @@ import { LIST_SETS, PERIODS, TASK_GROUPS, TASK_VALUES, USAGE_GROUPS, USAGE_VALUE
 
 /**
  * Where the analysis stands, as the URL says it (`face=analysis`): which look (tasks, or the AI's use), which span of
- * days, and what is open over it — a list of the tasks behind one number, then one task's values. The span and the two
- * layers are what Back undoes one at a time; the look is written over the current step.
+ * days, and what is open over it — a list of the tasks behind one number, or the share card. A task opened from a list
+ * is the reader over the face (the URL's `task`), as on the list of tasks. The span and the layers are what Back undoes
+ * one at a time; the look is written over the current step.
  */
 export type Look = "tasks" | "usage";
 /** A span: one of the named periods ending today, or whole days chosen on a chart or stepped to. */
@@ -25,10 +26,10 @@ export const CARD_PERIODS = ["7d", "28d", "all"] as const;
 export type CardPeriod = typeof CARD_PERIODS[number];
 export type CardSpan = { length: CardPeriod; end: string | null };
 /** `card`: the share card open over the analysis, and its days. */
-export type AnalysisPlace = { look: Look; span: Span; list: ListPlace | null; unit: string | null; card: CardSpan | null };
+export type AnalysisPlace = { look: Look; span: Span; list: ListPlace | null; card: CardSpan | null };
 
 export const DEFAULT_SPAN: Span = { period: "7d" };
-export const analysisHome = (look: Look = "tasks", span: Span = DEFAULT_SPAN): AnalysisPlace => ({ look, span, list: null, unit: null, card: null });
+export const analysisHome = (look: Look = "tasks", span: Span = DEFAULT_SPAN): AnalysisPlace => ({ look, span, list: null, card: null });
 
 /** A day the URL names, when it is one on the calendar (2026-13-18 is not). */
 const isDay = (value: string | undefined): value is string =>
@@ -62,14 +63,13 @@ export function readAnalysis(url: Values): AnalysisPlace | null {
   // A row needs its breakdown; a breakdown without a row is the whole of one that is counted from launches (skills,
   // tools, MCP: every launch that used one).
   if (list && (list.group === null ? list.member !== null : list.member === null && !WHOLE_GROUPS.has(list.group))) { list.group = null; list.member = null; }
-  const unit = url.get("unit");
   const card = url.get("card");
-  return { look, span: readSpan(url.get("span")), list, unit: unit && /^T\d+$/.test(unit) ? unit : null, card: card === null ? null : readCard(card) };
+  return { look, span: readSpan(url.get("span")), list, card: card === null ? null : readCard(card) };
 }
 
 /** The breakdowns whose whole has a list of its own (every launch that used any of them). */
 const WHOLE_GROUPS = new Set<Group>(["skill", "tool", "mcp"]);
-export const ANALYSIS_KEYS = ["face", "look", "span", "list", "measure", "group", "member", "bin", "model", "effort", "unit", "card"] as const;
+export const ANALYSIS_KEYS = ["face", "look", "span", "list", "measure", "group", "member", "bin", "model", "effort", "card"] as const;
 /** The URL's values for a place, in one order, the defaults left out. */
 export function analysisValues(place: AnalysisPlace | null): [typeof ANALYSIS_KEYS[number], string][] {
   if (!place) return [];
@@ -85,7 +85,6 @@ export function analysisValues(place: AnalysisPlace | null): [typeof ANALYSIS_KE
     if (place.list.filter?.model) out.push(["model", place.list.filter.model]);
     if (place.list.filter?.effort) out.push(["effort", place.list.filter.effort]);
   }
-  if (place.unit) out.push(["unit", place.unit]);
   if (place.card) out.push(["card", place.card.end ? `${place.card.length}~${place.card.end}` : place.card.length]);
   return out;
 }
@@ -94,15 +93,14 @@ export function analysisValues(place: AnalysisPlace | null): [typeof ANALYSIS_KE
 export function analysisSurfaces(place: AnalysisPlace | null): string[] {
   if (!place) return [];
   const out: string[] = [];
-  if (place.list) out.push(`list:${analysisValues({ ...place, unit: null, card: null }).filter(([key]) => key !== "face" && key !== "look" && key !== "span").map(pair => pair.join("=")).join("&")}`);
-  if (place.unit) out.push(`unit:${place.unit}`);
+  if (place.list) out.push(`list:${analysisValues({ ...place, card: null }).filter(([key]) => key !== "face" && key !== "look" && key !== "span").map(pair => pair.join("=")).join("&")}`);
   if (place.card) out.push("card");
   return out;
 }
 /** The place with only its `depth` bottom layers open. */
 export function belowLayer(place: AnalysisPlace, depth: number): AnalysisPlace {
   const layers = analysisSurfaces(place).slice(0, Math.max(0, depth)).map(surface => surface.split(":")[0]);
-  return { ...place, list: layers.includes("list") ? place.list : null, unit: layers.includes("unit") ? place.unit : null,
+  return { ...place, list: layers.includes("list") ? place.list : null,
     card: layers.includes("card") ? place.card : null };
 }
 /**
@@ -155,7 +153,7 @@ export function settleSpan(days: { from: string; to: string }, today: string): S
 export function listOnAnswer(place: AnalysisPlace, head: { period: { from: string; to: string } | null; today: string; firstDay: string | null }, list: ListPlace): AnalysisPlace {
   const shown = head.period, chosen = spanDays(place.span, head.today, head.firstDay);
   const span = !shown || shown.from === chosen.from && shown.to === chosen.to ? place.span : settleSpan(shown, head.today);
-  return { ...place, span, list, unit: null, card: null };
+  return { ...place, span, list, card: null };
 }
 
 /**

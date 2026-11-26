@@ -6,13 +6,14 @@ import { parseTaskId } from './task-id.js';
 import { TASK_KIND, TASK_BASE_STATES, TASK_LIFECYCLES, effectiveTaskState, type TaskBaseState, type TaskKind, type TaskLifecycle, type TaskState } from './task-enums.js';
 import { taskLogSchema, type TaskActor, type TaskLog } from './task-log-schema.js';
 export type { TaskActor, TaskLog } from './task-log-schema.js';
+import { analysisSubjectSchema, type AnalysisSubject } from './analysis-subject.js';
 import { ESTIMATE_MINUTES, MAX_TITLE_LENGTH } from './values.js';
 
 export const CONTROL_TASK_FORMAT = 3n;
 export type ControlMetadata = {
   format: bigint; id: string; kind: TaskKind; parentId: string | null; lifecycle: TaskLifecycle;
   title: string; version: bigint; baseState: TaskBaseState; hold: boolean; readonly state: TaskState;
-  userRequested: boolean; log: TaskLog[];
+  userRequested: boolean; analysisSubject: AnalysisSubject | undefined; log: TaskLog[];
 };
 /** Current metadata carries a derived status accessor, never a second mutable state. */
 export function taskMetadata(fields: Omit<ControlMetadata, 'state'>): ControlMetadata {
@@ -34,6 +35,15 @@ export function validateTaskSettings(kind: TaskKind, value: unknown): ProjectSet
       { reason: { kind: 'project_settings_need_color' } })
     : new Problem(PROBLEM_CODE.invalidInput, 'Only a project has settings (its color)', undefined,
       { reason: { kind: 'only_project_has_settings' } });
+}
+export function validateAnalysisSubject(kind: TaskKind, value: unknown): AnalysisSubject | undefined {
+  if (value === undefined) return undefined;
+  if (kind !== 'task')
+    throw new Problem(PROBLEM_CODE.invalidInput, 'Only a task has an analysis subject');
+  if (value === null) return undefined;
+  const parsed = analysisSubjectSchema.safeParse(value);
+  if (parsed.success) return parsed.data;
+  throw new Problem(PROBLEM_CODE.invalidInput, 'Invalid analysis subject', undefined, { reason: faultReason(parsed.error) });
 }
 /** A field's value as stored: a text, a list of texts, an item (member ID to value) or a list of items. */
 export type FieldValue = string | string[] | FieldItem | FieldItem[];
@@ -68,7 +78,7 @@ export function userRequestedOf(log: readonly TaskLog[]): boolean {
   return mark;
 }
 export function validateControlHead(value: unknown): ControlMetadata {
-  const data = fields(value, ['format', 'id', 'kind', 'parentId', 'lifecycle', 'title', 'version', 'baseState', 'hold', 'state', 'userRequested', 'log'],
+  const data = fields(value, ['format', 'id', 'kind', 'parentId', 'lifecycle', 'title', 'version', 'baseState', 'hold', 'state', 'userRequested', 'analysisSubject', 'log'],
     'Task metadata');
   if (data.format !== CONTROL_TASK_FORMAT) throw new Problem(PROBLEM_CODE.invalidInput, 'Unsupported task format (expected integer 3)', undefined,
     { reason: { kind: 'unsupported_task_format_expected_integer_3' } });
@@ -90,7 +100,7 @@ export function validateControlHead(value: unknown): ControlMetadata {
     throw new Error('Current Task requires a base stage and an explicit hold');
   return taskMetadata({ format: CONTROL_TASK_FORMAT, id, kind: data.kind as TaskKind, parentId, lifecycle: data.lifecycle as TaskLifecycle,
     title: text(data.title, 'title', MAX_TITLE_LENGTH), version: data.version, baseState: baseState as TaskBaseState, hold: data.hold,
-    userRequested, log });
+    userRequested, analysisSubject: validateAnalysisSubject(data.kind as TaskKind, data.analysisSubject), log });
 }
 
 export function validateAppendedLog(entries: readonly unknown[]): TaskLog[] { return entries.map(validateLog); }
@@ -105,9 +115,10 @@ export function validateControlMetadata(value: unknown): ControlMetadata {
 }
 
 export function initialControlDocument(id: string, parentId: string | null, title: string,
-  created: { kind: TaskKind; userRequested: boolean; actor: TaskActor }): ControlMetadata {
+  created: { kind: TaskKind; userRequested: boolean; actor: TaskActor; analysisSubject?: AnalysisSubject }): ControlMetadata {
   const meta = taskMetadata({ format: CONTROL_TASK_FORMAT, id, kind: created.kind, parentId, lifecycle: 'active',
     title: text(title, 'title', MAX_TITLE_LENGTH), version: 1n, baseState: 'todo', hold: false, userRequested: created.userRequested,
+    analysisSubject: created.analysisSubject,
     log: [{ id: `L${randomUUID()}`, kind: 'created', at: now(), title: null, description: null, actor: created.actor,
       fromState: null, toState: 'todo', userRequested: created.userRequested }] });
   return validateControlMetadata(meta);

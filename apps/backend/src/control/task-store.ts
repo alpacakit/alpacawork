@@ -11,7 +11,7 @@ import { storedTaskLogSchema } from '@alpacawork/raw/task-log-schema';
 import { ControlStore, taskHash, touch } from '@alpacawork/db';
 import { PROJECT_SUMMARY, type FieldValue } from '@alpacawork/contract';
 import { CONTROL_TASK_FORMAT, MAX_TASK_NUMBER, publicTaskId, validateControlMetadata, validateControlHead, validateAppendedLog, validateTaskSettings, userRequestedOf,
-  taskMetadata, type ControlMetadata, type ControlTask, type ProjectSettings, type TaskKind, type TaskLog, type TaskValues } from '@alpacawork/raw';
+  taskMetadata, validateAnalysisSubject, type ControlMetadata, type ControlTask, type ProjectSettings, type TaskKind, type TaskLog, type TaskValues } from '@alpacawork/raw';
 import { readTaskFields, valuesWriteTime, writeTaskValues, type TaskFields } from './task-values-store.js';
 import type { BranchTask } from '@alpacawork/contract/branch';
 import type { TaskWriter } from './task-transition.js';
@@ -128,7 +128,7 @@ const PROJECT_READ = 't.project_task_id IS NULL OR t.project_task_id = (SELECT i
 const scoped = (project: string | undefined): { where: string; parameters: string[] } =>
   project === undefined ? { where: '', parameters: [] } : { where: `WHERE ${PROJECT_READ}`, parameters: [project] };
 const TASK_METADATA_COLUMNS = `t.id,t.kind,t.number,t.external_id,t.parent_id,t.project_task_id,t.title,
-  t.lifecycle,t.base_state,t.hold,t.state,t.user_requested,t.settings,t.revision,t.created_at,t.updated_at`;
+  t.lifecycle,t.base_state,t.hold,t.state,t.user_requested,t.settings,t.analysis_subject,t.revision,t.created_at,t.updated_at`;
 
 /** The projects above `project`, nearest first. */
 export function projectsAbove(db: DatabaseSync, project: string): string[] {
@@ -236,11 +236,13 @@ function decodeTask(row: Record<string, unknown>, log: TaskLog[]): ControlTask {
 }
 function decodeTaskMetadata(row: Record<string, unknown>, log: TaskLog[]): Omit<ControlTask, 'values'> {
   const id = String(row.external_id), uuid = String(row.id), revision = Number(row.revision);
-  const meta = taskMetadata({ format: CONTROL_TASK_FORMAT, id, kind: String(row.kind) as ControlMetadata['kind'],
+  const kind = String(row.kind) as TaskKind;
+  const analysisSubject = row.analysis_subject === null ? undefined : validateAnalysisSubject(kind, JSON.parse(String(row.analysis_subject)));
+  const meta = taskMetadata({ format: CONTROL_TASK_FORMAT, id, kind,
     parentId: row.parent_id === null ? null : String(row.parent_external_id),
     lifecycle: String(row.lifecycle) as ControlMetadata['lifecycle'], title: String(row.title),
     version: BigInt(revision), baseState: String(row.base_state) as ControlMetadata['baseState'], hold: Boolean(row.hold),
-    userRequested: Boolean(row.user_requested), log });
+    userRequested: Boolean(row.user_requested), analysisSubject, log });
   return { id, path: taskFolder(id), meta,
     settings: validateTaskSettings(meta.kind, row.settings === null ? null : JSON.parse(String(row.settings))),
     hash: taskHash(uuid, revision) };
@@ -418,7 +420,7 @@ export class TaskRepository {
     if (number > MAX_TASK_NUMBER) throw new Problem(PROBLEM_CODE.idExhausted, 'Task number limit reached', undefined, { reason: { kind: 'task_number_limit_reached' } });
     const id = publicTaskId(kind, number), { meta, values, settings } = document(id);
     const checkedSettings = validateTaskSettings(meta.kind, settings ?? null);
-    validateControlMetadata(meta);
+    const checkedMeta = validateControlMetadata(meta);
     if (meta.id !== id || meta.kind !== kind) throw new Problem(PROBLEM_CODE.invalidInput, 'Task identity mismatch', undefined, { reason: { kind: 'task_identity_mismatch' } });
     const parent = meta.parentId === null ? null
       : this.connection.prepare('SELECT id,kind,project_task_id FROM tasks WHERE external_id = ?').get(meta.parentId);
@@ -427,9 +429,10 @@ export class TaskRepository {
       : parent.kind === 'project' ? String(parent.id) : String(parent.project_task_id);
     const uuid = randomUUID(), at = new Date().toISOString();
     this.connection.prepare(`INSERT INTO tasks(id,kind,number,parent_id,project_task_id,title,lifecycle,base_state,hold,
-      user_requested,settings,revision,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(uuid, meta.kind, number,
+      user_requested,settings,analysis_subject,revision,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(uuid, meta.kind, number,
       parent ? String(parent.id) : null, project, meta.title, meta.lifecycle, meta.baseState, meta.hold ? 1 : 0,
-      userRequestedOf(meta.log) ? 1 : 0, checkedSettings === null ? null : JSON.stringify(checkedSettings), 1, at, at);
+      userRequestedOf(meta.log) ? 1 : 0, checkedSettings === null ? null : JSON.stringify(checkedSettings),
+      checkedMeta.analysisSubject ? JSON.stringify(checkedMeta.analysisSubject) : null, 1, at, at);
     touch(this.connection, { kind: 'task', id });
     insertLogs(this.connection, uuid, 0, meta.log);
     if (Object.keys(values).length) writeTaskValues(this.connection, id, values, valuesWriteTime(meta.log));
@@ -458,7 +461,7 @@ export function taskWriter(connection: DatabaseSync): TaskWriter {
  */
 function saveTask(db: DatabaseSync, id: string, expectedHash: string | null, meta: ControlMetadata, previousLength: number, values?: TaskValues,
   settings?: ProjectSettings | null, texts?: ReadonlyMap<string, string>): string {
-  validateControlHead(meta);
+  const checkedMeta = validateControlHead(meta);
   if (meta.id !== id) throw new Problem(PROBLEM_CODE.invalidInput, 'Task identity mismatch', undefined, { reason: { kind: 'task_identity_mismatch' } });
   const row = db.prepare('SELECT id,revision,settings FROM tasks WHERE external_id = ?').get(id);
   if (!row) throw new Problem(PROBLEM_CODE.notFound, 'Task does not exist', undefined, { reason: { kind: 'task_does_not_exist' } });
@@ -474,10 +477,11 @@ function saveTask(db: DatabaseSync, id: string, expectedHash: string | null, met
     throw new Problem(PROBLEM_CODE.conflict, 'Task history cannot be rewritten', undefined, { reason: { kind: 'task_history_cannot_rewritten' } });
   const checkedSettings = validateTaskSettings(meta.kind, settings === undefined
     ? row.settings === null ? null : JSON.parse(String(row.settings)) : settings);
-  db.prepare(`UPDATE tasks SET parent_id=?,kind=?,title=?,lifecycle=?,base_state=?,hold=?,user_requested=?,settings=?,
+  db.prepare(`UPDATE tasks SET parent_id=?,kind=?,title=?,lifecycle=?,base_state=?,hold=?,user_requested=?,settings=?,analysis_subject=?,
     revision=?,updated_at=? WHERE id=?`).run(parent ? String(parent.id) : null, meta.kind, meta.title, meta.lifecycle,
     meta.baseState, meta.hold ? 1 : 0, userRequestedOf(meta.log) ? 1 : 0,
     checkedSettings === null ? null : JSON.stringify(checkedSettings),
+    checkedMeta.analysisSubject ? JSON.stringify(checkedMeta.analysisSubject) : null,
     revision + 1, new Date().toISOString(), String(row.id));
   touch(db, { kind: 'task', id });
   insertLogs(db, String(row.id), previousLength, meta.log, texts);

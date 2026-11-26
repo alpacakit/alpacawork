@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import type { TaskLog } from '@alpacawork/raw/task-log-schema';
 import { analysisListInput, analysisTasksInput, analysisUsageInput } from '@alpacawork/contract/analysis';
 import { buckets, calendar, makeHead } from '@alpacawork/backend/test-dist/analysis/calendar.js';
-import { clocks, firstConversations, laterInstructions, launchOf, prLinks, shareOf, taskOutcome, userQuestions,
+import { clocks, firstConversations, laterInstructions, launchOf, prLinks, reviewRounds, shareOf, taskOutcome, userQuestions,
   type RunEvidence } from '@alpacawork/backend/test-dist/analysis/rules.js';
 import { runUsageMs } from '@alpacawork/contract';
 import { TallyParser } from '@alpacawork/backend/test-dist/agents/adapters/tally.js';
@@ -278,6 +278,15 @@ test('a question asking to take a result is a review round, and an instruction i
   const { time, waits } = clocks(log, userQuestions(log), [], [], epoch, epoch + 60, epoch + 60);
   assert.deepEqual([time.review, time.answer], [10 + 10 + 10, 0]);
   assert.deepEqual(waits, [{ from: epoch + 10, to: epoch + 20 }, { from: epoch + 30, to: epoch + 40 }, { from: epoch + 50, to: epoch + 60 }]);
+  // Each round runs until its review closed, the last to the end, as many as the count; a Run's tokens go to the round it started in.
+  const tokens = { input: 1, cacheRead: 2, cacheWrite: 3, output: 4 };
+  const run = { started: epoch + 25, ended: epoch + 28, live: false, tokens, id: 'R1', agent: 'a', model: null, effort: null, task: 'T1', provider: 'p', session: null };
+  assert.deepEqual(reviewRounds(log, userQuestions(log), [run], epoch, epoch + 60),
+    [{ from: epoch, to: epoch + 20, tokens: 0 }, { from: epoch + 20, to: epoch + 40, tokens: 10 }, { from: epoch + 40, to: epoch + 60, tokens: 0 }]);
+  // A hold in review keeps the round open; a Run after the acceptance is in none.
+  const held = [initial, start, submit, event('hold', 'reported', 52, { fromState: 'waiting', toState: 'held' }),
+    event('unhold', 'reported', 54, { fromState: 'held', toState: 'waiting' }), approved];
+  assert.deepEqual(reviewRounds(held, [], [{ ...run, started: epoch + 65 }], epoch, epoch + 60), [{ from: epoch, to: epoch + 60, tokens: 0 }]);
 });
 
 test('a wait is split by where the user was: away after 30 idle minutes, else the task of their next action', () => {

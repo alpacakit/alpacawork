@@ -60,6 +60,49 @@
     "shareHint": "Compartilhar envia só a imagem pelo menu do dispositivo.",
     "theme": "Cor"
   },
+  "causes": {
+    "choice": "Respondidas com uma opção",
+    "firstRound": "Primeira rodada",
+    "firstRoundTip": "Tokens usados até a primeira revisão de cada tarefa e sua resposta",
+    "laterRound": "Rodadas após a primeira revisão",
+    "laterRoundTip": "Tokens usados após a primeira revisão de cada tarefa: o trabalho refeito",
+    "laterTime": "Das {{total}}, as rodadas após a primeira revisão levaram {{time}} ({{share}})",
+    "laterTip": "O trabalho refeito e esperado após a primeira revisão de cada tarefa",
+    "meant": "Como você queria",
+    "noFixes": "Nenhuma correção classificada neste período.",
+    "noQuestions": "Aceitas sem perguntas nem correções",
+    "none": "Nada a mostrar neste período.",
+    "ofFixes_one": "Da {{count}} correção que você pediu, por tipo",
+    "ofFixes_other": "Das {{count}} correções que você pediu, por tipo",
+    "ofItems_one": "De {{count}} item respondido",
+    "ofItems_other": "De {{count}} itens respondidos",
+    "ofQuestions_one": "De {{count}} pergunta para você",
+    "ofQuestions_other": "De {{count}} perguntas para você",
+    "ofRecommendable_one": "De {{count}} item respondido com opção recomendada",
+    "ofRecommendable_other": "De {{count}} itens respondidos com opção recomendada",
+    "ofTasks_one": "De {{count}} tarefa sem perguntas além da revisão",
+    "ofTasks_other": "De {{count}} tarefas sem perguntas além da revisão",
+    "ofTime": "Das {{time}} entre o pedido e a aceitação",
+    "ofTokens": "Dos {{tokens}} tokens usados",
+    "recommended": "Escolheu a opção recomendada",
+    "replaced": "Retiradas com uma instrução em vez de resposta",
+    "time": "Tempo",
+    "title": "Causas principais",
+    "tokens": "Tokens"
+  },
+  "change": {
+    "added": "{{what}} {{name}} adicionado",
+    "agent": "Agente",
+    "effort": "Esforço",
+    "fromTo": "{{what}} {{from}} → {{to}}",
+    "instruction-file": "Arquivo de instruções",
+    "legend": "Mudanças",
+    "model": "Modelo",
+    "removed": "{{what}} {{name}} removido",
+    "skill": "Skill",
+    "updated": "{{what}} {{name}} atualizado",
+    "version": "alpacawork"
+  },
   "chart": {
     "binLabel": "{{day}} · {{name}} {{value}}",
     "fewShare": "{{passed}} de {{accepted}}",
@@ -131,6 +174,16 @@
     "label": "Tela",
     "use": "Usar"
   },
+  "fix": {
+    "behavior": "Comportamento errado",
+    "intent": "Pedido mal entendido",
+    "look_feel": "Aparência e uso",
+    "other": "Outro",
+    "review_flow": "Como foi mostrado",
+    "scope": "Escopo adicionado",
+    "speed": "Velocidade",
+    "wording": "Redação"
+  },
   "home": {
     "label": "{{marks}}. Abrir a análise",
     "marks_one": "Concluídas hoje: {{count}} ({{passed}} sem correções)",
@@ -165,11 +218,33 @@
     "tasks": "Tarefas",
     "usage": "Uso de IA"
   },
+  "mark": {
+    "answer": "Resposta",
+    "assigned": "Atribuição",
+    "change": "Condições alteradas",
+    "command-stopped": "Comando parado no limite",
+    "compacted": "Conversa compactada",
+    "instruction": "Instrução",
+    "moved": "Movida",
+    "question-withdrawn": "Pergunta retirada",
+    "report": "Relatório",
+    "values-changed": "Valores alterados"
+  },
   "outcome": {
     "none": "Em andamento",
     "passed": "Sem correções",
     "reworked": "Precisou de correções",
     "stopped": "Interrompida"
+  },
+  "part": {
+    "child-working": "Só subtarefas trabalhando",
+    "held": "Em espera",
+    "idle": "Nada em andamento",
+    "member-working": "Só membros trabalhando",
+    "owner-working": "Responsável trabalhando",
+    "queued": "Aguardando para começar",
+    "waiting-answer": "Aguardando resposta",
+    "waiting-review": "Aguardando revisão"
   },
   "period": {
     "28d": "Últimos 28 dias",
@@ -190,10 +265,68 @@
     "days_other": "{{count}} dias anteriores"
   },
   "range": "{{from}} – {{to}}",
+  "role": {
+    "member": "membro",
+    "owner": "responsável"
+  },
+  "rule": {
+    "failed-run": "Execução com falha",
+    "fan-out": "Um por vez onde uma leitura bastaria",
+    "idle": "Nada em andamento",
+    "limit-hit": "Parado no limite de tempo",
+    "long-step": "Etapa longa",
+    "long-wait": "Longa espera por resposta",
+    "queue-wait": "Esperou para começar",
+    "repeated-failure": "A mesma falha de novo",
+    "repeated-question": "A mesma pergunta de novo",
+    "rework": "Trabalho refeito",
+    "same-result": "O mesmo resultado lido de novo"
+  },
   "same": "±0",
   "sep": " · ",
+  "span": {
+    "acceptQuestion": "Pergunta para aceitar o resultado",
+    "question": "Pergunta",
+    "queued": "Aguardando para começar",
+    "run": "Execução",
+    "step": "Etapa",
+    "task-state": "{{state}}",
+    "thinking": "Pensando"
+  },
+  "state": {
+    "doing": "Em andamento",
+    "done": "Concluída",
+    "failed": "Falhou",
+    "held": "Em espera",
+    "stopped": "Interrompida",
+    "todo": "A fazer",
+    "waiting": "Aguardando revisão"
+  },
   "table": {
     "head": "{{name}} ({{unit}})"
+  },
+  "task": {
+    "accepted": "{{times}} e aceita",
+    "causesNote": "Pontos que valem uma olhada, do mais longo ao mais curto, e as correções que você pediu. Toque em um para ver esse momento na linha do tempo.",
+    "done": "{{times}}, concluída sem aceitação",
+    "findings": "Pontos que valem uma olhada",
+    "fixes_one": "Correções que você pediu: {{count}}, por tipo",
+    "fixes_other": "Correções que você pediu: {{count}}, por tipo",
+    "laterShare": "{{share}} em rodadas após a primeira",
+    "noFindings": "Nada se destacou.",
+    "noWords": "(sem texto registrado)",
+    "ofRequest": "Contado para a solicitação inteira {{id}}",
+    "open": "{{times}} até agora",
+    "otherFindings_one": "Mais {{count}}",
+    "otherFindings_other": "Mais {{count}}",
+    "question": "Uma pergunta de {{task}}",
+    "reviews": "Revisões",
+    "round": "Rodada {{n}}",
+    "rounds": "Cada rodada de revisão",
+    "roundsNote": "Uma rodada é o trabalho até uma revisão e a espera pela sua resposta. A rodada 1 é o primeiro trabalho; as seguintes são as correções.",
+    "stopped": "{{times}} e interrompida",
+    "time": "Tempo gasto",
+    "tokens": "Tokens"
   },
   "tasks": {
     "accepted": "Aceitas",
@@ -230,6 +363,41 @@
     "review": "Aguardando sua revisão",
     "total": "Tempo total",
     "you": "Sua vez"
+  },
+  "timeline": {
+    "failed": "Não foi possível ler este momento.",
+    "history": "Histórico até então",
+    "next": "Próximo evento",
+    "nextFinding": "Próximo ponto",
+    "noQuestions": "Nenhuma pergunta estava aberta.",
+    "noRuns": "Nenhuma IA estava em execução.",
+    "noSteps": "Suas etapas não foram registradas.",
+    "now": "agora",
+    "openCount_one": "{{count}} pergunta aberta",
+    "openCount_other": "{{count}} perguntas abertas",
+    "openSince": "aberta desde {{at}}",
+    "partial": "Só parte deste intervalo é mostrada. Aproxime para ver o resto.",
+    "parts": "Para onde foi o tempo ({{time}} no total)",
+    "pick": "Escolha um ponto acima ou toque nas faixas",
+    "previous": "Evento anterior",
+    "previousFinding": "Ponto anterior",
+    "questions_one": "Pergunta aberta: {{count}}",
+    "questions_other": "Perguntas abertas: {{count}}",
+    "reading": "Lendo este momento…",
+    "runningCount_one": "{{count}} IA em execução",
+    "runningCount_other": "{{count}} IAs em execução",
+    "runs": "IA em execução",
+    "seek": "Momento mostrado",
+    "since": "{{time}} após o início",
+    "situation": "Naquele momento",
+    "situationNote": "Montado a partir dos registros",
+    "stepsHidden": "Aproxime para 4 horas ou menos para ver cada etapa.",
+    "tasks": "Tarefas",
+    "title": "Linha do tempo",
+    "toUser": "Para você",
+    "whole": "Tudo",
+    "zoomIn": "Aproximar",
+    "zoomOut": "Afastar"
   },
   "unit": {
     "conversations_one": "conversa",
@@ -334,32 +502,14 @@
     "tasks": "Tarefas envolvidas",
     "tokens": "Tokens"
   },
-  "values": {
-    "accepted": "Aceita {{at}}",
-    "afterAccept": "Instruções após aceitar",
-    "answers": "Você respondeu",
-    "atReview": "Instruções na revisão",
-    "band": {
-      "doing": "Em andamento",
-      "paused": "Pausada",
-      "yours": "Sua vez"
-    },
-    "children": "Subtarefas",
-    "conversations": "Conversas novas",
-    "duringWork": "Instruções durante o trabalho",
-    "inputCache": "Entrada + cache",
-    "marks": {
-      "instruction": "Instrução",
-      "sendBack": "Devolução"
-    },
-    "models": "Modelo",
-    "open": "Abrir a tarefa",
-    "sendBacks": "Devoluções",
-    "skills": "Skills",
-    "stopped": "Interrompida {{at}}",
-    "tools": "Ferramentas",
-    "usage": "Uso de IA",
-    "workers": "Membros"
+  "waits": {
+    "away": "Ausente",
+    "awayTip": "Esperas enquanto você não fez nada em lugar nenhum por 30 minutos ou mais",
+    "otherTasks": "Em outras tarefas",
+    "otherTasksTip": "Esperas enquanto você respondia ou instruía outras tarefas",
+    "thisTask": "Presente, sem outra tarefa",
+    "thisTaskTip": "Esperas enquanto você estava aqui sem fazer outra coisa",
+    "title": "Sua vez, por onde você estava"
   },
   "window": {
     "accepted_one": "{{count}} aceita",
@@ -374,5 +524,24 @@
     "passedOf_one": "{{passed}} de {{count}}",
     "passedOf_many": "{{passed}} de {{count}}",
     "passedOf_other": "{{passed}} de {{count}}"
+  },
+  "legend": {
+    "failedRun": "Execução com falha ou interrompida",
+    "state": "Estado da tarefa (linha fina)"
+  },
+  "history": {
+    "accepted": "Aceita",
+    "created": "Tarefa criada",
+    "linked": "Mudança de estado"
+  },
+  "work": {
+    "aboutCause": "Sobre: {{cause}}",
+    "aboutDays": "Sobre {{days}}",
+    "aboutTask": "Sobre {{task}}",
+    "fewer": "Mostrar menos",
+    "more_one": "Mais {{count}}",
+    "more_other": "Mais {{count}}",
+    "title": "Em análise ou melhoria",
+    "yourTurn": "Sua vez"
   }
 }

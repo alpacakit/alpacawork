@@ -201,7 +201,9 @@ export type DayList = { set: ListSet; value: ListValue | null; group?: Group | n
 type Box = { left: number; right: number; top: number; bottom: number };
 /** The day pointed at, its row, and (under a finger) the box of the bin pressed, the window's place. */
 type Pointed = { at: number; row: number; box: Box | null };
-type GroupState = { bins: Bin[]; span: Days; bucket: Bucket; rows: RowSay[]; hovered: number | null; narrow: boolean;
+/** A change of what Runs ran under (`analysis changes`), on its local day, with what changed in words. */
+export type ChangeMark = { day: string; words: string };
+type GroupState = { bins: Bin[]; span: Days; bucket: Bucket; rows: RowSay[]; hovered: number | null; narrow: boolean; changes: ChangeMark[];
   pointed: Pointed | null; dayName: (at: number) => string; names: string[]; openDay: (list: (bin: Bin) => DayList) => void;
   /** Shows a day (null: none) at once, dropping a day waiting to be shown. */
   point: (at: number | null, row?: number, box?: Box) => void;
@@ -218,8 +220,8 @@ const GroupContext = createContext<GroupState | null>(null);
  * leads to its tasks. The span changes only from the period's switch. Between two charts the row last pointed at
  * stays. Another step of time, a scroll or a move to another step lets go of the day.
  */
-export function ChartGroup({ bins, span, today, bucket, rows, open, children }: {
-  bins: Bin[]; span: Days; today: string; bucket: Bucket; rows: RowSay[]; open: (list: DayList) => void; children: ReactNode;
+export function ChartGroup({ bins, span, today, bucket, rows, open, changes = [], children }: {
+  bins: Bin[]; span: Days; today: string; bucket: Bucket; rows: RowSay[]; open: (list: DayList) => void; changes?: ChangeMark[]; children: ReactNode;
 }) {
   const [pointed, setPointed] = useState<Pointed | null>(null);
   const narrow = useNarrow();
@@ -294,7 +296,7 @@ export function ChartGroup({ bins, span, today, bucket, rows, open, children }: 
     opener.current = { at, row, part: ours && part !== undefined ? Number(part) : ours && list ? "list" : null, box: shown?.box ?? null };
     if (!narrow) chartOf(row)?.focus({ preventScroll: true });
   };
-  const layerOpen = useViewStore(state => !!(state.analysis?.list || state.analysis?.unit));
+  const layerOpen = useViewStore(state => !!state.analysis?.list);
   useLayoutEffect(() => {
     const back = opener.current;
     if (layerOpen || !back) return;
@@ -337,7 +339,7 @@ export function ChartGroup({ bins, span, today, bucket, rows, open, children }: 
   const said = shown ? [dayName(shown.at), rows[shown.row]!.name, rows[shown.row]!.total(shown.at),
     ...(rows[shown.row]!.parts?.(shown.at) ?? []).map(part => `${part.name} ${part.value}`),
     ...rows[shown.row]!.line ? [`${rows[shown.row]!.line!.name} ${rows[shown.row]!.line!.value(shown.at)}`] : []].join(", ") : "";
-  return <GroupContext value={{ bins, span, bucket, rows, hovered: shown?.at ?? null, narrow, pointed: shown, dayName, names, openDay, point, pointSoon, cancel, press, chartOf }}>
+  return <GroupContext value={{ bins, span, bucket, rows, changes, hovered: shown?.at ?? null, narrow, pointed: shown, dayName, names, openDay, point, pointSoon, cancel, press, chartOf }}>
     {!narrow && <span aria-live="polite" className="sr-only">{said}</span>}
     <div ref={self} className="relative" onMouseLeave={narrow ? undefined : close} onKeyDownCapture={cancel} onFocusCapture={cancel}>
       {!narrow && <Columns layer="back" />}
@@ -565,8 +567,24 @@ function Frame({ row, scale, lineScale, height, children }: { row: number; scale
       <i aria-hidden className="pointer-events-none absolute inset-x-0 top-0 border-t border-rule" />
       <i aria-hidden className="pointer-events-none absolute inset-x-0 top-1/2 border-t border-rule" />
       <div className="absolute inset-0 border-b border-lit-line">{children}</div>
+      <ChangeLines />
     </div>
   </div>;
+}
+
+/**
+ * The changes of what Runs ran under (a skill updated, another model, another version), each a dotted line through the
+ * bin of its day, saying what changed: the numbers before and after it read side by side.
+ */
+function ChangeLines() {
+  const { bins, changes } = useGroup();
+  const marks = new Map<number, string[]>();
+  for (const change of changes) {
+    const at = bins.findIndex(bin => bin.from <= change.day && change.day <= bin.to);
+    if (at >= 0) marks.set(at, [...marks.get(at) ?? [], change.words]);
+  }
+  return <>{[...marks].map(([at, words]) => <i key={at} data-change-mark="" style={{ left: `${(at + 0.5) / bins.length * 100}%` }}
+    className="pointer-events-none absolute inset-y-0 block border-s border-dashed border-changed" aria-hidden title={words.join("\n")} />)}</>;
 }
 
 /**

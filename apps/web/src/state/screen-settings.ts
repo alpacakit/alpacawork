@@ -80,10 +80,12 @@ const SCREEN_KEYS = {
   project: { storage: false }, task: { storage: false }, tab: { storage: false }, path: { storage: false },
   q: { storage: false }, set: { storage: false }, event: { storage: false }, image: { storage: false },
   view: { storage: false },
+  // The scene of a task's Analysis tab (its timeline): an instant and the finding it was entered from.
+  at: { storage: false }, finding: { storage: false },
   theme: { storage: false }, settings: { storage: false },
   // The analysis face and what is open on it (features/analysis/place.ts).
   face: { storage: false }, look: { storage: false }, span: { storage: false }, list: { storage: false },
-  measure: { storage: false }, group: { storage: false }, member: { storage: false }, bin: { storage: false }, unit: { storage: false },
+  measure: { storage: false }, group: { storage: false }, member: { storage: false }, bin: { storage: false },
   model: { storage: false }, effort: { storage: false },
   card: { storage: false },
 } as const;

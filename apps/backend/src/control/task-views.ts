@@ -264,6 +264,7 @@ export function taskView(source: ControlSource, id: string, options: TaskViewOpt
     task: { ...(task.kind === 'project' ? { settings: task.settings } : {}), id: task.id, kind: task.kind, projectId: source.tree.owningProject(task.id), parentId: task.parentId,
       userRequested: task.userRequested, folder: taskFileRoute(task.id), lifecycle: task.lifecycle, title: task.title,
       state: task.state, baseState: task.baseState, hold: task.hold, hash: task.hash,
+      ...(task.analysisSubject ? { analysisSubject: task.analysisSubject } : {}),
       // Its values, and the fields of the schema it uses in order with where that comes from (field get reads them).
       ...(Object.keys(values).length ? { values } : {}), ...(include.has('fields') ? { fields: schemaFor(source.tree, source.fields.schemas, task.id) } : {}),
       ...(options.log === undefined ? {} : { log: latest(task.log, options.log) }),

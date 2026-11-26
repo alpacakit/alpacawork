@@ -19,7 +19,7 @@ export function task(id: string, fields: Partial<ControlTask['meta']> = {}): Con
   return { id, path: `tasks/${id}`, values: {}, settings: null, hash: createHash('sha256').update(id).digest('hex'),
     meta: { format: 3n, id, kind: 'task', parentId: 'P1', lifecycle: 'active', title: id, version: 1n,
       baseState: fields.baseState ?? (state === 'held' ? 'doing' : state), hold: fields.hold ?? state === 'held', state,
-      userRequested: false, log: [], ...fields } };
+      userRequested: false, analysisSubject: undefined, log: [], ...fields } };
 }
 export const project = (id = 'P1') => task(id, { kind: 'project', parentId: null, state: 'todo' });
 export const placement = (id: string, taskId: string, fields: Partial<StoredPlacement> = {}): StoredPlacement =>

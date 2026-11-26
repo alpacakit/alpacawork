@@ -10,7 +10,7 @@ import { clocks, iso, questionKind, taskOutcome, userQuestions, type Interval } 
 import { changeEvents } from './changes.js';
 import { splitWaits, type Activity } from './presence.js';
 import type { RunConditions } from '@alpacawork/contract/run';
-import { speaksForUser, type TaskBaseState } from '@alpacawork/raw';
+import { speaksForUser, type InstructionLabel, type TaskBaseState } from '@alpacawork/raw';
 import type { TaskLog } from '@alpacawork/raw/task-log-schema';
 import { questionsOf, type Question } from '@alpacawork/raw/questions';
 
@@ -45,8 +45,8 @@ export type TraceRecords = {
   root: string; project: string; scope: AnalysisTraceScope;
   /** The root first, then every task under it: the breakdown, the waits and the findings read them all whatever the scope. */
   tasks: readonly TraceTask[]; runs: readonly TraceRun[]; requests: ReadonlyMap<string, TraceRequest>;
-  /** Instruction labels by request (request_labeled): fix, addition or new_request. */
-  labels: ReadonlyMap<string, string>;
+  /** Instruction labels by request (request_labeled): fix (with its kinds of fix), addition or new_request. */
+  labels: ReadonlyMap<string, { kind: InstructionLabel['kind']; fixes: InstructionLabel['fixes'] }>;
   rootState: TaskBaseState;
   /** The user's actions on every task, in time order (AnalysisFacts.activity), to split the waits by where the user was. */
   activity: readonly Activity[];
@@ -96,12 +96,17 @@ export function isOpen(records: TraceRecords) {
   return records.runs.some(isMoving) || (state !== 'done' && state !== 'stopped');
 }
 
-/** The scope's whole period: from the root's creation to now while it can change, else to its last record. */
+const MOVES: ReadonlySet<string> = new Set(['request_accepted', 'review_sent_back', 'answered', 'asked', 'question_withdrawn', 'review_approved']);
+/**
+ * The scope's whole period: from the root's creation to now while it can change, else to the last thing that moved it
+ * (a change of state, an instruction, an answer, a question, a Run): a comment or a values edit after the end does not
+ * stretch it with idle time.
+ */
 export function wholePeriod(records: TraceRecords): Interval {
   const from = Math.min(...records.tasks.map(task => task.created), ...records.runs.map(run => run.created));
   if (isOpen(records)) return { from, to: Math.max(from, records.now) };
   let to = from;
-  for (const task of records.tasks) for (const entry of task.log) to = Math.max(to, Date.parse(entry.at));
+  for (const task of records.tasks) for (const entry of task.log) if (MOVES.has(entry.kind) || entry.toState !== null) to = Math.max(to, Date.parse(entry.at));
   for (const run of records.runs) to = Math.max(to, run.ended ?? run.started ?? run.created);
   return { from, to };
 }
@@ -368,7 +373,7 @@ export function marks(records: TraceRecords): AnalysisMark[] {
 
 /** The screen's address of a scene: the task's timeline, at an instant or on a finding. */
 export function sceneUrl(task: string, scope: AnalysisTraceScope, scene: { at?: number | string; finding?: string } = {}) {
-  const params = new URLSearchParams({ task, tab: 'timeline' });
+  const params = new URLSearchParams({ task, tab: 'analysis' });
   if (scope === 'subtree') params.set('scope', 'subtree');
   if (scene.at !== undefined) params.set('at', typeof scene.at === 'number' ? iso(scene.at) : scene.at);
   if (scene.finding) params.set('finding', scene.finding);
@@ -381,7 +386,7 @@ const stepAt = (step: TraceStep): NonNullable<StepAt> => ({ step: step.n, tool: 
   from: step.from === null ? null : iso(step.from), to: step.to === null ? null : iso(step.to) });
 
 /** The situation at `at`: each task's state, the Runs running and their steps, the queue, the open questions, the last history lines. */
-export function situationAt(records: TraceRecords, at: number): Omit<AnalysisAtView, 'head' | 'url' | 'values' | 'valuesReason'> {
+export function situationAt(records: TraceRecords, at: number): Omit<AnalysisAtView, 'head' | 'url' | 'part' | 'values' | 'valuesReason'> {
   const shown = shownTasks(records);
   records = { ...records, tasks: records.tasks.filter(task => shown.has(task.id)), runs: records.runs.filter(run => shown.has(run.task)) };
   const tasks = records.tasks.flatMap(task => { const state = stateAt(task, at); return state === null ? [] : [{ task: task.id, title: task.title, state }]; });

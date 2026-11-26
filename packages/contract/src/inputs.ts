@@ -6,6 +6,7 @@ import { projectColorSchema } from '@alpacawork/raw/project-settings';
 import { folderNameProblem } from './workspace-contract.js';
 import { parseDocument } from 'yaml';
 import { MAX_DOCUMENT } from '@alpacawork/raw/values';
+import { analysisSubjectSchema } from '@alpacawork/raw/analysis-subject';
 import { FIX_KINDS, INSTRUCTION_KINDS } from '@alpacawork/raw/task-log-schema';
 import { descriptionSchema, reportTitleSchema, digestSchema, estimateMinutesSchema, instructionSchema,
   logIdSchema, quoteTextSchema, reportStateSchema, runIdSchema, taskIdSchema, projectIdSchema, taskKindSchema, taskStateSchema,
@@ -95,10 +96,10 @@ export const taskListInput = taskListShape.extend(searchOptions).strict().superR
  */
 const writeRecordShape = { quote: quoteTextSchema.optional(), sourceRequest: z.string().min(1).max(128).optional() };
 export const taskCreateShape = z.object({ title: titleSchema, kind: taskKindSchema.optional(), parent: parent.optional(),
-  cwd: projectCwd.optional(), color: projectColorSchema.optional(), values: valuesInputSchema.optional(),
+  cwd: projectCwd.optional(), analysisSubject: analysisSubjectSchema.optional(), color: projectColorSchema.optional(), values: valuesInputSchema.optional(),
   expectedParentHash: digestSchema.optional(), fromUser: z.boolean().optional(), ...writeRecordShape });
 /** --plan-file: sibling Tasks made in one operation under one parent, with one mark; each is a title and its values. */
-const taskPlan = z.array(z.object({ title: titleSchema, values: valuesInputSchema.optional() }).strict()).min(1);
+const taskPlan = z.array(z.object({ title: titleSchema, values: valuesInputSchema.optional(), analysisSubject: analysisSubjectSchema.optional() }).strict()).min(1);
 /** The command takes one Task's title, or a plan in its place. */
 const taskCreateFields = taskCreateShape.extend({ title: titleSchema.optional() });
 type CreateChecks = z.output<typeof taskCreateFields> & { plan?: unknown };
@@ -107,9 +108,9 @@ export const taskCreateRules: readonly InputRule<CreateChecks>[] = [
     keys: ['color'] },
   { kind: 'one', keys: ['title', 'plan'] },
   { kind: 'forbidden', scope: 'With {plan}', applies: value => value.plan !== undefined,
-    keys: ['values'] },
+    keys: ['values', 'analysisSubject'] },
   { kind: 'forbidden', scope: 'With {kind} project', applies: value => value.kind === 'project',
-    keys: ['plan', 'fromUser'] },
+    keys: ['plan', 'fromUser', 'analysisSubject'] },
 ];
 function checkTaskCreate(value: CreateChecks, context: z.RefinementCtx): void {
   checkRules(value, context, taskCreateRules);
@@ -122,10 +123,10 @@ export const taskCreateInput = taskCreateFields.extend({ plan: taskPlan.optional
 /** A project's cwd: null drops its own, so it inherits its parent project's. */
 export const taskUpdateShape = z.object({ task: taskIdSchema, title: titleSchema.optional(),
   values: valuesInputSchema.optional(), color: projectColorSchema.optional(), cwd: projectCwd.nullable().optional(),
-  fromUser: z.boolean().optional(), ...writeRecordShape, expectedTaskHash: digestSchema });
+  fromUser: z.boolean().optional(), analysisSubject: analysisSubjectSchema.nullable().optional(), ...writeRecordShape, expectedTaskHash: digestSchema });
 export const taskUpdateRules: readonly InputRule<z.output<typeof taskUpdateShape>>[] = [
   { kind: 'some', keys: ['title', 'values',
-    'cwd', 'color', 'fromUser'] },
+    'cwd', 'color', 'fromUser', 'analysisSubject'] },
 ];
 const checkTaskUpdate = (value: z.output<typeof taskUpdateShape>, context: z.RefinementCtx) =>
   checkRules(value, context, taskUpdateRules);

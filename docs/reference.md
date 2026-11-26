@@ -76,12 +76,27 @@ Run these in a terminal (on Windows, inside Ubuntu). The other commands are for 
 
 ### Analysis
 
+Set an analysis or improvement Task's subject on `task new` or `task update` with `--analysis-subject '<JSON>'`.
+Choose one of these values.
+
+- `{"kind":"cause","key":"long-wait"}` for a finding rule (`analysis findings -h`) or a fix category such as `look_feel` (`task report -h`).
+- `{"kind":"task","task":"T12"}` for a Task the caller can read.
+- `{"kind":"period","from":"2026-11-01","to":"2026-11-07"}` for an inclusive date range.
+
+Use the same object in the `analysisSubject` field of a REST command body or a sibling plan item.
+On update, omit the field to keep it or use `--analysis-subject null` (`"analysisSubject": null` in REST) to clear it.
+`task get` shows the saved subject.
+
+`analysis tasks` returns `activeWork` independently of the selected dates. Each row has `id`, `title`, `state`,
+`analysisSubject` and `userTurn` (a pending review or an open question to the person). Open Tasks with a subject
+are listed first by whether they need a reply, then from newest to oldest by Task number.
+
 The screen and these read commands use the same counts. A person or the coordinator can read all projects, or use
 `--project` to include a project and its nested projects. A Task Run reads only its own project. Nested projects are excluded from that Run's scope.
 
 | Command | What it reads |
 | --- | --- |
-| `alpacawork analysis tasks --period 7d --bucket day` | Finished Tasks, time to acceptance, trends and daily finished counts, and the waits of unfinished Tasks as of now |
+| `alpacawork analysis tasks --period 7d --bucket day` | Finished Tasks, time to acceptance, trends and daily finished counts, the waits of unfinished Tasks, and active analysis or improvement work |
 | `alpacawork analysis usage --period 28d --bucket week --by model` | Task Run launches, elapsed running time, new conversations and measured tokens |
 | `alpacawork analysis breakdown --period 7d --bucket day --look usage --by model` | One breakdown alone, the rows `analysis tasks` or `analysis usage` gives with `--by`, without their totals and trends |
 | `alpacawork analysis list --period today --set finished` | The Tasks behind a number, including today's finished marks |
@@ -139,6 +154,11 @@ parts are `answersWithoutParts`. `questionsReplaced` counts questions withdrawn 
 name several fixes, and kinds with no count are left out); `unlabeled` were sent without one. `noQuestions` counts the
 accepted Tasks with no question to the user besides those asking to take a result, and `passedNoQuestions` those of them
 accepted without rework. `analysis task` returns the same values for one Task, with `submitsEstimated` as true or false.
+`rounds` splits a Task's time from its request into review rounds: each is the work up to one review (as `submits` counts
+them) and the wait until the user answered, withdrew or sent it back, the next starting where it closed and the last
+running to the end (or now). Each round's `tokens` are those of the Runs of the Task and under it that started in it. In
+`analysis tasks` the accepted Tasks' rounds are summed as `first` (each Task's first round) and `later` (the rounds after
+it: the work redone and waited on), each with its `ms` and `tokens`.
 Each Task trend point includes `accepted` totals for the Tasks accepted in that bucket. A related PR counts once,
 on the earliest acceptance day of any Task that references it in the project scope. Trend points and period totals
 use that same day. The Task model and agent breakdowns use the earliest owner Run on the top-level Task.
@@ -176,11 +196,12 @@ a record carries its first line. The rules:
 - `fan-out`: one fingerprint with differing arguments many times in one Run (one by one where one read could do); at: the first, durationMs: their time, count: how many.
 - `queue-wait`: a Run that waited this long before it started; at: when it was made, durationMs: the wait.
 - `failed-run`: a Run that failed or was stopped, with the Run that took its place; at: its start, durationMs: its length.
-- `rework`: work done again by the counts' rule (a send-back, an instruction at review or after acceptance, one in place of answering a question asking to take a result); at: the record, durationMs: until that task next waits for review or is done.
+- `rework`: work done again by the counts' rule (a send-back, an instruction at review or after acceptance, one in place of answering a question asking to take a result); at: the record, durationMs: until that task next puts a result to the user (waits for review or asks to take it) or is done.
 - `idle`: a stretch this long with nothing running, queued, asked or in review in the task or under it; at: its start, durationMs: its length.
 
+An `instruction` mark's `label` is what its sender said it was (`kind`, and `fixes` for a fix), or `null` when it was sent with none.
 `url` in the answers of `analysis trace`, `analysis findings` (and each finding) and `analysis at` is the screen's address
-of the same scene, a path relative to the screen. `analysis changes` takes the scope and days of `analysis tasks`. A
+of the same scene, a path relative to the screen: the Task's Analysis tab at an instant (`at`) or on a finding (`finding`). `analysis changes` takes the scope and days of `analysis tasks`. A
 placement's agent, model and effort come from the launch records and compare the Runs of that placement. Version,
 skill and instruction-file changes need the Runs' condition records and compare each agent's Runs in the order they
 started; `runs.recorded` counts the period's Runs that have them. An item added to or gone from a set already recorded

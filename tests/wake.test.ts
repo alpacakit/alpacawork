@@ -178,7 +178,7 @@ test('the wake reads a failed seat by seatFailed alone, whatever else the seat w
 const at = (minute: number) => new Date(Date.parse(time) + minute * 60_000).toISOString();
 const task = (id: string, fields: Partial<ControlTask['meta']> = {}): Pick<ControlTask, 'id' | 'meta'> => ({ id,
   meta: { format: 3n, id, kind: 'task', parentId: 'P1', lifecycle: 'active', title: id, version: 1n, baseState: fields.baseState ?? (fields.state === 'held' ? 'doing' : fields.state ?? 'doing'), hold: fields.hold ?? fields.state === 'held', state: 'doing',
-    userRequested: false, log: [], ...fields } });
+    userRequested: false, analysisSubject: undefined, log: [], ...fields } });
 const questionLog = (id: string, minute: number, askedTo: string): ControlTask['meta']['log'][number] => ({ id, kind: 'asked', at: at(minute), title: 'Decide', description: 'A or B', actor: { kind: 'placement', placementId: 'P3' }, fromState: null, toState: null, askedTo, decide: [{ decide_kind: 'choose', decide_question: 'Decide', decide_note: 'A or B' }] });
 const tasks = [task('P1', { kind: 'project', parentId: null, state: 'todo' }), task('T2'), task('T3', { parentId: 'T2', log: [questionLog('L-RETq', 5, 'T2'), questionLog('L-RETc', 7, 'T2'), questionLog('L-RETd', 8, 'T2')] }),
   task('T4', { parentId: 'T3', log: [questionLog('L-RET3', 9, 'T3')] })];

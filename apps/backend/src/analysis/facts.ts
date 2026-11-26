@@ -5,7 +5,7 @@ import type { TaskLog } from '@alpacawork/raw/task-log-schema';
 import type { RunRecord } from '@alpacawork/contract/run';
 import { taskLogsOf } from '../control/task-history.js';
 import { Slices } from './slices.js';
-import { beganBefore, clocks, laterInstructions, firstConversations, launchOf, modelRun, prLinks, taskOutcome, userQuestions,
+import { beganBefore, clocks, reviewRounds, type Round, laterInstructions, firstConversations, launchOf, modelRun, prLinks, taskOutcome, userQuestions,
   type Launch, type ModelRun, type Outcome, type RunEvidence, type UserQuestion } from './rules.js';
 import { tallyEligible } from './tally-scope.js';
 import type { Activity } from './presence.js';
@@ -162,6 +162,17 @@ export function finishedClock(unit: Unit) {
     finishedClocks.set(unit, clock);
   }
   return clock;
+}
+
+/** A unit's review rounds (rules.ts reviewRounds) up to its end, or `now` while it is open; kept once it has ended. */
+const endedRounds = new WeakMap<Unit, Round[]>();
+export function roundsOf(unit: Unit, now: number): Round[] {
+  const kept = endedRounds.get(unit);
+  if (kept) return kept;
+  const ended = unit.outcome.finishedAt ?? unit.outcome.doneAt;
+  const rounds = reviewRounds(unit.log, unit.asked, unit.launches, Date.parse(unit.outcome.requestedAt), ended ? Date.parse(ended) : now);
+  if (ended) endedRounds.set(unit, rounds);
+  return rounds;
 }
 
 /**

@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { goBack, navigate, replaceStep, showScreen } from "@/lib/history";
-import { currentEntry, samePlace, subscribeStep, type HistoryEntry, type ReaderPosition } from "./history-step";
+import { closeReaderStep, currentEntry, samePlace, subscribeStep, type HistoryEntry, type ReaderPosition } from "./history-step";
 import { setUrlValue } from "./screen-settings";
 import { readerPlace, screenNavigation, shownInReader, useViewStore, type ReaderPane, type ReaderPlace } from "./view-store";
 
@@ -144,7 +144,8 @@ function keepPlaceLeft(prior: HistoryEntry, leaving: ReaderPlace, followed: Retu
 /**
  * The reader's one Back: to the place the step left (`behind`), whatever it was — a report a file link was
  * pressed in, a list a file was opened from, another task, another tab. A reader opened straight on a tab or a file
- * (a link, a reload) has nothing behind it in this reader: its Back goes to the task's reports instead.
+ * (a link, a reload) has nothing behind it in this reader: its Back goes to the task's reports instead. A reader opened
+ * over the analysis face has the face (and its list) behind it: its Back closes it there.
  */
 const readerBehind = (): ReaderPlace | null => currentEntry()?.behind ?? null;
 export const useReaderBehind = (): ReaderPlace | null => useSyncExternalStore(subscribeStep, readerBehind, () => null);
@@ -157,6 +158,7 @@ export function browserBack() {
 export function readerBack() {
   keepReaderPosition();
   if (readerBehind()) navigate(goBack, { bound: true });
+  else if (useViewStore.getState().analysis) closeReaderStep();
   // Nothing behind it in this reader: the reports take this step's place, so no Back leads back to what was left.
   else navigate(() => useViewStore.getState().setReaderPane("task"), { bound: true, write: "over" });
 }

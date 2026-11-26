@@ -274,6 +274,11 @@ test('rework includes an instruction given in place of answering a question aski
     entry('more', 'request_accepted', 40, { fromState: 'doing' }), entry('w2', 'question_withdrawn', 40, { questionId: 'q2', originCauseId: 'more' }),
     state('s2', 50, 'waiting')]);
   assert.deepEqual(find(records([root], []), 'rework').map(item => [item.anchor, item.evidence.length]), [['fix', 2]]);
+  // The redone work ends where a result is next put to the user, a question asking to take it included.
+  const again = asked('q3', 45, accept), last = root.log.at(-1)!;
+  const asking = task('T1', [...root.log.slice(0, -1), again, last]);
+  const [found] = find(records([asking], []), 'rework');
+  assert.equal(found!.durationMs, Date.parse(again.at) - found!.at);
 });
 
 test('scope-wide changes compare an agent\'s conditions across its seats, and launch choices within each seat', () => {

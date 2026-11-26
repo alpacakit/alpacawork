@@ -10,7 +10,7 @@ import { failedAddress } from "@/lib/failed-address";
 import { giveFocusBack, openerChain } from "@/lib/focus-return";
 import { cn } from "@/lib/utils";
 import { closeAnalysisLayer } from "@/state/history-step";
-import { useNarrow } from "@/state/view-store";
+import { readerShows, useNarrow, useViewStore } from "@/state/view-store";
 import { CardPreview, CardSkeleton } from "./CardPreview";
 import { useCardReads } from "./data";
 import { listTitle } from "./lists";
@@ -56,7 +56,8 @@ function CardLayer({ place, project, part, waitFrom }: {
 }
 
 /**
- * What a number opens: the list of the tasks behind it, then one task's values; or the share card. The same surface as the reader on the
+ * What a number opens: the list of the tasks behind it; or the share card. A task opened from the list is the reader over
+ * the face (the same window as on the list of tasks), and the list waits under it, out of sight, until the reader closes. The same surface as the reader on the
  * list of tasks (lit, a hairline edge, 12px from the right and the top), the page behind it kept as it is; on a phone a
  * sheet from the bottom. × and a press behind it close every layer; the list's way back and Back close one.
  */
@@ -79,23 +80,20 @@ export function AnalysisLayers({ place, project, days }: { place: AnalysisPlace;
   }, []);
   const depth = analysisSurfaces(place).length;
   const content = useLayerContent();
+  const reading = useViewStore(state => readerShows(state) !== null);
   // Back to the layer under it, where there is one; × and a press behind close them all.
   const back = depth > 1;
   useEffect(() => {
-    if (!depth) return;
+    if (!depth || reading) return;
     const key = (event: KeyboardEvent) => { if (event.key === "Escape" && !event.defaultPrevented) { event.preventDefault(); closeAnalysisLayer(depth - 1); } };
     addEventListener("keydown", key);
     return () => removeEventListener("keydown", key);
-  }, [depth]);
-  // A layer that opens takes the focus on its first control; back from one task to its list, the focus is on that task's
-  // row again (the list is drawn from what it had read), as every window gives the focus back to what opened it.
-  const shownUnit = useRef<string | null>(null);
+  }, [depth, reading]);
+  // A layer that opens takes the focus on its first control; back from a task to its list, the reader gives the focus
+  // back to the row that opened it (its returnTo), as every window gives the focus back to what opened it.
   useEffect(() => {
-    const from = shownUnit.current;
-    shownUnit.current = place.unit;
-    const row = !place.unit && from ? surface.current?.querySelector<HTMLElement>(`[data-unit-row="${from}"]`) : null;
-    (row ?? surface.current?.querySelector<HTMLElement>("[data-layer-focus]"))?.focus({ preventScroll: !row });
-  }, [place.list, place.unit, place.card, phoneCard]);
+    surface.current?.querySelector<HTMLElement>("[data-layer-focus]")?.focus({ preventScroll: true });
+  }, [place.list, place.card, phoneCard]);
   // As every window does: what had the focus when the first layer opened gets it back when the last one closes (a
   // chart and its legend give it back to themselves, ChartGroup).
   const opener = useRef<Element[]>([]), open = depth > 0;
@@ -107,13 +105,12 @@ export function AnalysisLayers({ place, project, days }: { place: AnalysisPlace;
   }, [open]);
   useLayoutEffect(() => { if (!cardOpen) cardScroll.current.top = 0; }, [cardOpen]);
   if (!depth) return null;
-  const label = place.card ? t("card.make") : place.unit ?? (place.list ? listTitle(place.list) : "");
+  const label = place.card ? t("card.make") : place.list ? listTitle(place.list) : "";
   const contents = <>
       <div className={cn("flex min-h-12 items-center gap-2 pt-3.5 pe-3 pb-1.5 ps-6", narrow && "pt-4.5 pe-2 ps-4")}>
         {back && <button type="button" data-layer-focus onClick={() => closeAnalysisLayer(1)}
           className="-ms-2 inline-flex h-7 items-center gap-0.5 rounded-md ps-1 pe-2.5 text-muted hover:bg-hover hover:text-ink">
           <Icon name="left" className="size-3.5" />{t("list.back")}</button>}
-        {place.unit && <span className="text-muted">{place.unit}</span>}
         <span className="me-auto" />
         <Button variant="ghost" size="icon" aria-label={t("list.close")} title={t("list.close")} data-layer-focus={back ? undefined : ""}
           onClick={closeLayers}><Icon name="close" /></Button>
@@ -122,7 +119,8 @@ export function AnalysisLayers({ place, project, days }: { place: AnalysisPlace;
         <LayerBody place={place} project={project} days={days} content={content} />
       </div>
   </>;
-  return <>
+  // Under the reader the layers keep their place (and the list its scroll), out of sight and reach.
+  return <div className={reading ? "hidden" : "contents"}>
     {/* A press behind the window closes it; the bar stays in reach above it (its faces, the project, settings). */}
     <div aria-hidden className="fixed inset-x-0 top-(--bar-h) bottom-0 z-(--layer-reader)" onClick={closeLayers} />
     <PointerTip root={surfaceBox} />
@@ -138,7 +136,7 @@ export function AnalysisLayers({ place, project, days }: { place: AnalysisPlace;
               : "top-window right-window bottom-window w-[min(548px,calc(100%-24px))] animate-side rounded-pane")}>
           {contents}
         </aside>}
-  </>;
+  </div>;
 }
 
 function LayerBody({ place, project, days, content: { part, attempt, retry } }: {
@@ -150,7 +148,6 @@ function LayerBody({ place, project, days, content: { part, attempt, retry } }: 
   const [waitFrom] = useState(() => performance.now());
   if ("failure" in attempt) return <ReadFailure size="region" error={attempt.failure} retry={retry} />;
   if (place.card) return <CardLayer place={place} project={project} part={part} waitFrom={waitFrom} />;
-  if (!part) return <RegionSkeleton shape={place.unit ? "analysisTask" : "analysisList"} waitFrom={waitFrom} />;
-  if (place.unit) return <part.UnitPane key={place.unit} unit={place.unit} />;
+  if (!part) return <RegionSkeleton shape="analysisList" waitFrom={waitFrom} />;
   return place.list && <part.ListPane key={JSON.stringify(place.list)} place={place} project={project} days={days} />;
 }
