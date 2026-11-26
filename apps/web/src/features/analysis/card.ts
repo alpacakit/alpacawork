@@ -29,7 +29,7 @@ const GRASS_WEEKS = 13;
 
 /** What the person chose for their card, kept on this device. `theme`: null until chosen (the app's own then). */
 export type CardChoice = { hero: Hero; numbers: CardNumber[]; grass: boolean; theme: "dark" | "light" | null };
-export const CARD_DEFAULT: CardChoice = { hero: "tokens", numbers: ["finished", "share", "model"], grass: true, theme: null };
+export const CARD_DEFAULT: CardChoice = { hero: "tokens", numbers: ["share", "runMs", "model"], grass: true, theme: null };
 
 /**
  * The card's facts (`analysis tasks` and `analysis usage` by model, for its days) from the answers for what is asked now
