@@ -44,7 +44,7 @@ test("a card uses measured totals and the most-used model across efforts", () =>
   // Monday on top, the newest 13 weeks at most; days after today or before the record are not drawn.
   expect(facts.grass.length).toBeLessThanOrEqual(13);
   const input = cardInput(facts, { ...CARD_DEFAULT, numbers: ["finished", "share", "runMs", "prs"] });
-  expect(input.hero).toMatchObject({ label: "トークン", figure: { value: "12.4", unit: "億" } });
+  expect(input.hero).toMatchObject({ label: "トークン", figure: { value: "1.2", unit: "B" } });
   expect(input.rest.map(entry => `${entry.label} ${entry.figure.value}${entry.figure.unit}`)).toEqual(["終わったタスク 1,328件", "手直しなしで完了 75%", "AI の実行時間 147時間"]);
   expect(cardFileName(facts)).toBe("alpacawork-2026-11-19_2026-11-25.png");
 });
@@ -96,7 +96,7 @@ test("the card's days are a length and the day the analysis ended on: another le
 test("the post begins with the lead number in a sentence of its own, over the card's days or, for the whole record, so far", () => {
   const facts = cardFacts(now(tasks), now(tasks), now(usage))!;
   const post = (hero: CardChoice["hero"], whole = false) => cardPostText(facts, { ...CARD_DEFAULT, hero }, whole);
-  expect(post("tokens")).toContain("12.4億");
+  expect(post("tokens")).toContain("1.2B");
   expect(post("finished")).toContain("1,328");
   expect(post("share")).toContain("75%");
   for (const hero of ["tokens", "finished", "share"] as const) {

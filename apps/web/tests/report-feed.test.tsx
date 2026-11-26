@@ -1306,7 +1306,7 @@ test("a compaction's row shows its fill before and after with what it cut, and a
   });
   expect(kinds.sort()).toEqual(["Compacted", "Fresh start"]);
   const fill = document.querySelector<HTMLElement>("[data-compaction-fill]")!;
-  expect(fill.textContent).toBe("Conversation context61%14%−470K tokens");
+  expect(fill.textContent).toBe("Conversation context61%14%−470k tokens");
   const words = [...document.querySelectorAll<HTMLElement>("[data-row-words]")].map(row => row.textContent);
   expect(words).toContain("The owner gave the conversation a fresh start after “Filters reviewed”");
   // Opened, a compaction says what set it off; a fresh start says what it carries over, with the study behind it.
@@ -1354,7 +1354,7 @@ test("the context meter lists the task's conversation changes newest first, with
   expect(rows.map(row => row.dataset.conversationChange)).toEqual(["compacted", "compacted", "new"]);
   expect(rows[0]!.textContent).toContain("50%");
   expect(rows[0]!.textContent).toContain("10%");
-  expect(rows[0]!.textContent).toContain("−400K");
+  expect(rows[0]!.textContent).toContain("−400k");
   expect(rows[2]!.textContent).toContain("owner's break");
   // What a compaction and a new conversation are is a press on the ? away.
   fireEvent.click(list.querySelector<HTMLElement>('[aria-label="About compactions and fresh starts"]')!);

@@ -383,30 +383,6 @@
     "points": " 个百分点",
     "prs_other": "个",
     "questions_other": "次",
-    "scales": [
-      {
-        "at": 100000000,
-        "digits": 1,
-        "unit": "亿"
-      },
-      {
-        "at": 10000,
-        "digits": 0,
-        "unit": "万"
-      }
-    ],
-    "spoken": [
-      {
-        "at": 100000000,
-        "digits": 1,
-        "unit": "亿"
-      },
-      {
-        "at": 10000,
-        "digits": 0,
-        "unit": "万"
-      }
-    ],
     "tasks_other": "个",
     "times_other": "次"
   },

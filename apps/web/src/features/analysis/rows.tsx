@@ -516,7 +516,7 @@ function DayLegend({ say, at, day, onList, still }: { say: RowSay; at: number; d
   </div>;
 }
 
-/** A day's total, large, its unit (万, 億, 時間, h) at the body's step beside it, as every number with a unit is drawn. */
+/** A day's total, large, its unit (k, M, 時間, h) at the body's step beside it, as every number with a unit is drawn. */
 function Total({ written, className }: { written: string; className?: string }) {
   const { value, unit } = splitFigure(written);
   return <span className={cn("inline-flex items-baseline gap-0.5 whitespace-nowrap", className)}>

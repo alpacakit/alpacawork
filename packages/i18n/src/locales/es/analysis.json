@@ -403,7 +403,7 @@
     "countWords": "no",
     "hours": "h",
     "join": "{{value}} {{unit}}",
-    "joinTight": "{{value}} {{unit}}",
+    "joinTight": "{{value}}{{unit}}",
     "minutes": "min",
     "people_one": "persona",
     "people_many": "personas",
@@ -415,30 +415,6 @@
     "questions_one": "pregunta",
     "questions_many": "preguntas",
     "questions_other": "preguntas",
-    "scales": [
-      {
-        "at": 1000000000,
-        "digits": 1,
-        "unit": "mil M"
-      },
-      {
-        "at": 1000000,
-        "digits": 1,
-        "unit": "M"
-      },
-      {
-        "at": 1000,
-        "digits": 0,
-        "unit": "mil"
-      }
-    ],
-    "spoken": [
-      {
-        "at": 1000000,
-        "digits": 0,
-        "unit": " millones de"
-      }
-    ],
     "tasks_one": "tarea",
     "tasks_many": "tareas",
     "tasks_other": "tareas",

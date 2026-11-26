@@ -6,6 +6,7 @@ import { percentText, UsageRing } from "@/components/ui/usage-ring";
 import { limitTone } from "@/domain/limits";
 import { compactionCut } from "@/domain/context";
 import type { ReportEvent } from "@/domain/report-events";
+import { tokenText } from "@/domain/tokens";
 
 /* Hallmark · component: History conversation row · genre: modern-minimal · theme: the app's own tokens (conversation, usage ring) */
 
@@ -15,8 +16,7 @@ type Compacted = Extract<Conversation, { change: "compacted" }>;
 /** The study that found a fresh, consolidated conversation does better than one that went astray (its §7.4). */
 export const LOST_IN_CONVERSATION = "https://arxiv.org/abs/2505.06120";
 
-const tokensText = (tokens: number, language: string) =>
-  new Intl.NumberFormat(language, { notation: "compact", maximumFractionDigits: 1 }).format(tokens);
+const tokensText = (tokens: number, _language: string) => tokenText(tokens);
 
 /** How full the conversation was, as the context meter draws it: its ring and percent, or the tokens when no window is known. */
 function Fill({ tokens, window, language }: { tokens: number; window: number | null; language: string }) {

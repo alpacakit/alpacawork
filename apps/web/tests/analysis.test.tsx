@@ -1,4 +1,5 @@
 import { beforeAll, expect, test } from "vitest";
+import { TOKEN_STEPS } from "../src/domain/tokens";
 import { i18n, startI18n } from "@alpacawork/i18n";
 import { comparison, delta, duration, format, parts, share, shareDelta, splitFigure, tokenColumn } from "../src/features/analysis/format";
 import { holdsAll } from "../src/features/analysis/BreakdownTable";
@@ -30,15 +31,15 @@ test("hours are written to one place under ten and whole from ten; a count is gr
 });
 
 test("a column of tokens is written in its largest value's step, said once, and a small value never reads as zero", () => {
-  const column = tokenColumn([4e4, 2953]);
-  expect(column.unit).toBe("万");
-  expect([column.write(4e4), column.write(2953), column.write(0)]).toEqual(["4.0", "0.3", "0"]);
+  const column = tokenColumn([4e6, 295_300]);
+  expect(column.unit).toBe("M");
+  expect([column.write(4e6), column.write(295_300), column.write(0)]).toEqual(["4.0", "0.3", "0"]);
   // A column written whole (its largest ten or more of its step) marks a small value under its smallest place, 1.
   const whole = tokenColumn([1.6e5, 2953, 400]);
-  expect([whole.unit, whole.write(1.6e5), whole.write(2953), whole.write(400)]).toEqual(["万", "16", "<1", "<1"]);
+  expect([whole.unit, whole.write(1.6e5), whole.write(2953), whole.write(400)]).toEqual(["k", "160", "3", "<1"]);
   const large = tokenColumn([1.2e9, 2953]);
-  expect([large.unit, large.write(1.2e9), large.write(2953)]).toEqual(["億", "12.0", "<0.1"]);
-  expect(tokenColumn([2953, 12]).unit).toBe("");
+  expect([large.unit, large.write(1.2e9), large.write(2953)]).toEqual(["B", "1.2", "<0.1"]);
+  expect(tokenColumn([953, 12]).unit).toBe("");
 });
 
 test("a table shows every column only where each number has its room, else one column chosen from its heading", () => {
@@ -69,10 +70,10 @@ test("a list leaves out the day each task finished only when it lists the tasks 
 });
 
 test("large token counts take the largest step they reach, and a gap is written in the larger value's step", () => {
-  const steps = (i18n.t("analysis:unit.scales", { returnObjects: true }) as { at: number; unit: string }[]);
-  const [big, small] = steps;
+  // Tokens are written in k・M・B in every language, as the rest of the app writes them.
+  const [big, , small] = TOKEN_STEPS;
   expect(parts("tokens", big!.at * 74).unit).toBe(big!.unit);
-  expect(parts("tokens", small!.at * 3011).unit).toBe(small!.unit);
+  expect(parts("tokens", small!.at * 301).unit).toBe(small!.unit);
   expect(parts("tokens", small!.at - 1).unit).toBe("");
   expect(delta("tokens", big!.at * 74, big!.at * 74.25)).toMatch(/^−0[.,]3\D/);
   expect(delta("tokens", big!.at * 99.7, big!.at * 79.29)).toMatch(/^\+20[.,]4\D/);

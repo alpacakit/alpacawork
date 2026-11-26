@@ -383,30 +383,6 @@
     "points": "pt",
     "prs_other": "件",
     "questions_other": "回",
-    "scales": [
-      {
-        "at": 100000000,
-        "digits": 1,
-        "unit": "億"
-      },
-      {
-        "at": 10000,
-        "digits": 0,
-        "unit": "万"
-      }
-    ],
-    "spoken": [
-      {
-        "at": 100000000,
-        "digits": 1,
-        "unit": "億"
-      },
-      {
-        "at": 10000,
-        "digits": 0,
-        "unit": "万"
-      }
-    ],
     "tasks_other": "件",
     "times_other": "回"
   },

@@ -1,4 +1,5 @@
 import { memo } from "react";
+import { tokenStep } from "@/domain/tokens";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { RegionSkeleton } from "@/components/ui/skeleton";
@@ -82,8 +83,7 @@ export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days
   const per = { tokens: perEach("tokens"), runMs: perEach("runMs"), launches: perEach("launches") };
   const perFinished = (key: Amount) => per[key];
   const unitOf = (kind: Kind, top: number): [number, string, boolean] => {
-    const steps = t("unit.scales", { returnObjects: true }) as unknown as { at: number; unit: string }[];
-    const step = kind === "tokens" && Array.isArray(steps) ? steps.find(each => top >= each.at) ?? null : null;
+    const step = kind === "tokens" ? tokenStep(top) : null;
     return kind === "hours" ? [HOUR, t("unit.hours"), false] : step ? [step.at, step.unit, false] : [1, kind === "times" ? unitWord("times") : "", true];
   };
   // Both scales are the chosen span's: a larger bin or point outside it is cut at the top, and marked so.
@@ -232,7 +232,7 @@ function Breakdown({ view, span, root, group, days, open, choose }: {
   const counted = by === "skill" || by === "tool" || by === "mcp";
   const since = breakdown?.since ?? null;
   const before = counted && (since === null || days.to < since);
-  // Each column's unit is said once, in its heading: a token column's step (万, 億) is its largest value's.
+  // Each column's unit is said once, in its heading: a token column's step (k, M, B) is its largest value's.
   const tokenKeys = ["tokens", "output", "input", "cache"] as const;
   const tokenRead = { tokens, output: VALUES.output.read, input: VALUES.input.read, cache: VALUES.cache.read };
   const steps = Object.fromEntries(tokenKeys.map(key => [key, tokenColumn(rows.map(row => tokenRead[key](row.counts)))])) as Record<typeof tokenKeys[number], ReturnType<typeof tokenColumn>>;

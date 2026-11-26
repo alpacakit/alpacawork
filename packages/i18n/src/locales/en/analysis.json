@@ -399,35 +399,6 @@
     "prs_other": "PRs",
     "questions_one": "question",
     "questions_other": "questions",
-    "scales": [
-      {
-        "at": 1000000000,
-        "digits": 1,
-        "unit": "B"
-      },
-      {
-        "at": 1000000,
-        "digits": 1,
-        "unit": "M"
-      },
-      {
-        "at": 1000,
-        "digits": 0,
-        "unit": "K"
-      }
-    ],
-    "spoken": [
-      {
-        "at": 1000000000,
-        "digits": 1,
-        "unit": " billion"
-      },
-      {
-        "at": 1000000,
-        "digits": 1,
-        "unit": " million"
-      }
-    ],
     "tasks_one": "task",
     "tasks_other": "tasks",
     "times_one": "time",

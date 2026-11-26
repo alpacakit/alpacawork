@@ -7,6 +7,7 @@ import { compactionCut, contextFigure, type TaskConversations } from "@/domain/c
 import { limitTone } from "@/domain/limits";
 import { contextPercent } from "@alpacawork/contract/agent-context";
 import { Icon } from "@/components/ui/icon";
+import { tokenText } from "@/domain/tokens";
 import { LOST_IN_CONVERSATION } from "@/features/reader/ConversationDetail";
 import { cn } from "@/lib/utils";
 
@@ -23,7 +24,7 @@ export function ContextMeter({ context, press, conversations }: { context: Conte
   const [open, setOpen] = useState(false);
   const figure = contextFigure(context);
   const count = (value: number) => new Intl.NumberFormat(i18n.language).format(value);
-  const compact = (value: number) => new Intl.NumberFormat(i18n.language, { notation: "compact", maximumFractionDigits: 1 }).format(value);
+  const compact = tokenText;
   const shown = figure.waiting ? "—" : figure.percent !== null ? percentText(figure.percent) : compact(context.usedTokens!);
   const used = figure.waiting ? t("context.waiting") : t("context.tokens", { count: context.usedTokens!, tokens: count(context.usedTokens!) });
   const window = context.windowTokens === null ? t("context.noWindow") : t("context.tokens", { count: context.windowTokens, tokens: count(context.windowTokens) });
@@ -61,7 +62,7 @@ export function ContextMeter({ context, press, conversations }: { context: Conte
  */
 function ConversationList({ conversations }: { conversations: TaskConversations }) {
   const { t, i18n } = useTranslation("people");
-  const compact = (value: number) => new Intl.NumberFormat(i18n.language, { notation: "compact", maximumFractionDigits: 1 }).format(value);
+  const compact = tokenText;
   // Times in one form down the list, so the rows line up: with the date once any of them is not today's.
   const today = new Date().toDateString();
   const dated = conversations.changes.some(change => new Date(change.at).toDateString() !== today);
