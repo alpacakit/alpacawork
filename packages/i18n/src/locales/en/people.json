@@ -134,7 +134,6 @@
       "omitted_other": "{{count}} more characters left out as too long",
       "omittedFiles_one": "and {{count}} more file",
       "omittedFiles_other": "and {{count}} more files",
-      "reading": "Reading…",
       "state": {
         "done": "Done",
         "failed": "Failed",

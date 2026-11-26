@@ -120,7 +120,6 @@
       "older_other": "前の {{count}} 件を表示（残り {{rest}} 件）",
       "omitted_other": "ここから先の {{count}} 文字は長いため省略しました",
       "omittedFiles_other": "ほか {{count}} ファイル",
-      "reading": "読み込み中…",
       "state": {
         "done": "完了",
         "failed": "失敗",

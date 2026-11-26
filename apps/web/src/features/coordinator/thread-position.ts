@@ -15,7 +15,7 @@ function layoutTop(element: HTMLElement): number {
   for (let node: HTMLElement | null = element; node; node = node.offsetParent as HTMLElement | null) top += node.offsetTop;
   return top;
 }
-type Position = { update: () => void; end: () => void; retain: () => void; jump: (target: HTMLElement, options: ScrollIntoViewOptions) => void };
+type Position = { update: () => void; end: () => void; retain: () => void; jump: (target: HTMLElement, options: ScrollIntoViewOptions, past?: number) => void };
 const positions = new WeakMap<HTMLElement, Position>();
 const positionOf = (thread: HTMLElement) => {
   const area = thread.closest<HTMLElement>('[data-card-scroll]');
@@ -25,10 +25,14 @@ const positionOf = (thread: HTMLElement) => {
 export function keepThreadPosition(thread: HTMLElement) { positionOf(thread)?.retain(); }
 /** Every explicit send entrance, including resending an old failure, asks the same owner for the latest place. */
 export function scrollThreadToEnd(thread: HTMLElement) { positionOf(thread)?.end(); }
-/** Reply navigation is an explicit position request, even before its native smooth scroll has started. */
-export function scrollThreadTo(thread: HTMLElement, target: HTMLElement, options: ScrollIntoViewOptions) {
+/**
+ * Reply navigation is an explicit position request, even before its native smooth scroll has started. `past`: how much
+ * a target still unfolding is yet to grow; placed at its end, it is placed as it will stand, and the thread lends up to
+ * that much room under it to get there.
+ */
+export function scrollThreadTo(thread: HTMLElement, target: HTMLElement, options: ScrollIntoViewOptions, past = 0) {
   const owner = positionOf(thread);
-  if (owner) owner.jump(target, options);
+  if (owner) owner.jump(target, options, past);
   else target.scrollIntoView(options);
 }
 
@@ -55,8 +59,30 @@ export function useThreadPosition(body: HTMLElement, host: HTMLElement | null, a
     let rememberedHeight = area.scrollHeight, rememberedRoom = area.clientHeight;
     let anchor: { block: HTMLElement; offset: number; text?: { range: Range; offset: number } } | null = null;
     const oldAnchoring = area.style.overflowAnchor, oldPadding = body.style.paddingBottom;
-    let bottomRoom = 0;
-    const releaseRoom = () => { bottomRoom = 0; body.style.paddingBottom = oldPadding; };
+    let bottomRoom = 0, unfoldRoom = 0;
+    const releaseRoom = () => { bottomRoom = 0; unfoldRoom = 0; body.style.paddingBottom = oldPadding; };
+    // Room lent for a jump to what is still unfolding (jump's `past`, never more) is taken back as far as it is out of
+    // view, as what grows into it no longer needs it, and whatever is left once nothing unfolds any more (it opened
+    // less far, or folded again), gliding down as far as the thread then shortens. Room kept for history opened above
+    // stays until it is released.
+    const setRoom = (room: number) => { bottomRoom = room; body.style.paddingBottom = room > 0 ? `${room}px` : oldPadding; };
+    const takeBackRoom = () => {
+      if (unfoldRoom <= 0) return;
+      const give = Math.min(unfoldRoom, Math.floor(area.scrollHeight - area.scrollTop - area.clientHeight));
+      if (give <= 0) return;
+      unfoldRoom -= give; setRoom(bottomRoom - give);
+    };
+    const unfolding = () => body.getAnimations({ subtree: true }).some(move => move.playState === 'running'
+      && move.effect instanceof KeyframeEffect && move.effect.target instanceof Element && move.effect.target.matches('[data-disclosure-body]'));
+    const unfolded = (event: Event) => {
+      if (unfoldRoom <= 0 || !(event.target instanceof Element) || !event.target.matches('[data-disclosure-body]') || unfolding()) return;
+      const from = area.scrollTop;
+      setRoom(bottomRoom - unfoldRoom); unfoldRoom = 0;
+      glideReading(body, area.scrollTop - from, 'in-out');
+      note();
+    };
+    body.addEventListener('transitionend', unfolded);
+    body.addEventListener('transitioncancel', unfolded);
     area.style.overflowAnchor = 'none';
     const topIn = (element: HTMLElement) => layoutTop(element) - layoutTop(area);
     // How far a drawn point is below the area's drawn top, in layout pixels: the area may be drawn scaled while it comes in.
@@ -86,6 +112,7 @@ export function useThreadPosition(body: HTMLElement, host: HTMLElement | null, a
     const pastFollow = () => followTop() < area.scrollTop - 1;
     // Where it stands, as of now: cheap, read on every settle.
     const note = () => {
+      takeBackRoom();
       rememberedTop = area.scrollTop;
       rememberedHeight = area.scrollHeight; rememberedRoom = area.clientHeight;
       following = !stayOnQuestion && atEnd();
@@ -215,9 +242,23 @@ export function useThreadPosition(body: HTMLElement, host: HTMLElement | null, a
       const room = area.clientHeight - below(body.getBoundingClientRect().bottom);
       if (room > 0) { bottomRoom += room; body.style.paddingBottom = `${bottomRoom}px`; }
       takeOver(); following = false; if (!anchor) findAnchor();
-    }, jump: (target, options) => {
+    }, jump: (target, options, past = 0) => {
       takeOver();
-      target.scrollIntoView(options);
+      const from = area.scrollTop;
+      if (options.behavior === 'smooth' || (options.block !== 'start' && options.block !== 'end')) target.scrollIntoView(options);
+      else {
+        // Placed by hand at its laid-out place (not where a glide draws it), at the height it is unfolding to (`past`).
+        // What the thread cannot scroll to yet is lent as room under it, up to what unfolds (takeBackRoom); past that
+        // it goes as far as it can, as a last exchange too short to reach the top stops at the thread's end.
+        const margin = Number.parseFloat(getComputedStyle(target).scrollMarginTop) || 0;
+        const want = Math.max(0, options.block === 'start' ? topIn(target) - margin : topIn(target) + target.offsetHeight + past - area.clientHeight);
+        const lend = Math.min(past, Math.max(0, want - (area.scrollHeight - area.clientHeight)));
+        if (lend > 0) { unfoldRoom += lend; setRoom(bottomRoom + lend); }
+        area.scrollTop = want;
+      }
+      // Not asked to scroll smoothly, it still comes into sight by gliding there, on a disclosure's curve: what unfolds
+      // under the target as it goes (a turn's steps) and what is under that then move as one.
+      if (options.behavior !== 'smooth') glideReading(body, area.scrollTop - from, 'in-out');
       remember();
       // Kept where it jumped, not at the end: what is read there is what it keeps.
       following = false; if (!anchor) findAnchor();
@@ -230,6 +271,7 @@ export function useThreadPosition(body: HTMLElement, host: HTMLElement | null, a
       positions.delete(area);
       stopMove(); changes.disconnect(); sizes.disconnect(); area.removeEventListener('scroll', scrolled);
       area.style.overflowAnchor = oldAnchoring;
+      body.removeEventListener('transitionend', unfolded); body.removeEventListener('transitioncancel', unfolded);
       releaseRoom();
     };
   }, [body, host, active, surface, openingId, scope]);
