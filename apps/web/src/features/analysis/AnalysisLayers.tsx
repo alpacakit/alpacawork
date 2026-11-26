@@ -146,7 +146,9 @@ export function AnalysisLayers({ place, project, days, beside }: {
           className={narrow ? "fixed inset-x-0 top-[18%] bottom-0 z-(--layer-reader) flex animate-sheet flex-col rounded-t-pane border-hairline border-lit-line bg-lit shadow-float before:absolute before:top-1.5 before:left-1/2 before:-ms-4.5 before:h-1 before:w-9 before:rounded-xs before:bg-lit-line"
             // The window the reader stands in (DOCKED_WINDOW): beside the charts as wide as the page keeps for it, and its
             // edge resizes it as the reader's does, no wider than leaves the charts their least.
-            : cn(DOCKED_WINDOW, "animate-side", beside ? "w-(--window-reserve)" : "w-[min(548px,calc(100%-24px))]")}>
+            // Over the charts (no room beside them) it starts under the bar, which stays in reach above it as the press behind
+            // it does.
+            : cn(DOCKED_WINDOW, "animate-side", beside ? "w-(--window-reserve)" : "top-[calc(var(--bar-h)+var(--spacing-window))] w-[min(548px,calc(100%-24px))]")}>
           {beside && <WindowWidthHandle label={t("list.resize")} widest={widestBesideAnalysis} fills={false} />}
           {contents}
         </aside>}

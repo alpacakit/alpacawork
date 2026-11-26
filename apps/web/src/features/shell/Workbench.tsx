@@ -31,7 +31,7 @@ import { useGlobalShortcuts } from "@/features/chrome/use-shortcuts";
 import { ListNavigationProvider } from "@/features/tree/list-navigation";
 import { TimeTree } from "@/features/tree/TimeTree";
 import { useDeviceValue } from "@/lib/device-storage";
-import { readerEdgeHeld, readerWidth, fitReaderWidth, MIN_DOCK_VIEWPORT_WIDTH, READER_MIN_WIDTH, readerListReservation, readerWidthBeside, stripHidden, urlValue, widestBesideAnalysis, windowMargin } from "@/state/screen-settings";
+import { readerEdgeHeld, readerWidth, fitReaderWidth, MIN_DOCK_VIEWPORT_WIDTH, READER_MIN_WIDTH, readerListReservation, readerWidthBeside, stripHidden, urlValue, analysisFitsBeside, widestBesideAnalysis, windowMargin } from "@/state/screen-settings";
 import { VIEW_BESIDE_WIDTH } from "@/features/reader/viewer/viewer-layout";
 import { Reader, readerBox, type ReaderMode } from "@/features/reader/Reader";
 import { DialogHost } from "./DialogHost";
@@ -50,8 +50,8 @@ const subscribeReaderGeometry = (notify: () => void) => {
   return () => { stopWidth(); stopViewport(); };
 };
 const canFitDock = () => innerWidth >= MIN_DOCK_VIEWPORT_WIDTH;
-/** The narrowest window leaves the charts their least: the window stands beside them, no wider than that leaves (dockedWidth). */
-const analysisFitsBeside = () => widestBesideAnalysis(innerWidth) >= READER_MIN_WIDTH;
+/** Beside the charts wherever the narrowest window leaves them their least, no wider than leaves them readable (dockedWidth). */
+const analysisBesideNow = () => analysisFitsBeside(innerWidth);
 const viewportWidth = () => innerWidth;
 const readerOverlaps = () => {
   const width = fitReaderWidth(readerWidth.get(), innerWidth);
@@ -62,7 +62,7 @@ const readerOverlaps = () => {
  * no wider than leaves that place its least width (VIEW_BESIDE_WIDTH): widening the reader then stops at it, rather than
  * the diff giving its place up. One rule for every width of screen: the diff stands beside the reader wherever the
  * narrowest reader leaves it that much, else the reader takes the whole screen and the diff stands over its reports. The
- * same for what a number of the analysis opens beside its charts (`besideAnalysis`): no wider than leaves them their least.
+ * same for what a number of the analysis opens beside its charts (`besideAnalysis`): no wider than leaves them readable.
  */
 const dockedWidth = (width: number | null, viewport: number, viewing: boolean, besideAnalysis: boolean) => {
   const fit = fitReaderWidth(width, viewport);
@@ -128,7 +128,7 @@ export function Workbench() {
   const leavingAnalysis = analysisWas.current && !analysisShown;
   useEffect(() => { analysisWas.current = !!analysisShown; });
   // Where the charts would be left too narrow to read, it stands over them instead, as on a narrower screen.
-  const analysisBeside = useSyncExternalStore(subscribeReaderGeometry, analysisFitsBeside, analysisFitsBeside) && canDock;
+  const analysisBeside = useSyncExternalStore(subscribeReaderGeometry, analysisBesideNow, analysisBesideNow) && canDock;
   const layerBeside = !!analysisShown && analysisBeside && analysisSurfaces(analysisShown).length > 0;
   const docked = readerOpen ? mode === "docked" : layerBeside;
   // While it stands there, the list and its bar are out of reach at once, and out of sight once the reader has moved

@@ -132,7 +132,7 @@ test("the analysis keeps its scrollbar's room beside its charts, not over them",
   expect(room).toBeGreaterThanOrEqual(12);
 });
 
-test("the window beside the analysis's charts is resized by its edge, no wider than leaves the charts their room", async ({ page, runtime }) => {
+test("the window beside the analysis's charts is resized by its edge, no wider than leaves the charts readable", async ({ page, runtime }) => {
   await page.setViewportSize({ width: 1600, height: 900 });
   await page.goto(`${runtime.origin}/?face=analysis`);
   // The card stands in the window a number's tasks open in.
@@ -155,7 +155,7 @@ test("the window beside the analysis's charts is resized by its edge, no wider t
   expect(await width()).toBeLessThan(start + 100);
   // Far past what the charts can give: it stops where they keep their room, and stays beside them.
   await drag(40);
-  await expect.poll(width).toBe(1600 - 24 - 36 - 680);
+  await expect.poll(width).toBe(1600 - 24 - 36 - 760);
   // Let go, the charts are laid out again beside it.
   await expect.poll(async () => {
     const charts = (await page.locator("[data-chart-row]").first().boundingBox())!;
@@ -163,14 +163,14 @@ test("the window beside the analysis's charts is resized by its edge, no wider t
   }).toBe(true);
 });
 
-test("a details width wider than the charts can give still opens the analysis's window beside them, at the widest they leave", async ({ page, runtime }) => {
+test("a details width wider than the charts can give still opens the analysis's window beside them, no wider than leaves them readable", async ({ page, runtime }) => {
   await page.setViewportSize({ width: 1600, height: 900 });
   await page.addInitScript(() => localStorage.setItem("alpacawork.screen.width", "1100"));
   await page.goto(`${runtime.origin}/?face=analysis`);
   await page.getByRole("button", { name: "Make a card", exact: true }).click();
   const panel = page.locator("aside[data-analysis-panel]");
   await expect(panel.locator("[data-window-width]")).toBeVisible();
-  await expect.poll(async () => Math.round((await panel.boundingBox())!.width)).toBe(1600 - 24 - 36 - 680);
+  await expect.poll(async () => Math.round((await panel.boundingBox())!.width)).toBe(1600 - 24 - 36 - 760);
 });
 
 test.describe("phone", () => {
