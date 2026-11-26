@@ -80,8 +80,8 @@
     "totalTip_one": "Total output speed of {{count}} task in progress (last 5 seconds' average)",
     "totalTip_other": "Total output speed of {{count}} tasks in progress (last 5 seconds' average)",
     "unit": "tok/s",
-    "waited": "Running {{name}} {{length}}",
-    "waitedShort": "Running {{name}}",
+    "waited": "Running {{length}}",
+    "waitedShort": "Running",
     "waitedTip": "Waiting for {{name}} to finish ({{length}}). The agent has no output meanwhile.\n{{line}}"
   },
   "status": {

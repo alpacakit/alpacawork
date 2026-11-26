@@ -150,23 +150,15 @@ function useWaitedTip() {
   return (waited: Waited) => t("speed.waitedTip", { name: waited.name, length: length(waited.seconds), line: waited.line });
 }
 
-/** Where a name goes in a sentence, so the name alone gives way when the sentence does not fit. */
-const NAME_AT = "\u0001";
 /**
- * A waiting row's words, quiet but not as quiet as silence: what it waits on and, where the column has room, for how
- * long; in the narrowest column, only its name after a small mark of something going. A long name is cut, the words
- * around it are not.
+ * A waiting row's words, quiet but not as quiet as silence: that it runs something and, where the column has room, for
+ * how long. What it runs is left to the tooltip, as a list row has no room to name it.
  */
-function WaitedWords({ waited, size }: { waited: Waited; size: "long" | "short" | "name" }) {
+function WaitedWords({ waited, long }: { waited: Waited; long: boolean }) {
   const { t } = useTranslation("tree");
   const length = useLengthWords();
-  if (size === "name") return <span data-waited className="flex min-w-0 items-baseline text-ink/65">
-    <Icon name="play" className="mr-0.5 size-[0.75em] flex-none self-center text-working" /><span className="min-w-0 truncate">{waited.name}</span>
-  </span>;
-  const words = size === "long" ? t("speed.waited", { name: NAME_AT, length: length(waited.seconds) }) : t("speed.waitedShort", { name: NAME_AT });
-  const [before = "", after = ""] = words.split(NAME_AT);
-  return <span data-waited className="flex min-w-0 items-baseline whitespace-pre text-ink/65">
-    {before}<span className="min-w-0 truncate">{waited.name}</span>{after}
+  return <span data-waited className="min-w-0 truncate text-ink/65">
+    {long ? t("speed.waited", { length: length(waited.seconds) }) : t("speed.waitedShort")}
   </span>;
 }
 
@@ -198,7 +190,7 @@ export function RowTokenSpeed({ task, compact }: { task: Task; compact: boolean 
   const idle = row.idle >= IDLE_SECONDS;
   // While silent the words take the whole column, the bars' place too: there is no output to draw.
   if (idle) return <span data-token-speed title={row.waited ? waitedTip(row.waited) : idleWords(row.idle)} className="flex min-w-0 whitespace-nowrap">
-    {row.waited ? <WaitedWords waited={row.waited} size={compact ? "name" : "long"} />
+    {row.waited ? <WaitedWords waited={row.waited} long={!compact} />
       : <span className="min-w-0 truncate text-muted">{compact ? t("speed.idleShort") : idleWords(row.idle)}</span>}
   </span>;
   return <span data-token-speed title={rowTip(t, row)} className={cn("flex items-baseline whitespace-nowrap", compact ? "gap-1" : "gap-2")}>
@@ -269,8 +261,8 @@ export function NarrowTokenSpeed({ task }: { task: Task }) {
   const key = useSpeedKey(rowKey(task));
   const row = key ? JSON.parse(key) as RowShown : null;
   const waited = row && row.idle >= IDLE_SECONDS ? row.waited : undefined;
-  return <span title={waited ? waitedTip(waited) : row ? rowTip(t, row) : undefined} className={cn(NARROW_SPEED_SLOT, waited && "inline-flex max-w-[14ch] justify-end")}>
-    {waited ? <WaitedWords waited={waited} size="short" />
+  return <span title={waited ? waitedTip(waited) : row ? rowTip(t, row) : undefined} className={NARROW_SPEED_SLOT}>
+    {waited ? <WaitedWords waited={waited} long={false} />
       : row && (row.idle >= IDLE_SECONDS ? <span className="text-muted/70">{t("speed.idleShort")}</span>
       : <><span className={row.rate ? "text-muted" : "text-muted/50"}>{formatRate(row.rate)}</span><span className="text-[0.85em] text-muted">{t("speed.perSecond")}</span></>)}
   </span>;
