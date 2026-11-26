@@ -277,7 +277,7 @@
       "invalid_visible_task_ids": "Invalid visible task IDs",
       "invalid_x_alpacawork_cwd": "Invalid X-Alpacawork-Cwd",
       "keeps_responsible_while_it_has_children_or_work_under_way_hand_it_over_with_agent_handover_or_replace_it_with": "{{uncoveredTaskId}} has subtasks or work in progress, so it needs an owner. Hand it over with agent handover or replace it with agent assign --replace",
-      "launch_choices_come_with_instruction_or_send_back_field_left_out_keeps_conversation_s_value": "Send launch options with an instruction or a send-back. Fields left out keep the conversation's current values",
+      "launch_choices_come_with_instruction_or_send_back_field_left_out_keeps_conversation_s_value": "Send launch options with an instruction or a send-back",
       "launched_run_keeps_session": "A launched run's session cannot change",
       "local_voice_not_configured": "Local speech recognition is not set up",
       "log_ids_must_unique_within_task": "History IDs must be unique within a task",
