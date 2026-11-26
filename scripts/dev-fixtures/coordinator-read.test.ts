@@ -30,9 +30,11 @@ for (const width of [1440, 390]) test(`older coordinator turns load by page and 
     try {
       const seed = store.coordinatorHead(conversationId)!;
       const { agent, launch, cwd, message } = seed;
-      const at = '2026-11-01T00:00:00.000Z', ended = '2026-11-01T00:00:01.000Z';
+      const created = Date.parse(seed.created_at);
       store.write(tx => {
         for (const [index, id] of ids.entries()) {
+          const at = new Date(created + index * 1000).toISOString();
+          const ended = new Date(created + index * 1000 + 500).toISOString();
           if (index > 0) tx.insertConversationRequest({
             id, conversationId, headRunId: null, mode: 'new', body: `Synthetic question ${index + 1}`,
             submittedAt: at, deliveryState: 'queued',
