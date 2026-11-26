@@ -59,7 +59,8 @@ async function prepare(page: Page, runtime: Runtime, explicit = true) {
   if (explicit) {
     // A saved conversation frame can cover the reader's choice. Fold it as a person would before answering behind it.
     await foldConversation(page);
-    await settleMotion(page);
+    // The fixture's message keeps the coordinator at work: its folded dot pulses throughout, so only finite motion waits.
+    await settleMotion(page, undefined, true);
     await page.locator('aside[data-reader-mode] [data-question="1"]').getByRole('button', { name: /Option1/ }).click();
     await openCoordinator(page);
   }
@@ -199,6 +200,8 @@ for (const [mode, elsewhere] of [['live', false]] as ['live' | 'lost-reply', boo
       expect(turn.ask).toBe(input.text); expect(turn.attachments).toEqual(input.attachments); expect(turn.status).toBe('queued');
       const clearPage = async (target: Page) => {
         const done = target.waitForResponse(response => new URL(response.url()).pathname === '/api/coordinator/clear');
+        // Clearing is in the usage ring's menu, pressed twice.
+        await target.locator('[data-coordinator-context]').click();
         const button = target.locator('[data-coordinator-clear]'); await button.click(); await button.click();
         const response = await done; expect(response.ok()).toBe(true); return (await response.json()).conversation;
       };

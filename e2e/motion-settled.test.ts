@@ -10,6 +10,11 @@ test('only source-identified ambient pulses are excluded', () => {
   assert.equal(motionHasSettled([live], true), true);
   assert.equal(motionHasSettled([live], false), false);
   assert.equal(motionHasSettled([{ ...live, name: 'motion-spin' }], true), false);
+  // The folded conversation's dot pulses while the coordinator works; any other motion still blocks.
+  const pill = { state: 'running', endTime: Infinity, name: 'motion-pulse', workingPill: true };
+  assert.equal(motionHasSettled([pill], true), true);
+  assert.equal(motionHasSettled([pill], false), false);
+  assert.equal(motionHasSettled([{ ...pill, name: 'motion-spin' }], true), false);
   const step = { state: 'running', endTime: Infinity, name: 'motion-pulse', runningStep: true };
   assert.equal(motionHasSettled([step], true), true);
   assert.equal(motionHasSettled([step], false), false);

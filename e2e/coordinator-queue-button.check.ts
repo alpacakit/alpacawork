@@ -69,20 +69,18 @@ test('delayed queue actions acknowledge the press without duplicate HTTP (320px)
     gates.get('messages')!.release();
     await expect.poll(() => gates.get('messages/withdraw')!.calls).toBe(2);
 
-    await endAtFoot(page);
+    // Clearing is in the usage ring's menu: pressed twice, the menu closes and the conversation holds still meanwhile.
+    await page.locator('[data-coordinator-context]').click();
     const clear = page.locator('[data-coordinator-clear]'); await clear.click();
-    const before = (await clear.boundingBox())!;
     await clear.evaluate((element: HTMLButtonElement) => { element.click(); element.click(); });
-    await expect(clear).toHaveCount(0); const clearing = page.locator('[data-coordinator-clearing]');
-    await expect(clearing).toHaveText('Clearing…');
-    expect(Math.abs((await clearing.boundingBox())!.width - before.width)).toBeLessThan(1);
+    await expect(clear).toHaveCount(0);
     await expect(page.locator('[data-reading-column][inert]')).toHaveCount(1);
     await expect(page.locator('[data-ask-send]')).toBeDisabled();
     await expect(page.locator('[data-ask-send]')).toHaveAttribute('title', 'Clearing the conversation');
     await field.press('Enter'); expect(gates.get('messages')!.calls).toBe(1);
     await expect.poll(() => gates.get('clear')!.calls).toBe(1);
     await page.screenshot({ path: info.outputPath(`clear-${width}.png`) });
-    gates.get('clear')!.release(); await expect(clearing).toHaveCount(0);
+    gates.get('clear')!.release(); await expect(page.locator('[data-reading-column][inert]')).toHaveCount(0);
   } finally { for (const gate of gates.values()) gate.release(); q.release(); }
 });
 
@@ -160,25 +158,6 @@ test.describe('phone Back', () => {
   });
 });
 
-/** The end row belongs to the face, while only its body owns scrolling. */
-async function endAtFoot(page: Page) {
-  const row = page.locator('[data-coordinator-end]');
-  await expect(row).toBeVisible();
-  await expect.poll(() => row.evaluate(row => {
-    const face = (row.closest('[data-coordinator-phone]') ?? row.closest('[data-coordinator-panel]')?.firstElementChild ?? row.closest('[data-coordinator-own-window]')?.firstElementChild)!;
-    const scroll = face.querySelector('[data-card-scroll]')!;
-    const bottom = face.getBoundingClientRect().bottom - Number.parseFloat(getComputedStyle(face).borderBottomWidth);
-    const box = row.getBoundingClientRect();
-    return Math.abs(bottom - box.bottom) <= 2 && scroll.getBoundingClientRect().bottom <= box.top + 1 && !scroll.contains(row);
-  })).toBe(true);
-  expect(await row.evaluate(row => {
-    const controls = [...row.querySelectorAll('button')].map(button => button.getBoundingClientRect());
-    const box = row.getBoundingClientRect();
-    return controls.every((at, i) => at.left >= box.left && at.right <= box.right && at.top >= box.top && at.bottom <= box.bottom &&
-      controls.slice(i + 1).every(next => at.right <= next.left || next.right <= at.left || at.bottom <= next.top || next.bottom <= at.top));
-  })).toBe(true);
-}
-
 for (const occupied of [true]) test(`a clear during send admission recovers words in the current conversation (390px, occupied=${occupied})`, async ({ page, runtime }, info) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const q = await inputQueue(page, runtime);
@@ -191,10 +170,9 @@ for (const occupied of [true]) test(`a clear during send admission recovers word
     const original = (await (await page.request.get(`${runtime.origin}/api/coordinator`)).json()).conversation.id;
     await field.fill('Recover these words after clearing'); await page.locator('[data-ask-send]').click();
     await expect.poll(() => calls).toBe(1);
-    await endAtFoot(page);
+    await page.locator('[data-coordinator-context]').click();
     const clear = page.locator('[data-coordinator-clear]'); await clear.click(); await clear.focus(); await clear.press('Enter');
     await expect.poll(async () => (await (await page.request.get(`${runtime.origin}/api/coordinator`)).json()).conversation.id).not.toBe(original);
-    await expect(page.locator('[data-coordinator-clearing]')).toHaveCount(0);
     // Clear's server reply precedes the new input's rendered conversation/read basis.
     // Fill only the actual writable editor, while the original message POST is still held.
     if (occupied) {

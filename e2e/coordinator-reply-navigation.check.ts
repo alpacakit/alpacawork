@@ -91,7 +91,9 @@ for (const phone of [false, true]) test.describe(phone ? 'phone reply navigation
     // The source is read back a page at a time, then replied to.
     await revealReplies(page);
     const origin = page.locator(`[data-coordinator-message="${source!.id}"]`);
-    while (!await origin.count()) await page.locator('[data-earlier-more] button').click();
+    // Opening reads the first older page; a further one is read while the source is not there yet.
+    const more = page.locator('[data-earlier-more]:not([data-earlier-more=reading]) button');
+    for (;;) { await expect(origin.or(more)).toBeVisible(); if (await origin.count()) break; await more.click(); }
     if (await origin.getAttribute('data-exchange') === 'folded') await origin.locator('[data-exchange-toggle]').click();
     await origin.locator('[data-reply-answer]').click(); await field.press('End'); await field.pressSequentially('reply after reset');
     await send.click();

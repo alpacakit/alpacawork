@@ -204,10 +204,8 @@ export const coordinatorConversationSchema = z.object({
 /** One server snapshot, with the scope and digest of that exact conversation object. */
 export const coordinatorSnapshotSchema = z.object({ root: z.string().min(1), generation: z.string().min(1),
   revision: digestSchema, conversation: coordinatorConversationSchema }).strict();
-export const coordinatorResetConversationSchema = coordinatorConversationSchema;
-export const coordinatorResetSnapshotSchema = coordinatorSnapshotSchema;
-export const coordinatorMessageResponseSchema = coordinatorResetSnapshotSchema.extend({ message: coordinatorMessageStatusSchema });
-export const coordinatorResetResponseSchema = coordinatorResetSnapshotSchema.extend({ reset: coordinatorResetSchema });
+export const coordinatorMessageResponseSchema = coordinatorSnapshotSchema.extend({ message: coordinatorMessageStatusSchema });
+export const coordinatorResetResponseSchema = coordinatorSnapshotSchema.extend({ reset: coordinatorResetSchema });
 export const coordinatorMarkerSchema = z.object({ id: z.string().min(1), revision: digestSchema }).strict();
 export type CoordinatorSnapshot = z.infer<typeof coordinatorSnapshotSchema>;
 export type CoordinatorTurn = z.infer<typeof coordinatorTurnSchema>;

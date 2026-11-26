@@ -3,12 +3,10 @@ import { canCheckWrite } from "./write-intent";
 import { i18n } from "@alpacawork/i18n";
 import { z } from "zod";
 import { ApiError, createApi } from "./client";
-import { coordinatorResetSnapshotSchema, coordinatorReadAckSchema, coordinatorMessageResponseSchema, coordinatorResetResponseSchema,
-  coordinatorTurnsPageSchema, coordinatorMemoSchema, coordinatorMessageStatusSchema, type CoordinatorMessageInput } from "@alpacawork/contract/coordinator";
+import { coordinatorSnapshotSchema, coordinatorReadAckSchema, coordinatorMessageResponseSchema, coordinatorResetResponseSchema,
+  coordinatorTurnsPageSchema, coordinatorMemoSchema, coordinatorMessageStatusSchema, type CoordinatorMessageInput, type CoordinatorSnapshot } from "@alpacawork/contract/coordinator";
 
-export type { CoordinatorTurn, CoordinatorReset, CoordinatorResetReason, CoordinatorTurnsPage, CoordinatorMessageStatus } from "@alpacawork/contract/coordinator";
-/** One server snapshot of the conversation: its recent turns, the resets among them and the coordinator's usage. */
-export type CoordinatorSnapshot = z.infer<typeof coordinatorResetSnapshotSchema>;
+export type { CoordinatorTurn, CoordinatorReset, CoordinatorResetReason, CoordinatorTurnsPage, CoordinatorMessageStatus, CoordinatorSnapshot } from "@alpacawork/contract/coordinator";
 /**
  * The conversation as this page holds it: serve's, with what this page has learnt of single messages from their own
  * status (a send's, a withdrawal's or a send-now's answer, or a status check), which a snapshot of recent turns may not
@@ -21,7 +19,7 @@ export type CoordinatorMessageResponse = z.infer<typeof coordinatorMessageRespon
 
 const api = createApi();
 const query = (values: Record<string, string>) => new URLSearchParams(values).toString();
-export const readCoordinator = (signal?: AbortSignal) => api.request("coordinator", coordinatorResetSnapshotSchema, signal);
+export const readCoordinator = (signal?: AbortSignal) => api.request("coordinator", coordinatorSnapshotSchema, signal);
 /** Words answering a fixed question need no Task version. Only an explicit intent promises a versioned operation. */
 export function coordinatorWriteBasis(input: { intent?: { task: string }; answers?: { task: string }[] }): WriteBasis {
   const ids = new Set(input.intent ? [input.intent.task] : []);
@@ -32,7 +30,7 @@ export const askCoordinator = (input: CoordinatorMessageInput, basis = coordinat
   return api.request("coordinator/messages", coordinatorMessageResponseSchema, undefined, input, input.id, basis, keepalive);
 };
 export const clearCoordinator = (conversationId: string) =>
-  api.request("coordinator/clear", coordinatorResetSnapshotSchema, undefined, { conversationId }, undefined, workspaceWriteBasis());
+  api.request("coordinator/clear", coordinatorSnapshotSchema, undefined, { conversationId }, undefined, workspaceWriteBasis());
 /** Starts the coordinator again from the next message; the same `opId` names the same reset. */
 export const resetCoordinator = (conversationId: string, opId: string) =>
   api.request("coordinator/reset", coordinatorResetResponseSchema, undefined, { conversationId, opId }, opId, workspaceWriteBasis());

@@ -1,57 +1,28 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { readCoordinatorTurns, type CoordinatorConversation, type CoordinatorReset, type CoordinatorTurn } from "@/data/coordinator";
-import { recordFailure } from "@/lib/notify";
+import { useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { coordinatorHistory, readOlderTurns } from "@/data/coordinator-history";
+import type { CoordinatorConversation, CoordinatorReset, CoordinatorTurn } from "@/data/coordinator";
+
+const NONE: readonly never[] = [];
 
 /**
- * The turns older than the snapshot's, read a page at a time on request, and the snapshot's own turns that newer ones
- * have pushed out of it while it was shown, so what was on screen stays there. `more`: where the next page starts,
- * none when the first turn is here.
+ * The turns older than the snapshot's, read once the history is opened (`open`): serve's window that ends where the
+ * snapshot starts, read again when the snapshot has moved on. `unread`: how many the snapshot counts before it while
+ * none are read.
  */
-type Earlier = { conversationId: string | null; turns: readonly CoordinatorTurn[]; resets: readonly CoordinatorReset[]; more: string | null;
-  loaded: boolean; reading: boolean; failed: boolean };
-const NONE: Earlier = { conversationId: null, turns: [], resets: [], more: null, loaded: false, reading: false, failed: false };
-
-const byTime = (a: { at: string }, b: { at: string }) => a.at.localeCompare(b.at);
-/** `older` before `newer`, each ID once (a newer copy wins: it may have changed since). */
-function joined<T extends { id: string; at: string }>(older: readonly T[], newer: readonly T[]): T[] {
-  const ids = new Set(newer.map(item => item.id));
-  return [...older.filter(item => !ids.has(item.id)), ...newer].sort(byTime);
-}
-
-export function useEarlierHistory(conversation: CoordinatorConversation | null) {
-  const [state, setState] = useState<Earlier>(NONE);
-  const id = conversation?.id ?? null;
-  const current = state.conversationId === id ? state : { ...NONE, conversationId: id };
-  if (current !== state) setState(current);
-  // What the snapshot held and holds no longer: its oldest turns, pushed out by newer ones.
-  const held = useRef<{ conversationId: string | null; turns: Map<string, CoordinatorTurn> }>({ conversationId: null, turns: new Map() });
-  useEffect(() => {
-    if (!conversation) return;
-    if (held.current.conversationId !== conversation.id) held.current = { conversationId: conversation.id, turns: new Map() };
-    const now = new Set(conversation.turns.map(turn => turn.id)), out: CoordinatorTurn[] = [];
-    for (const [turnId, turn] of held.current.turns) if (!now.has(turnId)) out.push(turn);
-    held.current.turns = new Map(conversation.turns.map(turn => [turn.id, turn]));
-    if (out.length) setState(before => before.conversationId === conversation.id ? { ...before, turns: joined(before.turns, out) } : before);
-  }, [conversation]);
-  const cursor = current.loaded ? current.more : conversation?.earlier?.before ?? null;
-  const reading = useRef(false);
-  /** The next page, before the oldest turn here; false when there was none to read or it could not be read. */
-  const readMore = useCallback(async (): Promise<boolean> => {
-    if (!id || !cursor || reading.current) return false;
-    reading.current = true;
-    setState(before => ({ ...before, reading: true, failed: false }));
-    try {
-      const page = await readCoordinatorTurns(id, { before: cursor });
-      setState(before => before.conversationId !== id ? before : { ...before, turns: joined(page.turns, before.turns),
-        resets: joined(page.resets, before.resets), more: page.more, loaded: true, reading: false });
-      return true;
-    } catch (error) {
-      recordFailure(error, "coordinator earlier turns");
-      setState(before => before.conversationId !== id ? before : { ...before, reading: false, failed: true });
-      return false;
-    } finally { reading.current = false; }
-  }, [id, cursor]);
-  return { turns: current.turns, resets: current.resets, more: cursor !== null, reading: current.reading, failed: current.failed, readMore,
-    /** Turns older than the snapshot's that it counts but this page has not read. */
-    unread: current.loaded ? null : conversation?.earlier?.count ?? 0 };
+export function useEarlierHistory(root: string, conversation: CoordinatorConversation | null, open: boolean) {
+  const client = useQueryClient();
+  const boundary = conversation?.earlier?.before ?? null;
+  const query = useQuery({ ...coordinatorHistory(client, root, conversation?.id ?? "", boundary ?? ""), enabled: open && !!conversation && !!boundary });
+  const held = query.data;
+  // The snapshot moved on (turns pushed out of it): the window is read again to end where the snapshot starts now.
+  useEffect(() => { if (open && held && boundary && held.until !== boundary) void query.refetch(); }, [open, held, boundary]);
+  // Held while it is read again: what serve returned last, until the new range replaces it.
+  const range = held && conversation && boundary ? held : undefined;
+  return {
+    turns: (range?.turns ?? NONE) as readonly CoordinatorTurn[], resets: (range?.resets ?? NONE) as readonly CoordinatorReset[],
+    more: range ? range.more !== null : !!boundary, reading: query.isFetching, failed: query.isError && !query.isFetching,
+    unread: range ? null : conversation?.earlier?.count ?? 0,
+    readMore: () => conversation && range ? readOlderTurns(client, root, conversation.id) : Promise.resolve(),
+  };
 }

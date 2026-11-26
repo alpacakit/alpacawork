@@ -166,8 +166,6 @@ function actionResult(action: Action, conversationId: string, id: string | undef
   if (!next) return 'unknown';
   if (next.id !== conversationId || id && next.cancelled.includes(id)) return 'done';
   if (action === 'clear') return 'pending';
-  // A reset not used yet stands at the conversation's end until the next message starts the coordinator.
-  if (action === 'reset') return next.resets.some(reset => reset.beforeRequestId === null) ? 'done' : 'pending';
   const turn = next.turns.find(turn => turn.id === id);
   if (!turn) return 'unknown';
   if (turn.status !== 'queued' || action === 'send-now' && turn.joinRequested && !turn.deliveryError) return 'done';
@@ -177,7 +175,7 @@ async function checkAction(action: Action, conversationId: string, id?: string):
   try {
     const read = (await readConversationSnapshot()).conversation;
     // A message the snapshot no longer holds may have been withdrawn: its own status says so (a snapshot names none).
-    if (id && action !== 'clear' && action !== 'reset' && read.id === conversationId && !read.turns.some(turn => turn.id === id))
+    if (id && action !== 'clear' && read.id === conversationId && !read.turns.some(turn => turn.id === id))
       learnStatus(conversationId, await readCoordinatorMessage(id));
   }
   catch (error) {
@@ -203,7 +201,7 @@ function sayActionFailure(action: Action, result: ActionResult, error: unknown, 
  * Send-now and clear: one POST answered by a snapshot. No automatic POST again: one read may recover an answer lost
  * after commit. This Owner says the checked outcome; callers only record the fault it propagates.
  */
-async function checkedAction(action: 'send-now' | 'clear' | 'reset', conversationId: string, id: string | undefined, post: () => Promise<CoordinatorSnapshot>, replace = false): Promise<void> {
+async function checkedAction(action: 'send-now' | 'clear', conversationId: string, id: string | undefined, post: () => Promise<CoordinatorSnapshot>, replace = false): Promise<void> {
   const origin = sending();
   try {
     if (takeSnapshot(await post(), origin, replace) === 'satisfied') await useConversation.getState().refresh();
@@ -310,6 +308,8 @@ function take(received: CoordinatorSnapshot['conversation'], origin: Sending, re
     if (drawn) reconcile(drawn, true);
     if (!drawn || awaitsDrawing(useDraftStore.getState().entries, origin.root, drawn)) void useConversation.getState().refresh();
   }
+  // Every snapshot drawn, the same as the one held or not, is a moment to ask after sends it does not hold.
+  if (taken === 'shown') void askAbsentSends(origin.root);
   return taken;
 }
 function draw(next: CoordinatorConversation, origin: Sending, replace: boolean): Taken {
@@ -329,12 +329,17 @@ function draw(next: CoordinatorConversation, origin: Sending, replace: boolean):
   return 'shown';
 }
 
+/**
+ * The read marks this page holds: those of the turns served now only. Older ones count as read (serve's rule), so every
+ * way a mark arrives (a read, a drawing, a read receipt's answer) keeps the set within the range.
+ */
+function heldSeen(ids: Iterable<string>, conversation: Pick<CoordinatorConversation, 'turns'> | null): Set<string> {
+  const served = new Set(conversation?.turns.map(turn => turn.id));
+  return new Set([...ids].filter(id => served.has(id)));
+}
 function receive(next: CoordinatorConversation, request: number) {
   const state = useConversation.getState();
-  // Held for the turns served now only: older ones count as read (serve's rule), so the set never outgrows the range.
-  const served = new Set(next.turns.map(turn => turn.id));
-  const seen = new Set(state.conversation?.id === next.id ? [...state.seen].filter(id => served.has(id)) : []);
-  for (const turn of next.turns) if (turn.seen) seen.add(turn.id);
+  const seen = heldSeen([...state.conversation?.id === next.id ? state.seen : [], ...next.turns.flatMap(turn => turn.seen ? [turn.id] : [])], next);
 
   const previous = useConversation.getState().conversation;
   // The opening learns from this conversation's reads (another conversation takes its own: the store's subscription).
@@ -438,9 +443,16 @@ const useConversationUi = create<Ui>((set) => {
   reset: async () => {
     const id = get().conversation?.id;
     if (!id) return;
-    // One press is one reset: asked again after a lost answer, the same operation names the same one.
+    // One press is one operation: serve keeps the reset it made under it, so a lost answer is checked by asking again
+    // with the same one (answered with that reset, or making it now), never by reading what the conversation holds.
     const opId = crypto.randomUUID();
-    await checkedAction('reset', id, undefined, () => resetCoordinator(id, opId));
+    const post = async () => { const origin = sending(); if (takeSnapshot(await resetCoordinator(id, opId), origin) === 'satisfied') await get().refresh(); };
+    try { await post(); }
+    catch (error) {
+      if (retryOf(error) !== 'check') { sayActionFailure('reset', 'pending', error); throw error; }
+      try { await post(); }
+      catch (again) { sayActionFailure('reset', retryOf(again) === 'check' ? 'unknown' : 'pending', again); throw again; }
+    }
   },
 });
 });
@@ -546,9 +558,8 @@ const inScope = (origin: Origin): boolean => {
   return sameReadSession(queryClient, origin.reception.boundary) && origin.id !== null && sameScope(origin, current);
 };
 function confirmSeen(ids: readonly string[]) {
-  const current = useConversation.getState(), seen = new Set(current.seen);
-  for (const id of ids) seen.add(id);
-  if (seen.size === current.seen.size) return;
+  const current = useConversation.getState(), seen = heldSeen([...current.seen, ...ids], current.conversation);
+  if (seen.size === current.seen.size && [...seen].every(id => current.seen.has(id))) return;
   useConversation.setState({ seen });
 }
 function queueSeen() {
@@ -569,10 +580,12 @@ async function sendSeen() {
     const accepted = new Set(ack.seen);
     if (ack.conversationId !== flight.origin.id || accepted.size !== flight.ids.length || flight.ids.some(id => !accepted.has(id)))
       throw new ApiError('Read acknowledgement does not identify the submitted replies', 'invalid_response', 'check');
-    const current = useConversation.getState(), pending = new Set(current.pendingSeen), seen = new Set(current.seen);
+    const current = useConversation.getState(), pending = new Set(current.pendingSeen);
     // An ACK knows only its request, never the observations added while it was in flight. Confirmed in the same
-    // update that drops them from pending, so no observer meets the same replies neither pending nor seen.
-    for (const id of flight.ids) { pending.delete(id); seen.add(id); }
+    // update that drops them from pending, so no observer meets the same replies neither pending nor seen; those the
+    // range has left meanwhile are read already.
+    for (const id of flight.ids) pending.delete(id);
+    const seen = heldSeen([...current.seen, ...flight.ids], current.conversation);
     useConversation.setState({ pendingSeen: pending, seen, seenError: null });
   } catch (error) {
     if (!inScope(flight.origin)) return;
@@ -613,30 +626,33 @@ useConversation.subscribe((next, before) => {
 const recoverOutbox = (root: string) => {
   settleInterrupted(root, i18n.t('ui:coordinatorCard.interrupted'));
   resumeQueuedOutgoing(root);
-  void askAbsentSends(root);
 };
 /**
  * A send serve took that its snapshot no longer holds was withdrawn (here or on another page), or has ended among the
- * turns older than the snapshot's: its own status says which, asked once a page. Withdrawn, it settles as a withdrawal
- * answered here would.
+ * turns older than the snapshot's: its own status says which. It is asked while the send's record stands unsettled (one
+ * question at a time); once its status settles the record, nothing is left to ask about.
  */
-const statusAsked = new Set<string>();
+const statusAsking = new Set<string>();
 async function askAbsentSends(root: string) {
   const conversation = useConversation.getState().conversation;
   if (!conversation) return;
   const absent = outgoing(useDraftStore.getState().entries, root, conversation.id).filter(item => (item.stage === 'posted' || item.stage === 'accepted')
-    && !statusAsked.has(item.requestId) && !conversation.turns.some(turn => turn.id === item.requestId) && !conversation.cancelled.includes(item.requestId)
-    && !(item.requestId in conversation.admitted));
+    && !statusAsking.has(item.requestId) && !conversation.turns.some(turn => turn.id === item.requestId)
+    // Withdrawn is final: its record settles with what is known.
+    && !conversation.cancelled.includes(item.requestId));
   for (const item of absent) {
-    statusAsked.add(item.requestId);
+    statusAsking.add(item.requestId);
     try { learnStatus(conversation.id, await readCoordinatorMessage(item.requestId)); }
-    catch (error) { statusAsked.delete(item.requestId); recordFailure(error, 'coordinator message status'); return; }
+    catch (error) { recordFailure(error, 'coordinator message status'); return; }
+    finally { statusAsking.delete(item.requestId); }
   }
   const now = useConversation.getState();
   if (absent.length && now.root === root && now.conversation?.id === conversation.id) {
     const result = reconcileOutbox(now.conversation, root, currentInputKey());
     for (const id of result.restored) dismissRecoveredReaderSends(id, { root, conversationId: conversation.id });
     reconcileReaderSends(now.conversation, root);
+    // Taken and still at work, yet not in this snapshot: a newer one holds it.
+    if (result.undrawn) void useConversation.getState().refresh();
   }
 }
 useConversation.subscribe((next, before) => {

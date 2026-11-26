@@ -26,9 +26,11 @@ export const messageMedia = (turn: Files): SliderImage[] => {
  * with the old files says it was removed, as a message's own files do.
  */
 export const answerBodyFiles = (turn: Pick<CoordinatorTurn, "id" | "answerFiles" | "filesExpired">) => turn.answerFiles?.map(file => {
-  const url = file.state === "ready" && !turn.filesExpired ? coordinatorFileUrl(turn.id, file.name, "answers") : null;
-  return { path: file.href, name: file.state === "ready" ? file.name : file.href, size: file.state === "ready" ? file.size : 0, src: url, href: url,
-    ...turn.filesExpired ? { removed: true as const } : {} };
+  if (file.state !== "ready") return { path: file.href, name: file.href, size: 0, src: null, href: null };
+  // Only a file that was kept can have been cleaned away.
+  if (turn.filesExpired) return { path: file.href, name: file.name, size: file.size, src: null, href: null, removed: true as const };
+  const url = coordinatorFileUrl(turn.id, file.name, "answers");
+  return { path: file.href, name: file.name, size: file.size, src: url, href: url };
 });
 export type OpenMessageImages = ReturnType<typeof useImageViewer>["open"];
 

@@ -1,7 +1,7 @@
 import { freezeReadJson, readPayloadMatches, isReadDataImmutable } from './read-json';
 export { isReadDataImmutable } from './read-json';
 import { requestRead, readDemandPending, readFreshnessPending, readRecoveryPending, planRead, completeReadDemand, failReadDemand, retireReadDemand, noteReadInvalidation, type ReadExecution } from './read-demand';
-import { coordinatorResetSnapshotSchema } from '@alpacawork/contract/coordinator';
+import { coordinatorSnapshotSchema } from '@alpacawork/contract/coordinator';
 import type { CoordinatorSnapshot } from './coordinator';
 import { z } from 'zod';
 import { startReadRetention } from './read-retention';
@@ -108,7 +108,7 @@ export function readCodec(key: QueryKey): z.ZodType | undefined {
   if (kind === 'project-shelf' && key.length === 2) return projectShelfSchema;
   // The analysis as its face draws it: what its tasks and the AI's use count for one choice of days and steps.
   if (kind === 'analysis-view' && key.length === 4 && typeof id === 'string' && Object.hasOwn(analysisViews, id)) return analysisViews[id as keyof typeof analysisViews];
-  if (kind === 'coordinator' && key.length === 2) return coordinatorResetSnapshotSchema.refine(value => value.root === root);
+  if (kind === 'coordinator' && key.length === 2) return coordinatorSnapshotSchema.refine(value => value.root === root);
   if (kind === 'task' && key.length === 3 && typeof id === 'string') return taskReadSchema.refine(view => view.task.id === id);
   if (kind === 'task-history' && key.length === 3 && typeof id === 'string') return historyPages;
   if (kind === 'task-finished' && key.length === 4 && typeof id === 'string' && (scope === null || typeof scope === 'string')) return taskPages;

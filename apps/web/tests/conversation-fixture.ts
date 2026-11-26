@@ -81,7 +81,7 @@ export function setConversationState(input: Omit<Partial<ReturnType<typeof useCo
   }
   useConversation.setState(ui);
   // Withdrawals the page learnt belong to the conversation the test ends with.
-  if (conversation === null) { queryClient.removeQueries({ queryKey: ['coordinator'] }); useConversation.setState({ learnt: null }); }
+  if (conversation === null) { queryClient.removeQueries({ queryKey: ['coordinator'] }); queryClient.removeQueries({ queryKey: ['coordinator-history'] }); useConversation.setState({ learnt: null }); }
   else if (conversation) {
     const snapshot = conversationSnapshot(conversation);
     if (!index) throw new Error('Conversation fixture needs its served index');

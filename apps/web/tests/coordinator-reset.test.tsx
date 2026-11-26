@@ -74,7 +74,7 @@ test("the memo a reset handed over is read when its line asks for it", async () 
 test("older turns are counted while folded, opening reads their first page, and each further page once", async () => {
   const older = Array.from({ length: 3 }, (_, index) => answered(`old-${index}`, index));
   const pages: Record<string, { turns: CoordinatorTurn[]; more: string | null }> = {
-    "old-2": { turns: [older[1]!, older[2]!], more: "old-1" }, "old-1": { turns: [older[0]!, older[1]!], more: null } };
+    "old-2": { turns: [older[1]!, older[2]!], more: "old-1" }, "old-1": { turns: [older[0]!], more: null } };
   const fetcher = vi.fn(async (url: string) => {
     const page = /^\/api\/coordinator\/turns\?conversationId=conversation-1&before=(.+)$/.exec(url);
     return page ? new Response(JSON.stringify({ ...pages[decodeURIComponent(page[1]!)], resets: [] }), { status: 200 }) : json(conversation);
@@ -88,7 +88,7 @@ test("older turns are counted while folded, opening reads their first page, and 
   fireEvent.click(thread().querySelector("[data-earlier] button")!);
   await waitFor(() => expect(order()).toEqual(["more", "old-1", "old-2", "a", "b"]));
   fireEvent.click(thread().querySelector("[data-earlier-more] button")!);
-  // The first turn is here: nothing more to read, and the page that overlapped added nothing twice.
+  // The first turn is here: nothing more to read.
   await waitFor(() => expect(order()).toEqual(["old-0", "old-1", "old-2", "a", "b"]));
 });
 
@@ -121,13 +121,14 @@ test("a message sent into an answer stays under it when the answer comes back on
   expect(thread().querySelector("[data-coordinator-message=old]")?.textContent).toContain("ask joined");
 });
 
-test("an answer's own file cleaned away with the old files says it was removed", () => {
-  const conversation = { ...empty, turns: [{ ...answered("a", 1), answer: "Report: [report.pdf](report.pdf)", filesExpired: true as const,
-    answerFiles: [{ href: "report.pdf", state: "ready" as const, name: "report.pdf", size: 10 }] }] };
+test("an answer's own file cleaned away with the old files says it was removed; one never kept stays unavailable", () => {
+  const conversation = { ...empty, turns: [{ ...answered("a", 1), answer: "Report: [report.pdf](report.pdf) [big.zip](big.zip)", filesExpired: true as const,
+    answerFiles: [{ href: "report.pdf", state: "ready" as const, name: "report.pdf", size: 10 }, { href: "big.zip", state: "unavailable" as const, reason: "too_large" as const }] }] };
   vi.stubGlobal("fetch", vi.fn(async () => json(conversation)));
   setConversationState({ open: true, expanded: true, read: true, conversation });
   card();
-  expect(thread().querySelector("[data-file-removed]")?.textContent).toBe("ファイルは削除済み: report.pdf");
+  expect([...thread().querySelectorAll("[data-file-removed]")].map(each => each.textContent)).toEqual(["ファイルは削除済み: report.pdf"]);
+  expect(thread().textContent).toContain("ファイルを表示できません: big.zip");
 });
 
 test("the read marks kept are those of the turns served now: older ones count as read without being held", async () => {
@@ -146,4 +147,53 @@ test("a send whose turn is no longer among the recent ones is settled by serve's
   expect(deliveryOutcome(seen({}), "m", fixed)).toBe("unknown");
   expect(deliveryOutcome(seen({ m: { digest: taken, ended: true } }), "m", fixed)).toBe("accepted");
   expect(deliveryOutcome(seen({ m: { digest: coordinatorMessageDigest({ ...fixed, text: "other words", id: "m" }), ended: true } }), "m", fixed)).toBe("conflict");
+});
+
+test("older turns come in serve's order with their resets, and the window is read again when the snapshot moves on", async () => {
+  // Serve's order is not the order of the times written on the turns.
+  const x = answered("x", 5), y = answered("y", 1), a = answered("a", 10), b = answered("b", 11);
+  const pages: Record<string, { turns: CoordinatorTurn[]; resets: CoordinatorReset[] }> = {
+    a: { turns: [x, y], resets: [reset(3, "y")] }, b: { turns: [x, y, a], resets: [reset(3, "y")] } };
+  let conversation = { ...empty, earlier: { count: 2, before: "a" }, turns: [a] };
+  const fetcher = vi.fn(async (url: string) => {
+    const page = /^\/api\/coordinator\/turns\?conversationId=conversation-1&before=(.+)$/.exec(url);
+    return page ? new Response(JSON.stringify({ ...pages[page[1]!], more: null }), { status: 200 }) : json(conversation);
+  });
+  vi.stubGlobal("fetch", fetcher);
+  setConversationState({ open: true, expanded: true, read: true, conversation });
+  card();
+  fireEvent.click(thread().querySelector("[data-earlier] button")!);
+  await waitFor(() => expect(order()).toEqual(["x", "asked", "y", "a"]));
+  // "a" left the snapshot: the window is read again from where the snapshot starts now, and nothing between is lost.
+  conversation = { ...conversation, earlier: { count: 3, before: "b" }, turns: [b] };
+  setConversationState({ conversation });
+  await waitFor(() => expect(order()).toEqual(["x", "asked", "y", "a", "b"]));
+  expect(fetcher.mock.calls.filter(([url]) => String(url).startsWith("/api/coordinator/turns?")).map(([url]) => String(url).split("before=")[1])).toEqual(["a", "b"]);
+});
+
+test("a reset whose answer was lost is confirmed by asking again with the same operation", async () => {
+  const conversation = { ...empty, turns: [answered("a", 1)] }, made = { ...conversation, resets: [reset(1, null)] };
+  const bodies: { opId: string }[] = [];
+  vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+    if (url !== "/api/coordinator/reset") return json(conversation);
+    bodies.push(JSON.parse(String(init!.body)));
+    if (bodies.length === 1) throw new TypeError("connection lost after serve made it");
+    return new Response(JSON.stringify({ ...JSON.parse(snapshotJson(made)), reset: reset(1, null) }), { status: 200 });
+  }));
+  setConversationState({ open: true, read: true, conversation });
+  await useConversation.getState().reset();
+  expect(bodies).toHaveLength(2);
+  expect(bodies[1]!.opId).toBe(bodies[0]!.opId);
+  expect(useConversation.getState().conversation?.resets.map(each => each.id)).toEqual([resetId(1)]);
+});
+
+test("a read receipt's answer keeps no mark for a turn the range has left", async () => {
+  const conversation = { ...empty, turns: [{ ...answered("a", 1), seen: false }] };
+  vi.stubGlobal("fetch", vi.fn(async (url: string) => url === "/api/coordinator/read"
+    ? new Response(JSON.stringify({ conversationId: "conversation-1", seen: ["gone"] }), { status: 200 }) : json(conversation)));
+  setConversationState({ open: true, read: true, conversation });
+  useConversation.setState({ pendingSeen: new Set(["gone"]), seen: new Set() });
+  useConversation.getState().flushSeen();
+  await waitFor(() => expect(useConversation.getState().pendingSeen.size).toBe(0));
+  expect([...useConversation.getState().seen]).toEqual([]);
 });

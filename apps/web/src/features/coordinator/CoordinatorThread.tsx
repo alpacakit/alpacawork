@@ -177,11 +177,20 @@ export const CoordinatorThread = memo(function CoordinatorThread({ turns: recent
   const { t, i18n } = useTranslation("ui");
   const viewer = useImageViewer();
   const conversation = useConversation(state => state.conversation);
-  // Turns older than the snapshot's come before its own, read a page at a time once the history is open.
-  const earlier = useEarlierHistory(conversation);
+  const root = useConversation(state => state.root);
+  const taken = useConversation(state => state.opening);
+  const scope = useConversation(state => state.conversation?.id);
+  // What is opened or folded by hand belongs to one opening.
+  const [hands, setHands] = useState<{ of?: number; map: ReadonlyMap<string, boolean> }>({ of: taken?.id, map: new Map() });
+  if (hands.of !== taken?.id) setHands({ of: taken?.id, map: new Map() });
+  const hand = hands.of === taken?.id ? hands.map : new Map<string, boolean>();
+  const setHand = (next: (map: ReadonlyMap<string, boolean>) => ReadonlyMap<string, boolean>) => setHands(state => ({ of: state.of, map: next(state.map) }));
+  const earlierOpen = hand.get(EARLIER) ?? false;
+  // Turns older than the snapshot's, serve's window ending where the snapshot starts, read once the history is open.
+  const earlier = useEarlierHistory(root, conversation, earlierOpen);
   const shown = useShownConversation(recent);
-  // Older turns read back join the snapshot's by ID first, then the whole is grouped once: a message sent into another
-  // across the snapshot's first turn stands under it whichever page each came on.
+  // The window and the snapshot are joined by ID in serve's order (the window first), then grouped once: a message
+  // sent into another across the snapshot's first turn stands under it.
   const turns = useMemo(() => {
     if (!earlier.turns.length) return recent;
     const here = new Set(recent.map(turn => turn.id));
@@ -190,18 +199,10 @@ export const CoordinatorThread = memo(function CoordinatorThread({ turns: recent
   const grouped = useMemo(() => turns === recent ? null : partitionTurns(turns), [turns, recent]);
   const work = grouped?.thread ?? shown.thread;
   const joinedTo = grouped?.joined ?? shown.joined;
-  const taken = useConversation(state => state.opening);
-  const scope = useConversation(state => state.conversation?.id);
   // The store's opening (coordinator.ts owns when it is taken); drawn outside one, as an opening of what is here would be.
   const opened = taken ?? opening(work);
-  // What is opened or folded by hand belongs to one opening.
-  const [hands, setHands] = useState<{ of?: number; map: ReadonlyMap<string, boolean> }>({ of: taken?.id, map: new Map() });
-  if (hands.of !== taken?.id) setHands({ of: taken?.id, map: new Map() });
-  const hand = hands.of === taken?.id ? hands.map : new Map<string, boolean>();
-  const setHand = (next: (map: ReadonlyMap<string, boolean>) => ReadonlyMap<string, boolean>) => setHands(state => ({ of: state.of, map: next(state.map) }));
   // History folds at the opening's latest exchange; read facts never change this boundary.
   const start = Math.max(0, work.findIndex(turn => turn.id === opened.latest));
-  const earlierOpen = hand.get(EARLIER) ?? false;
   const thread = useRef<HTMLOListElement>(null);
   const toggle = (id: string, open: boolean) => {
     if (thread.current) keepThreadPosition(thread.current);
@@ -213,8 +214,8 @@ export const CoordinatorThread = memo(function CoordinatorThread({ turns: recent
     if (!work.some(turn => turn.id === id)) {
       if (earlier.reading) return 'later';
       if (!earlier.more || earlier.failed) return 'gone';
-      setHand(map => new Map(map).set(EARLIER, true));
-      void earlier.readMore();
+      // Opened, the history reads its first page; open, the next one.
+      if (earlierOpen) void earlier.readMore(); else setHand(map => new Map(map).set(EARLIER, true));
       return 'later';
     }
     setHand(map => new Map(map).set(EARLIER, true).set(id, true));
@@ -292,7 +293,7 @@ export const CoordinatorThread = memo(function CoordinatorThread({ turns: recent
   return <>
     <ol ref={thread} data-action-focus-scope tabIndex={-1} data-coordinator-thread className={cn("relative m-0 list-none px-3 pt-1 pb-2 [overflow-wrap:anywhere] [--gutter:--spacing(6)] [--rail:7px] before:absolute before:top-5 before:bottom-5 before:left-[calc(--spacing(3)+var(--rail))] before:w-px before:bg-rule", empty && "before:hidden")}>
       {empty && <ConversationStart />}
-      {hidden > 0 && !earlierOpen && <EarlierRow count={hidden} reveal={() => { toggle(EARLIER, true); if (earlier.unread) void earlier.readMore(); }} />}
+      {hidden > 0 && !earlierOpen && <EarlierRow count={hidden} reveal={() => toggle(EARLIER, true)} />}
       {earlierOpen && earlier.more && <ReadOlder reading={earlier.reading} failed={earlier.failed} read={readOlder} />}
       {rows}
       {!shown.tail.length && resetLines(null)}
