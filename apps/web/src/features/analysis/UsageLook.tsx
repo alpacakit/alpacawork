@@ -260,20 +260,20 @@ function Breakdown({ view, span, root, group, days, open, choose }: {
   const sinceAt = since ? points.findIndex(point => point.to >= since) : -1;
   // Each bin stacked by name, the most counted at the foot, in the colours the span's parts on the left take.
   const { parts, partOf, binParts } = nameParts(breakdown?.groups ?? []);
-  const partName = (part: NamePart) => part.key === null ? t("usage.otherNames", { count: part.count }) : part.label;
+  const partName = (part: NamePart, names: number) => part.key === null ? t("usage.otherNames", { count: names }) : part.label;
   const onBin = (at: number) => series?.[at] ? binParts(series[at]!.counts) : [];
   const share = (value: number, all: number) => all ? `${Math.round(value / all * 100)}%` : "";
-  const spanSums = parts.map(() => 0);
-  for (const row of rows) { const part = partOf(row.key); if (part !== undefined) spanSums[part]! += row.calls ?? 0; }
+  const spanSums = parts.map(() => 0), spanNames = parts.map(() => 0);
+  for (const row of rows) { const part = partOf(row.key); if (part !== undefined && row.calls) { spanSums[part]! += row.calls; spanNames[part]!++; } }
   const spanAll = breakdown?.counted ? breakdown.counted.value.calls : 0;
   const spanParts = parts.flatMap((part, at) => spanSums[at]! > 0 ? [{
-    color: part.color, name: partName(part), value: <b className="font-semibold tabular-nums">{format("times", spanSums[at]!)}</b>,
+    color: part.color, name: partName(part, spanNames[at]!), value: <b className="font-semibold tabular-nums">{format("times", spanSums[at]!)}</b>,
     share: share(spanSums[at]!, spanAll),
     onOpen: part.key === null ? undefined : () => open({ set: "used", value: "calls", group: by, member: part.key }),
   }] : []);
   const chart = counted && since && series && series.length === points.length && <ChartGroup bins={points} span={days} today={view.head.today} bucket={bucket}
     rows={[{ name, total: i => series[i] ? format("times", series[i]!.calls) : t("chart.notCounted"),
-      parts: i => onBin(i).map(({ part, value }) => ({ color: part.color, name: partName(part), value: format("times", value),
+      parts: i => onBin(i).map(({ part, value, names }) => ({ color: part.color, name: partName(part, names), value: format("times", value),
         share: share(value, series[i]!.calls),
         list: part.key === null ? undefined : (bin: { from: string; to: string }) => ({ set: "used" as const, value: "calls" as const, group: by, member: part.key, from: bin.from, to: bin.to }) })),
       // A bin before counting began has no tasks to open.

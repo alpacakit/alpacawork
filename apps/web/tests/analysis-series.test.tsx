@@ -61,12 +61,13 @@ test("a list opened under a filter keeps it in the URL", () => {
 test("a breakdown's names past the fifth stack as one grey part, and a bin's parts add up to its count", () => {
   const names = (count: number) => Array.from({ length: count }, (_, at) => ({ key: `k${at}`, label: `n${at}` }));
   const many = nameParts(names(8));
-  expect(many.parts.map(part => [part.key, part.count])).toEqual([["k0", 1], ["k1", 1], ["k2", 1], ["k3", 1], ["k4", 1], [null, 3]]);
+  expect(many.parts.map(part => part.key)).toEqual(["k0", "k1", "k2", "k3", "k4", null]);
   expect(new Set(many.parts.slice(0, 5).map(part => part.color)).size).toBe(5);
   expect(many.partOf("k7")).toBe(5);
   expect(many.partOf("gone")).toBeUndefined();
   const bin = many.binParts([[0, 4], [5, 2], [7, 1]]);
-  expect(bin.map(({ part, value }) => [part.key, value])).toEqual([["k0", 4], [null, 3]]);
+  // The rest names the names of that bin (2 of the 3 past the fifth), not of the whole chart.
+  expect(bin.map(({ part, value, names }) => [part.key, value, names])).toEqual([["k0", 4, 1], [null, 3, 2]]);
   // A sixth name alone keeps its own name rather than "1 other".
   expect(nameParts(names(6)).parts.map(part => part.key)).toEqual(["k0", "k1", "k2", "k3", "k4", "k5"]);
 });

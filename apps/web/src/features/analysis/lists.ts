@@ -15,13 +15,15 @@ const COLUMN: Record<ListValue, string> = {
   launches: "usage.launches", runMs: "usage.runMs", newConversations: "usage.newConversations",
   tokens: "usage.tokens", output: "usage.output", input: "usage.input", cache: "usage.cache", calls: "usage.calls",
 };
+/** A value's name: a skill breakdown's calls are its uses (each launch once per skill), not a tool's calls. */
+const columnOf = (list: ListPlace, value: ListValue) => value === "calls" && list.group === "skill" ? "usage.skillUses" : COLUMN[value];
 const USAGE = new Set<ListValue>(["launches", "runMs", "newConversations", "tokens", "output", "input", "cache", "calls"]);
 
 /** What a list lists (the number it was opened from): a count's own name, or, for an amount of the AI's use, the tasks it went to. */
 export function listTitle(list: ListPlace): string {
   if (list.value === "questions") return word("until.questionsList");
   if (list.value === "prs") return word("until.prsList");
-  if (list.set === "used" && list.value) return word("list.usedTitle", { name: word(COLUMN[list.value]) });
+  if (list.set === "used" && list.value) return word("list.usedTitle", { name: word(columnOf(list, list.value)) });
   return word({ passed: "tasks.passed", reworked: "tasks.reworked", stopped: "tasks.stopped", accepted: "tasks.accepted", finished: "tasks.finished", used: "usage.tasks" }[list.set]);
 }
 /**
@@ -30,7 +32,7 @@ export function listTitle(list: ListPlace): string {
  * bare number would read as the amount.
  */
 export const listHeading = (list: ListPlace, count: number) => `${listTitle(list)}${word("sep")}${word("list.count", { count, n: count.toLocaleString(i18n.resolvedLanguage ?? "en") })}`;
-export const listColumn = (list: ListPlace) => list.value ? word(COLUMN[list.value]) : word("list.outcome");
+export const listColumn = (list: ListPlace) => list.value ? word(columnOf(list, list.value)) : word("list.outcome");
 export const usageValue = (value: ListValue | null) => value !== null && USAGE.has(value);
 
 export function writeValue(value: ListValue, amount: number): string {
