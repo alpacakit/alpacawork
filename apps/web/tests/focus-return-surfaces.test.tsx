@@ -42,6 +42,26 @@ for (const strict of [false, true]) it(`two replaced surfaces preserve opener (S
   await waitFor(() => expect(document.activeElement).toBe(more));
 });
 
+// A button in a popup's heading (the limits' gear) stands outside its body: what it opens still goes back to the popup's opener.
+function FromHeading() {
+  const [stage, setStage] = useState(-1);
+  const more = useRef<HTMLButtonElement>(null);
+  return <><button ref={more} onClick={() => setStage(0)}>more</button>
+    {stage === 0 && <Popup open onOpenChange={() => setStage(-1)} anchorRef={more} label="menu"
+      heading={<button onClick={() => setStage(1)}>settings</button>}><p>body</p></Popup>}
+    {stage === 1 && <Dialog open onOpenChange={() => setStage(-1)}><DialogContent aria-describedby={undefined}><DialogHeading title="settings" /><button onClick={() => setStage(-1)}>finish</button></DialogContent></Dialog>}
+  </>;
+}
+it('a surface opened from a popup heading gives the focus back to the popup opener', async () => {
+  render(<FromHeading />);
+  const more = screen.getByText('more'); more.focus(); fireEvent.click(more);
+  const settings = await screen.findByRole('button', { name: 'settings' }); settings.focus(); fireEvent.click(settings);
+  const finish = await screen.findByText('finish');
+  await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+  fireEvent.click(finish);
+  await waitFor(() => expect(document.activeElement).toBe(more));
+});
+
 // A modal over a modal. When the upper one closes and what opened it is gone (the settings' update button after
 // a start), the focus stays in the modal still open, never on the page it covers; which modal is open is told by what
 // covers what (Radix hides the rest from reading), not by the order of the page.
