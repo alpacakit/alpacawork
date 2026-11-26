@@ -274,20 +274,38 @@ const noConditions = new Set<string>();
 type DatedRun = ChangeRun & { day: string };
 type ChangesMade = { runs: DatedRun[]; events: ReturnType<typeof scopeChangeEvents<DatedRun>> };
 /**
+ * Each launch as the changes read it, kept while the facts keep the same launch (a Run's launch is made again when its
+ * record changes) and it falls on the same day. A Run's conditions are written once, before its agent starts, so only a
+ * Run still running without them is read again.
+ */
+const dated = new WeakMap<FactLaunch, DatedRun>();
+/**
  * The change events of one scope's launches, made once per reading of the facts (the launches given are kept with
- * those facts, `ScopedAnalysis.datedLaunches`): later pages and other periods of the same facts read them again.
+ * those facts, `ScopedAnalysis.datedLaunches`): later pages and other periods of the same facts read them again. A
+ * new reading whose launches are all the ones the last reading of the scope made the events from (the facts moved
+ * elsewhere: a task's history, a value) takes those events as they are. The events come from the launches alone, so
+ * the scope they are kept under only decides how often they are found again, never which events are given.
  */
 const made = new WeakMap<object, Promise<ChangesMade>>();
-async function makeChanges(root: string, launches: readonly { day: string; run: FactLaunch }[], slices: Slices): Promise<ChangesMade> {
+const lastMade = new Kept<string, ChangesMade>(8);
+async function makeChanges(root: string, scope: string, launches: readonly { day: string; run: FactLaunch }[], slices: Slices): Promise<ChangesMade> {
   const runs: DatedRun[] = [];
   for (const { day, run } of launches) {
-    const key = `${root}\0${run.id}`;
-    const conditions = noConditions.has(key) ? null : readConditions(runFolder(root, run.id));
-    if (!conditions && !run.live) noConditions.add(key);
-    runs.push({ id: run.id, task: run.task, agent: run.agent, model: run.model, effort: run.effort, started: run.started, conditions, day });
+    let each = dated.get(run);
+    if (each?.day !== day || !each.conditions && run.live) {
+      const key = `${root}\0${run.id}`;
+      const conditions = noConditions.has(key) ? null : readConditions(runFolder(root, run.id));
+      if (!conditions && !run.live) noConditions.add(key);
+      dated.set(run, each = { id: run.id, task: run.task, agent: run.agent, model: run.model, effort: run.effort, started: run.started, conditions, day });
+    }
+    runs.push(each);
     if (slices.due) await slices.pause();
   }
-  return { runs, events: scopeChangeEvents(runs) };
+  const last = lastMade.get(scope);
+  const result = last && last.runs.length === runs.length && last.runs.every((run, at) => run === runs[at]) ? last
+    : { runs, events: scopeChangeEvents(runs) };
+  lastMade.set(scope, result);
+  return result;
 }
 
 const CHANGES = 100;
@@ -300,7 +318,7 @@ export async function readChanges(root: string, head: AnalysisHead, launches: re
   input: AnalysisChangesInput, slices: Slices): Promise<AnalysisChangesView> {
   let making = made.get(launches);
   if (!making) {
-    made.set(launches, making = makeChanges(root, launches, slices));
+    made.set(launches, making = makeChanges(root, JSON.stringify([root, head.project, head.timeZone]), launches, slices));
     making.catch(() => made.delete(launches));
   }
   const { runs, events: all } = await making;

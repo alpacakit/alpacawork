@@ -36,9 +36,10 @@ html:has([data-reader-mode="sheet"]) { --foot-ground: var(--lit); }
   scroll-padding-bottom: calc(var(--coordinator-dock) + var(--foot-gap));
 }
 /* What a number of the analysis opens, and the share card (features/analysis/Layers.tsx), stands as the reader does: on
- * a computer a panel the coordinator stands left of where the window has room for both (use-frame-placement DOCKED). At
- * every width what scrolls in it ends over the coordinator, one gap above it, so nothing in it passes behind the input
- * at rest and what is below shows its edge there; the window's ground goes on under it to the screen's foot. */
+ * a computer a panel the coordinator stands left of where the window has room for both (use-frame-placement DOCKED).
+ * Where the coordinator stands over it (a window too narrow for both, a phone) what scrolls in it ends over the
+ * coordinator, one gap above it, so nothing in it passes behind the input at rest and what is below shows its edge
+ * there; the window's ground goes on under it to the screen's foot. Beside it, the panel keeps no such room (clearOf). */
 [data-analysis-layer] {
   margin-bottom: calc(var(--coordinator-dock) + var(--foot-gap));
   padding-bottom: 1.5rem;

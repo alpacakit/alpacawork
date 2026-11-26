@@ -97,20 +97,24 @@ export function Parts({ items = [], line }: { items?: PartItem[]; line?: { name:
  * The widths of the parts' number columns: the widest each takes in the group, the live legend over a row left out (it
  * says one of the days its row's room already holds). Measured again only when what the cells say has changed (their
  * words are read without laying the page out) or when `force`d (the group's width or type changed); every width is read
- * before any is written, and a width is written only when it moves, so the page is laid out once for it.
+ * before any is written. They are written on the rows' lefts (`data-part-room`), the only places that read them, and
+ * only where they move: the charts beside them, most of the page, are not styled again for them.
  */
-const measuredParts = new WeakMap<HTMLElement, string>();
+const measuredParts = new WeakMap<HTMLElement, { said: string; widths: Record<"value" | "share", string> }>();
 function measureParts(root: HTMLElement, force = false) {
   const cells = [...root.querySelectorAll<HTMLElement>("[data-part-col]")].filter(cell => !cell.closest("[data-day-legend]"));
   const said = cells.map(cell => `${cell.dataset.partCol}\u0000${cell.textContent}`).join("\u0001");
-  if (!force && measuredParts.get(root) === said) return;
-  measuredParts.set(root, said);
-  const most: Record<string, number> = { value: 0, share: 0 };
-  for (const cell of cells) most[cell.dataset.partCol!] = Math.max(most[cell.dataset.partCol!] ?? 0, cell.getBoundingClientRect().width);
-  for (const column of ["value", "share"]) {
-    const width = most[column] ? `${Math.ceil(most[column]!)}px` : "auto";
-    if (root.style.getPropertyValue(`--part-${column}`) !== width) root.style.setProperty(`--part-${column}`, width);
+  let measured = measuredParts.get(root);
+  if (force || measured?.said !== said) {
+    const most: Record<string, number> = { value: 0, share: 0 };
+    for (const cell of cells) most[cell.dataset.partCol!] = Math.max(most[cell.dataset.partCol!] ?? 0, cell.getBoundingClientRect().width);
+    const width = (column: string) => most[column] ? `${Math.ceil(most[column]!)}px` : "auto";
+    measuredParts.set(root, measured = { said, widths: { value: width("value"), share: width("share") } });
   }
+  // A left drawn since the words were measured (a day's legend) takes them too.
+  for (const room of root.querySelectorAll<HTMLElement>("[data-part-room]"))
+    for (const column of ["value", "share"] as const)
+      if (room.style.getPropertyValue(`--part-${column}`) !== measured.widths[column]) room.style.setProperty(`--part-${column}`, measured.widths[column]);
 }
 
 /**
@@ -133,14 +137,14 @@ export function Row({ row, left, children, className }: { row?: number; left: Re
     {/* Each in its own place on the grid, so the day's legend (placed over the left) moves neither. The left holds,
         from the first, the room of the tallest of the span's numbers and every day's legend (each unseen but the one
         shown), so pointing at a day never makes the row taller nor runs it into the next. */}
-    <div className={cn(LEFT, "row-start-1 grid min-w-0")}>
+    <div data-part-room="" className={cn(LEFT, "row-start-1 grid min-w-0")}>
       <div className={cn("col-start-1 row-start-1 min-w-0", day !== null && "invisible")}>{left}</div>
       {group && !group.narrow && row !== undefined && group.rows[row] && <LegendRoom say={group.rows[row]!} names={group.names} />}
     </div>
     {children && <div className={cn(RIGHT, "row-start-1 narrow:mt-3")}>{children}</div>}
     {/* After the chart, so the keys go from the chart to its day's parts; drawn over the left's room. Escape there
         lets go of the day and gives the focus to the chart. */}
-    {day !== null && <div className={cn(LEFT, "relative row-start-1 min-w-0")}
+    {day !== null && <div data-part-room="" className={cn(LEFT, "relative row-start-1 min-w-0")}
       onKeyDown={event => { if (event.key !== "Escape") return; event.preventDefault(); group!.point(null); group!.chartOf(row!)?.focus({ preventScroll: true }); }}>
       <DayLegend say={group!.rows[row!]!} at={day} day={group!.dayName(day)} onList={list => group!.openDay(list)} />
     </div>}

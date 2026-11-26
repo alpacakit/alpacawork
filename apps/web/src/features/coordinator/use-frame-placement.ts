@@ -50,6 +50,20 @@ function laidOutAcross(element: HTMLElement) {
   return { left, width: element.offsetWidth };
 }
 /**
+ * A docked panel the coordinator stands clear of keeps no room for it at its foot (styles.css): the page's
+ * --coordinator-dock is 0 on it. Where the input or the conversation over it reaches across into the panel (a window
+ * too narrow for both side by side, besidePanel), it keeps the page's. `across` is null where nothing stands at the
+ * foot on a computer, and every panel goes back to the page's.
+ */
+function clearOf(panels: HTMLElement[], across: { left: number; width: number } | null) {
+  // Every panel read before any is written, so one layout serves them all.
+  const clear = panels.map(panel => {
+    const box = across && laidOutAcross(panel);
+    return !!box && (across!.left + across!.width <= box.left || box.left + box.width <= across!.left);
+  });
+  panels.forEach((panel, at) => clear[at] ? setLength(panel.style, "--coordinator-dock", 0) : panel.style.removeProperty("--coordinator-dock"));
+}
+/**
  * The coordinator's widest (frame.ts): the reading column at its widest as the style sheet resolves it now (the type
  * size changes it), with the edges of the surface it is read in.
  */
@@ -142,6 +156,7 @@ export function useFramePlacement({ surfaces, frame, setHeld, open, expanded, ow
       cappedEditor.current?.style.removeProperty("--coordinator-editor-room");
       cappedEditor.current = null;
       root.removeProperty("--coordinator-dock");
+      clearOf(docked(), null);
       for (const name of ["--coordinator-input-top", "--coordinator-left", "--coordinator-width"]) entrance.current?.style.removeProperty(name);
       panel.current?.style.removeProperty("--coordinator-panel-room");
       drawnAt.current = null;
@@ -179,7 +194,9 @@ export function useFramePlacement({ surfaces, frame, setHeld, open, expanded, ow
     // Watched as they are now: a panel come or gone (a file opened, the reader to the whole window and back) is measured.
     const observer = watch.current;
     if (observer) {
-      for (const each of watched.current) if (!panels.includes(each)) observer.unobserve(each);
+      const gone = watched.current.filter(each => !panels.includes(each));
+      for (const each of gone) observer.unobserve(each);
+      clearOf(gone, null);
       for (const each of panels) if (!watched.current.includes(each)) observer.observe(each);
       watched.current = panels;
     }
@@ -304,6 +321,7 @@ export function useFramePlacement({ surfaces, frame, setHeld, open, expanded, ow
     const onFoot = !rest || rest.edge === "bottom" && roomNow!.bottom - rest.foot <= FIRST.y + 16;
     const input = rest ? innerHeight - rest.top : foot;
     const over = !expanded ? 0 : rest ? input + BETWEEN + rest.height : panelBottom + (Number(sheet?.dataset.sheetRest) || 0);
+    clearOf(panels, onFoot && placed ? inputBox : null);
     setLength(root, "--coordinator-dock", onFoot ? Math.max(input + (expanded ? 0 : noticeRoom), over) : 0);
     if (entrance.current) setLength(entrance.current.style, "--coordinator-input-top", foot);
     // Only the folded entrance consumes the composer edges; the panel owns its height cap.
@@ -397,6 +415,7 @@ export function useFramePlacement({ surfaces, frame, setHeld, open, expanded, ow
   useEffect(() => () => {
     cappedEditor.current?.style.removeProperty("--coordinator-editor-room");
     document.documentElement.style.removeProperty("--coordinator-dock");
+    clearOf(docked(), null);
   }, []);
   return { shown, footSize, maximized, toggleMaximized, hand };
 }

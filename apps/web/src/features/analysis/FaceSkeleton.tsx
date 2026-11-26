@@ -19,7 +19,7 @@ export function FaceSkeleton({ look, span, bucket }: { look: Look; span: Span; b
   const { tasks, usage, days, series } = standIn(span, bucket);
   const none = () => {};
   return <div role="status" aria-label={t("loading")} aria-busy="true" data-skeleton="analysis" data-face-skeleton>
-    <div inert>{look === "tasks" ? <TasksLook view={tasks} span={span} root={null} days={days} open={none} zone="" />
+    <div inert>{look === "tasks" ? <TasksLook view={tasks} span={span} root={null} days={days} open={none} zone="" live={false} />
       : <UsageLook view={usage} span={span} root={null} tasks={tasks} days={days} open={none} zone="" series={series} live={false} />}</div>
   </div>;
 }
