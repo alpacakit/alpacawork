@@ -14,8 +14,23 @@ export type Parts = { value: string; unit: string; tight?: boolean };
 export type Kind = "tasks" | "times" | "prs" | "conversations" | "people" | "questions" | "plain" | "hours" | "tokens";
 const COUNT_WORD = { tasks: "unit.tasks", times: "unit.times", prs: "unit.prs", conversations: "unit.conversations", people: "unit.people", questions: "unit.questions" } as const;
 
-const word = (key: string, options?: Record<string, unknown>) => i18n.t(`analysis:${key}`, options);
 const locale = () => i18n.resolvedLanguage ?? i18n.language ?? "en";
+/**
+ * A text as the language writes it, kept once made: a chart writes every day's numbers to size its legend, most of
+ * them the same few words, and looking a text up and filling it in costs far more than reading it back. The catalogs
+ * are all loaded with the app, so a text only changes with the language, which is part of what it is kept under.
+ */
+const said = new Map<string, string>();
+const SAID_MAX = 20_000;
+const word = (key: string, options?: Record<string, number | string>) => {
+  const at = `${locale()}\u0000${key}\u0000${options ? JSON.stringify(options) : ""}`;
+  let text = said.get(at);
+  if (text === undefined) {
+    if (said.size >= SAID_MAX) said.clear();
+    said.set(at, text = i18n.t(`analysis:${key}`, options));
+  }
+  return text;
+};
 /**
  * What a language writes with, made or read once for it (a formatter, its steps, whether it writes count words): a chart
  * writes every day's numbers and dates to size its legend, and making a formatter or reading a text costs far more than

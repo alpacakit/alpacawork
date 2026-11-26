@@ -190,8 +190,11 @@ export function useAt(task: string, at: string | null) {
   const root = useWorkspaceInfo(info => info.root);
   return useQuery({ ...resources.analysisTimeline(root, "at", { task, scope: "subtree", at }, atViewSchema), enabled: !!at });
 }
-/** When what Runs ran under changed (`analysis changes`) over the face's span, read with the face. */
-export function useChanges(project: string | null, span: Span) {
+/**
+ * When what Runs ran under changed (`analysis changes`) over the face's span, read with the face. `enabled`: false for
+ * the face's stand-in while its answer is read, so this read never goes before the face's own.
+ */
+export function useChanges(project: string | null, span: Span, enabled = true) {
   const root = useWorkspaceInfo(info => info.root);
-  return useQuery({ ...resources.analysisTimeline(root, "changes", { ...scope(project, span), limit: "100" }, changesViewSchema) });
+  return useQuery({ ...resources.analysisTimeline(root, "changes", { ...scope(project, span), limit: "100" }, changesViewSchema), enabled });
 }

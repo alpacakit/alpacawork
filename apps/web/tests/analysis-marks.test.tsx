@@ -8,6 +8,7 @@ import { BarChart, ChartGroup, changesByBin, Parts, Row } from "../src/features/
 import { afterEach, beforeAll, expect, test, vi } from "vitest";
 import { i18n, startI18n } from "@alpacawork/i18n";
 import { TodayMarks } from "../src/features/analysis/FaceSwitch";
+import { FaceSkeleton } from "../src/features/analysis/FaceSkeleton";
 import { FRESH_AFTER_MS } from "../src/features/analysis/data";
 import { queryClient } from "../src/data/query-client";
 import { useViewStore } from "../src/state/view-store";
@@ -371,4 +372,15 @@ test("a bin says each change once, however many agents took it on its days", () 
     { day: "2026-11-30", words: ["スキル plan を追加"] },
   ]);
   expect([...marks]).toEqual([[1, ["alpacawork 0.1.6 → 0.1.7", "スキル review を更新"]]]);
+});
+
+test("the face's stand-in asks the server for nothing, so the face's own answer is read first", async () => {
+  const asked: string[] = [];
+  vi.stubGlobal("fetch", async (input: RequestInfo | URL) => { asked.push(String(input)); return new Response("{}", { status: 200 }); });
+  for (const look of ["tasks", "usage"] as const) {
+    const view = render(<TestWorkspace data={screenData()}><FaceSkeleton look={look} span={{ period: "7d" }} bucket="day" /></TestWorkspace>);
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 50)); });
+    view.unmount();
+  }
+  expect(asked.filter(url => url.includes("analysis/"))).toEqual([]);
 });
