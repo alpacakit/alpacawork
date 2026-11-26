@@ -12,9 +12,10 @@ import { reducedMotion } from "@/lib/motion";
 import { keepPressedRow } from "@/features/reader/reading-position";
 
 /* Hallmark · component: an agent's work line and its steps · genre: modern-minimal · theme: the app's own tokens (ink,
- * soft, muted, error, working, line) · states: folded (one line: the moving mark, the tool and what it runs) · open
- * (every step so far, one line each) · a step opened (what it ran and what came back, in full) · a step done (✓),
- * failed (red ✗) or of an unknown outcome (?) · reading · not readable · reduced motion (the mark's three dots stand still) */
+ * soft, muted, error, working, line) · states: folded (one line: the moving mark and the agent's words for its step,
+ * else what it runs) · open (every step so far, one line each) · a step opened (what it ran and what came back, in
+ * full) · a step done (✓), failed (red ✗) or of an unknown outcome (?) · reading · not readable · reduced motion (the
+ * mark's three dots stand still) */
 
 /** Codex names its items by their type; said as the tool names other agents give. Any other tool keeps its own name. */
 const ITEM_NAMES: Record<string, string> = { command_execution: "Bash", file_change: "Edit", web_search: "WebSearch", mcp_tool_call: "MCP", collab_tool_call: "Agent" };
@@ -25,8 +26,10 @@ const atEnd = (kind: string) => kind === "file" || kind === "edit";
 const ONE_LINE = "min-w-0 overflow-hidden text-ellipsis whitespace-pre font-mono";
 /** What it ran keeps at least a few letters in sight on one line, however long the tool's name and the agent's words. */
 const TARGET = "flex-1 min-w-[8ch]";
+/** A step's one line: as high with a command's monospace as with the agent's words, its parts centred on it. */
+const LINE = "flex min-w-0 items-center gap-1.5";
 /** A tool's name gives way before what it ran: it never takes more than this of the line. */
-const TOOL = "max-w-[40%] flex-none truncate font-medium";
+const TOOL = "max-w-[40%] flex-none truncate text-muted";
 
 /**
  * An agent at work: three dots go once round, gather into one and part again. It says only that the agent is going,
@@ -46,18 +49,25 @@ export const WorkMark = memo(function WorkMark({ className }: { className?: stri
   </span>;
 });
 
-type Line = Pick<RunStep, "tool" | "kind" | "about" | "text">;
-/** The tool, the agent's own words for it when it gave them, then as much of what it ran as fits: one line. */
+type Line = Pick<RunStep, "tool" | "kind" | "about" | "text" | "more">;
 const sameLine = (a: { line: Line }, b: { line: Line }) => a.line.tool === b.line.tool && a.line.kind === b.line.kind &&
-  a.line.about === b.line.about && a.line.text === b.line.text;
-/** Drawn again only when what it says changes, not each time the activity it comes from is read anew. */
+  a.line.about === b.line.about && a.line.text === b.line.text && a.line.more === b.line.more;
+/**
+ * A step on one line, the same in the chat and the detail: the agent's own words for it when it gave them, alone, as
+ * what it does reads before how; else what it ran as its preview starts, a command after `$` and any other tool after
+ * its name, with how many lines follow. Opened, the step shows what it ran in full. Drawn again only when
+ * what it says changes, not each time the activity it comes from is read anew.
+ */
 const LineWords = memo(function LineWords({ line }: { line: Line }) {
+  const { t } = useTranslation("people");
+  if (line.about) return <span dir="auto" className="min-w-0 flex-1 truncate">{line.about}</span>;
+  const command = line.kind === "command";
   return <>
-    <span className={TOOL}>{toolName(line.tool)}</span>
-    {line.about && <span dir="auto" className="min-w-0 max-w-[62%] truncate">{line.about}</span>}
+    {command ? <span aria-hidden className="flex-none font-mono text-muted">$</span> : <span className={TOOL}>{toolName(line.tool)}</span>}
     {atEnd(line.kind)
       ? <span dir="rtl" className={cn(ONE_LINE, TARGET, "text-left")}><bdi>{line.text}</bdi></span>
-      : <span dir="auto" className={cn(ONE_LINE, TARGET, line.about && "text-muted")}>{line.text}</span>}
+      : <span dir="auto" className={cn(ONE_LINE, TARGET)}>{line.text}</span>}
+    {line.more > 0 && <span className="flex-none text-muted">{t("now.step.moreLines", { count: line.more })}</span>}
   </>;
 }, sameLine);
 
@@ -69,7 +79,9 @@ const LineWords = memo(function LineWords({ line }: { line: Line }) {
 export function WorkLine({ step, idle, label, end, className, ...data }: { step: RunStep | undefined; idle?: string; label?: string; end?: ReactNode; className?: string;
   [data: `data-${string}`]: true | undefined }) {
   if (!step && !idle && !label) return null;
-  return <div data-work-line {...data} className={cn("flex min-w-0 items-baseline gap-1.5 text-soft", className)}>
+  // Centred, not on one baseline: words and a command's monospace sit on different baselines, which would make a line
+  // with a command a pixel taller than one without (LINE).
+  return <div data-work-line {...data} className={cn(LINE, "text-soft", className)}>
     <WorkMark />
     {label !== undefined ? <span className="min-w-0 flex-1 truncate">{label}</span>
       : step ? <LineWords line={step} /> : <span className="min-w-0 flex-1 truncate">{idle}</span>}
@@ -256,7 +268,7 @@ const StepRow = memo(function StepRow({ run, step, generation, open, toggle, aga
   }, [shown]);
   return <li ref={item} data-run-step={step.state} className="min-w-0">
     <button type="button" aria-expanded={open} onClick={event => toggle(step, event.currentTarget)}
-      className="flex w-full min-w-0 cursor-pointer items-baseline gap-1.5 rounded-sm py-0.5 text-left text-soft outline-none hover:text-ink focus-visible:outline-2 focus-visible:outline-ring narrow:py-1.5">
+      className="flex w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-sm py-0.5 text-left text-soft outline-none hover:text-ink focus-visible:outline-2 focus-visible:outline-ring narrow:py-1.5">
       <span data-run-step-mark className={cn("w-2.5 flex-none text-center font-sans", step.state === "failed" ? "text-error" : step.state === "running" ? "text-working motion-safe:animate-pulse" : "text-muted")}>
         <span aria-hidden>{step.state === "running" ? "●" : step.state === "failed" ? "✗" : step.state === "unknown" ? "?" : "✓"}</span>
         <span className="sr-only">{step.state === "running" ? t("now.step.state.running") : step.state === "failed" ? t("now.step.state.failed")
