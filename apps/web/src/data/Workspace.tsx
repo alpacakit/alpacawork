@@ -15,24 +15,11 @@ import { useServerReadFacts, useDisplayReadFacts } from "./use-read-facts";
 import { conversationHeldByRelease, useConversation } from "@/features/coordinator/coordinator";
 import { Message } from "@/components/ui/message";
 import { readFailureReason } from "@/components/ui/loadable";
-import { HeldPage, UpdateConfirmDialog, UpdateStateLine } from "@/features/update/UpdateView";
-import { useUpdateStatus, type UpdateStatus } from "@/features/update/update-state";
+import { HeldPage, UpdateCard, UpdateConfirmDialog } from "@/features/update/UpdateView";
+import { reloadForVersion, useReloadWhenUpdated, useUpdateStatus, type UpdateStatus } from "@/features/update/update-state";
 import { fromOtherVersion, heldByRelease, unreachable } from "./client";
 
 const HELD_RETRY_MS = 10_000;
-/** The page is opened again by itself for a new version at most once a minute: a page that still does not match says so. */
-const VERSION_RELOAD_KEY = "alpacawork:reloaded-for-version";
-const VERSION_RELOAD_MS = 60_000;
-/** Opens the page again for serve's new version, unless it was just done (the reload did not bring a matching page). */
-function reloadForVersion(): boolean {
-  try {
-    const last = Number(sessionStorage.getItem(VERSION_RELOAD_KEY) ?? 0);
-    if (Date.now() - last < VERSION_RELOAD_MS) return false;
-    sessionStorage.setItem(VERSION_RELOAD_KEY, String(Date.now()));
-  } catch { return false; } // No storage to stop a loop with: the person reloads.
-  location.reload();
-  return true;
-}
 /** An update that holds the workspace until it goes on: under way, or stopped and needing the person. */
 const heldByUpdate = (status: UpdateStatus) => status.kind === "applying" || status.kind === "recovering" || status.kind === "fetching"
   || status.kind === "attention";
@@ -40,6 +27,8 @@ const heldByUpdate = (status: UpdateStatus) => status.kind === "applying" || sta
 /** The frame is drawn as soon as language and theme are known; what it shows from the index follows the projection. */
 export function Workspace({ children }: { children: ReactNode }) {
   useApplyTheme();
+  // A finished update brings this page to the new version by itself, unless unsaved settings hold it.
+  useReloadWhenUpdated();
   const client = useQueryClient();
   const { t } = useTranslation("panels");
   const feed = useWorkspace();
@@ -130,7 +119,7 @@ export function Workspace({ children }: { children: ReactNode }) {
     return () => clearInterval(timer);
   }, [waiting]);
   if (failed || held) return <main className="min-h-screen grid place-items-center px-6">
-    <div className="flex w-full max-w-md flex-col items-center gap-4">{held ? <HeldPage /> : stop !== "version" && <UpdateStateLine />}<UpdateConfirmDialog />
+    <div className="flex w-full max-w-md flex-col items-center gap-4">{held ? <HeldPage /> : stop !== "version" && <div className="w-full"><UpdateCard quiet /></div>}<UpdateConfirmDialog />
     {!held && (stop === "version" ? <Message size="page" tone="info" live title={t("workspaceStop.updated")}
         description={reloading ? t("workspaceStop.reloading") : `${t("workspaceStop.reloadHint")} ${t("update.resumeHint")}`}
         action={reloading ? undefined : { label: t("update.reload"), run: () => location.reload() }} />

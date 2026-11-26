@@ -240,3 +240,43 @@ export function continueUpdate(status: Extract<UpdateStatus, { kind: "attention"
     await confirmUpdate(review.resume);
   }, "update continue", () => i18n.t("panels:update.continueFailed"));
 }
+
+/**
+ * What keeps this page from loading the new version by itself once an update is done: unsaved work that only lives in
+ * the page (the settings' draft). Drafts of the inputs are kept in the browser and come back after loading again.
+ */
+export const useReloadHolds = create<{ holds: ReadonlySet<string>; hold: (key: string, on: boolean) => void }>((set) => ({
+  holds: new Set(),
+  hold: (key, on) => set(({ holds }) => {
+    if (holds.has(key) === on) return {};
+    const next = new Set(holds);
+    if (on) next.add(key); else next.delete(key);
+    return { holds: next };
+  }),
+}));
+
+/**
+ * Loads the new version by itself once the server runs it, unless unsaved work holds the page; then the update's card
+ * offers the reload. Mounted once with the workspace.
+ */
+export function useReloadWhenUpdated() {
+  const status = useUpdateStatus();
+  const held = useReloadHolds((state) => state.holds.size > 0);
+  useEffect(() => {
+    if (status.kind === "done" && !held) reloadForVersion();
+  }, [status.kind, held]);
+}
+
+/** The page is opened again by itself for a new version at most once a minute: a page that still does not match says so. */
+const VERSION_RELOAD_KEY = "alpacawork:reloaded-for-version";
+const VERSION_RELOAD_MS = 60_000;
+/** Opens the page again for serve's new version, unless it was just done (the reload did not bring a matching page). */
+export function reloadForVersion(): boolean {
+  try {
+    const last = Number(sessionStorage.getItem(VERSION_RELOAD_KEY) ?? 0);
+    if (Date.now() - last < VERSION_RELOAD_MS) return false;
+    sessionStorage.setItem(VERSION_RELOAD_KEY, String(Date.now()));
+  } catch { return false; } // No storage to stop a loop with: the person reloads.
+  location.reload();
+  return true;
+}

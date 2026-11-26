@@ -4,7 +4,7 @@ import { afterEach, beforeAll, expect, test, vi } from "vitest";
 import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { startI18n } from "@alpacawork/i18n";
 import { useUpdateStatus } from "../src/features/update/update-state";
-import {UpdateStateLine,UpdateMark} from "../src/features/update/UpdateView";
+import {UpdateCard,UpdateMark} from "../src/features/update/UpdateView";
 import { APP_VERSION } from "../src/lib/app-version";
 import { TestWorkspace } from "./fixtures";
 
@@ -49,7 +49,7 @@ test("Continue on a stopped update: the gear's mark goes back to under way with 
     if(String(url).includes("update/confirm")){posts++;status={kind:"fetching",opId,version:"0.10.0"};return Response.json({opId,terminal:null});}
     throw new Error("unexpected "+url);
   });
-  const {container}=render(<TestWorkspace><UpdateMark/><UpdateStateLine/></TestWorkspace>);
+  const {container}=render(<TestWorkspace><UpdateMark/><UpdateCard/></TestWorkspace>);
   await waitFor(()=>expect(container.querySelector("[data-update-action]")?.textContent).toBe("Continue"));
   expect(container.querySelector("[data-update-mark]")?.getAttribute("data-update-mark")).toBe("attention");
   fireEvent.click(container.querySelector("[data-update-action]")!);

@@ -1,7 +1,8 @@
 /**
- * The update's places on the screen: a mark on the gear, one status line under the settings' title with at most one
- * action (a version to start is a state like the others: its line names it and offers Update), a short confirmation,
- * and the version at the settings' foot. There is no update tab. Each draws the one projection (`useUpdateStatus`).
+ * The update's places on the screen: a mark on the gear (and on Settings' Update), the one card that says where an
+ * update stands in every state with at most its presses (Settings' Update, the page an update holds, the stopped
+ * workspace), a short confirmation, and the version at the settings' foot. Each draws the one projection
+ * (`useUpdateStatus`).
  */
 import { useState } from "react";
 import { SKILL_OFFERS } from "@alpacawork/contract";
@@ -17,11 +18,10 @@ import { APP_VERSION } from "@/lib/app-version";
 import { cn } from "@/lib/utils";
 import { CopyButton } from "@/components/ui/copy-button";
 import { textClip } from "@/lib/clipboard";
-import { approveStart, continueUpdate, postponeUpdate, pressUpdate, retryUpdate, useUpdateLocal, useUpdateStatus, useWaitingForUpdate,
+import { approveStart, continueUpdate, postponeUpdate, pressUpdate, retryUpdate, useReloadHolds, useUpdateLocal, useUpdateStatus, useWaitingForUpdate,
   type Confirmation, type UpdateStatus } from "./update-state";
 
 const CUT = "ring-2 ring-[color:var(--bg)]";
-const BAND = "rounded-lg border border-line bg-[color:color-mix(in_oklab,var(--ink)_4%,transparent)] px-4 py-3";
 /**
  * A press whose answer has not come: the button looks and acts disabled but keeps the focus it has (a disabled button
  * drops the keyboard's focus out of the dialog), so the next Tab goes on from it.
@@ -60,71 +60,6 @@ export function useGearLabel() {
 
 /** Where a published version's notes are: what it changes and what to check before installing it. */
 export const releaseNotesUrl = (version: string) => `https://github.com/alpacakit/alpacawork/releases/tag/v${encodeURIComponent(version)}`;
-
-/**
- * `long`: a sentence with its next step; on a phone its button goes under it so the words keep the line's width.
- * `notes`: the version whose release notes the line links to.
- * `pause`: the version a pause instruction is for, offered to copy and send the coordinator while agents keep it waiting.
- */
-type Line = { icon: IconName; text: string; warn?: boolean; long?: boolean; notes?: string; pause?: string;
-  action?: { label: string; run: () => void; primary?: boolean } | null };
-/** What the person decides on now, in one phrase, and the one press that then applies (or none). */
-function useLine(status: UpdateStatus, held: boolean): Line | null {
-  const { t } = useTranslation("panels");
-  // On the page an update holds, a status not read yet, or one that no longer says the switch (it ended, the reads
-  // not yet back), says what the page waits for: nothing to press there until the workspace is back.
-  if (held && !HOLDS.has(status.kind)) return { icon: "doing", text: t("update.held.unread") };
-  switch (status.kind) {
-    case "none": return null;
-    case "available": {
-      // A version that changes the execution FORMAT or the database is refused while agents work: said before any press,
-      // and offered once none is (the status is read again every 30 s meanwhile).
-      const later = status.requiresNoRuns && status.runs > 0;
-      const offered = later ? t("update.line.availableAfterRuns", { version: status.version, count: status.runs })
-        : t("update.line.available", { version: status.version, current: APP_VERSION });
-      return { icon: later ? "info" : "arrowDown", long: later, notes: status.version, pause: later ? status.version : undefined,
-        text: status.note?.kind === "withdrawn" ? `${t("update.line.withdrawn", { version: status.note.version })} ${offered}` : offered,
-        action: later ? null : { label: t("update.start"), run: () => void pressUpdate(status), primary: true } };
-    }
-    case "fetching": return { icon: "doing", text: t("update.line.fetching", { version: status.version }) };
-    case "waiting": return { icon: "doing", text: t("update.line.waiting", { count: status.runs }),
-      action: { label: t("update.postpone"), run: () => void postponeUpdate(status.opId) } };
-    case "failed": return { icon: "error", warn: true, long: !!status.runConflict, pause: status.runConflict ? status.version : undefined,
-      text: status.runConflict ? t("update.line.runsActive", { count: status.runConflict.runs, version: status.version })
-        : status.category === "network" ? t("update.line.failedNetwork", { version: status.version })
-        : status.category === "disk" ? t("update.line.failedDisk", { version: status.version }) : t("update.line.failed", { version: status.version }),
-      action: { label: t("update.retry"), run: () => void retryUpdate(status) } };
-    case "withdrawn": return { icon: "info", text: t("update.line.withdrawn", { version: status.version }) };
-    // Accepted: nothing to put off or try again, only followed until it ends.
-    case "applying": return { icon: "doing", text: t("update.line.applying", { version: status.version }) };
-    case "recovering": return { icon: "doing", text: t("update.line.recovering", { version: status.version }) };
-    // Stopped and needing the person: it goes on with the same operation (why it stopped stays in the release's logs).
-    case "attention": return { icon: "error", warn: true, long: true, action: { label: t("update.continue"), run: () => void continueUpdate(status) },
-      text: status.version !== null ? t("update.line.attention", { version: status.version }) : t("update.line.attentionUnknown") };
-    // Its words say to everyone to ask for a resume: the screen does not know whether agents were paused for it.
-    case "done": return { icon: "done", long: true, text: t("update.line.done"), action: { label: t("update.reload"), run: () => location.reload(), primary: true } };
-    default: return null;
-  }
-}
-
-/**
- * Under the title row, above the tabs (or alone on the page an update holds, `held`): one always-present live line
- * whose words are replaced, and its one action.
- */
-export function UpdateStateLine({ held = false, className }: { held?: boolean; className?: string }) {
-  const status = useUpdateStatus(), sending = useUpdateLocal((local) => local.sending);
-  const line = useLine(status, held);
-  // A line stands as a band (the note set apart beside what it is about, as Message's band): none when there is nothing to say.
-  return <div data-update-line className={cn("flex flex-wrap items-center gap-x-4 gap-y-2.5", line && BAND, line && className)}>
-    <p role="status" aria-live="polite" data-update-state className={cn("m-0 flex min-w-0 flex-1 basis-48 items-start gap-2 text-sm", line?.long && "narrow:basis-full", line?.warn ? "text-warn" : "text-ink")}>
-      {line && <><Icon name={line.icon} className="mt-0.5 flex-none" /><span className="min-w-0 [overflow-wrap:anywhere] [word-break:auto-phrase]">{line.text}
-        {line.notes && <> <ReleaseNotes version={line.notes} /></>}</span></>}
-    </p>
-    {line?.action && <Button data-update-action variant={line.action.primary ? "default" : "outline"} className={cn("flex-none narrow:min-h-11 narrow:w-full", BUSY_PRESS)}
-      aria-disabled={sending || undefined} onClick={() => { if (!sending) line.action!.run(); }}>{line.action.label}</Button>}
-    {line?.pause && <PauseInstruction version={line.pause} />}
-  </div>;
-}
 
 /**
  * The words that ask the coordinator to pause working agents at a good point (hold their tasks, let running ones finish
@@ -186,20 +121,17 @@ function StartConfirmation({ confirmation }: { confirmation: Confirmation }) {
 }
 
 /**
- * The page an update holds (nothing else can be read meanwhile), as the shared page message: what the switch is doing,
- * that the screen comes back once it ends (unless it stopped and needs the person), its one press, and which app this
- * is. Read every 3 s while shown.
+ * The page an update holds (nothing else can be read meanwhile): the update's card, as Settings shows it, and which
+ * app this is. A status not read yet, or one that no longer says the switch (it ended, the reads not yet back), says
+ * what the page waits for. Read every 3 s while shown.
  */
 export function HeldPage() {
   const { t } = useTranslation("panels");
   useWaitingForUpdate();
-  const status = useUpdateStatus(), sending = useUpdateLocal((local) => local.sending);
-  const line = useLine(status, true);
-  if (!line) return null;
+  const status = useUpdateStatus();
   return <div className="flex w-full flex-col items-center gap-3">
-    <Message size="page" live tone={line.warn ? "error" : line.icon === "doing" ? "waiting" : "info"}
-      title={<span data-update-state>{line.text}</span>} description={status.kind !== "attention" ? t("update.held.wait") : undefined}
-      action={line.action ? { label: line.action.label, run: line.action.run, busy: sending, data: { "data-update-action": "" } } : undefined} />
+    {HOLDS.has(status.kind) ? <div className="w-full text-start"><UpdateCard /></div>
+      : <Message size="page" live tone="waiting" title={t("update.held.unread")} description={t("update.held.wait")} />}
     <p data-version-line className="m-0 text-xs text-muted">alpacawork {APP_VERSION}</p>
   </div>;
 }
@@ -221,8 +153,8 @@ export function useOpenSettingsFromGear() {
 
 /**
  * Settings' Update: the one place the app's update is read and done. On top, where this PC stands: a new version
- * offered (from which to which, its release notes, the one press), the latest running, or the update's own state line
- * while one is under way or needs the person. Under it, everything an update replaces, by name: alpacawork itself
+ * offered (from which to which, its release notes, the one press), the latest running, or the switch under way or
+ * needing the person. Under it, everything an update replaces, by name: alpacawork itself
  * and each skill that comes with it, so none of them is looked for or updated on its own.
  */
 export function UpdateSettingsTab() {
@@ -264,8 +196,9 @@ export function UpdateSettingsTab() {
  */
 type Card = { tone: "ok" | "new" | "busy" | "warn"; title: string; from: string | null; to: string; body?: string;
   action?: { label: string; run: () => void; secondary?: boolean }; pause?: string };
-function useCard(status: UpdateStatus): Card | null {
+function useCard(status: UpdateStatus): Card {
   const { t } = useTranslation("panels");
+  const held = useReloadHolds((state) => state.holds.size > 0);
   const now = APP_VERSION;
   switch (status.kind) {
     case "none": return { tone: "ok", title: t("update.card.latest"), from: null, to: now };
@@ -290,9 +223,9 @@ function useCard(status: UpdateStatus): Card | null {
       action: { label: t("update.retry"), run: () => void retryUpdate(status) }, pause: status.runConflict ? status.version : undefined };
     case "attention": return { tone: "warn", title: t("update.card.attention"), from: now, to: status.version ?? "", body: t("update.card.attentionBody"),
       action: { label: t("update.continue"), run: () => void continueUpdate(status) } };
-    case "done": return { tone: "ok", title: t("update.card.done"), from: null, to: status.version, body: t("update.card.doneBody"),
+    // The page loads the new version by itself; the card stays only while unsaved settings hold it, or a reload failed.
+    case "done": return { tone: "ok", title: t("update.card.done"), from: null, to: status.version, body: held ? t("update.card.doneHeld") : t("update.card.doneBody"),
       action: { label: t("update.reload"), run: () => location.reload() } };
-    default: return null;
   }
 }
 
@@ -303,24 +236,25 @@ const CARD_MARK: Record<Card["tone"], { icon: IconName; className: string }> = {
   warn: { icon: "warn", className: "bg-[color:color-mix(in_oklab,var(--warn)_14%,transparent)] text-warn" },
 };
 
-export function UpdateCard() {
+/** `quiet`: nothing while there is nothing to do (the latest running), where the card stands beside other news. */
+export function UpdateCard({ quiet = false }: { quiet?: boolean }) {
   const status = useUpdateStatus(), sending = useUpdateLocal((local) => local.sending);
   const card = useCard(status);
-  if (!card) return null;
+  if (quiet && (status.kind === "none" || status.kind === "withdrawn")) return null;
   const mark = CARD_MARK[card.tone];
   return <section data-update-card={status.kind} role="status" aria-live="polite" className="flex flex-wrap items-start gap-x-4 gap-y-4 rounded-lg border border-line px-5 py-4">
     {/* On a phone the mark stands in the title's line, so the words keep the card's width. */}
     <span className={cn("grid size-9 flex-none place-items-center rounded-full narrow:hidden", mark.className)}>
       <Icon name={mark.icon} className={cn("size-4.5", card.tone === "busy" && "animate-spin [animation-duration:1.4s]")} strokeWidth={2.25} /></span>
     <div className="min-w-0 flex-1 basis-56">
-      <h4 className={cn("m-0 text-base font-semibold [word-break:auto-phrase]", card.tone === "warn" && "text-warn")}>
+      <div data-update-state><h4 className={cn("m-0 text-base font-semibold [word-break:auto-phrase]", card.tone === "warn" && "text-warn")}>
         <span className={cn("me-2 hidden size-6 place-items-center rounded-full align-[-5px] narrow:inline-grid", mark.className)}>
           <Icon name={mark.icon} className={cn("size-3.5", card.tone === "busy" && "animate-spin [animation-duration:1.4s]")} strokeWidth={2.5} /></span>{card.title}</h4>
       <p className="m-0 mt-0.5 flex flex-wrap items-baseline gap-x-3 text-sm text-muted tabular-nums">
         <span>alpacawork {card.from ? <>{card.from}<Icon name="arrowRight" className="mx-1 inline size-3.5 align-[-2px]" /><span className="font-semibold text-ink">{card.to}</span></> : card.to}</span>
         {card.to && <ReleaseNotes version={card.to} />}
       </p>
-      {card.body && <p className="m-0 mt-2 text-sm text-muted [word-break:auto-phrase]">{card.body}</p>}
+      {card.body && <p className="m-0 mt-2 text-sm text-muted [word-break:auto-phrase]">{card.body}</p>}</div>
       {/* Two presses (copy the pause, then retry) read as steps under the words that explain them. */}
       {card.pause && <div className="mt-3 flex flex-wrap items-center gap-2 narrow:[&>*]:flex-1">
         <PauseInstruction version={card.pause} />{card.action && <CardPress card={card} sending={sending} />}</div>}

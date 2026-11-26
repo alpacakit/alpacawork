@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { skillInstallRequestSchema, skillInstallResponseSchema, skillJobSchema, skillsResponseSchema,
+import { skillInstallRequestSchema, skillInstallResponseSchema, skillJobSchema, skillsLatestResponseSchema, skillsResponseSchema,
   type SkillJob, type SkillName } from "@alpacawork/contract";
 import { ApiError, retryOf } from "./client";
 import { workspaceWriteBasis } from "./connection";
@@ -14,6 +14,19 @@ export function useSkills() {
     queryKey: ["skills", root] as const,
     queryFn: ({ signal }) => api.request("skills", skillsResponseSchema, signal),
     // What is installed changes outside this screen: each opening reads it afresh.
+    staleTime: 0,
+  });
+}
+
+/**
+ * The latest version of each skill fetched from GitHub (the day its folder there last changed), read as Settings opens
+ * apart from the list, so the list never waits on GitHub; a day not read is null.
+ */
+export function useSkillLatest() {
+  const root = useWorkspaceInfo((info) => info.root);
+  return useQuery({
+    queryKey: ["skills-latest", root] as const,
+    queryFn: ({ signal }) => api.request("skills/latest", skillsLatestResponseSchema, signal),
     staleTime: 0,
   });
 }

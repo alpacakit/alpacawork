@@ -8,10 +8,10 @@ type Offer = typeof SKILL_OFFERS[number];
 /**
  * One offered skill, as setup and Settings both show it: what it changes, then how, then which skill and where it
  * comes from (the name means little before it is used). `state` stands at the end of the heading's line, dropping under
- * it where the heading leaves no room (a phone); `meta` is a line of its own under the name; `marked` shows the
+ * it where the heading leaves no room (a phone); `marked` shows the
  * recommended mark (setup, where it urges a tick).
  */
-export function SkillOfferText({ offer, state, meta, marked = false }: { offer: Offer; state?: React.ReactNode; meta?: React.ReactNode; marked?: boolean }) {
+export function SkillOfferText({ offer, state, marked = false }: { offer: Offer; state?: React.ReactNode; marked?: boolean }) {
   const { t } = useTranslation("setup");
   return <span className="block min-w-0">
     <span className="flex flex-wrap items-baseline gap-x-3">
@@ -29,6 +29,5 @@ export function SkillOfferText({ offer, state, meta, marked = false }: { offer: 
         <Trans t={t} i18nKey="skills.from.repo" values={{ repo: offer.from.repo }}
           components={{ repo: <a className="inline-link" href={`https://github.com/${offer.from.repo}`} target="_blank" rel="noreferrer" /> }} /></span>}
     </span>
-    {meta && <span className="mt-0.5 block text-xs text-soft">{meta}</span>}
   </span>;
 }
