@@ -1,5 +1,6 @@
 import { copyFileSync } from 'node:fs';
 import { ControlStore } from '@alpacawork/db';
+import { coordinatorMessageDigest } from '@alpacawork/contract/coordinator';
 import type { CoordinatorConversation } from '../../apps/web/src/data/coordinator.ts';
 import { start } from '../server.ts';
 import { patchTask, taskFolder } from '../fixture/task-state.ts';
@@ -9,6 +10,7 @@ import type { Page } from '@playwright/test';
 export const conversation: CoordinatorConversation = { id: 'render-motion', nextLaunch: { agent: 'claude', values: {} }, earlier: null, resets: [], context: null, autoReset: { tokens: 200000, percent: 50 }, busy: false, cancelled: [], admitted: {},
   turns: Array.from({ length: 12 }, (_, i) => ({ id: `turn-${i}`, at: `2026-01-01T00:${String(i).padStart(2, '0')}:00Z`,
     ask: `Measurement request ${i}`, attachments: [], status: 'succeeded', waiting: false, seen: true, error: null, result: null,
+    inputDigest: coordinatorMessageDigest({ conversationId: 'render-motion', id: `turn-${i}`, text: `Measurement request ${i}`, attachments: [] }),
     answer: Array.from({ length: 25 }, (_, n) => `### Item ${n}\nText with explanations and **checks**. Compare load under the same conditions.\n\n- Result ${n}\n- Next review\n\n`).join(''),
     answeredAt: `2026-01-01T00:${String(i).padStart(2, '0')}:30Z` })) };
 export const startPanelFixture = (heavy: boolean) => start(undefined, root => {
