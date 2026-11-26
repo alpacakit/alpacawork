@@ -89,7 +89,8 @@ export function arrive(element: SVGElement | HTMLElement | null) {
 
 /**
  * A surface rising into place after `delay` ms (animate-rise, for what comes in later than it is drawn); reduced motion
- * only fades it in. Risen again before it has finished, it starts again (one rise at a time).
+ * only fades it in. Risen again before it has finished, it starts again (one rise at a time). Nothing is held once it
+ * lands: it ends as the surface is drawn anyway.
  */
 const rising = new WeakMap<Element, Animation>();
 export function rise(element: Element | null, delay = 0) {
@@ -97,7 +98,7 @@ export function rise(element: Element | null, delay = 0) {
   rising.get(element)?.cancel();
   const shift = distance("shift");
   rising.set(element, element.animate(shift ? [{ opacity: 0, translate: `0 ${shift}px` }, { opacity: 1, translate: "0 0" }] : [{ opacity: 0 }, { opacity: 1 }],
-    { duration: duration(shift ? "base" : "fast"), delay, easing: easing("out"), fill: "both" }));
+    { duration: duration(shift ? "base" : "fast"), delay, easing: easing("out"), fill: "backwards" }));
 }
 
 /**

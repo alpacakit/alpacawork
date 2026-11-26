@@ -60,6 +60,7 @@ import { ReadFailure, ReadNote } from "@/components/ui/loadable";
 import { useDeviceValue } from "@/lib/device-storage";
 import { isOpen, SECTION_START, sectionFold, sectionsOpen, storedWith } from "./section-fold";
 import { useOfflineShown } from "@/data/reach";
+import { useListEntrance } from "./list-entrance";
 
 
 /** The flat home list and its time strips. */
@@ -157,7 +158,8 @@ const useRowTime = () => {
 };
 
 /** The list with its time strips. */
-export function TimeTree() {
+/** `entering`: drawn in place of the analysis just now, so its lines come in (useListEntrance). */
+export function TimeTree({ entering = false }: { entering?: boolean }) {
   const { t, i18n } = useTranslation("tree");
   const { t: pt } = useTranslation("people");
   const index = useTaskIndex();
@@ -395,6 +397,8 @@ export function TimeTree() {
     if (rowNodes.length && !happens) showAll();
   }, [seen, axis.standIn]);
   const nowSeen = !seen || seen.to >= now;
+  // Once its rows, and the time on their strips where strips are shown, are drawn.
+  useListEntrance(box, entering, rowNodes.length > 0 && (!strips || axisReady && visibleIds.length > 0), lead);
   const keys = (event: KeyboardEvent<HTMLDivElement>) => stripKeys(event, strip, showAll,
     (box.current?.getBoundingClientRect().left ?? 0) + lead + strip.screen / 2);
   const shared = useMemo<Shared>(() => ({ drawing, index, people, timePeople, narrow, selected: readerOpen ? selected : null,

@@ -122,6 +122,10 @@ export function Workbench() {
   // What a number of the analysis opens (its list, the share card) stands where the docked reader stands, and the page
   // gives it the same room: the charts narrow beside it and stay in reach, never under it.
   const analysisShown = analysis && !(place === "lookup" && project) ? analysis : null;
+  // The list drawn in the analysis's place just now comes in, as the analysis does in the list's (TimeTree `entering`).
+  const analysisWas = useRef(false);
+  const leavingAnalysis = analysisWas.current && !analysisShown;
+  useEffect(() => { analysisWas.current = !!analysisShown; });
   // Where the charts would be left too narrow to read, it stands over them instead, as on a narrower screen.
   const analysisBeside = useSyncExternalStore(subscribeReaderGeometry, analysisFitsBeside, analysisFitsBeside) && canDock;
   const layerBeside = !!analysisShown && analysisBeside && analysisSurfaces(analysisShown).length > 0;
@@ -172,7 +176,7 @@ export function Workbench() {
               : place === "search" ? <div data-list-scroll {...UNDER_BAR} className="relative min-h-75 flex-1 basis-0 overflow-auto overscroll-contain scroll-pb-(--list-foot) pb-(--list-foot) narrow:min-h-67.5"><BarRoom /><SearchResults /></div>
               : place === "lookup" && project ? <div className="flex min-h-75 flex-1 flex-col narrow:min-h-67.5"><BarRoom /><AwaitedLookup address={project} placement="list" reason={{ kind: "scope_lookup_unavailable" }} skeleton={<RegionSkeleton shape="time" />} /></div>
               : place === "no-projects" ? <div className="flex-1"><BarRoom /><NoProjects onOpenArchive={() => openSettings("projects")} onCreateProject={() => useDialogStore.getState().openProject()} /></div>
-              : <TimeTree />}
+              : <TimeTree entering={leavingAnalysis} />}
           </div>
           <Reader mode={mode} overlapping={overlapping} canDock={canDock} />
         </>}</IndexRegions>
