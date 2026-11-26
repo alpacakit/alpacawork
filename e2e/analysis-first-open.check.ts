@@ -136,7 +136,7 @@ test("the analysis's window is resized by its edge as the details window is, and
   await page.setViewportSize({ width: 1600, height: 900 });
   await page.goto(`${runtime.origin}/?face=analysis`);
   // The card stands in the window a number's tasks open in.
-  await page.getByRole("button", { name: "Make a card", exact: true }).click();
+  await page.getByRole("button", { name: "Share", exact: true }).click();
   const panel = page.locator("aside[data-analysis-panel]");
   await expect(panel).toBeVisible();
   await settleMotion(page, panel);
