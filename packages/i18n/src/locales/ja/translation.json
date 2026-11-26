@@ -277,7 +277,7 @@
       "invalid_visible_task_ids": "表示するタスクIDが正しくありません",
       "invalid_x_alpacawork_cwd": "X-Alpacawork-Cwdが正しくありません",
       "keeps_responsible_while_it_has_children_or_work_under_way_hand_it_over_with_agent_handover_or_replace_it_with": "{{uncoveredTaskId}}には子か進行中の作業があるため、責任者が必要です。agent handoverで引き継ぐか、agent assign --replaceで置き換えてください",
-      "launch_choices_come_with_instruction_or_send_back_field_left_out_keeps_conversation_s_value": "起動時の選択は指示か差し戻しと一緒に送ってください",
+      "launch_choices_come_with_instruction_or_send_back_field_left_out_keeps_conversation_s_value": "起動時の選択は指示か差し戻しと一緒に送ってください。省略した項目には会話の現在の値を使います",
       "launched_run_keeps_session": "起動済みのRunのセッションは変更できません",
       "local_voice_not_configured": "ローカル音声認識が設定されていません",
       "log_ids_must_unique_within_task": "履歴IDはタスク内で重複させられません",

@@ -15,6 +15,7 @@ interface TestResult {
   area: string[];
   node: string[];
   e2e: string[];
+  web?: boolean;
   failed: string[];
 }
 
@@ -33,7 +34,7 @@ function* results(): Generator<TestResult> {
 }
 
 export function describe(result: TestResult): string {
-  const scope = [result.mode, ...result.area.map(area => `area ${area}`),
+  const scope = [result.mode, ...(result.web ? ['web'] : []), ...result.area.map(area => `area ${area}`),
     ...[...result.node, ...result.e2e].map(path => basename(path))].join(' + ');
   const verdict = result.passed ? 'passed' : `failed (${result.failed.join(', ')})`;
   const description = `Maintainer machine: ${scope} ${verdict} in ${Math.floor(result.seconds / 60)}m ${result.seconds % 60}s`;
