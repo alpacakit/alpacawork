@@ -177,6 +177,7 @@
     "youText": "Awaiting your review, and awaiting your answer to a question"
   },
   "face": {
+    "empty": "Nothing recorded yet. Once you ask for a task, finished tasks and AI usage show here from that day on.",
     "analysis": "Analysis",
     "label": "Screen",
     "use": "Use"

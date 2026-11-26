@@ -7,6 +7,7 @@ import { Grass } from "./charts";
 import { BreakdownTable, type Cell } from "./BreakdownTable";
 import { BarChart, binsKey, ChartGroup, DayAxis, inSpanOf, Lead, Leads, lineTop, Parts, Row, spanMost, useLineLabel, useScale, type DayList, type RowSay } from "./rows";
 import { ReadPart, useReadSet, ChartHead, Compare, gapTone, Num, OPEN, OpenMark, Rule, RuleCard, Rules, rowName, Section, Seg, Value, tip, useChoices, type TaskGroup } from "./parts";
+import { analysisRecordStart } from "@alpacawork/contract/analysis";
 import type { ListSet, ListValue, TasksView } from "./contract";
 import type { ListPlace, Span } from "./place";
 import { useBreakdown, useChanges, useNear } from "./data";
@@ -36,7 +37,7 @@ export const TasksLook = memo(function TasksLook({ view, span, root, days, open,
   const length = daysBetween(days.from, days.to);
   const now = view.counts.value, before = view.counts.previous;
   const accepted = view.accepted.value, acceptedBefore = view.accepted.previous;
-  const whole = view.head.firstDay === days.from && view.head.today === days.to;
+  const whole = analysisRecordStart(view.head) === days.from && view.head.today === days.to;
   const ever = whole ? null : view.ever;
   const time = accepted.time, you = time.review + time.answer, total = you + time.ai + time.other;
   const project = useViewStore(state => state.project);
@@ -156,7 +157,7 @@ export const TasksLook = memo(function TasksLook({ view, span, root, days, open,
           { color: "bg-stopped-part", name: t("outcome.stopped"), ...part("tasks", now.stopped, { set: "stopped", value: null }) }]}
           line={{ name: t("chart.share"), value: <ShareValue value={now.share} onOpen={now.accepted ? () => open({ set: "accepted", value: null }) : undefined} />,
             gap: before && gap(now.share, before.share, "pt", "up") }} />
-        <div className="mt-6 narrow:mt-4"><Grass from={view.grass.from} counts={view.grass.finished} firstDay={view.head.firstDay} today={today} span={days} /></div>
+        <div className="mt-6 narrow:mt-4"><Grass from={view.grass.from} counts={view.grass.finished} firstDay={analysisRecordStart(view.head)} today={today} span={days} /></div>
       </>}>
         <BarChart row={0} height="h-76 narrow:h-32" scale={scales.finished} grow overlay={overlays.share}
           values={i => [["bg-done", at(i).counts.passed, 0], ["bg-reworked", at(i).counts.reworked, 1], ["bg-stopped-part", at(i).counts.stopped, 2]]} />

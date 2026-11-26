@@ -437,6 +437,7 @@ function under(x: number, y: number, self: Element) {
 function Columns({ layer }: { layer: "back" | "front" }) {
   const group = useGroup();
   const last = useRef<Trace | null>(null);
+  const band = banded(group.bins, group.span);
   // A day of the same row the pointer passes on its way to the legend waits (`dayIntent`); any other is shown at once.
   const move = (at: number, row: number, trace: Trace) => {
     const from = last.current;
@@ -456,7 +457,7 @@ function Columns({ layer }: { layer: "back" | "front" }) {
       {group.bins.map((bin, at) => layer === "back"
         // The day whose list is open is boxed, so it stays apart from the day pointed at.
         ? <i key={bin.from} data-bin={at} className={cn("block data-lit:bg-day-band data-chosen:outline data-chosen:outline-1 data-chosen:-outline-offset-1 data-chosen:outline-ink/50",
-          lit(bin, group.span) && "bg-span-band")} />
+          band && lit(bin, group.span) && "bg-span-band")} />
         : <span key={bin.from} data-day-column="" className="pointer-events-auto cursor-pointer"
           onMouseMove={event => move(at, under(event.clientX, event.clientY, event.currentTarget).row, { x: event.clientX, y: event.clientY, time: event.timeStamp })}
           onClick={event => { const { row, part } = under(event.clientX, event.clientY, event.currentTarget); if (row >= 0) group.press(at, row, part); }} />)}
@@ -602,6 +603,8 @@ export function useScale(largest: number, unit: number, unitName: string, wholeO
 const lastLit = (bins: Bin[], span: Days) => { for (let at = bins.length - 1; at >= 0; at--) if (lit(bins[at]!, span)) return at; return Math.max(0, bins.length - 1); };
 /** Whether a bin meets the chosen span at all (a week or month it falls inside, partly or whole). */
 const lit = (bin: Bin, span: Days) => bin.from <= span.to && bin.to >= span.from;
+/** The chosen span is banded only where the chart also draws days outside it: a band over every day says nothing. */
+const banded = (bins: Bin[], span: Days) => bins.some(bin => !lit(bin, span));
 /**
  * The largest amount a chart's scale is set by: the bins within the chosen span only, so a large day outside it does
  * not flatten the days the span is about (one over the top is cut there, and marked so).
@@ -703,7 +706,7 @@ function Bins({ row, uncounted, partial, drawn }: { row: number; uncounted?: (at
   drawn: ReactNode[] }) {
   const group = useGroup();
   const { t } = useTranslation("analysis");
-  const wide = group.bucket !== "day";
+  const wide = group.bucket !== "day", band = banded(group.bins, group.span);
   return <div className="grid h-full auto-cols-[minmax(0,1fr)] grid-flow-col items-end">
     {group.bins.map((bin, at) => {
       const off = uncounted?.(at) ?? false;
@@ -712,7 +715,7 @@ function Bins({ row, uncounted, partial, drawn }: { row: number; uncounted?: (at
         wide ? "px-[max(min(3px,20%),calc(50%-26px))]" : "px-[clamp(1px,12%,6px)]",
         lit(bin, group.span) && "opacity-100", "data-lit:opacity-100",
         // Under a finger the band and the pressed day are drawn in each chart (a phone's rows stack their names between).
-        group.narrow && cn("data-lit:bg-day-band", lit(bin, group.span) && "bg-span-band"),
+        group.narrow && cn("data-lit:bg-day-band", band && lit(bin, group.span) && "bg-span-band"),
         (!bin.complete || partial?.(at)) && "outline outline-dashed outline-lit-line -outline-offset-1",
         off && "bg-[repeating-linear-gradient(135deg,var(--rule)_0_1px,transparent_1px_6px)]",
         edge && "border-e border-lit-line");

@@ -183,6 +183,7 @@
     "youText": "Aguardando sua revisão e aguardando sua resposta a uma pergunta"
   },
   "face": {
+    "empty": "Ainda não há registros. Quando você pedir uma tarefa, as tarefas concluídas e o uso da IA aparecem aqui a partir desse dia.",
     "analysis": "Análise",
     "label": "Tela",
     "use": "Usar"

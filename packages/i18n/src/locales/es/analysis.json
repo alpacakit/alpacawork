@@ -183,6 +183,7 @@
     "youText": "Esperando tu revisión y esperando tu respuesta a una pregunta"
   },
   "face": {
+    "empty": "Aún no hay registros. Cuando pidas una tarea, aquí aparecerán desde ese día las tareas terminadas y el uso de la IA.",
     "analysis": "Análisis",
     "label": "Pantalla",
     "use": "Usar"

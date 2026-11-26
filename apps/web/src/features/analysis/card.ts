@@ -43,7 +43,7 @@ export function cardFacts(record: Answer<TasksView> | null, tasksAnswer: Answer<
   if (record?.current && record.data.head.firstDay === null) return null;
   if (!tasksAnswer?.current) return undefined;
   const tasks = tasksAnswer.data, days = tasks.head.period;
-  if (!days) return null;
+  if (tasks.head.firstDay === null) return null;
   if (!usageAnswer?.current) return undefined;
   const usage = usageAnswer.data;
   // The most-used model is the first row of the usage's breakdown by model, as its table shows it first.
