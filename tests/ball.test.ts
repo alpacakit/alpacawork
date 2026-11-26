@@ -129,7 +129,7 @@ const entry = (id: string, minute: number, fields: Partial<TaskLog>): TaskLog =>
   title: null, description: null, actor: { kind: 'placement', placementId: 'P2' }, fromState: null, toState: null, ...fields });
 const task = (id: string, fields: Partial<ControlTask['meta']>): Pick<ControlTask, 'id' | 'meta'> => ({ id,
   meta: { format: 3n, id, kind: 'task', parentId: 'P1', lifecycle: 'active', title: id, version: 1n, baseState: fields.baseState ?? (fields.state === 'held' ? 'doing' : fields.state ?? 'doing'), hold: fields.hold ?? fields.state === 'held', state: 'doing',
-    userRequested: false, log: [], ...fields } });
+    userRequested: false, analysisSubject: undefined, log: [], ...fields } });
 const reported = [entry('L2-created', 0, { kind: 'created', actor: { kind: 'human' }, toState: 'todo', userRequested: true }),
   entry('L2-started', 1, { fromState: 'todo', toState: 'doing', runId: 'R1' }),
   entry('L-report', 2, { kind: 'reported', fromState: 'doing', toState: 'waiting', runId: 'R1' })];
