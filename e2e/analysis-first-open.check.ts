@@ -67,20 +67,30 @@ test("in a short window the share card's picture keeps its size when its code ar
   }
 });
 
-test("the analysis does not slide sideways when everything on it fits", async ({ page, runtime }) => {
-  await page.goto(`${runtime.origin}/?face=analysis`);
+/** A sideways wheel over the analysis once its rows are drawn: the face stays where it is. */
+async function noSidewaysSlide(page: import("@playwright/test").Page, origin: string) {
+  await page.goto(`${origin}/?face=analysis`);
   const face = page.locator("[data-list-scroll]");
-  await expect(page.getByRole("button", { name: "Make a card", exact: true })).toBeVisible();
+  await expect(face.locator("[data-answer] [data-row]").first()).toBeVisible();
   const box = (await face.boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + 100);
-  await page.mouse.wheel(40, 0);
-  await expect.poll(() => face.evaluate(node => node.scrollLeft)).toBe(0);
-  await page.mouse.wheel(40, 0);
-  expect(await face.evaluate(node => node.scrollLeft)).toBe(0);
+  for (let turn = 0; turn < 2; turn++) {
+    await page.mouse.wheel(40, 0);
+    await page.waitForTimeout(200);
+    expect(await face.evaluate(node => node.scrollLeft)).toBe(0);
+  }
+}
+
+test("the analysis does not slide sideways when everything on it fits", async ({ page, runtime }) => {
+  await noSidewaysSlide(page, runtime.origin);
 });
 
 test.describe("phone", () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+
+  test("the analysis does not slide sideways on a phone", async ({ page, runtime }) => {
+    await noSidewaysSlide(page, runtime.origin);
+  });
 
   test("flicking the share card down closes it and keeps the analysis open", async ({ page, runtime }) => {
     await page.goto(`${runtime.origin}/?face=analysis`);
