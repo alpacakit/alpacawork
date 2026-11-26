@@ -1,3 +1,4 @@
+import { adoptedReview, reviewAdoptions } from '../control/action-reasons.js';
 /**
  * One task's timeline (analysis trace) and the situation at one instant (analysis at), built from the records as they
  * are: the task log (states, questions, instructions, reports), the Runs (queue, run, compactions), each Run's step
@@ -10,7 +11,7 @@ import { clocks, iso, questionKind, taskOutcome, userQuestions, type Interval } 
 import { changeEvents } from './changes.js';
 import { splitWaits, type Activity } from './presence.js';
 import type { RunConditions } from '@alpacawork/contract/run';
-import { speaksForUser, type InstructionLabel, type TaskBaseState } from '@alpacawork/raw';
+import { isRequestLog, speaksForUser, type TaskBaseState } from '@alpacawork/raw';
 import type { TaskLog } from '@alpacawork/raw/task-log-schema';
 import { questionsOf, type Question } from '@alpacawork/raw/questions';
 
@@ -20,7 +21,7 @@ export type InstructionBy = 'user' | 'parent' | 'owner';
 export type InstructionPurpose = 'instruction' | 'send-back' | 'return';
 /** An instruction as its request holds it: who sent it, why, and its first line. */
 export type TraceRequest = { id: string; task: string; at: number; by: InstructionBy; purpose: InstructionPurpose;
-  firstLine: string; answers: string | null };
+  firstLine: string; answers: string | null; authorTask?: string | null; resultRun?: string | null };
 /** A step of a Run as its step journal timed it and its output named it. `inside`: the sub-agent step it ran in. */
 export type TraceStep = { n: number; tool: string; kind: string; line: string; fingerprint: string | null;
   from: number | null; to: number | null; state: string; source: string | null; inside: string | null; id: string;
@@ -45,8 +46,8 @@ export type TraceRecords = {
   root: string; project: string; scope: AnalysisTraceScope;
   /** The root first, then every task under it: the breakdown, the waits and the findings read them all whatever the scope. */
   tasks: readonly TraceTask[]; runs: readonly TraceRun[]; requests: ReadonlyMap<string, TraceRequest>;
-  /** Instruction labels by request (request_labeled): fix (with its kinds of fix), addition or new_request. */
-  labels: ReadonlyMap<string, { kind: InstructionLabel['kind']; fixes: InstructionLabel['fixes'] }>;
+  valueFields?: ReadonlyMap<string, readonly string[]>;
+  directionLogs?: ReadonlySet<string>;
   rootState: TaskBaseState;
   /** The user's actions on every task, in time order (AnalysisFacts.activity), to split the waits by where the user was. */
   activity: readonly Activity[];
@@ -280,6 +281,49 @@ export function thinkingIntervals(run: TraceRun, now: number): Interval[] {
   return gaps.filter(gap => gap.to > gap.from);
 }
 
+type RunTaken = NonNullable<Extract<AnalysisSpan, { kind: 'run' }>['taken']>;
+function takenByRun(records: TraceRecords) {
+  const decisions = new Map<string, RunTaken>();
+  const approvals = new Map<string, RunTaken>();
+  const latestDecision = new Map<string | null, number>();
+  const tasks = new Map(records.tasks.map(task => [task.id, task]));
+  for (const task of records.tasks) {
+    const reviews = reviewAdoptions(task.log);
+    for (const entry of task.log) {
+      const taken = entry.reason?.taken;
+      const request = isRequestLog(entry.kind) ? records.requests.get(entry.id) : undefined;
+      if (taken) {
+        if (taken.of !== null) decisions.set(records.requests.get(taken.of)?.resultRun ?? taken.of,
+          { code: taken.code, cause: taken.cause, aspects: taken.aspects, source: 'recorded', log: entry.id });
+        const judged = taken.of !== null ? records.requests.get(taken.of) : undefined;
+        const seat = (request || judged)?.authorTask ?? null;
+        const at = Date.parse(entry.at);
+        latestDecision.set(seat, Math.max(latestDecision.get(seat) ?? 0, at));
+      }
+      const approvedRun = reviews.get(entry.id)?.run;
+      if (approvedRun) {
+        const { of: _of, ...taken } = adoptedReview(null);
+        approvals.set(approvedRun, { ...taken, source: 'recorded', log: entry.id });
+        latestDecision.set(null, Math.max(latestDecision.get(null) ?? 0, Date.parse(entry.at)));
+      }
+    }
+  }
+  return (run: TraceRun): RunTaken | undefined => {
+    if (run.supersededBy) return undefined;
+    const request = records.requests.get(run.request);
+    const recorded = approvals.get(run.id) ?? decisions.get(run.id) ??
+      (request?.resultRun ? undefined : decisions.get(run.request));
+    if (recorded) return recorded;
+    if (!request || request.resultRun && request.resultRun !== run.id || request.answers || request.purpose === 'return' || !['succeeded', 'needs_review'].includes(run.state))
+      return undefined;
+    const seat = request.authorTask ?? null, requester = seat === null ? undefined : tasks.get(seat);
+    const ended = run.ended ?? Infinity;
+    const movedOn = (latestDecision.get(seat) ?? 0) > ended ||
+      requester?.log.some(entry => entry.toState === 'done' && Date.parse(entry.at) >= ended);
+    return { code: 'undetermined', cause: null, aspects: [], source: movedOn ? 'inferred' : 'pending', log: null };
+  };
+}
+
 export function spans(records: TraceRecords): AnalysisSpan[] {
   const result: AnalysisSpan[] = [], shown = shownTasks(records);
   const end = (time: number | null) => time === null ? null : iso(time);
@@ -294,6 +338,7 @@ export function spans(records: TraceRecords): AnalysisSpan[] {
         ...questionKind(asked.decide),
         closed: closing === null ? null : closing.kind === 'answered' ? 'answered' : closing.kind === 'question_withdrawn' ? 'withdrawn' : 'expired' });
   }
+  const takenFor = takenByRun(records);
   for (const run of records.runs) {
     if (!shown.has(run.task)) continue;
     const lane = agentLane(run.placement), queued = queueInterval(run, Infinity);
@@ -301,8 +346,9 @@ export function spans(records: TraceRecords): AnalysisSpan[] {
       result.push({ id: `queued:${run.id}`, lane, kind: 'queued', from: iso(run.created),
         to: queued && Number.isFinite(queued.to) ? iso(queued.to) : null, run: run.id, behind: behind(records, run) });
     if (run.started === null || run.state === 'joined') continue;
+    const taken = takenFor(run);
     result.push({ id: `run:${run.id}`, lane, kind: 'run', from: iso(run.started), to: end(run.ended), run: run.id,
-      state: run.state, reason: run.reason, model: run.model, effort: run.effort, steps: run.steps ? 'recorded' : 'not-recorded' });
+      state: run.state, reason: run.reason, model: run.model, effort: run.effort, steps: run.steps ? 'recorded' : 'not-recorded', ...(taken && { taken }) });
     thinkingIntervals(run, records.now).forEach((gap, index) => result.push({ id: `thinking:${run.id}.${index}`, lane, kind: 'thinking',
       from: iso(gap.from), to: run.ended === null && gap.to === records.now ? null : iso(gap.to), run: run.id }));
     for (const step of run.steps ?? []) if (step.from !== null)
@@ -339,12 +385,12 @@ export function marks(records: TraceRecords): AnalysisMark[] {
     const lane = taskLane(task.id), asked = new Map(questionsOf(task.log).map(question => [question.asked.id, question.asked]));
     for (const entry of task.log) {
       const at = iso(Date.parse(entry.at)), base = { id: entry.id, lane, at, task: task.id };
-      if (entry.kind === 'request_accepted' || entry.kind === 'review_sent_back') {
+      if (isRequestLog(entry.kind)) {
         const request = records.requests.get(entry.id);
         result.push({ ...base, kind: 'instruction', request: entry.id,
           by: request?.by ?? (speaksForUser(entry.actor) ? 'user' : 'parent'),
           purpose: entry.kind === 'review_sent_back' ? 'send-back' : request?.purpose ?? 'instruction',
-          label: records.labels.get(entry.id) ?? null, answers: entry.answers ?? null, firstLine: request?.firstLine ?? null });
+          taken: entry.reason?.taken ?? null, placed: entry.reason?.placed ?? null, answers: entry.answers ?? null, firstLine: request?.firstLine ?? null });
       } else if (entry.kind === 'answered' && entry.questionId) {
         const question = asked.get(entry.questionId);
         result.push({ ...base, kind: 'answer', question: entry.questionId,
@@ -352,12 +398,17 @@ export function marks(records: TraceRecords): AnalysisMark[] {
       } else if (entry.kind === 'question_withdrawn' && entry.questionId)
         result.push({ ...base, kind: 'question-withdrawn', question: entry.questionId, log: entry.id });
       else if (entry.kind === 'reported')
-        result.push({ ...base, kind: 'report', log: entry.id, state: stateAfter(entry), title: entry.title });
+        result.push({ ...base, kind: 'report', log: entry.id, state: stateAfter(entry), title: entry.title, taken: entry.reason?.taken ?? null });
       else if (entry.kind === 'responsible_changed' || entry.kind === 'placement_changed')
-        result.push({ ...base, kind: 'assigned', log: entry.id });
+        result.push({ ...base, kind: 'assigned', log: entry.id, role: entry.placementEffect === 'responsible' ? 'owner' : entry.placementEffect ?? null,
+          model: entry.launchValues?.model ?? null, effort: entry.launchValues?.effort ?? null,
+          placed: entry.reason?.placed ?? null, taken: entry.reason?.taken ?? null });
       else if (entry.kind === 'moved') result.push({ ...base, kind: 'moved', log: entry.id });
-      else if (entry.kind === 'body_updated' && entry.changedFields?.some(field => field === 'values' || field === 'body'))
-        result.push({ ...base, kind: 'values-changed', log: entry.id });
+      const trigger = entry.reason?.trigger ?? null;
+      const fields = records.valueFields?.get(entry.id) ?? trigger?.fields ?? [];
+      if (fields.length || entry.kind === 'body_updated' && entry.changedFields?.some(field => field === 'values' || field === 'body'))
+        result.push({ ...base, id: `values:${entry.id}`, kind: 'values-changed', log: entry.id, fields: [...fields],
+          trigger, direction: trigger?.code !== 'refine' && (records.directionLogs?.has(entry.id) ?? trigger !== null) });
     }
   }
   for (const run of records.runs) {

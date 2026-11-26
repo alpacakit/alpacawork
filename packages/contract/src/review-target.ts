@@ -52,6 +52,11 @@ export function reviewTarget(task: { baseState: TaskBaseState; log: readonly Rev
     ? mark.runId : null;
 }
 
+/** A move away from review invalidates the original submission, including a stop. */
+export const reviewInvalidatedBy = (entry: TaskLog) =>
+  isReviewMark(entry) || (entry.stage ? entry.stage.baseState !== 'waiting'
+    : entry.toState !== null && !['waiting', 'held'].includes(entry.toState));
+
 /** The original submission's closure, across holds and later submissions. */
 export function reviewClosure(log: readonly TaskLog[], id: string): { open: boolean; closure?: 'confirmed' | 'invalidated' | 'stopped' } {
   const index = log.findIndex(entry => entry.id === id);
@@ -59,8 +64,7 @@ export function reviewClosure(log: readonly TaskLog[], id: string): { open: bool
   for (const entry of log.slice(index + 1)) {
     if (entry.kind === 'review_approved') return { open: false, closure: 'confirmed' };
     if (entry.stage?.baseState === 'stopped' || entry.toState === 'stopped') return { open: false, closure: 'stopped' };
-    if (isReviewMark(entry) || entry.stage && entry.stage.baseState !== 'waiting' ||
-        !entry.stage && entry.toState !== null && !['waiting', 'held'].includes(entry.toState))
+    if (reviewInvalidatedBy(entry))
       return { open: false, closure: 'invalidated' };
   }
   return { open: true };

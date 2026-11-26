@@ -3,21 +3,36 @@ import type { DatabaseSync } from 'node:sqlite';
 import { deepFreeze, storedJsonDecoder } from '@alpacawork/core';
 import { KeptTable, keptOf, controlRoot } from '@alpacawork/db';
 import { startsEstimateRound } from '@alpacawork/contract';
+import { requestActionReasonSchema, type RequestActionReason } from '@alpacawork/raw';
 import { storedTaskLogSchema, type TaskLog } from '@alpacawork/raw/task-log-schema';
 
-export const TASK_RECORD_COLUMNS = `l.id,l.entry,l.request_id,l.note_title,l.note_description,q.purpose,q.author,q.submitted_at,q.about_run_id,q.answers_question,
+export const TASK_RECORD_COLUMNS = `l.id,l.entry,l.request_id,l.note_title,l.note_description,q.purpose,q.author,q.submitted_at,q.about_run_id,q.answers_question,q.reason,
   json_extract(r.record,'$.role') AS role`;
 export const TASK_RECORD_JOINS = `LEFT JOIN requests q ON q.id=l.request_id LEFT JOIN runs r ON r.request_id=q.id AND r.attempt=0`;
 const decode = storedJsonDecoder(storedTaskLogSchema);
+const decodeReason = storedJsonDecoder(requestActionReasonSchema);
+type RequestEventFacts = {
+  id: string; purpose: string; submittedAt: string; author: TaskLog['actor'];
+  answersQuestion?: string | null; aboutRunId?: string | null; reason?: RequestActionReason;
+};
+export function requestEvent(request: RequestEventFacts, role: string, fromState: TaskLog['fromState'],
+  note: { title?: string | null; description?: string | null }): TaskLog {
+  const review = request.purpose === 'review_send_back';
+  return { id: request.id, kind: review ? 'review_sent_back' : 'request_accepted', at: request.submittedAt,
+    actor: request.author, title: note.title ?? null, description: note.description ?? null, fromState, toState: null,
+    startsEstimateRound: startsEstimateRound(request, { role }), ...(request.reason && { reason: request.reason }),
+    ...(request.answersQuestion != null && { answers: request.answersQuestion }),
+    ...(review && request.aboutRunId != null && { runId: request.aboutRunId }) };
+}
+
 export function taskEvent(row: Record<string, unknown>, fromState: TaskLog['fromState']): TaskLog {
   if (row.request_id === null) return decode(row.id, String(row.entry));
   if (!row.role || !row.purpose || !row.author) throw new Error(`Request reference ${row.id} has no admitted Run`);
-  const review = row.purpose === 'review_send_back';
-  return { id: String(row.id), kind: review ? 'review_sent_back' : 'request_accepted', at: String(row.submitted_at),
-    actor: JSON.parse(String(row.author)), title: row.note_title as string | null, description: row.note_description as string | null,
-    fromState, toState: null, startsEstimateRound: startsEstimateRound({ purpose: String(row.purpose) }, { role: String(row.role) }),
-    ...(row.answers_question == null ? {} : { answers: String(row.answers_question) }),
-    ...(review && row.about_run_id !== null ? { runId: String(row.about_run_id) } : {}) };
+  return requestEvent({ id: String(row.id), purpose: String(row.purpose), submittedAt: String(row.submitted_at),
+    author: JSON.parse(String(row.author)),
+    answersQuestion: row.answers_question as string | null, aboutRunId: row.about_run_id as string | null,
+    ...(row.reason == null ? {} : { reason: decodeReason(row.id, String(row.reason)) }) },
+    String(row.role), fromState, { title: row.note_title as string | null, description: row.note_description as string | null });
 }
 const stateAfter = (event: TaskLog, previous: TaskLog['fromState']): TaskLog['fromState'] =>
   event.toState === null ? previous : event.stage ? event.stage.hold ? 'held' : event.stage.baseState : event.toState;

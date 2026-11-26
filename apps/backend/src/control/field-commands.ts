@@ -26,10 +26,10 @@ export function listFields(root: string) {
 }
 
 /** What a new field takes for a key left out: one text of about 100 characters. */
-const NEW_FIELD = { many: false, maxChars: 100, maxItems: null, hint: '', members: [], required: false } satisfies Partial<FieldDef>;
-export type FieldSetInput = { field: string; title?: string; type?: FieldDef['type']; many?: boolean; required?: boolean;
+const NEW_FIELD = { many: false, maxChars: 100, maxItems: null, hint: '', members: [], required: false, direction: false } satisfies Partial<FieldDef>;
+export type FieldSetInput = { field: string; title?: string; type?: FieldDef['type']; many?: boolean; required?: boolean; direction?: boolean;
   maxChars?: number | null; maxItems?: number | null; hint?: string; members?: string[]; create?: boolean };
-const DEFINITION_KEYS = ['title', 'type', 'many', 'maxChars', 'maxItems', 'hint', 'members', 'required'] as const satisfies readonly (keyof FieldSetInput)[];
+const DEFINITION_KEYS = ['title', 'type', 'many', 'maxChars', 'maxItems', 'hint', 'members', 'required', 'direction'] as const satisfies readonly (keyof FieldSetInput)[];
 /** Adds a field or changes the keys given of one; the store checks the whole definition and the catalog it makes. */
 export function setField(root: string, input: FieldSetInput, at: string) {
   return withControlWrite(root, (_, db) => {

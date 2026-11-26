@@ -1,3 +1,4 @@
+import { directionReason, priorResult, resultDecision } from './action-reasons.js';
 import { controlTaskHead } from './task-dto.js';
 import { reportIntent } from '@alpacawork/contract/command-access';
 import { reportCallerRules } from '@alpacawork/contract/access-boundaries';
@@ -51,32 +52,49 @@ export class TaskReportService {
     const taskId = reportedTask(input, caller);
     return withControlWrite(this.root, (tx, db) => {
       const tasks = new TaskRepository(this.root, db);
-      const confirmed = this.record(tx, tasks.get(taskId), input, actor, caller);
-      return { task: controlTaskHead(tasks.get(taskId)), outcome: confirmed
-        ? { kind: 'accepted' as const, opId: input.opId } : { kind: 'recorded' as const, opId: input.opId } };
+      const result = this.record(tx, tasks.get(taskId), input, actor, caller);
+      return { task: controlTaskHead(tasks.get(taskId)), outcome: result.confirmed
+        ? { kind: 'accepted' as const, opId: input.opId } : { kind: 'recorded' as const, opId: input.opId },
+        ...(result.ignoredTrigger && { ignoredTrigger: true as const }),
+        ...(result.ignoredTaken && { ignoredTaken: true as const }) };
     });
   }
 
   /**
    * Writes the report by the Task's facts: a done on a Task awaiting the user's review, held or not, confirms it; a
    * held Task returns to the state it was held from; any other waiting is a question, held or not; the
-   * rest is a state report. True when it confirmed a review.
+   * rest is a state report.
    */
-  private record(tx: ControlTx, task: ControlTask, input: ReportInput, actor: TaskActor, caller: Caller): boolean {
+  private record(tx: ControlTx, task: ControlTask, input: ReportInput, actor: TaskActor, caller: Caller) {
     if (!reportCallerRules.checkpoint.allows(input, caller))
       return invalid('values', 'Only an owner report saves values with a handoff', { kind: 'checkpoint_requires_owner_report' });
     // A retried report (its operation already logged) writes nothing anew; its receipt is the first one's.
-    const replayed = task.meta.log.some(each => each.id === input.opId);
+    const prior = task.meta.log.find(each => each.id === input.opId);
+    const replayed = prior !== undefined;
     const path = new TaskRepository(this.root, tx.store.connection).ancestry(task.id);
     const written = input.values !== undefined && !replayed ? writtenValues(tx.store.connection, path, task, input.values) : undefined;
     const checkpoint = written !== undefined
       ? checkpointForReport(tx, task, reportingRun(caller), written, input.nextConversation, input.compactFocus) : undefined;
     if (!reportCallerRules.askTo.allows(input, caller))
       invalid('askTo', 'Only a Run asking a question chooses --ask-to', { kind: 'only_question_run_chooses_ask_to' });
+    const trigger = replayed ? prior.reason?.trigger : directionReason(tx.store.connection, task, written, input, actor);
+    const ignoredTrigger = trigger === undefined && input.trigger !== undefined;
+    const stopPlacement = input.cause !== undefined && input.state === 'stopped' && caller.kind === 'run' && task.meta.parentId === caller.taskId
+      ? tx.runs.responsiblePlacement(task.id) : null;
+    if (input.cause !== undefined && (caller.kind !== 'run' || task.meta.parentId !== caller.taskId))
+      invalid('cause', '--cause on a stop is for the parent of a child task', { kind: 'cause_requires_child_stop' });
+    const taken = replayed ? prior.reason?.taken : stopPlacement && caller.kind === 'run'
+      ? resultDecision({ ...input, taken: 'dropped' }, actor, priorResult(tx.runs, task, stopPlacement.id, actor, caller.taskId), false)
+      : undefined;
+    const ignoredTaken = input.cause !== undefined && taken === undefined;
+    const recorded = { confirmed: false, ignoredTrigger, ignoredTaken };
+    const reason = trigger || taken ? { ...(trigger && { trigger }), ...(taken && { taken }) } : undefined;
+    const reasonInput = { trigger: input.trigger, triggerNote: input.triggerNote,
+      cause: input.cause, aspects: input.aspects, causeNote: input.causeNote };
     const report = { actor, taskId: task.id, opId: input.opId, expectedTaskHash: input.expectedTaskHash };
     if (input.withdraw !== undefined) {
       withdraw(tx, { ...report, runId: reportingRun(caller), questionId: input.withdraw });
-      return false;
+      return recorded;
     }
     const state = input.state;
     if (state === undefined) return invalid('state', 'Supply --state or --withdraw', { kind: 'supply_state_or_withdraw' });
@@ -89,7 +107,7 @@ export class TaskReportService {
       new ReviewService(this.root).approve(tx, { taskId: task.id, operationId: input.opId,
         expectedTaskHash: input.expectedTaskHash, expectedPlacementRevision: input.expectedPlacementRevision,
         aboutRunId: input.aboutRun, title: input.title, description: input.description }, actor);
-      return true;
+      return { ...recorded, confirmed: true };
     }
     // Reports delivered for a decision need their own readable summary, independently of Task values.
     if (intent.code === 'ask' || intent.code === 'report_done') {
@@ -103,14 +121,14 @@ export class TaskReportService {
       if (input.askTo === undefined)
         invalid('askTo', 'A question requires --ask-to <ancestor Task ID>|user', { kind: 'question_requires_ask_to' });
       ask(tx, { ...report, askTo: input.askTo, runId: reportingRun(caller), title: input.title!, description: input.description!,
-        values: input.values, written, nextConversation: input.nextConversation, compactFocus: input.compactFocus, checkpoint });
-      return false;
+        values: input.values, written, reason, reasonInput, nextConversation: input.nextConversation, compactFocus: input.compactFocus, checkpoint });
+      return recorded;
     }
     // Finishing needs every required field: checked on the values the report itself leaves, never on a partial write.
     if (intent.code === 'report_done' && !replayed) assertRequiredValues(tx.store.connection, path, task.id, written ?? task.values);
     reportState(tx, { ...report, runId: caller.kind === 'run' ? caller.runId : null, state, intent: intent.code,
       title: input.title, description: input.description, estimateMinutes: input.estimateMinutes,
-      urgentReason: input.urgent, values: input.values, written, nextConversation: input.nextConversation, compactFocus: input.compactFocus, checkpoint });
-    return false;
+      urgentReason: input.urgent, values: input.values, written, reason, reasonInput, nextConversation: input.nextConversation, compactFocus: input.compactFocus, checkpoint });
+    return recorded;
   }
 }

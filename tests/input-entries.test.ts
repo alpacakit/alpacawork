@@ -117,6 +117,8 @@ test('CLI and HTTP refuse alike', async t => {
       report('compactFocus', 'incompatible', { state: 'doing', values: { notes: 'Done.' }, nextConversation: 'new', compactFocus: 'Keep it' },
         ['--state', 'doing', '--values-file', values, '--next-conversation', 'new', '--compact-focus', 'Keep it']),
       report('values', 'incompatible', { state: 'stopped', values: { notes: 'Done.' } }, ['--state', 'stopped', '--values-file', values]),
+      report('cause', 'incompatible', { state: 'doing', cause: 'shortfall' }, ['--state', 'doing', '--cause', 'shortfall']),
+      report('cause', 'required', { state: 'stopped', aspects: ['speed'] }, ['--state', 'stopped', '--aspects', 'speed']),
       report('state', 'exactly_one', { title: 'Report' }, ['--title', 'Report']),
       report('title', 'required', { state: 'doing', description: 'Done.' }, ['--state', 'doing', '--description-file', description]),
       report('title', 'incompatible', { withdraw: 'L1', title: 'Report' }, ['--withdraw', 'L1', '--title', 'Report']),

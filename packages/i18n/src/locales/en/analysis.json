@@ -1,4 +1,12 @@
 {
+  "aspect": {
+    "behavior": "Wrong behavior",
+    "look_feel": "Look and feel",
+    "presentation": "How it was shown",
+    "scope": "Added scope",
+    "speed": "Speed",
+    "wording": "Wording"
+  },
   "breakdown": {
     "all_one": "Show all {{count}} rows",
     "all_other": "Show all {{count}} rows",
@@ -53,7 +61,16 @@
     "shareFailed": "Couldn't share",
     "theme": "Color"
   },
+  "cause": {
+    "external": "External factor",
+    "misread": "Misread request",
+    "other": "Other",
+    "premise_changed": "Changed premises",
+    "shortfall": "Result fell short",
+    "unclear_request": "Unclear request"
+  },
   "causes": {
+    "aspects": "Affected aspects: {{items}}",
     "choice": "Answered with a choice",
     "firstRound": "First round",
     "firstRoundTip": "Tokens used up to each task's first review and its answer",
@@ -63,8 +80,8 @@
     "laterTip": "The work redone and waited on after each task's first review",
     "meant": "As you meant",
     "noFixes": "No fixes were labelled in this span.",
-    "none": "Nothing to show in this span.",
     "noQuestions": "Taken as done with no question asked",
+    "none": "Nothing to show in this span.",
     "ofFixes_one": "Of the {{count}} fix you asked for, by kind",
     "ofFixes_other": "Of the {{count}} fixes you asked for, by kind",
     "ofItems_one": "Of {{count}} answered item",
@@ -163,16 +180,6 @@
     "analysis": "Analysis",
     "label": "Screen",
     "use": "Use"
-  },
-  "fix": {
-    "behavior": "Wrong behavior",
-    "intent": "Misread request",
-    "look_feel": "Look and feel",
-    "other": "Other",
-    "review_flow": "How it was shown",
-    "scope": "Added scope",
-    "speed": "Speed",
-    "wording": "Wording"
   },
   "history": {
     "accepted": "Accepted",

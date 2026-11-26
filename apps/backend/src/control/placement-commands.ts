@@ -3,11 +3,12 @@
  * decided and check only the Task's and the placements' facts. A change's record goes through TaskTransition, and a
  * Task at work tells its new responsible in the same write by a handover notice, whose line return-lines draws.
  */
+import { placementReason, priorResult, resultDecision, type DecisionOptions, type PlacementOptions } from './action-reasons.js';
 import { randomUUID } from 'node:crypto';
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 import type { AiStackPrefix } from '@alpacawork/contract';
 import { aiRows, defaultAiStack } from '../ai-stack.js';
-import type { TaskActor } from '@alpacawork/raw';
+import type { ActionReason, TaskActor } from '@alpacawork/raw';
 import type { Selection } from '@alpacawork/contract/agent-settings';
 import { TaskRepository } from './task-store.js';
 import { taskAtWork, PlacementStore, type PlacementRecord } from './placements.js';
@@ -21,9 +22,10 @@ import { placeAgentReceiptSchema, setResponsibleReceiptSchema, releaseAgentRecei
 /** What one write gives a command: the placements, and the records of their changes on the Task. */
 type Write = {
   store: PlacementStore;
+  take(placementId: string, input: DecisionOptions, requesterTask: string | null): ActionReason | undefined;
   /** Records a placement change on the Task by the command's actor; returns the record's ID. */
   record(kind: 'responsible_changed' | 'placement_changed', placement: PlacementRecord,
-    effect: 'responsible' | 'member' | 'released', launchValues?: Selection, prefix?: AiStackPrefix): string;
+    effect: 'responsible' | 'member' | 'released', launchValues?: Selection, prefix?: AiStackPrefix, reason?: ActionReason): string;
   /** A replaced or handed-over responsible: a Task at work tells its new one, caused by the record `logId`. */
   handover(logId: string): void;
 };
@@ -58,7 +60,7 @@ export class PlacementCommands {
       if (task.hash !== expectedTaskHash)
         throw new Problem(PROBLEM_CODE.conflict, 'Task changed; reload before retrying', { hash: task.hash }, { reason: { kind: 'task_changed' } });
       const store = new PlacementStore(this.root, false, db);
-      const record: Write['record'] = (kind, placement, effect, launchValues, prefix) => {
+      const record: Write['record'] = (kind, placement, effect, launchValues, prefix, reason) => {
         if (prefix) db.prepare('UPDATE placements SET ai_prefix=? WHERE id=?').run(JSON.stringify(prefix), placement.id);
         // After the Task's last record, so its log keeps its order.
         const latestAt = task.meta.log.reduce((latest, entry) => Math.max(latest, Date.parse(entry.at)), 0);
@@ -66,14 +68,18 @@ export class PlacementCommands {
         this.transition.appendRecord(tx, task.id, { id: logId, kind,
           at: new Date(Math.max(Date.now(), latestAt + 1)).toISOString(),
           title: null, description: null, actor, fromState: null, toState: null,
-          placementId: placement.id, placementRevision: placement.revision, placementEffect: effect,
+          placementId: placement.id, placementRevision: placement.revision, placementEffect: effect, ...(reason && { reason }),
           ...(launchValues === undefined ? {} : { launchValues: { ...launchValues } }) });
         return logId;
       };
       const handover = (logId: string) => {
         if (taskAtWork(task.meta)) returnsAt(tx, task.id).notice('handover', task.id, logId);
       };
-      try { return operation({ store, record, handover }); }
+      const take: Write['take'] = (placementId, input, requesterTask) => {
+        const taken = resultDecision(input, actor, priorResult(tx.runs, task, placementId, actor, requesterTask));
+        return taken && { taken };
+      };
+      try { return operation({ store, record, handover, take }); }
       finally { store.close(); }
     });
   }
@@ -88,58 +94,65 @@ export class PlacementCommands {
       return operation(write);
     });
   }
-  placeNewResponsible(input: PlaceAgentInput, actor: TaskActor) {
+  placeNewResponsible(input: PlaceAgentInput & PlacementOptions, actor: TaskActor) {
     return this.write(input.taskId, input.expectedTaskHash, actor, ({ store, record, handover }) => {
+      const placed = placementReason(input, actor, true);
       const profileKey = this.requireProfile(input.profileKey, input.selected, input.aiStack);
       return placeAgentReceiptSchema.parse(input.replacePlacementId === undefined
         ? { ...store.createAndPlace({ taskId: input.taskId,
           profileKey, responsible: true }, result =>
-          record('responsible_changed', result.placement, 'responsible', input.selected ?? {}, input.aiStack)), previousPlacement: null }
+          record('responsible_changed', result.placement, 'responsible', input.selected ?? {}, input.aiStack, placed && { placed })), previousPlacement: null }
         : store.createAndReplaceResponsible({ taskId: input.taskId,
           profileKey, replacePlacementId: input.replacePlacementId,
           expectedPlacementRevision: input.expectedPlacementRevision! }, result =>
-          handover(record('responsible_changed', result.placement, 'responsible', input.selected ?? {}, input.aiStack))));
+          handover(record('responsible_changed', result.placement, 'responsible', input.selected ?? {}, input.aiStack, placed && { placed }))));
     });
   }
-  setResponsible(input: SetResponsibleInput, actor: TaskActor) {
+  setResponsible(input: SetResponsibleInput & PlacementOptions, actor: TaskActor) {
     return this.write(input.taskId, input.expectedTaskHash, actor, ({ store, record, handover }) => {
       const candidate = store.placements(input.taskId).find(item => item.id === input.placementId);
       if (!candidate) throw new Problem(PROBLEM_CODE.notFound, 'Placement does not belong to task', undefined, { reason: { kind: 'placement_does_not_belong_task' } });
       this.requireProfile(candidate.profileKey);
+      const placed = placementReason(input, actor, true);
       return setResponsibleReceiptSchema.parse(store.setResponsible(input.placementId, input.expectedPlacementRevision,
-        result => handover(record('responsible_changed', result.placement, 'responsible'))));
+        result => handover(record('responsible_changed', result.placement, 'responsible', undefined, undefined, placed && { placed }))));
     });
   }
-  release(input: ReleaseAgentInput, actor: TaskActor) {
-    return this.write(input.taskId, input.expectedTaskHash, actor, ({ store, record }) => {
+  release(input: ReleaseAgentInput & DecisionOptions, actor: TaskActor, requesterTask: string | null = null) {
+    return this.write(input.taskId, input.expectedTaskHash, actor, ({ store, record, take }) => {
       const candidate = store.placements(input.taskId).find(item => item.id === input.placementId);
       if (!candidate) throw new Problem(PROBLEM_CODE.notFound, 'Placement does not belong to task', undefined, { reason: { kind: 'placement_does_not_belong_task' } });
-      return releaseAgentReceiptSchema.parse({ placement: store.release(input.placementId, input.expectedPlacementRevision,
-        result => record(candidate.responsible ? 'responsible_changed' : 'placement_changed', result, 'released')) });
+      const reason = take(candidate.id, input, requesterTask);
+      return releaseAgentReceiptSchema.parse({ ...(input.taken !== undefined && !reason && { ignoredTaken: true }),
+        placement: store.release(input.placementId, input.expectedPlacementRevision,
+        result => record(candidate.responsible ? 'responsible_changed' : 'placement_changed', result, 'released', undefined, undefined, reason)) });
     });
   }
-  placeMember(input: PlaceMemberInput, actor: TaskActor) {
+  placeMember(input: PlaceMemberInput & PlacementOptions, actor: TaskActor) {
     return this.withResponsibleAt(input, actor, ({ store, record }) => {
+      const placed = placementReason(input, actor, true);
       const profileKey = this.requireProfile(input.profileKey, input.selected, input.aiStack);
       if (input.agentId === undefined)
         return placeMemberReceiptSchema.parse(store.createAndPlace({ taskId: input.taskId,
           profileKey, responsible: false }, result =>
-          record('placement_changed', result.placement, 'member', input.selected ?? {}, input.aiStack)));
+          record('placement_changed', result.placement, 'member', input.selected ?? {}, input.aiStack, placed && { placed })));
       const agent = store.agents().find(item => item.id === input.agentId);
       if (!agent) throw new Problem(PROBLEM_CODE.notFound, 'Agent does not exist', undefined, { reason: { kind: 'agent_does_not_exist' } });
       const placement = store.place({ taskId: input.taskId, agentId: agent.id,
-        profileKey, responsible: false }, result => record('placement_changed', result, 'member', input.selected ?? {}, input.aiStack));
+        profileKey, responsible: false }, result => record('placement_changed', result, 'member', input.selected ?? {}, input.aiStack, placed && { placed }));
       return placeMemberReceiptSchema.parse({ agent, placement });
     });
   }
-  releaseMember(input: ReleaseMemberInput, actor: TaskActor) {
-    return this.withResponsibleAt(input, actor, ({ store, record }) => {
+  releaseMember(input: ReleaseMemberInput & DecisionOptions, actor: TaskActor) {
+    return this.withResponsibleAt(input, actor, ({ store, record, take }) => {
       const placement = store.placements(input.taskId).find(item => item.id === input.placementId);
       if (!placement || !placement.active || placement.responsible)
         throw new Problem(PROBLEM_CODE.forbidden, 'Only an active member on this task can be released', undefined,
           { reason: { kind: 'only_active_member_on_task_can_released' } });
-      return releaseMemberReceiptSchema.parse({ placement: store.release(placement.id, input.expectedPlacementRevision,
-        result => record('placement_changed', result, 'released')) });
+      const reason = take(placement.id, input, input.taskId);
+      return releaseMemberReceiptSchema.parse({ ...(input.taken !== undefined && !reason && { ignoredTaken: true }),
+        placement: store.release(placement.id, input.expectedPlacementRevision,
+        result => record('placement_changed', result, 'released', undefined, undefined, reason)) });
     });
   }
 }

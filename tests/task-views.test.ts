@@ -27,6 +27,7 @@ import { TaskRequestService } from '@alpacawork/backend/test-dist/control/task-r
 import type { Caller } from '@alpacawork/backend/test-dist/control/authorize.js';
 import { readControlSource, readTaskView, readTaskListView, taskListView, taskView } from '@alpacawork/backend/test-dist/control/task-views.js';
 import { RunStore } from '@alpacawork/runs';
+import { PlacementCommands } from '@alpacawork/backend/test-dist/control/placement-commands.js';
 import { PlacementStore } from '@alpacawork/backend/test-dist/control/placements.js';
 import { fields } from './runs-fixtures.ts';
 import { startServer } from '@alpacawork/backend/test-dist/receiver/server.js';
@@ -214,27 +215,34 @@ test('task get lists open questions and --question gives one\'s full text as fix
     assert.deepEqual([answered.decideKinds, answered.answerParts], [['choose', 'choose'], { source: 'user', words: true,
         items: [{ n: 1, kind: 'choice', choice: 1, recommended: true, words: false }, { n: 2, kind: 'other', words: true }] }]);
 });
-test('an instruction keeps what its sender said it is, read back with task get --include instructionKinds', async (t) => {
+test('an instruction without a prior result reports an ignored decision', async (t) => {
     const h = await setup(t);
     await h.commands.update({ id: h.top.id, values: { decide: [{ decide_kind: 'accept', decide_question: 'Merge the card?' }] }, expectedTaskHash: h.top.hash });
     const questionId = await ask(h, h.top.id, 'Merge the card', 'The card is ready to merge');
     const placement = responsibleOf(h.root, h.top.id), opId = randomUUID();
-    const sent = await new TaskRequestService(h.root).request({ task: h.top.id, body: 'The card sits too low; move it up and make it load faster',
+    const service = new TaskRequestService(h.root);
+    const input = { task: h.top.id, body: 'The card sits too low; move it up and make it load faster',
         opId, expectedTaskHash: (await new ControlTaskStore(h.root).get(h.top.id)).hash, expectedPlacementRevision: placement.revision,
-        instructionKind: 'fix', fixes: ['look_feel', 'speed'] },
-        { kind: 'main', provider: 'claude', conversationId: 'c1' }, { kind: 'human' });
+        taken: 'fix' as const, cause: 'shortfall' as const, aspects: ['look_feel', 'speed'] as ('look_feel' | 'speed')[] };
+    const send = () => service.request(input, { kind: 'main', provider: 'claude', conversationId: 'c1' }, { kind: 'human' });
+    const sent = await send();
     assert.equal(sent.outcome.kind, 'request_accepted');
-    const read = (await cli(h.root, ['task', 'get', '--task', h.top.id, '--include', 'instructionKinds'])).json;
-    assert.deepEqual(read.instructionKinds.map(({ request, kind, fixes, by }: Record<string, unknown>) => ({ request, kind, fixes, by })),
-        [{ request: opId, kind: 'fix', fixes: ['look_feel', 'speed'], by: 'main' }]);
+    const read = (await cli(h.root, ['task', 'get', '--task', h.top.id, '--include', 'reasons'])).json;
+    assert.equal(sent.ignoredTaken, true);
+    await t.test('retrying the same instruction returns the same receipt with its ignored decision', async () => {
+        const replay = await send();
+        assert.deepEqual(replay.outcome, sent.outcome);
+        assert.equal(replay.ignoredTaken, true);
+    });
+    assert.deepEqual(read.reasons, []);
     // The question the instruction came instead of an answer to names it.
     const withdrawn = (await cli(h.root, ['task', 'get', '--task', h.top.id, '--question', questionId])).json.question;
     assert.deepEqual([withdrawn.state, withdrawn.decideKinds, withdrawn.replacedBy], ['withdrawn', ['accept'], opId]);
     // The same records come on every row of the list, without the question's full text.
     const listed = (await cli(h.root, ['task', 'get', '--task', h.top.id, '--include', 'closedQuestions'])).json.questions;
     assert.deepEqual(listed.map((q: Record<string, unknown>) => [q.id, q.decideKinds, q.replacedBy, 'text' in q]), [[questionId, ['accept'], opId, false]]);
-    // A label is a record for analysis, not a row of the History.
-    assert.equal((await cli(h.root, ['task', 'get', '--task', h.top.id])).json.instructionKinds, undefined);
+    // Reasons are included on request.
+    assert.equal((await cli(h.root, ['task', 'get', '--task', h.top.id])).json.reasons, undefined);
 });
 test('a question is refused until each of its items says what it asks', async (t) => {
     const h = await setup(t);
@@ -926,3 +934,34 @@ for (const place of ['files', 'work'] as const) {
         } finally { FileWriter.prototype.entries = entries; }
     });
 }
+
+test('a follow-up to a returned member result needs a decision and links it to the right request', async t => {
+    const h = await setup(t), service = new TaskRequestService(h.root), tasks = new ControlTaskStore(h.root);
+    await asResponsible(h, h.top.id, async (actor, caller) => {
+        const owner = responsibleOf(h.root, h.top.id);
+        const { placement } = await new PlacementCommands(h.root).placeMember({ taskId: h.top.id,
+            profileKey: 'codex', expectedTaskHash: (await tasks.get(h.top.id)).hash,
+            expectedResponsibleRevision: owner.revision, placedAs: 'lighter' }, actor);
+        const send = async (opId: string, taken?: 'fix') => service.request({
+            task: h.top.id, body: taken ? 'Correct the handling of empty input' : 'Check this change',
+            agent: placement.id, opId, newConversation: true, expectedTaskHash: (await tasks.get(h.top.id)).hash,
+            expectedPlacementRevision: placement.revision, ...(taken && { taken, cause: 'shortfall', aspects: ['behavior'] }),
+        }, actor, caller);
+        const first = randomUUID(), initial = await send(first);
+        assert.equal(initial.outcome.kind, 'request_accepted');
+        const run = initial.outcome.request.runId, store = new RunStore(h.root, { busyTimeoutMs: 1000 });
+        try {
+            store.write(tx => {
+                const running = { ...tx.get(run)!, state: 'running' as const, started_at: new Date().toISOString() };
+                tx.update(running);
+                tx.finish({ ...running, state: 'succeeded', ended_at: new Date().toISOString() },
+                    { state: 'present', text: 'The result' });
+            });
+        } finally { store.close(); }
+        await assert.rejects(send(randomUUID()), { code: 'invalid_input' });
+        const followUp = randomUUID();
+        await send(followUp, 'fix');
+        const reason = (await tasks.get(h.top.id)).meta.log.find(entry => entry.id === followUp)?.reason;
+        assert.deepEqual(reason?.taken, { code: 'fix', cause: 'shortfall', aspects: ['behavior'], of: first });
+    });
+});

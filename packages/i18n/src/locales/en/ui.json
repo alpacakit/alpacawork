@@ -183,7 +183,7 @@
       "title": "Conclusion"
     },
     "conditions": {
-      "hint": "One per condition: `<condition> — met|not met|unchecked (where the evidence is)`. Evidence details and test counts go in the linked file.",
+      "hint": "One per condition: `<condition> — met|not met|unchecked (where the evidence is)`. Only the text before the last ` — ` defines the condition. A change after it only updates the status. Evidence details and test counts go in the linked file.",
       "title": "Done conditions"
     },
     "decide": {

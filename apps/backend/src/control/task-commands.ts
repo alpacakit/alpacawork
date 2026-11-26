@@ -1,3 +1,4 @@
+import { directionReason, type DirectionOptions } from './action-reasons.js';
 import { assertDependencyAcyclic, dependencyStatus, replaceDependencies } from './dependencies.js';
 import { taskShelfIn } from './project-shelf.js';
 import { expireInvalidDestinations } from './task-questions.js';
@@ -72,12 +73,12 @@ export class ControlTaskCommands {
     return Promise.resolve().then(() => withControlWrite(this.root, (tx, db) => execute(new TaskRepository(this.root, db), tx)));
   }
   /** One write about Task `id`, reading the project it belongs to (`TaskRepository.projectFor`); returns its view. */
-  private change(id: string, mutate: (writer: TaskRepository, tx: ControlTx, snapshot: ControlSnapshot) => void,
+  private change<T>(id: string, mutate: (writer: TaskRepository, tx: ControlTx, snapshot: ControlSnapshot) => T,
     extra: readonly string[] = []) {
     return this.write((writer, tx) => {
       const snapshot = writer.related(id, extra);
-      mutate(writer, tx, snapshot);
-      return { task: controlTaskHead(writer.get(id)), shelf: taskShelfIn(tx.store.connection, id) };
+      const result = mutate(writer, tx, snapshot);
+      return { task: controlTaskHead(writer.get(id)), shelf: taskShelfIn(tx.store.connection, id), ...(result === undefined ? {} : { result }) };
     });
   }
   /** A record of this command's actor that keeps the Task's state. */
@@ -212,7 +213,7 @@ export class ControlTaskCommands {
    * nothing.
    */
   update(input: { id: string; title?: string; values?: unknown; color?: string; userRequested?: boolean; analysisSubject?: AnalysisSubject | null;
-    expectedTaskHash: string }) {
+    expectedTaskHash: string } & DirectionOptions) {
     return this.change(input.id, (_, tx, snapshot) => {
       const task = find(snapshot, input.id, input.expectedTaskHash); assertActive(task);
       if (input.color !== undefined) validateTaskSettings(task.meta.kind, { ...task.settings, color: input.color });
@@ -226,15 +227,17 @@ export class ControlTaskCommands {
       const tree = new TaskTree(snapshot.tasks);
       const values = input.values === undefined ? undefined
         : patchedValues(task.id, task.values, input.values, schemaFor(tree, snapshot.fields.schemas, task.id), snapshot.fields.catalog);
+      const trigger = directionReason(tx.store.connection, task, values, input, this.actor);
       const settings = input.color === undefined ? undefined : { ...task.settings!, color: input.color };
       const records: TaskLog[] = [];
       if (title !== undefined) records.push(this.record('retitled'));
-      if (values !== undefined || settings !== undefined || analysisSubject !== undefined) records.push({ ...this.record('body_updated'),
+      if (values !== undefined || settings !== undefined || analysisSubject !== undefined) records.push({ ...this.record('body_updated'), ...(trigger && { reason: { trigger } }),
         changedFields: [...(values === undefined ? [] : ['values' as const]),
           ...(settings === undefined ? [] : ['color' as const]),
           ...(analysisSubject === undefined ? [] : ['analysisSubject' as const])] });
       if (mark !== undefined) records.push(this.record('user_request_changed', { userRequested: mark }));
       if (records.length) this.transition.appendRecords(tx, task.id, records, undefined, { title, values, settings, analysisSubject });
+      return trigger === undefined && input.trigger !== undefined;
     });
   }
   /**

@@ -143,15 +143,18 @@ function evidenceWords(finding: Finding, t: (key: string, options?: Record<strin
 function Fixes({ marks, zone }: { marks: TraceMark[]; zone: string }) {
   const { t } = useTranslation("analysis");
   // The user's own (theirs, or the coordinator's for them), not an owner's to its members.
-  const fixes = marks.filter((mark): mark is Extract<TraceMark, { kind: "instruction" }> => mark.kind === "instruction" && mark.by === "user" && mark.label?.kind === "fix");
+  const fixes = marks.filter((mark): mark is Extract<TraceMark, { kind: "instruction" }> => mark.kind === "instruction" && mark.by === "user" && (mark.taken?.code === "fix" || mark.taken?.code === "redo"));
   if (!fixes.length) return null;
-  const kinds = new Map<string, typeof fixes>();
-  for (const mark of fixes) for (const kind of mark.label!.fixes) kinds.set(kind, [...kinds.get(kind) ?? [], mark]);
+  const kinds = new Map<NonNullable<NonNullable<(typeof fixes)[number]["taken"]>["cause"]>, typeof fixes>();
+  for (const mark of fixes) {
+    const cause = mark.taken?.cause;
+    if (cause) kinds.set(cause, [...kinds.get(cause) ?? [], mark]);
+  }
   const order = [...kinds].sort((a, b) => b[1].length - a[1].length);
   return <div className="mt-6">
     <h4 className="mb-2 text-xs font-normal text-soft">{t("task.fixes", { count: fixes.length })}</h4>
     {order.map(([kind, items]) => <div key={kind} className="mb-3">
-      <p className="flex items-center font-semibold"><Square className="bg-reworked" />{t(`fix.${kind}`)}<span className="ms-1.5 font-normal text-muted">×{items.length}</span></p>
+      <p className="flex items-center font-semibold"><Square className="bg-reworked" />{t(`cause.${kind}`)}<span className="ms-1.5 font-normal text-muted">×{items.length}</span></p>
       <ul className="mt-1 divide-y divide-rule border-t border-rule ps-4">{items.map(mark =>
         <li key={mark.id} className="flex items-baseline gap-3 py-1.5 text-base">
           <span dir="auto" className="line-clamp-3 min-w-0 flex-1">{mark.firstLine ? `「${mark.firstLine}」` : t("task.noWords")}</span>

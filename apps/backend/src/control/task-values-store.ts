@@ -36,7 +36,7 @@ export function fieldUse(db: DatabaseSync, id: string): FieldUse {
 }
 
 /**
- * Adds or changes one definition. A shipped field takes only a change of `required` (contract shippedField); the
+ * Adds or changes one definition. A shipped field takes only changes to `required` and `direction` (contract shippedField); the
  * resulting catalog must stay sound (members exist, the first member names an item, no cycle). Values already stored
  * are not rewritten: a new limit applies to the next write of that field.
  */
@@ -47,7 +47,7 @@ export function writeFieldDef(db: DatabaseSync, input: unknown, at: string): Fie
     { reason: { kind: 'field_definition_invalid', field }, issues: toIssues(parsed.error.issues) });
   const before = readFieldCatalog(db).get(parsed.data.id);
   const def = isDefaultField(parsed.data.id) ? shippedField(parsed.data) : parsed.data;
-  if (!def) throw new Problem(PROBLEM_CODE.invalidInput, `Field ${parsed.data.id} comes with the app; only whether it is required can change`,
+  if (!def) throw new Problem(PROBLEM_CODE.invalidInput, `Field ${parsed.data.id} comes with the app; only whether it is required or marks direction can change`,
     { field: parsed.data.id }, { reason: { kind: 'field_locked', field: parsed.data.id } });
   if (before && (before.type !== def.type || before.many !== def.many || before.members.join() !== def.members.join())) {
     const values = storedValuesOf(db, readFieldCatalog(db), def.id);
@@ -184,7 +184,7 @@ export function readTaskValues(db: DatabaseSync, taskIds?: readonly string[]): M
  * none for the rest. Only the fields whose value changes are written, each through replaceValue, so the value it had
  * before stays in task_value_versions.
  */
-export function writeTaskValues(db: DatabaseSync, taskId: string, values: TaskValues, at: string = now()): void {
+export function writeTaskValues(db: DatabaseSync, taskId: string, values: TaskValues, at: string = now(), changeLog: string | null = null): void {
   const row = db.prepare('SELECT id FROM tasks WHERE external_id=?').get(taskId);
   if (!row) throw new Problem(PROBLEM_CODE.notFound, 'Task does not exist', { task: taskId }, { reason: { kind: 'task_does_not_exist' } });
   const uuid = String(row.id);
@@ -192,7 +192,7 @@ export function writeTaskValues(db: DatabaseSync, taskId: string, values: TaskVa
     .map(old => [String(old.field_id), String(old.value)]));
   const next = new Map(Object.entries(values).map(([field, value]) => [field, JSON.stringify(value)]));
   for (const field of new Set([...previous.keys(), ...next.keys()]))
-    if (previous.get(field) !== next.get(field)) replaceValue(db, uuid, field, previous.get(field) ?? null, next.get(field) ?? null, at);
+    if (previous.get(field) !== next.get(field)) replaceValue(db, uuid, field, previous.get(field) ?? null, next.get(field) ?? null, at, changeLog);
 }
 /**
  * The time a save's values hold from: the earliest of the log records the save appends (`appended`; they need not be in
@@ -206,8 +206,8 @@ export function valuesWriteTime(appended: readonly { at: string }[]): string {
  * The only change of one stored value (task_values): keeps what the field held (`previous`, JSON or null for none) as a
  * version replaced at `at`, then stores `next` (JSON, or null to remove the field's value).
  */
-function replaceValue(db: DatabaseSync, taskUuid: string, field: string, previous: string | null, next: string | null, at: string): void {
-  db.prepare('INSERT INTO task_value_versions(task_id,field_id,replaced_at,value) VALUES (?,?,?,?)').run(taskUuid, field, at, previous);
+function replaceValue(db: DatabaseSync, taskUuid: string, field: string, previous: string | null, next: string | null, at: string, changeLog: string | null = null): void {
+  db.prepare('INSERT INTO task_value_versions(task_id,field_id,replaced_at,value,change_log_id) VALUES (?,?,?,?,?)').run(taskUuid, field, at, previous, changeLog);
   if (next === null) db.prepare('DELETE FROM task_values WHERE task_id=? AND field_id=?').run(taskUuid, field);
   else db.prepare('INSERT INTO task_values(task_id,field_id,value) VALUES (?,?,?) ON CONFLICT(task_id,field_id) DO UPDATE SET value=excluded.value')
     .run(taskUuid, field, next);
@@ -240,6 +240,36 @@ export function readValuesAt(db: DatabaseSync, taskId: string, at: string): Valu
   return { task: taskId, at, values: Object.fromEntries(Object.entries(values).sort(([a], [b]) => a.localeCompare(b))
     .map(([field, value]) => [field, JSON.parse(value)])), recordedSince };
 }
+export function readValuesChange(db: DatabaseSync, task: string, changeLog: string) {
+  const log = db.prepare('SELECT l.at,t.id FROM task_log l JOIN tasks t ON t.id=l.task_id WHERE t.external_id=? AND l.id=?')
+    .get(task, changeLog);
+  if (!log || typeof log.at !== 'string')
+    throw new Problem(PROBLEM_CODE.notFound, 'Task value change does not exist', { task, changeLog },
+      { reason: { kind: 'value_change_not_found' } });
+  const fields = readValueChanges(db, { task: String(log.id), log: changeLog });
+  if (!fields.length)
+    throw new Problem(PROBLEM_CODE.notFound, 'No value versions are linked to this record', { task, changeLog },
+      { reason: { kind: 'value_change_not_found' } });
+  return { task, changeLog, at: log.at, fields: fields.map(({ changeLog: _log, ...field }) => field).sort((a, b) => a.id.localeCompare(b.id)) };
+}
+
+/** Exact before and after values, for one log entry or a family of Tasks. */
+export function readValueChanges(db: DatabaseSync, scope: { task: string; log: string } | { tasks: readonly string[] }) {
+  const where = 'task' in scope ? 'v.task_id=? AND v.change_log_id=?'
+    : 'v.task_id IN (SELECT value FROM json_each(?)) AND v.change_log_id IS NOT NULL';
+  const args = 'task' in scope ? [scope.task, scope.log] : [JSON.stringify(scope.tasks)];
+  const rows = db.prepare(`SELECT v.change_log_id,v.field_id,v.value,
+    CASE WHEN n.id IS NOT NULL THEN n.value ELSE c.value END AS after
+    FROM task_value_versions v
+    LEFT JOIN task_value_versions n ON n.id=(
+      SELECT MIN(next.id) FROM task_value_versions next WHERE next.task_id=v.task_id AND next.field_id=v.field_id AND next.id>v.id)
+    LEFT JOIN task_values c ON c.task_id=v.task_id AND c.field_id=v.field_id
+    WHERE ${where} ORDER BY v.id`).all(...args);
+  const json = (value: unknown) => typeof value === 'string' ? JSON.parse(value) : null;
+  return rows.map(row => ({ changeLog: String(row.change_log_id), id: String(row.field_id),
+    before: json(row.value) as unknown, after: json(row.after) as unknown }));
+}
+
 export type ValuesAt = { task: string; at: string; values: TaskValues | null; reason?: 'not-created' | 'not-recorded'; recordedSince: string };
 
 /**

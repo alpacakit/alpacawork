@@ -14,7 +14,7 @@ import type { RunRecord } from '@alpacawork/contract/run';
 import { RunStore, admittedDelivery, automaticLimitReached, checkRunLimits, isUnfinished,
   type NewRequest, type RunTransaction, type StoredRequest } from '@alpacawork/runs';
 import { ControlStore } from '@alpacawork/db';
-import { speaksForUser, type ChildObservations, type InstructionLabel, type TaskActor } from '@alpacawork/raw';
+import { speaksForUser, type ChildObservations, type TaskActor } from '@alpacawork/raw';
 import { FileWriter } from '../raw/storage.js';
 import { assignedSession, launchIfResumable, readAgentsSettings } from '../agents-settings.js';
 import { TaskRepository, TaskTree, controlSnapshotView } from './task-store.js';
@@ -30,6 +30,7 @@ import { verifyRequestAttachments } from './task-files.js';
 import { launchDirectory } from './launch-directory.js';
 import { launchCwd } from './project-settings.js';
 import { freezeAiStack } from '../ai-stack.js';
+import { placementReason, priorResult, resultDecision, type DecisionOptions, type PlacementOptions } from './action-reasons.js';
 import { initialPlacementValues } from './placement-launch-values.js';
 import { requestAiPlan } from './request-ai.js';
 import { deliverable, isServerRequest, seatFactsOf, seatSettings, seatSourceOf } from './wake.js';
@@ -46,8 +47,7 @@ export type RequestContext = {
     request: NewRequest, run: RunRecord) => void;
 } & (
   | { purpose: 'instruction'; actor: TaskActor; actorRunId?: string; answersQuestion?: { id: string; title: string; state: 'answered' | 'withdrawn' };
-    /** What the instruction is, said by its sender: kept beside it in the same write (request_labeled). */
-    label?: Omit<InstructionLabel, 'request'> }
+    reasons?: DecisionOptions & PlacementOptions }
   | { purpose: 'return_continuation'; returnIds: readonly string[] });
 function reject(code: ProblemCode, message: string, reason: ProblemReason,
   taskHash: string | null, revision: number | null, headId: string | null): never {
@@ -63,10 +63,13 @@ function sameRequest(saved: StoredRequest, input: RequestInput): boolean {
     (input.expectedHeadRunId === undefined || saved.headRunId === input.expectedHeadRunId) &&
     (input.mode === undefined || saved.mode === input.mode) && saved.body === input.body;
 }
-function receipt(saved: StoredRequest, run: RunRecord): RequestReceipt {
-  return requestReceiptSchema.parse({ requestId: saved.id, placementId: saved.placementId, runId: run.id,
+type AdmissionReceipt = RequestReceipt & { ignoredTaken?: true };
+function receipt(saved: StoredRequest, run: RunRecord, context: RequestContext): AdmissionReceipt {
+  const result = requestReceiptSchema.parse({ requestId: saved.id, placementId: saved.placementId, runId: run.id,
     deliveryState: saved.deliveryState, conversationRef: { provider: run.session?.provider ?? null,
       sessionId: run.session?.id ?? null, headRunId: saved.headRunId }, acceptedAt: saved.submittedAt });
+  const ignoredTaken = context.purpose === 'instruction' && context.reasons?.taken !== undefined && !saved.reason?.taken;
+  return { ...result, ...(ignoredTaken && { ignoredTaken: true }) };
 }
 /**
  * The Run of a saved Request, when `input` is a replay of it: the same input, author and launch choices. Anything else
@@ -90,6 +93,14 @@ function replayedRun(saved: StoredRequest, input: RequestInput, context: Request
       { reason: { kind: 'request_id_already_has_different_input' } });
   if (!isDeepStrictEqual(saved.author, author))
     throw new Problem(PROBLEM_CODE.idempotencyConflict, 'Request ID belongs to another author', undefined, { reason: { kind: 'request_id_belongs_another_author' } });
+  const { taken, placed } = saved.reason ?? {};
+  const asked = context.purpose === 'instruction' ? context.reasons : undefined;
+  // A decision without a result was ignored at admission. A retry compares only the decision that was kept.
+  if (taken && (taken.code !== asked?.taken || (taken.cause ?? undefined) !== asked?.cause ||
+    !isDeepStrictEqual(taken.aspects, asked?.aspects ?? []) || taken.note !== asked?.causeNote) ||
+    placed?.code !== asked?.placedAs || placed?.note !== asked?.placedNote)
+    throw new Problem(PROBLEM_CODE.idempotencyConflict, 'Request ID already has different reasons', undefined,
+      { reason: { kind: 'request_reasons_differ' } });
   const first = db.prepare('SELECT r.id,q.ai_prefix FROM requests q JOIN runs r ON r.request_id=q.id AND r.attempt=0 WHERE q.id=?').get(saved.id);
   const prefix = typeof first?.ai_prefix === 'string' ? aiStackPrefixSchema.parse(JSON.parse(first.ai_prefix)) : undefined;
   if (!isDeepStrictEqual(prefix, input.aiStack))
@@ -115,11 +126,11 @@ function authorOf(context: RequestContext, targetPlacementId: string | undefined
 
 export class RequestService {
   constructor(readonly root: string) {}
-  async request(input: RequestInput, context: RequestContext): Promise<RequestReceipt> {
+  async request(input: RequestInput, context: RequestContext): Promise<AdmissionReceipt> {
     return this.requestIn(input, context);
   }
   /** Admission inside an existing control transaction (closed-question answers use the same atomic write). */
-  requestIn(input: RequestInput, context: RequestContext, connection?: DatabaseSync): RequestReceipt {
+  requestIn(input: RequestInput, context: RequestContext, connection?: DatabaseSync): AdmissionReceipt {
     if (!requestBodyFits(input.body))
       throw new Problem(PROBLEM_CODE.tooLarge, 'Request text exceeds 160 KiB', undefined, { reason: { kind: 'request_text_exceeds_160_kib' } });
     requestInputSchema.refine(value => context.purpose !== 'return_continuation' ||
@@ -135,7 +146,7 @@ export class RequestService {
     if (fromPlacement && context.actorRunId === undefined) throw noCallerRun();
     const writer = new FileWriter(this.root), control = connection ? null : new ControlStore(this.root);
     let store: RunStore | undefined;
-    let result: RequestReceipt;
+    let result: AdmissionReceipt;
     try {
       const write = <T>(action: (db: DatabaseSync) => T): T => connection ? action(connection) : control!.write(action);
       result = write(db => {
@@ -272,9 +283,15 @@ export class RequestService {
           const unfinished = tx.unfinishedIn([task.id]).length !== 0;
           const review = context.purpose === 'instruction' && !context.answersQuestion && placement.responsible &&
             speaksForUser(context.actor) && currentReview(task.meta, unfinished) !== null;
+          const aboutRun = review ? reviewTarget(task.meta, head, unfinished) : null;
+          const reasons = context.purpose === 'instruction' && !context.answersQuestion ? context.reasons ?? {} : undefined;
+          const placed = reasons && placementReason(reasons, author, input.selected !== undefined || input.aiStack !== undefined);
+          const taken = reasons && resultDecision(reasons, author,
+            priorResult(tx, task, placement.id, author, callerRun?.task ?? null, aboutRun));
           const request: NewRequest = { id: input.requestId, taskId: task.id, placementId: placement.id,
             placementRevision: placement.revision, taskHash: task.hash, waitCycleId, headRunId: head?.id ?? null,
-            aboutRunId: review ? reviewTarget(task.meta, head, unfinished) : null,
+            aboutRunId: aboutRun,
+            ...(taken || placed ? { reason: { ...(taken && { taken }), ...(placed && { placed }) } } : {}),
             mode, body: input.body, purpose: review ? 'review_send_back' : context.purpose, author,
             submittedAt: new Date().toISOString(), deliveryState,
             aiExplicit: input.aiStack !== undefined || Object.keys(input.selected ?? {}).length > 0,
@@ -335,15 +352,10 @@ export class RequestService {
             launch: launch.launch }, prompt);
           if (compaction) requestCompaction(db, run, compaction.focus, input.compact !== undefined, request.submittedAt);
           new TaskTransition().captureStartGrant({ store: store!, runs: tx }, task.id, request.id, author);
-          // What the instruction is goes beside it, once its Run (which its log reference reads) exists.
-          if (context.purpose === 'instruction' && context.label)
-            new TaskTransition().appendRecord({ store: store!, runs: tx }, task.id, { id: `${request.id}:label`, kind: 'request_labeled',
-              at: request.submittedAt, actor: request.author, title: null, description: null, fromState: null, toState: null,
-              label: { request: request.id, ...context.label } });
           context.onAdmitted?.(db, placement.id, tx, request, run);
           return { request: tx.getRequest(request.id)!, run };
         });
-        return receipt(saved.request, saved.run);
+        return receipt(saved.request, saved.run, context);
       });
     } finally { store?.close(); control?.close(); writer.close(); }
     return result;

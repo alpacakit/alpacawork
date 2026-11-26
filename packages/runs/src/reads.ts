@@ -24,7 +24,7 @@ import { AWAITING_RECEIPT_STATES, UNSETTLED_INPUT_STATES } from '@alpacawork/con
 import { DELIVERY_STATE, actorSchema, deliveryStateSchema, requestModeSchema, requestPurposeSchema,
   type DeliveryState, type RequestMode, type RequestPurpose } from '@alpacawork/contract/control';
 import { isSeatContinuation, RESOLUTION_REASONS, RETURN_OUTCOMES, type ReturnOutcome } from '@alpacawork/contract';
-import type { TaskActor } from '@alpacawork/raw';
+import { requestActionReasonSchema, type RequestActionReason, type TaskActor } from '@alpacawork/raw';
 import { parseRecord, runsUnavailable, storageOperation } from './record-codec.js';
 
 // Decision reads name both state sets as IN lists for the state index.
@@ -73,6 +73,7 @@ export interface StoredRequest {
   waitCycleId: string | null;
   answersQuestion?: string | null;
   headRunId: RunId | null; aboutRunId: RunId | null; mode: RequestMode; body: string; purpose: RequestPurpose;
+  reason?: RequestActionReason;
   author: TaskActor; submittedAt: string; deliveryState: DeliveryState; runId: RunId | null;
 }
 /** Who holds a conversation session: a Task's Run, the coordinator conversation (its latest Run with it), or nobody. */
@@ -138,7 +139,7 @@ type StoredRunFile = { record: RuntimeRunRecord; text: string | null; state: Run
 /** Shared SQL for a request's current Run rather than all its historical trials. */
 export const currentRequestRun = (request: string) => `SELECT id FROM runs WHERE request_id = ${request} ORDER BY attempt DESC LIMIT 1`;
 const REQUEST_IMMUTABLE_COLUMNS = `q.id, q.task_id, q.placement_id, q.placement_revision, q.task_hash,
-  q.wait_cycle_id, q.answers_question, q.head_run_id, q.about_run_id, q.mode, q.body, q.purpose, q.author, q.submitted_at`;
+  q.wait_cycle_id, q.answers_question, q.head_run_id, q.about_run_id, q.mode, q.body, q.purpose, q.author, q.submitted_at, q.reason`;
 const REQUEST_CURRENT_COLUMNS = `CAST(q.rowid AS TEXT) AS request_row, q.delivery_state,
   (${currentRequestRun('q.id')}) AS run_number`;
 const REQUEST_SELECT = `SELECT ${REQUEST_IMMUTABLE_COLUMNS}, ${REQUEST_CURRENT_COLUMNS} FROM requests q`;
@@ -156,6 +157,7 @@ function storedValue<const T extends readonly string[]>(values: T, value: unknow
 type ImmutableRequest = Omit<StoredRequest, 'deliveryState' | 'runId'>;
 /** A Request's author is one of few texts, read again with every Request. */
 const storedAuthor = storedJsonDecoder(actorSchema);
+const storedRequestReason = storedJsonDecoder(requestActionReasonSchema);
 function immutableRequest(row: Record<string, unknown>): ImmutableRequest {
   return { id: String(row.id), taskId: String(row.task_id), placementId: String(row.placement_id),
     placementRevision: Number(row.placement_revision), taskHash: String(row.task_hash),
@@ -163,6 +165,7 @@ function immutableRequest(row: Record<string, unknown>): ImmutableRequest {
     headRunId: row.head_run_id === null ? null : runIdSchema.parse(row.head_run_id),
     aboutRunId: row.about_run_id === null ? null : runIdSchema.parse(row.about_run_id),
     mode: requestModeSchema.parse(row.mode), body: String(row.body), purpose: requestPurposeSchema.parse(row.purpose),
+    ...(row.reason == null ? {} : { reason: storedRequestReason(row.id, String(row.reason)) }),
     author: storedAuthor(String(row.author), String(row.author)), submittedAt: String(row.submitted_at) };
 }
 function invalidRequest(row: Record<string, unknown>, cause: unknown): Error {

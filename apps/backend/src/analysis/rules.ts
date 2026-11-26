@@ -1,10 +1,11 @@
+import { adoptedReview, reviewAdoptions } from '../control/action-reasons.js';
 import type { AnalysisUnitValues } from '@alpacawork/contract/analysis';
 import { isReviewMark, runUsage, runUsageMs, type RunContribution } from '@alpacawork/contract';
 import type { RunRecord, RunUsage } from '@alpacawork/contract/run';
-import { speaksForUser, type TaskState, type TaskBaseState } from '@alpacawork/raw';
+import { isRequestLog, speaksForUser, type TaskState, type TaskBaseState } from '@alpacawork/raw';
 import type { TaskLog } from '@alpacawork/raw/task-log-schema';
 import { questionsOf } from '@alpacawork/raw/questions';
-import type { AnswerParts, InstructionLabel } from '@alpacawork/raw';
+import type { AnswerParts, TakenReason } from '@alpacawork/raw';
 
 export type Interval = { from: number; to: number };
 export type Clock = AnalysisUnitValues['time'];
@@ -187,19 +188,27 @@ export function lastEndedAt(log: readonly TaskLog[], now: number): number | null
   return last;
 }
 
-/**
- * The user's instructions and send-backs to a unit (its own log, `log`) or any Task under it (`logs`, the unit's
- * included), after the request itself (answers are not instructions), and the labels their senders gave them: an
- * instruction's or a send-back's log entry carries its Request's ID, which its label names.
- */
+/** Later user instructions provide the coverage count; both people and agents can record decisions. */
 export function laterInstructions(log: readonly TaskLog[], logs: readonly (readonly TaskLog[])[]) {
-  const initial = log.find(instruction), counted = new Set<string>(), labels: InstructionLabel[] = [];
+  const initial = log.find(instruction), counted = new Set<string>();
   const since = initial ? Date.parse(initial.at) : -Infinity;
-  for (const history of logs)
-    for (const entry of history)
-      if (entry.kind === 'request_labeled' && entry.label) labels.push(entry.label);
-      else if ((instruction(entry) || sendBack(entry)) && entry !== initial && Date.parse(entry.at) >= since) counted.add(entry.id);
-  return { count: counted.size, labels: labels.filter(label => counted.has(label.request)) };
+  const decisions: { by: 'user' | 'ai'; taken: TakenReason }[] = [];
+  const classified = new Set<string>();
+  for (const history of logs) {
+    const approvals = reviewAdoptions(history);
+    for (const entry of history) {
+      if (Date.parse(entry.at) < since) continue;
+      if ((instruction(entry) || sendBack(entry)) && entry.id !== initial?.id) counted.add(entry.id);
+      const reason = entry.reason;
+      const by = speaksForUser(entry.actor) ? 'user' : 'ai';
+      if (approvals.has(entry.id)) decisions.push({ by, taken: adoptedReview(null) });
+      if (reason?.taken && entry.id !== initial?.id) {
+        decisions.push({ by, taken: reason.taken });
+        if (isRequestLog(entry.kind)) classified.add(entry.id);
+      }
+    }
+  }
+  return { count: counted.size, unclassifiedInstructions: [...counted].filter(id => !classified.has(id)).length, decisions };
 }
 
 export function unitMarks(log: readonly TaskLog[], from: number, to: number): AnalysisUnitValues['marks'] {

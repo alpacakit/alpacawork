@@ -14,7 +14,7 @@ import { analysisStepsMissingSchema, type AnalysisEvidence } from '@alpacawork/c
 import type { AnalysisAtInput, AnalysisAtView, AnalysisChangesInput, AnalysisChangesView, AnalysisHead, AnalysisFindingsInput, AnalysisFindingsView, AnalysisTraceInput,
   AnalysisTraceScope, AnalysisTraceView } from '@alpacawork/contract/analysis';
 import type { TaskLog } from '@alpacawork/raw/task-log-schema';
-import type { InstructionLabel, TaskBaseState } from '@alpacawork/raw';
+import type { TaskBaseState } from '@alpacawork/raw';
 import { taskLogsOf } from '../control/task-history.js';
 import { readConditions } from '../runs/conditions.js';
 import { readRunStepIndex } from '../runs/run-steps.js';
@@ -27,6 +27,9 @@ import type { FactLaunch } from './facts.js';
 import { allRules, findFindings, STEP_RULES, thresholdsOf } from './findings.js';
 import { breakdown, iso, isOpen, timedSteps, lanes, marks, sceneUrl, segments, situationAt, spans, waited, wholePeriod,
   type Interval, type TraceRecords, type TraceRequest, type TraceRun, type TraceStep, type TraceTask } from './timeline.js';
+
+import { directionChanged } from '../control/action-reasons.js';
+import { readFieldCatalog, readValueChanges } from '../control/task-values-store.js';
 
 const FIRST_LINE = 200;
 const firstLine = (text: string) => {
@@ -50,14 +53,18 @@ function familyOf(db: DatabaseSync, task: string): TaskRow[] {
 
 function requestsOf(db: DatabaseSync, tasks: readonly string[]): Map<string, TraceRequest> {
   const rows = db.prepare(`SELECT q.id,q.task_id AS task,q.purpose,q.author,q.submitted_at AS at,q.body,q.answers_question AS answers,
-      p.task_id AS author_task
+      p.task_id AS author_task,COALESCE(rt.boundary_run_id,json_extract(l.entry,'$.runId')) AS result_run
     FROM requests q LEFT JOIN placements p ON p.id=json_extract(q.author,'$.placementId')
+    LEFT JOIN returns rt ON rt.request_id=q.id
+    LEFT JOIN task_log l ON l.id=rt.cause_log_id
     WHERE q.task_id IN (SELECT value FROM json_each(?))`).all(JSON.stringify(tasks));
   return new Map(rows.map(row => {
     const author = JSON.parse(String(row.author)) as { kind: string };
     const by = author.kind !== 'placement' ? 'user' : row.author_task === row.task ? 'owner' : 'parent';
     const purpose = row.purpose === 'review_send_back' ? 'send-back' : row.purpose === 'return_continuation' ? 'return' : 'instruction';
     return [String(row.id), { id: String(row.id), task: String(row.task), at: Date.parse(String(row.at)), by, purpose,
+      authorTask: row.author_task === null ? null : String(row.author_task),
+      resultRun: row.result_run === null ? null : String(row.result_run),
       firstLine: firstLine(String(row.body)), answers: row.answers === null ? null : String(row.answers) }];
   }));
 }
@@ -147,23 +154,29 @@ function versionOf(tasks: readonly TraceTask[], runs: readonly TraceRun[]) {
 export async function readTimelineRecords(root: string, task: string, scope: AnalysisTraceScope, activity: readonly Activity[] = [],
   now = Date.now()): Promise<TraceRecords> {
   const store = new ControlStore(root, { busyTimeoutMs: 10_000 }, true);
-  let family: TaskRow[], logs: Map<string, TaskLog[]>, runs: RunRecord[], requests: Map<string, TraceRequest>;
+  let family: TaskRow[], logs: Map<string, TaskLog[]>, runs: RunRecord[], requests: Map<string, TraceRequest>, valueFields: Map<string, string[]>, directionLogs: Set<string>;
   try {
-    ({ family, logs, runs, requests } = store.read(db => {
+    ({ family, logs, runs, requests, valueFields, directionLogs } = store.read(db => {
       const family = familyOf(db, task), ids = family.map(row => row.id);
-      return { family, logs: taskLogsOf(db, family.map(row => row.internal)), requests: requestsOf(db, ids),
+      const valueFields = new Map<string, string[]>();
+      const directionLogs = new Set<string>(), catalog = readFieldCatalog(db);
+      for (const change of readValueChanges(db, { tasks: family.map(row => row.internal) })) {
+        const fields = valueFields.get(change.changeLog) ?? [];
+        fields.push(change.id);
+        valueFields.set(change.changeLog, fields);
+        const definition = catalog.get(change.id);
+        if (definition && directionChanged(definition, change.before, change.after)) directionLogs.add(change.changeLog);
+      }
+      return { family, valueFields, directionLogs, logs: taskLogsOf(db, family.map(row => row.internal)), requests: requestsOf(db, ids),
         runs: db.prepare('SELECT record FROM runs WHERE task_id IN (SELECT value FROM json_each(?)) ORDER BY id')
           .all(JSON.stringify(ids)).map(row => JSON.parse(String(row.record)) as RunRecord) };
     }));
   } finally { store.close(); }
   const tasks: TraceTask[] = family.map(row => ({ id: row.id, parent: row.parent, title: row.title, created: Date.parse(row.created),
     log: logs.get(row.internal) ?? [] }));
-  const labels = new Map<string, { kind: InstructionLabel['kind']; fixes: InstructionLabel['fixes'] }>();
-  for (const item of tasks) for (const entry of item.log)
-    if (entry.kind === 'request_labeled' && entry.label) labels.set(entry.label.request, { kind: entry.label.kind, fixes: [...entry.label.fixes] });
   const traced: TraceRun[] = [];
   for (const record of runs) traced.push(await traceRun(root, record));
-  return { root: task, project: family[0]!.project, scope, tasks, runs: traced, requests, labels, rootState: family[0]!.state,
+  return { root: task, project: family[0]!.project, scope, tasks, runs: traced, requests, valueFields, directionLogs, rootState: family[0]!.state,
     activity, version: versionOf(tasks, traced), now };
 }
 
@@ -243,7 +256,7 @@ export async function readFindings(root: string, input: AnalysisFindingsInput): 
   const findings = found.slice(0, input.limit ?? FINDINGS).map(item => {
     const id = `${item.rule}:${item.anchor}`;
     return { id, rule: item.rule, at: iso(item.at), durationMs: item.durationMs, lane: item.lane, count: item.count,
-      threshold: thresholds[item.rule], source: item.source, evidence: item.evidence, line: evidenceLine(records, item.evidence[0]!),
+      threshold: thresholds[item.rule], source: item.source, evidence: item.evidence, ...(item.taken && { taken: item.taken }), line: evidenceLine(records, item.evidence[0]!),
       url: sceneUrl(records.root, scope, { at: item.at, finding: id }) };
   });
   return {

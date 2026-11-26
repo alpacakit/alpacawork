@@ -97,7 +97,7 @@ test('each placement change is one record on its Task by the actor it was decide
   const h = await setup(t);
   const tasks = new ControlTaskStore(h.root);
   const placed = await h.commands.placeNewResponsible({ taskId: h.task.id, profileKey: 'codex', expectedTaskHash: h.task.hash }, human);
-  const member = await h.commands.placeMember({ taskId: h.task.id, profileKey: 'claude',
+  const member = await h.commands.placeMember({ placedAs: 'policy', taskId: h.task.id, profileKey: 'claude',
     expectedTaskHash: await taskHash(h.root, h.task.id), expectedResponsibleRevision: placed.placement.revision },
   { kind: 'placement', placementId: placed.placement.id });
   const released = await h.commands.release({ taskId: h.task.id, placementId: placed.placement.id,

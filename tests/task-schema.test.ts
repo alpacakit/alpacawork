@@ -80,7 +80,7 @@ test('the JSON Schema a writer reads carries each field title and how to write i
 test('one size per field: the words a writer reads and the most a write holds (about 1.3 times, at least one more) both come from it', () => {
   assert.deepEqual([1, 3, 5, 60, 600].map(hardLimit), [2, 4, 7, 78, 780]);
   const def = (over: Partial<FieldDef>): FieldDef => ({ id: 'risk', title: 'Risk', type: 'text', many: false, maxChars: 60, maxItems: null,
-    hint: '要点を書く。', members: [], required: false, ...over });
+    hint: '要点を書く。', members: [], required: false, direction: false, ...over });
   assert.equal(sizeNote(def({})), 'About 60 characters.');
   assert.equal(sizeNote(def({ many: true, maxItems: 5 })), 'About 60 characters each, up to 5 items.');
   assert.equal(sizeNote(def({ maxChars: null })), '');
@@ -120,8 +120,8 @@ test('values read in schema order, every field under its own heading, lists one 
 
 test('a stored row for a shipped field gives only its required, a workspace field stands as stored, and bad member sets are named', () => {
   const custom = (def: Partial<FieldDef> & { id: string }): FieldDef => ({ title: 't', type: 'text', many: false, maxChars: 10,
-    maxItems: null, hint: '', members: [], required: false, ...def });
-  const edited = fieldCatalog([custom({ id: 'goal', hint: '新しい書き方', required: true }), custom({ id: 'risk', hint: 'x' })]);
+    maxItems: null, hint: '', members: [], required: false, direction: false, ...def });
+  const edited = fieldCatalog([custom({ id: 'goal', hint: '新しい書き方', required: true, direction: true }), custom({ id: 'risk', hint: 'x' })]);
   assert.deepEqual(edited.get('goal'), { ...catalog.get('goal')!, required: true });
   assert.equal(edited.get('risk')!.hint, 'x');
   const bad = fieldCatalog([
@@ -142,7 +142,7 @@ test('the same values hash alike whatever order their keys were written in', () 
 
 test('a later text member is led by its title, a list of texts under it; an empty recommendation is none', () => {
   const def = (id: string, more: Partial<FieldDef> = {}): FieldDef =>
-    ({ id, title: id.toUpperCase(), type: 'text', many: false, maxChars: 100, maxItems: null, hint: '', members: [], required: false, ...more });
+    ({ id, title: id.toUpperCase(), type: 'text', many: false, maxChars: 100, maxItems: null, hint: '', members: [], required: false, direction: false, ...more });
   const catalog = fieldCatalog([def('risk', { type: 'schema', maxChars: null, members: ['name', 'body', 'steps'] }), def('name'), def('body'),
     def('steps', { many: true, maxItems: 5 })]);
   assert.equal(renderItems(catalog.get('risk')!, { name: 'N', body: 'B\n\nB2', steps: ['x', 'y'] }, catalog), '### N\nB\n\nB2\nSTEPS:\n- x\n- y');

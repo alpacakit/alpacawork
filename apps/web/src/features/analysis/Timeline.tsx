@@ -300,7 +300,7 @@ function Situation({ task, at, zone }: { task: string; at: string; zone: string 
         <p className="text-xs text-soft">{question.askedTo === "user" ? t("timeline.toUser") : question.askedTo}{t("sep")}{t("timeline.openSince", { at: instant(question.since, zone) })}</p>
       </li>)}</ul> : <p className="text-soft">{t("timeline.noQuestions")}</p>}
       <h5 className="mt-4 mb-1 text-xs text-soft">{t("timeline.history")}</h5>
-      <ul className="space-y-1">{view.history.filter(line => line.kind !== "request_labeled").map(line => <li key={line.log} className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-2 text-xs">
+      <ul className="space-y-1">{view.history.map(line => <li key={line.log} className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-2 text-xs">
         <span className="text-soft tabular-nums">{instant(line.at, zone)}</span><span dir="auto" className="line-clamp-2">
           <span className="me-1.5 text-soft">{historyWords(line.kind, t)}</span>{line.title}</span></li>)}</ul>
     </div>
