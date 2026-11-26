@@ -412,6 +412,11 @@ function Card() {
   // The conversation unfolded is open for a moment only: on a phone Back folds it, as Esc does, along with the page's
   // step. Folded, it is part of the screen's foot, which Back leaves alone.
   useCloseOnPhoneBack(open && expanded && !own, () => useConversation.getState().setExpanded(false));
+  // Going from Use to the analysis (by any way: its switch, today's marks, Back, the address) folds the conversation,
+  // which would otherwise stand over the charts. Going back to Use leaves it folded; in its own window it stays open.
+  useEffect(() => useViewStore.subscribe((state, before) => {
+    if (state.analysis && !before.analysis && !own) useConversation.getState().setExpanded(false);
+  }), [own]);
   // A tap on what it stands over (the list, a task's report) takes it one step down too, where it goes down by itself.
   useFoldOnPressAway(up, node => [card.current, panel.current, outline.current, entrance.current, drawn.foot, drawn.body, drawn.end]
     .some(surface => surface?.contains(node)), turned => stepDown("tap", turned));
