@@ -26,9 +26,9 @@
     "completeHint": "{{id}}を完了にします",
     "conflict": "同じIDで別の内容が届いています",
     "context": {
-      "autoBoth": "{{tokens}}トークンか上限の{{percent}}%の、先に届いたほうで自動でリセットします。",
-      "autoPercent": "上限の{{percent}}%に届くと自動でリセットします。",
-      "autoTokens": "{{tokens}}トークンに届くと自動でリセットします。",
+      "autoBoth": "{{tokens}}トークンか上限の{{percent}}%で自動リセット",
+      "autoPercent": "上限の{{percent}}%で自動リセット",
+      "autoTokens": "{{tokens}}トークンで自動リセット",
       "tip": "使用量・リセット",
       "title": "コーディネーターの使用量",
       "waiting": "次の返事で使用量が分かります。"
@@ -63,7 +63,7 @@
     "expand": "会話を開く",
     "failed": "返事を受け取れませんでした：{{reason}}",
     "filesCount_other": "添付 {{count}}",
-    "filesExpired_other": "ファイル {{count}} 件は削除済み",
+    "filesExpired_other": "ファイル {{count}}件は削除済み",
     "fold": "会話を閉じる",
     "foldExchange": "{{time}} のやり取りを畳む",
     "foldHint": "会話を閉じる（Esc）",

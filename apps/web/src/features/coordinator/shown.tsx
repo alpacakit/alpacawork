@@ -94,7 +94,13 @@ const subscribeRestore = (changed: () => void) => subscribeReads(client, changed
  * the moment a drawn snapshot holds it, it is serve's turn (whichever of the POST's answer and the event comes first).
  */
 export function ShownConversationProvider({ children }: { children: ReactNode }) {
-  const conversation = useConversation(state => state.conversation);
+  // What the projection reads, each by itself: a new usage figure or reset changes none of them.
+  const id = useConversation(state => state.conversation?.id);
+  const turns = useConversation(state => state.conversation?.turns);
+  const cancelled = useConversation(state => state.conversation?.cancelled);
+  const busy = useConversation(state => state.conversation?.busy);
+  const conversation = useMemo(() => id === undefined ? null : { id, turns: turns ?? [], cancelled: cancelled ?? [], busy: busy ?? false },
+    [id, turns, cancelled, busy]);
   const root = useConversation(state => state.root);
   // An input edit changes drafts too, but only fixed outgoing requests belong to the conversation.
   const entries = useDraftStore(useShallow(state => Object.fromEntries(Object.entries(state.entries)

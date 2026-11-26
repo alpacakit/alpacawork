@@ -26,9 +26,9 @@
     "completeHint": "Marcar {{id}} como concluída",
     "conflict": "já chegou um conteúdo diferente com o mesmo ID",
     "context": {
-      "autoBoth": "Reinicia sozinho ao chegar a {{tokens}} tokens ou a {{percent}}% do limite, o que vier primeiro.",
-      "autoPercent": "Reinicia sozinho ao chegar a {{percent}}% do limite.",
-      "autoTokens": "Reinicia sozinho ao chegar a {{tokens}} tokens.",
+      "autoBoth": "Reinicia sozinho em {{tokens}} tokens ou {{percent}}% do limite",
+      "autoPercent": "Reinicia sozinho em {{percent}}% do limite",
+      "autoTokens": "Reinicia sozinho em {{tokens}} tokens",
       "tip": "Uso e reinício",
       "title": "Uso do coordenador",
       "waiting": "O uso aparece depois da próxima resposta."

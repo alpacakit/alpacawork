@@ -127,6 +127,29 @@ test("a send whose answer was lost and whose turn left the recent ones is settle
   await waitFor(() => expect(useDraftStore.getState().entries[outgoingKey(root, id)]).toBeUndefined());
 });
 
+test("a send serve does not have is asked after once, not again for every new snapshot", async () => {
+  const id = setup(); freeze(root, fixed(), useDraftStore.getState().entries[key]?.values ?? {}, { from: key });
+  const attempt = begin(root, id)!; attempt.check(); attempt.finish();
+  let reads = 0;
+  const fetcher = vi.fn((url: string) => url === "/api/coordinator"
+    ? Promise.resolve(new Response(snapshotJson(conv(cid, [{ ...sentTurn(`other-${reads++}`, "other", "succeeded"), answer: "x", answeredAt: new Date().toISOString() }]))))
+    : Promise.resolve(new Response(JSON.stringify({ id, status: "missing" }))));
+  vi.stubGlobal("fetch", fetcher);
+  for (let n = 0; n < 3; n++) await useConversation.getState().refresh();
+  await waitFor(() => expect(reads).toBe(3));
+  expect(fetcher.mock.calls.filter(([url]) => String(url).endsWith(`/${id}/status`))).toHaveLength(1);
+});
+
+test("a status learnt for a send is let go once its send is settled", async () => {
+  const id = setup(); freeze(root, fixed(), useDraftStore.getState().entries[key]?.values ?? {}, { from: key });
+  const attempt = begin(root, id)!; attempt.check(); attempt.finish();
+  const answered = conv(cid, [{ ...sentTurn(id, "sent", "succeeded"), answer: "done", answeredAt: new Date().toISOString() }]);
+  vi.stubGlobal("fetch", vi.fn(serving(answered)));
+  await useConversation.getState().ask({ ...fixed(), id });
+  await waitFor(() => expect(useDraftStore.getState().entries[outgoingKey(root, id)]).toBeUndefined());
+  expect(useConversation.getState().learnt).toBeNull();
+});
+
 test("an accepted answer that loses the race to be drawn keeps the request drawn and asks for a newer read", async () => {
   const id = setup(); freeze(root, fixed(), useDraftStore.getState().entries[key]?.values ?? {}, { from: key });
   const attempt = begin(root, id)!; attempt.check(); attempt.finish();

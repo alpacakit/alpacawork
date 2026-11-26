@@ -26,9 +26,9 @@
     "completeHint": "Mark {{id}} as done",
     "conflict": "different content already arrived under the same ID",
     "context": {
-      "autoBoth": "Resets by itself at {{tokens}} tokens or {{percent}}% of the window, whichever comes first.",
-      "autoPercent": "Resets by itself at {{percent}}% of the window.",
-      "autoTokens": "Resets by itself at {{tokens}} tokens.",
+      "autoBoth": "Resets itself at {{tokens}} tokens or {{percent}}% of the window",
+      "autoPercent": "Resets itself at {{percent}}% of the window",
+      "autoTokens": "Resets itself at {{tokens}} tokens",
       "tip": "Usage and reset",
       "title": "Coordinator usage",
       "waiting": "Usage shows after the next answer."

@@ -273,8 +273,9 @@ export function CoordinatorCard() {
 function Card() {
   const { t, i18n } = useTranslation("ui");
   const clock = `${i18n.language}|${new Date().toDateString()}|${new Intl.DateTimeFormat().resolvedOptions().timeZone}`;
-  const { conversation, open, expanded, focusRequested } = useConversation(useShallow(state => ({
-    conversation: state.conversation, open: state.open, expanded: state.expanded, focusRequested: state.focusRequested,
+  // The conversation's identity only: its usage and turns are read where they are drawn, so a new figure redraws the ring.
+  const { conversationId, open, expanded, focusRequested } = useConversation(useShallow(state => ({
+    conversationId: state.conversation?.id ?? null, open: state.open, expanded: state.expanded, focusRequested: state.focusRequested,
   })));
   const shownConversation = useShownConversation();
   const turns = shownConversation.turns;
@@ -304,7 +305,7 @@ function Card() {
   // Each area names data-card-scroll in its min-height rule, so stillCopy keeps that mark on the departing body.
   const [area, holdArea] = useState<HTMLDivElement | null>(null);
   const threadArea = useMemo(() => ({ current: area }), [area]);
-  useConversationReading(own?.document ?? document, useConversation(state => state.root), conversation?.id ?? null);
+  useConversationReading(own?.document ?? document, useConversation(state => state.root), conversationId);
   // Ref attachment connects the footer; its layout effect prepares the canonical draft first.
   // This surface is the one focus consumer; it commits that draft before resolving the requested position.
   // A consumed request makes later moves between surfaces leave the user's selection alone.
@@ -397,12 +398,12 @@ function Card() {
     // questions the turn carried.
     const intent = turn.intent ? coordinatorIntentSchema.safeParse(turn.intent) : null;
     if (intent && !intent.success) { notify.error(t('forms:reportForm.chooseAgain')); return; }
-    const retryKey = JSON.stringify([conversation!.id, turn.id]);
+    const retryKey = JSON.stringify([conversationId!, turn.id]);
     let again = retryIds.current.get(retryKey);
     if (!again) {
       // A known failed turn is a new user admission. Its later presses keep this ID and original pin,
       // unlike an unanswered outbox request, which only continues its existing admission.
-      again = { conversationId: conversation!.id, id: crypto.randomUUID() };
+      again = { conversationId: conversationId!, id: crypto.randomUUID() };
       if (!admitOutgoingIdentity(useConversation.getState().root, again.id)) { notify.error(t('input.storageUnavailable')); return; }
       retryIds.current.set(retryKey, again);
     }

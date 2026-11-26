@@ -1,10 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { ExampleList } from "@/components/ui/example-list";
+import { ON_DISC } from "@/components/ui/timeline-mark";
 import { exampleInDraft } from "./editor/draft";
 import { UnreadMark } from "./unread-mark";
-
-/** A mark standing on the rail: on a disc of the rail's ground, so the rail stops at it (as TimelineMark's). */
-const ON_DISC = "rounded-full bg-lit ring-2 ring-lit";
 
 /**
  * A conversation with no message yet: a greeting and examples to start from, the examples on their own surface

@@ -33,12 +33,12 @@ export function useContextWords(context: ContextView | null) {
   const window = !context || context.windowTokens === null ? t("context.noWindow") : t("context.tokens", { count: context.windowTokens, tokens: count(context.windowTokens) });
   return { figure, shown, used, window, label: t("context.label", { figure: shown, used, window }) };
 }
-/** A context's ring and figure, as every meter of a conversation shows them. */
-export function ContextFace({ words }: { words: ReturnType<typeof useContextWords> }) {
+/** A context's ring and figure, as every meter of a conversation shows them. `figure`: the figure's own place (a column). */
+export function ContextFace({ words, figure: place }: { words: ReturnType<typeof useContextWords>; figure?: string }) {
   const { figure, shown } = words;
   return <>
     <UsageRing percent={figure.percent ?? 0} tone={figure.tone} open={figure.open} className="size-3.5" />
-    <span className={cn("min-w-[4ch] text-right tabular-nums", figure.percent === null ? "text-muted" : TONE_TEXT[figure.tone])}>{shown}</span>
+    <span className={cn("tabular-nums", place, figure.percent === null ? "text-muted" : TONE_TEXT[figure.tone])}>{shown}</span>
   </>;
 }
 /** The tokens used and the window, one row each. */
@@ -61,7 +61,8 @@ export function ContextMeter({ context, press, conversations }: { context: Conte
   const [open, setOpen] = useState(false);
   const words = useContextWords(context);
   const { figure, label } = words;
-  const face = <ContextFace words={words} />;
+  // Working lines stand their figures in one column: as wide as the widest, set right.
+  const face = <ContextFace words={words} figure="min-w-[4ch] text-right" />;
   if (!press) return <span data-context-meter title={label} aria-label={label} className="inline-flex items-center gap-1 text-xs">{face}</span>;
   // The line under it opens and closes on a press: the meter's own press stops there. Its hover and touch room reach
   // past its face (negative margins), so the figure stands where an unpressable meter's would.

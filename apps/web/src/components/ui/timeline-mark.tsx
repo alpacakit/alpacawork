@@ -24,6 +24,8 @@ const ICON: Record<MarkKind, IconName> = {
  * it paints, either way, so a mark laid out on the centre itself stood half a pixel beside the rail.
  */
 export const ON_RAIL = "absolute left-(--rail) translate-x-[calc(0.5px-50%)]";
+/** A mark standing on the rail on a disc of the rail's ground, so the rail stops at it. */
+export const ON_DISC = "rounded-full bg-lit ring-2 ring-lit";
 /**
  * A mark in an HTML row (History's rail): a 14px icon on a disc of the row's own colour, so the rail stops at it.
  * A `live` mark stands for work going on now and pulses as the screen's other marks of work at work do (the

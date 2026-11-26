@@ -26,9 +26,9 @@
     "completeHint": "将 {{id}} 标记为已完成",
     "conflict": "同一 ID 下已收到不同的内容",
     "context": {
-      "autoBoth": "达到 {{tokens}} token 或上限的 {{percent}}% 时（以先到者为准）自动重置。",
-      "autoPercent": "达到上限的 {{percent}}% 时自动重置。",
-      "autoTokens": "达到 {{tokens}} token 时自动重置。",
+      "autoBoth": "达到 {{tokens}} token 或上限的 {{percent}}% 时自动重置",
+      "autoPercent": "达到上限的 {{percent}}% 时自动重置",
+      "autoTokens": "达到 {{tokens}} token 时自动重置",
       "tip": "用量与重置",
       "title": "协调员的用量",
       "waiting": "下一次回复后显示用量。"

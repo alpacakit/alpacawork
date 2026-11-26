@@ -258,12 +258,37 @@ async function withdraw(root: string, conversation: CoordinatorConversation, mes
     throw error;
   } finally { withdrawal.finish(); }
 }
+type Learnt = Pick<CoordinatorConversation, 'cancelled' | 'admitted'>;
+const NOTHING_LEARNT: Learnt = { cancelled: [], admitted: {} };
+/** What the learnt statuses say, worked out once per set of them: the same arrays for every projection until it changes. */
+const learntOf = new WeakMap<object, Learnt>();
+function learnt(statuses: Readonly<Record<string, CoordinatorMessageResponse['message']>>): Learnt {
+  let said = learntOf.get(statuses);
+  if (!said) {
+    const all = Object.values(statuses);
+    said = all.length ? { cancelled: all.flatMap(status => status.status === 'withdrawn' ? [status.id] : []),
+      admitted: Object.fromEntries(all.flatMap(status => 'inputDigest' in status
+        ? [[status.id, { digest: status.inputDigest, ended: !['queued', 'sending', 'running'].includes(status.status) }]] : [])) } : NOTHING_LEARNT;
+    learntOf.set(statuses, said);
+  }
+  return said;
+}
 /** Serve's conversation with what this page has learnt of its messages: those withdrawn, and the inputs serve took. */
 export function withLearnt(conversation: CoordinatorSnapshot['conversation'], known = useConversationUi.getState().learnt): CoordinatorConversation {
-  const statuses = known?.conversationId === conversation.id ? Object.values(known.statuses) : [];
-  return { ...conversation, cancelled: statuses.flatMap(status => status.status === 'withdrawn' ? [status.id] : []),
-    admitted: Object.fromEntries(statuses.flatMap(status => 'inputDigest' in status
-      ? [[status.id, { digest: status.inputDigest, ended: !['queued', 'sending', 'running'].includes(status.status) }]] : [])) };
+  return { ...conversation, ...known?.conversationId === conversation.id ? learnt(known.statuses) : NOTHING_LEARNT };
+}
+/**
+ * Statuses are kept while a send of this page's still waits to be settled by them: once its record is settled (drawn,
+ * withdrawn, refused), nothing reads its status again, so it is let go rather than kept for every send of the session.
+ */
+function keepLearntFor(root: string) {
+  const known = useConversationUi.getState().learnt;
+  if (!known) return;
+  const open = new Set(outgoing(useDraftStore.getState().entries, root, known.conversationId).map(item => item.requestId));
+  const ids = Object.keys(known.statuses), kept = ids.filter(id => open.has(id));
+  if (kept.length === ids.length) return;
+  useConversationUi.setState({ learnt: kept.length ? { conversationId: known.conversationId,
+    statuses: Object.fromEntries(kept.map(id => [id, known.statuses[id]!])) } : null });
 }
 /**
  * One sent message's status read from serve, for a send whose answer was lost: what it says is kept (learnStatus), and
@@ -310,7 +335,7 @@ function take(received: CoordinatorSnapshot['conversation'], origin: Sending, re
     if (!drawn || awaitsDrawing(useDraftStore.getState().entries, origin.root, drawn)) void useConversation.getState().refresh();
   }
   // Every snapshot drawn, the same as the one held or not, is a moment to ask after sends it does not hold.
-  if (taken === 'shown') void askAbsentSends(origin.root, next);
+  if (taken === 'shown') { keepLearntFor(origin.root); void askAbsentSends(origin.root, next); }
   return taken;
 }
 function draw(next: CoordinatorConversation, origin: Sending, replace: boolean): Taken {
@@ -634,17 +659,26 @@ const recoverOutbox = (root: string) => {
  * question at a time); once its status settles the record, nothing is left to ask about.
  */
 const statusAsking = new Set<string>();
+/**
+ * Sends serve said it does not have (missing): asked again only once that can have changed, the page back in reach or a
+ * send attempted again (a new snapshot alone does not change it).
+ */
+const statusMissing = new Set<string>();
 /** `received`: the snapshot just taken, before the read holds it (a first read has nothing held yet). */
 async function askAbsentSends(root: string, received: CoordinatorConversation) {
   const conversation = received;
   const absent = outgoing(useDraftStore.getState().entries, root, conversation.id).filter(item => (item.stage === 'posted' || item.stage === 'accepted')
-    && !statusAsking.has(item.requestId) && !isLive(item.key) && !conversation.turns.some(turn => turn.id === item.requestId)
+    && !statusAsking.has(item.requestId) && !statusMissing.has(item.requestId) && !isLive(item.key) && !conversation.turns.some(turn => turn.id === item.requestId)
     // Withdrawn is final: its record settles with what is known.
     && !conversation.cancelled.includes(item.requestId));
   let learnt = false;
   for (const item of absent) {
     statusAsking.add(item.requestId);
-    try { learnt = learnStatus(conversation.id, await readCoordinatorMessage(item.requestId)) || learnt; }
+    try {
+      const status = await readCoordinatorMessage(item.requestId);
+      if (status.status === 'missing') statusMissing.add(item.requestId);
+      learnt = learnStatus(conversation.id, status) || learnt;
+    }
     catch (error) { recordFailure(error, 'coordinator message status'); return; }
     finally { statusAsking.delete(item.requestId); }
   }
@@ -665,12 +699,15 @@ useConversation.subscribe((next, before) => {
   if (next.conversation && (next.root !== before.root || next.conversation !== before.conversation)) recoverOutbox(next.root);
 });
 useOutbox.subscribe((next, before) => {
+  // A send attempted again (here, or a resend) can have reached serve since it was missing.
+  if ([...next.live].some(key => !before.live.has(key))) statusMissing.clear();
   const { root, conversation } = useConversation.getState();
   // Drafts that cannot be saved cannot change: the attempt has said so, and recovering would only take that notice away.
   if (conversation && next.live.size < before.live.size && !useDraftStore.getState().unavailable) recoverOutbox(root);
 });
 useConnection.subscribe((next, before) => { if (next.offline !== before.offline) sayReadFailure(); });
 onBackInReach(() => {
+  statusMissing.clear();
   const state = useConversation.getState();
   if (state.error) void state.refresh();
   state.resumeSeen();

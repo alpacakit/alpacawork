@@ -54,7 +54,7 @@ export function CoordinatorContext({ className }: { className?: string }) {
   };
   return <Popover open={open} onOpenChange={setOpen}>
     <PopoverTrigger data-coordinator-context aria-label={`${t("coordinatorCard.context.tip")} ${words.label}`} title={t("coordinatorCard.context.tip")}
-      className={cn("inline-flex flex-none cursor-pointer items-center gap-1 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ink/40", className)}>
+      className={cn("inline-flex flex-none cursor-pointer items-center outline-none focus-visible:ring-2 focus-visible:ring-ink/40", className)}>
       <ContextFace words={words} />
     </PopoverTrigger>
     <PopoverContent data-coordinator-context-menu side="top" align="end" collisionPadding={8} className="w-80 max-w-[calc(100vw-1rem)] p-0 text-sm">
@@ -77,7 +77,7 @@ export function CoordinatorContext({ className }: { className?: string }) {
 function MenuAction({ icon, name, about, danger = false, disabled, onPress, ...data }: {
   icon: "reload" | "clear"; name: string; about: string; danger?: boolean; disabled: boolean; onPress: (pressed: HTMLElement) => void } & Record<`data-${string}`, unknown>) {
   return <button type="button" {...data} disabled={disabled} onClick={event => onPress(event.currentTarget)}
-    className={cn("grid w-full cursor-pointer grid-cols-[auto_1fr] gap-x-2.5 rounded-sm px-2.5 py-2 text-left outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-ink/40 disabled:cursor-default disabled:hover:bg-transparent",
+    className={cn("grid w-full cursor-pointer grid-cols-[auto_1fr] gap-x-2 rounded-sm px-1.5 py-2 text-left outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-ink/40 disabled:cursor-default disabled:hover:bg-transparent",
       danger ? "text-error" : "text-ink", disabled && "[&>[data-name]]:text-muted [&>svg]:text-muted")}>
     <Icon name={icon} className="mt-0.5 size-4 flex-none" />
     <span data-name className="font-medium">{name}</span>

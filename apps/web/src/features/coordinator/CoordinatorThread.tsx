@@ -1,9 +1,10 @@
-import { Fragment, memo, useMemo, useState, useRef, type ReactNode } from "react";
+import { Fragment, memo, useCallback, useMemo, useState, useRef, type ReactNode } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { useTranslation } from "react-i18next";
 import { CopyButton } from "@/components/ui/copy-button";
 import { textClip } from "@/lib/clipboard";
 import { Icon } from "@/components/ui/icon";
-import { ON_RAIL, TimelineMark } from "@/components/ui/timeline-mark";
+import { ON_DISC, ON_RAIL, TimelineMark } from "@/components/ui/timeline-mark";
 import { useWriteDisabled } from "@/data/queries";
 import type { CoordinatorReset, CoordinatorTurn } from "@/data/coordinator";
 import { MarkdownBody } from "@/features/reader/MarkdownBody";
@@ -16,7 +17,7 @@ import { firstSentence } from "./foot";
 import { answerBodyFiles, MessageFiles, type OpenMessageImages } from "./MessageFiles";
 import { SentMessage, useMessageCopy, useMessageParts } from "./SentMessage";
 import { Attempts, coordinatorErrorReason, Thinking, TurnWork } from "./parts";
-import { partitionTurns, useShownConversation, type SentTurn } from "./shown";
+import { partitionTurns, useShownConversation, type LocalTurn, type SentTurn } from "./shown";
 import { ReplyLabel } from './ReplyLabel';
 import { messageTime } from './message-time';
 import { replyInDraft } from './editor/draft';
@@ -45,8 +46,6 @@ function MessageHead({ turn, mark, more }: { turn: SentTurn; mark?: ReactNode; m
     {more}
   </div>;
 }
-/** A mark standing on the rail: on a disc of the rail's ground, so the rail stops at it (as TimelineMark's). */
-const ON_DISC = "rounded-full bg-lit ring-2 ring-lit";
 
 /** One message sent, in full. */
 function Message({ turn, open, skills, mark, fold }: { turn: SentTurn; open: OpenMessageImages; skills: readonly { name: string }[]; mark?: ReactNode; fold?: ReactNode }) {
@@ -165,18 +164,69 @@ function ReadOlder({ reading, failed, read }: { reading: boolean; failed: boolea
     </button>
   </li>;
 }
+/**
+ * One message of the thread, open or folded, sent from here or serve's: drawn again only when what it shows changes
+ * (its turn, whether it is open or waits, what joined it, the day it is read on), not when another row or the
+ * conversation's usage does. One component for both, so a message sent from here keeps its row when serve takes it.
+ */
+const NONE_TURNS: readonly CoordinatorTurn[] = [], NO_SKILLS: readonly { name: string }[] = [];
+const ThreadRow = memo(function ThreadRow({ served, local, waiting, open, joined, skills, retry, toggle, viewer }: {
+  /** Serve's turn, or (`local`) a message sent from here that serve has not shown yet. */
+  served?: CoordinatorTurn; local?: LocalTurn; waiting: boolean; open: boolean;
+  joined: readonly CoordinatorTurn[]; skills: readonly { name: string }[]; retry: (turn: CoordinatorTurn) => void;
+  toggle: (id: string, open: boolean) => void; viewer: OpenMessageImages; clock?: string }) {
+  const { t, i18n } = useTranslation("ui");
+  if (local) {
+    const turn = local;
+    // The same request key survives admission; recoverable refused words have their own identity.
+      return <li data-action-focus-place tabIndex={-1} data-coordinator-local={turn.stage} data-coordinator-waiting={waiting ? turn.id : undefined} data-coordinator-message={turn.id} className="relative animate-rise border-b border-rule py-3 pl-(--gutter) last:border-b-0">
+        <Exchange key={EXCHANGE} turn={turn} open={viewer} skills={skills} joined={NONE}
+          mark={<TimelineMark kind={turn.stage === "refused" ? "error" : "request"} tone={turn.stage === "refused" ? "error" : "quiet"} />}
+          reply={<MessageDelivery turn={turn} local={turn} />} />
+      </li>;
+  }
+  const turn = served!;
+    const mark = <TimelineMark kind={turn.status === "running" ? "start" : turn.status === "failed" ? "error" : "request"}
+      tone={turn.status === "running" ? "working" : turn.status === "failed" ? "error" : "quiet"} />;
+    // Said in words, not an arrow: an arrow on the conversation is what closes it (its ∨ at the top right). Taller than
+    // its line, it overhangs it evenly, so the line keeps its height.
+    const button = <button type="button" data-exchange-toggle aria-expanded={open}
+      aria-label={t(open ? "coordinatorCard.foldExchange" : "coordinatorCard.openExchange", { time: messageTime(turn.at, i18n.language) })}
+      onClick={() => toggle(turn.id, !open)} className="-my-[calc((--spacing(7)-1lh)/2)] ml-auto flex h-7 flex-none items-center self-center rounded-sm px-2 text-xs text-muted underline decoration-line underline-offset-3 hover:bg-hover hover:text-ink hover:decoration-ink narrow:-my-[calc((--spacing(10)-1lh)/2)] narrow:h-10">
+      {t(open ? "coordinatorCard.exchangeFold" : "coordinatorCard.exchangeOpen")}</button>;
+    return <li data-action-focus-place tabIndex={-1} data-coordinator-turn={turn.status} data-coordinator-waiting={turn.waiting ? turn.id : undefined} data-coordinator-message={turn.id} data-exchange={open ? "open" : "folded"}
+      className="relative animate-rise border-b border-rule py-3 pl-(--gutter) last:border-b-0">
+      {open ? <Exchange key={EXCHANGE} turn={turn} open={viewer} skills={skills} joined={joined} mark={mark} fold={turn.waiting ? undefined : button}
+        reply={<><TurnWork turn={turn} />{delivering(turn) ? <MessageDelivery turn={turn} /> : <Answer turn={turn} retry={retry} />}<Attempts turn={turn} /></>} />
+      : <div className="cursor-pointer" onClick={event => {
+        // A press opens it; a press on what it holds (a task's label), or a drag that selects its words, does not.
+        if (!(event.target as Element).closest("button, a") && (event.currentTarget.ownerDocument.defaultView?.getSelection()?.isCollapsed ?? true)) toggle(turn.id, true);
+      }}>
+        <MessageHead turn={turn} mark={mark} more={<>
+          {!!joined.length && <span>· {t("coordinatorCard.joinedCount", { count: joined.length })}</span>}
+          {!!turn.attachments.length && <span>· {t("coordinatorCard.filesCount", { count: turn.attachments.length })}</span>}
+          {button}
+        </>} />
+        {turn.ask && <FoldedMessage turn={turn} skills={skills} />}
+        <div data-exchange-outcome className="mt-type-close flex min-w-0 items-center gap-1.5">
+          <Icon name="right" className="size-3 flex-none text-muted" /><Outcome turn={turn} />
+        </div>
+      </div>}
+    </li>;
+});
 /** The hand's key for the earlier row (an exchange's is its ID). */
 const EARLIER = "earlier";
 
 /** Latest exchange and new arrivals stay shown; older history has one independent fold. */
-export const CoordinatorThread = memo(function CoordinatorThread({ turns: recent, retry, skills = [] }: {
+export const CoordinatorThread = memo(function CoordinatorThread({ turns: recent, retry, skills = NO_SKILLS, clock }: {
   // The Card's render remains an opportunity to notice a local day/zone change,
   // even when this memo's conversation inputs are otherwise unchanged.
   turns: CoordinatorTurn[]; retry: (turn: CoordinatorTurn) => void; skills?: readonly { name: string }[]; clock?: string;
 }) {
   const { t, i18n } = useTranslation("ui");
   const viewer = useImageViewer();
-  const conversation = useConversation(state => state.conversation);
+  // Each fact the thread draws from, by itself: the usage figure changes none of them.
+  const served = useConversation(useShallow(state => ({ id: state.conversation?.id, earlier: state.conversation?.earlier, resets: state.conversation?.resets })));
   const root = useConversation(state => state.root);
   const taken = useConversation(state => state.opening);
   const scope = useConversation(state => state.conversation?.id);
@@ -187,7 +237,7 @@ export const CoordinatorThread = memo(function CoordinatorThread({ turns: recent
   const setHand = (next: (map: ReadonlyMap<string, boolean>) => ReadonlyMap<string, boolean>) => setHands(state => ({ of: state.of, map: next(state.map) }));
   const earlierOpen = hand.get(EARLIER) ?? false;
   // Turns older than the snapshot's, serve's window ending where the snapshot starts, read once the history is open.
-  const earlier = useEarlierHistory(root, conversation, earlierOpen);
+  const earlier = useEarlierHistory(root, served.id ?? null, served.earlier ?? null, earlierOpen);
   const shown = useShownConversation(recent);
   // The window and the snapshot are joined by ID in serve's order (the window first), then grouped once: a message
   // sent into another across the snapshot's first turn stands under it.
@@ -204,10 +254,11 @@ export const CoordinatorThread = memo(function CoordinatorThread({ turns: recent
   // History folds at the opening's latest exchange; read facts never change this boundary.
   const start = Math.max(0, work.findIndex(turn => turn.id === opened.latest));
   const thread = useRef<HTMLOListElement>(null);
-  const toggle = (id: string, open: boolean) => {
+  // One function for every row's press, so a row is not drawn again for a new one.
+  const toggle = useCallback((id: string, open: boolean) => {
     if (thread.current) keepThreadPosition(thread.current);
-    setHand(map => new Map(map).set(id, open));
-  };
+    setHands(state => ({ of: state.of, map: new Map(state.map).set(id, open) }));
+  }, []);
   const asked = useConversation(state => state.asked);
   useReplyNavigationOwner(thread, scope, asked, id => {
     // One not read yet is read first, a page at a time from the oldest here, until it is here or the first turn is.
@@ -226,17 +277,25 @@ export const CoordinatorThread = memo(function CoordinatorThread({ turns: recent
   // drawn as no row of its own (sent into another, or sent again in its place) leaves its line before the next row in
   // serve's order, so a line is never folded away with it.
   const resets = useMemo(() => {
-    const drawn = new Set([...work.map(turn => turn.id), ...shown.tail.map(row => row.turn.id)]), order = turns.map(turn => turn.id);
-    const at = new Map<string | null, CoordinatorReset[]>(), ids = new Set<string>();
-    for (const reset of [...earlier.resets, ...conversation?.resets ?? []]) {
+    const at = new Map<string | null, CoordinatorReset[]>(), all = [...earlier.resets, ...served.resets ?? []];
+    if (!all.length) return at;
+    // One walk back through serve's order: for each message, the first row drawn at or after it.
+    const drawn = new Set([...work.map(turn => turn.id), ...shown.tail.map(row => row.turn.id)]), rowAt = new Map<string, string | null>();
+    let next: string | null = null;
+    for (let index = turns.length - 1; index >= 0; index--) {
+      const id = turns[index]!.id;
+      if (drawn.has(id)) next = id;
+      rowAt.set(id, next);
+    }
+    const ids = new Set<string>();
+    for (const reset of all) {
       if (ids.has(reset.id)) continue;
       ids.add(reset.id);
-      const from = reset.beforeRequestId === null ? -1 : order.indexOf(reset.beforeRequestId);
-      const key = from < 0 ? null : order.slice(from).find(id => drawn.has(id)) ?? null;
+      const key = reset.beforeRequestId === null ? null : rowAt.get(reset.beforeRequestId) ?? null;
       at.set(key, [...at.get(key) ?? [], reset]);
     }
     return at;
-  }, [earlier.resets, conversation?.resets, turns, work, shown.tail]);
+  }, [earlier.resets, served.resets, turns, work, shown.tail]);
   const resetLines = (id: string | null) => resets.get(id)?.map(reset => <ResetLine key={reset.id} reset={reset} />) ?? null;
   const tailStart = work.length;
   const rows = [...work.map(turn => ({ kind: 'server' as const, turn })), ...shown.tail].map((row, at) => {
@@ -245,53 +304,19 @@ export const CoordinatorThread = memo(function CoordinatorThread({ turns: recent
     return <Fragment key={row.kind === 'local' && row.turn.stage === "refused" ? `refused:${row.turn.id}` : row.turn.id}>{lines}{drawRow(row, at)}</Fragment>;
   });
   function drawRow(row: { kind: 'server'; turn: CoordinatorTurn } | (typeof shown.tail)[number], at: number) {
-    if (row.kind === 'local') {
-      const turn = row.turn;
-      // The same request key survives admission; recoverable refused words have their own identity.
-      return <li data-action-focus-place tabIndex={-1} data-coordinator-local={turn.stage} data-coordinator-waiting={shown.localWaiting.includes(turn) ? turn.id : undefined} data-coordinator-message={turn.id} className="relative animate-rise border-b border-rule py-3 pl-(--gutter) last:border-b-0">
-        <Exchange key={EXCHANGE} turn={turn} open={viewer.open} skills={skills} joined={NONE}
-          mark={<TimelineMark kind={turn.stage === "refused" ? "error" : "request"} tone={turn.stage === "refused" ? "error" : "quiet"} />}
-          reply={<MessageDelivery turn={turn} local={turn} />} />
-      </li>;
-    }
-    const turn = row.turn;
+    if (row.kind === 'local')
+      return <ThreadRow local={row.turn} waiting={shown.localWaiting.includes(row.turn)} open joined={NONE_TURNS} skills={skills} retry={retry} toggle={toggle} viewer={viewer.open} clock={clock} />;
     // Hidden history has no row yet: build its labels and messages only when it is opened.
     if (at < start && !earlierOpen) return null;
-    const open = turn.waiting || (hand.get(turn.id) ?? at >= start);
-    const joined = joinedTo.get(turn.id) ?? [];
-    const mark = <TimelineMark kind={turn.status === "running" ? "start" : turn.status === "failed" ? "error" : "request"}
-      tone={turn.status === "running" ? "working" : turn.status === "failed" ? "error" : "quiet"} />;
-    // Said in words, not an arrow: an arrow on the conversation is what closes it (its ∨ at the top right). Taller than
-    // its line, it overhangs it evenly, so the line keeps its height.
-    const button = <button type="button" data-exchange-toggle aria-expanded={open}
-      aria-label={t(open ? "coordinatorCard.foldExchange" : "coordinatorCard.openExchange", { time: messageTime(turn.at, i18n.language) })}
-      onClick={() => toggle(turn.id, !open)} className="-my-[calc((--spacing(7)-1lh)/2)] ml-auto flex h-7 flex-none items-center self-center rounded-sm px-2 text-xs text-muted underline decoration-line underline-offset-3 hover:bg-hover hover:text-ink hover:decoration-ink narrow:-my-[calc((--spacing(10)-1lh)/2)] narrow:h-10">
-      {t(open ? "coordinatorCard.exchangeFold" : "coordinatorCard.exchangeOpen")}</button>;
-    return <li data-action-focus-place tabIndex={-1} data-coordinator-turn={turn.status} data-coordinator-waiting={turn.waiting ? turn.id : undefined} data-coordinator-message={turn.id} data-exchange={open ? "open" : "folded"}
-      className="relative animate-rise border-b border-rule py-3 pl-(--gutter) last:border-b-0">
-      {open ? <Exchange key={EXCHANGE} turn={turn} open={viewer.open} skills={skills} joined={joined} mark={mark} fold={turn.waiting ? undefined : button}
-        reply={<><TurnWork turn={turn} />{delivering(turn) ? <MessageDelivery turn={turn} /> : <Answer turn={turn} retry={retry} />}<Attempts turn={turn} /></>} />
-      : <div className="cursor-pointer" onClick={event => {
-        // A press opens it; a press on what it holds (a task's label), or a drag that selects its words, does not.
-        if (!(event.target as Element).closest("button, a") && (event.currentTarget.ownerDocument.defaultView?.getSelection()?.isCollapsed ?? true)) toggle(turn.id, true);
-      }}>
-        <MessageHead turn={turn} mark={mark} more={<>
-          {!!joined.length && <span>· {t("coordinatorCard.joinedCount", { count: joined.length })}</span>}
-          {!!turn.attachments.length && <span>· {t("coordinatorCard.filesCount", { count: turn.attachments.length })}</span>}
-          {button}
-        </>} />
-        {turn.ask && <FoldedMessage turn={turn} skills={skills} />}
-        <div data-exchange-outcome className="mt-type-close flex min-w-0 items-center gap-1.5">
-          <Icon name="right" className="size-3 flex-none text-muted" /><Outcome turn={turn} />
-        </div>
-      </div>}
-    </li>;
+    const turn = row.turn;
+    return <ThreadRow served={turn} waiting={!!turn.waiting} open={turn.waiting || (hand.get(turn.id) ?? at >= start)} joined={joinedTo.get(turn.id) ?? NONE_TURNS}
+      skills={skills} retry={retry} toggle={toggle} viewer={viewer.open} clock={clock} />;
   }
   // The rail runs through each turn's gutter, its 1px line from 7px in (--rail, its left edge), so it stays on whole
   // pixels; a turn's mark stands on it from its head, a gutter further in. A word with no place to fold (a path, an
   // address, a file's name) folds at any letter where it would outrun the conversation, as in the reader.
   // Empty is no message at all: the first one sent stands in the greeting's place as any message does.
-  const empty = !!conversation && !work.length && !shown.tail.length && !conversation.earlier;
+  const empty = !!served.id && !work.length && !shown.tail.length && !served.earlier;
   // Hidden, the history is counted whole: the turns here before the latest exchange and those not read yet.
   const hidden = start + (earlier.unread ?? 0);
   return <>

@@ -29,13 +29,29 @@ const joinResets = (older: readonly CoordinatorReset[], newer: readonly Coordina
   return [...older.filter(reset => !ids.has(reset.id)), ...newer];
 };
 
+/** A turn whose files the cleaning can still remove: it has some, and serve has not said they are gone. */
+const cleanable = (turn: CoordinatorTurn) => !turn.filesExpired && (turn.attachments.length > 0 || !!turn.answerFiles?.length);
+/**
+ * The held window checked against serve for what the cleaning may have changed since: only the pages that hold a turn
+ * with files still there are read (each page ending right after such a turn), and serve's turns replace those held. A
+ * window with no such turn reads nothing.
+ */
+async function recheckFiles(conversationId: string, held: CoordinatorHistory, signal: AbortSignal): Promise<CoordinatorHistory> {
+  const fresh = new Map<string, CoordinatorTurn>();
+  for (let at = held.turns.length - 1; at >= 0; at--) {
+    const turn = held.turns[at]!;
+    if (!cleanable(turn) || fresh.has(turn.id)) continue;
+    const page = await readCoordinatorTurns(conversationId, { before: held.turns[at + 1]?.id ?? held.until }, signal);
+    for (const each of page.turns) fresh.set(each.id, each);
+  }
+  return fresh.size ? { ...held, turns: held.turns.map(turn => fresh.get(turn.id) ?? turn) } : held;
+}
 /**
  * What the window becomes for where the snapshot starts now (`boundary`):
  * - none held: the first page;
  * - the snapshot moved on: only the turns pushed out of it since are read (back to the window's end, `held.until`) and
  *   put after the window, so reading costs what moved, not what is held;
- * - the same boundary (stale, or the screen came back): the whole range read again, so turns whose files were cleaned
- *   since are as serve has them.
+ * - the same boundary (stale, or the screen came back): the pages whose files the cleaning may have removed since.
  */
 async function readWindow(conversationId: string, boundary: string, held: CoordinatorHistory | undefined, signal: AbortSignal): Promise<CoordinatorHistory> {
   if (!held) return { until: boundary, ...await readBack(conversationId, boundary, () => true, signal) };
@@ -46,8 +62,7 @@ async function readWindow(conversationId: string, boundary: string, held: Coordi
     if (from < 0) return { until: boundary, ...gap };
     return { until: boundary, turns: [...held.turns, ...gap.turns.slice(from)], resets: joinResets(held.resets, gap.resets), more: held.more };
   }
-  const oldest = held.turns[0]?.id;
-  return { until: boundary, ...await readBack(conversationId, boundary, turns => !oldest || turns.some(turn => turn.id === oldest), signal) };
+  return recheckFiles(conversationId, held, signal);
 }
 /** One page before the window's oldest turn, put before it: the page ends where the window starts. */
 async function readOlder(conversationId: string, held: CoordinatorHistory, signal: AbortSignal): Promise<CoordinatorHistory> {

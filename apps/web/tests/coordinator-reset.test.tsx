@@ -13,6 +13,7 @@ import { coordinatorMessageDigest } from "@alpacawork/contract/coordinator";
 import { deliveryOutcome, isolateConflicts, freeze, outgoingKey } from "../src/features/coordinator/editor/outbox";
 import { useDraftStore, draftKey } from "../src/features/forms/draft-store";
 import { focusManager } from "@tanstack/react-query";
+import * as messageTimes from "../src/features/coordinator/message-time";
 
 const at = (minute: number) => new Date(Date.UTC(2026, 10, 1, 6, minute)).toISOString();
 const answered = (id: string, minute: number): CoordinatorTurn => ({ id, at: at(minute), ask: `ask ${id}`, attachments: [], status: "succeeded",
@@ -263,5 +264,39 @@ test("history held open is read again when the screen comes back after it went s
   vi.spyOn(Date, "now").mockReturnValue(later);
   focusManager.setFocused(false); focusManager.setFocused(true);
   await waitFor(() => expect(thread().querySelector("[data-file-removed]")?.textContent).toBe("ファイルは削除済み: r.pdf"));
+  focusManager.setFocused(undefined); vi.restoreAllMocks();
+});
+
+test("a new usage figure redraws the ring alone, not the rows of the conversation", async () => {
+  const conversation = { ...empty, turns: [answered("a", 1), answered("b", 2), answered("c", 3)] };
+  vi.stubGlobal("fetch", vi.fn(async () => json(conversation)));
+  setConversationState({ open: true, expanded: true, read: true, conversation });
+  card();
+  const drawn = vi.spyOn(messageTimes, "messageTime");
+  const used = (tokens: number) => ({ usedTokens: tokens, compacted: false, observedAt: at(5), windowTokens: 1_000_000, windowFrom: "reported" as const });
+  setConversationState({ conversation: { ...conversation, context: used(180_000) } });
+  await waitFor(() => expect(document.querySelector("[data-coordinator-context]")?.textContent).toContain("18%"));
+  expect(drawn).not.toHaveBeenCalled();
+});
+
+test("history held open and read again when the screen comes back reads only the pages whose files can have been cleaned", async () => {
+  const plain = Array.from({ length: 3 }, (_, n) => answered(`p${n}`, n));
+  const withFiles = { ...answered("f", 4), attachments: ["shot.png"] };
+  const conversation = { ...empty, earlier: { count: 4, before: "a" }, turns: [answered("a", 10)] };
+  const fetcher = vi.fn(async (url: string) => url.startsWith("/api/coordinator/turns?")
+    ? new Response(JSON.stringify({ turns: [...plain, withFiles], resets: [], more: null }), { status: 200 }) : json(conversation));
+  vi.stubGlobal("fetch", fetcher);
+  setConversationState({ open: true, expanded: true, read: true, conversation });
+  card();
+  fireEvent.click(thread().querySelector("[data-earlier] button")!);
+  await waitFor(() => expect(order()).toEqual(["p0", "p1", "p2", "f", "a"]));
+  const pages = () => fetcher.mock.calls.filter(([url]) => String(url).startsWith("/api/coordinator/turns?")).length;
+  expect(pages()).toBe(1);
+  vi.spyOn(Date, "now").mockReturnValue(Date.now() + 61_000);
+  focusManager.setFocused(false); focusManager.setFocused(true);
+  // One page: the one ending after the turn whose files are still there.
+  await waitFor(() => expect(pages()).toBe(2));
+  await new Promise(resolve => setTimeout(resolve, 50));
+  expect(pages()).toBe(2);
   focusManager.setFocused(undefined); vi.restoreAllMocks();
 });

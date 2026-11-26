@@ -26,9 +26,9 @@
     "completeHint": "Marcar {{id}} como completada",
     "conflict": "ya llegó otro contenido con el mismo ID",
     "context": {
-      "autoBoth": "Se reinicia sola al llegar a {{tokens}} tokens o al {{percent}}% del límite, lo que ocurra antes.",
-      "autoPercent": "Se reinicia sola al llegar al {{percent}}% del límite.",
-      "autoTokens": "Se reinicia sola al llegar a {{tokens}} tokens.",
+      "autoBoth": "Se reinicia sola a los {{tokens}} tokens o al {{percent}}% del límite",
+      "autoPercent": "Se reinicia sola al {{percent}}% del límite",
+      "autoTokens": "Se reinicia sola a los {{tokens}} tokens",
       "tip": "Uso y reinicio",
       "title": "Uso del coordinador",
       "waiting": "El uso aparecerá tras la próxima respuesta."
