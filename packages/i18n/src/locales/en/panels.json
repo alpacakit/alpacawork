@@ -711,14 +711,38 @@
     "start": "Update",
     "unavailable": "The update cannot start right now. Try again in a while.",
     "page": {
-      "newTitle": "A new version is available",
-      "latest": "You're on the latest version",
       "targets": "What an update replaces",
       "targetsNote": "alpacawork and the skills that come with it move to the new version together. No skill needs updating on its own.",
       "app": "alpacawork",
       "appSkill": "The skill for using alpacawork",
       "skill": "Skill",
       "handEdits": "If you edited any of these skills by hand, the new version replaces your edits."
+    },
+    "card": {
+      "latest": "You're on the latest version",
+      "withdrawn": "{{version}} was withdrawn, so this version stays.",
+      "available": "A new version is available",
+      "withdrawnBefore": "The earlier {{version}} was withdrawn.",
+      "afterRuns": "Can be installed once agents stop",
+      "afterRunsBody": "This version installs only after the working agents ({{count}}) stop. Send the coordinator the pause instruction and it stops them at a good point.",
+      "fetching": "Downloading…",
+      "waiting": "Waiting for agents to finish",
+      "waitingBody": "It switches by itself once the working agents ({{count}}) finish.",
+      "applying": "Switching to the new version…",
+      "recovering": "Undoing the switch…",
+      "applyingBody": "The screen is unavailable for a moment and comes back when it ends.",
+      "failed": "The update didn't go through",
+      "failedBody": {
+        "network": "The download failed. Check this PC's internet connection, then retry. You can keep using this version.",
+        "disk": "This PC is short of disk space. Free some, then retry. You can keep using this version.",
+        "other": "Try again. You can keep using this version."
+      },
+      "runsActive": "Can't switch while agents are working",
+      "runsActiveBody": "It can switch once the working agents ({{count}}) finish. Send the coordinator the pause instruction, then retry once they stop. You can keep using this version.",
+      "attention": "The switch stopped partway",
+      "attentionBody": "Continue picks up where it stopped.",
+      "done": "You're on the new version",
+      "doneBody": "Reload to bring this screen to it too. If you paused agents for the update, ask the coordinator to resume them."
     }
   },
   "workspaceStop": {

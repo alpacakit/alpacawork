@@ -228,10 +228,9 @@ export function useOpenSettingsFromGear() {
 export function UpdateSettingsTab() {
   const { t } = useTranslation("panels");
   const { t: setup } = useTranslation("setup");
-  const status = useUpdateStatus(), sending = useUpdateLocal((local) => local.sending);
+  const status = useUpdateStatus();
   const skills = useSkills().data?.skills;
   const bundled = SKILL_OFFERS.filter(offer => offer.from.kind === "bundled" && skills?.find(each => each.name === offer.name)?.installed);
-  const offered = status.kind === "available" && !(status.requiresNoRuns && status.runs > 0) ? status : null;
   const latest = status.kind === "none" || status.kind === "withdrawn";
   // The version an update offered or under way brings, whatever its state; none once it is running or none is offered.
   const next = !latest && status.kind !== "done" && "version" in status ? status.version : null;
@@ -239,24 +238,7 @@ export function UpdateSettingsTab() {
     { name: t("update.page.appSkill"), kind: t("update.page.skill") },
     ...bundled.map(offer => ({ name: setup(`skills.items.${offer.name}.title`), kind: t("update.page.skill") }))];
   return <div data-settings-update className="space-y-8">
-    {offered ? <section className="flex flex-wrap items-center gap-x-6 gap-y-4 rounded-lg border border-line px-5 py-4">
-      <div className="min-w-0 flex-1 basis-60">
-        <h4 className="m-0 text-base font-semibold">{t("update.page.newTitle")}</h4>
-        <p className="m-0 mt-1 flex flex-wrap items-baseline gap-x-3 text-sm text-muted tabular-nums">
-          <span>alpacawork {APP_VERSION}<Icon name="arrowRight" className="mx-1 inline size-3.5 align-[-2px]" /><span className="font-semibold text-ink">{offered.version}</span></span>
-          <ReleaseNotes version={offered.version} />
-        </p>
-      </div>
-      <Button data-update-action className={cn("flex-none narrow:min-h-11 narrow:w-full", BUSY_PRESS)} aria-disabled={sending || undefined}
-        onClick={() => { if (!sending) void pressUpdate(offered); }}>{t("update.start")}</Button>
-    </section>
-      : latest ? <section className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-line px-5 py-4">
-        <Icon name="check" className="size-4 text-done" />
-        <span className="text-base font-semibold">{t("update.page.latest")}</span>
-        <span className="text-sm text-muted tabular-nums">alpacawork {APP_VERSION}</span>
-        <span className="ms-auto text-sm"><ReleaseNotes version={APP_VERSION} /></span>
-      </section>
-      : <UpdateStateLine />}
+    <UpdateCard />
     <section>
       <h4 className="m-0 text-base font-semibold">{t("update.page.targets")}</h4>
       <p className="m-0 mt-1 text-sm text-muted [word-break:auto-phrase]">{t("update.page.targetsNote")}</p>
@@ -267,10 +249,89 @@ export function UpdateSettingsTab() {
             {item.kind && <span className="flex-none rounded-full border border-line px-1.5 text-xs text-muted">{item.kind}</span>}
           </span>
           <span className="w-28 flex-none text-end text-xs text-soft tabular-nums">
-            {next ? <>{APP_VERSION}<Icon name="arrowRight" className="mx-1 inline size-3 align-[-1px]" /><span className="font-semibold text-ink">{next}</span></> : APP_VERSION}</span>
+            {status.kind === "done" ? status.version : next ? <>{APP_VERSION}<Icon name="arrowRight" className="mx-1 inline size-3 align-[-1px]" /><span className="font-semibold text-ink">{next}</span></> : APP_VERSION}</span>
         </li>)}
       </ul>
       <p className="m-0 mt-3 text-xs text-soft [word-break:auto-phrase]">{t("update.page.handEdits")}</p>
     </section>
   </div>;
+}
+
+/**
+ * Where an update of this PC stands, as one card in every state: a mark of its tone (done, new, under way, needs the
+ * person), a title saying the state, the versions from and to with the release notes, what to do or what happens next,
+ * and its presses. Only the mark and the title take the warning colour; the words under them stay readable.
+ */
+type Card = { tone: "ok" | "new" | "busy" | "warn"; title: string; from: string | null; to: string; body?: string;
+  action?: { label: string; run: () => void; secondary?: boolean }; pause?: string };
+function useCard(status: UpdateStatus): Card | null {
+  const { t } = useTranslation("panels");
+  const now = APP_VERSION;
+  switch (status.kind) {
+    case "none": return { tone: "ok", title: t("update.card.latest"), from: null, to: now };
+    case "withdrawn": return { tone: "ok", title: t("update.card.latest"), from: null, to: now, body: t("update.card.withdrawn", { version: status.version }) };
+    case "available": {
+      const later = status.requiresNoRuns && status.runs > 0;
+      return later
+        ? { tone: "new", title: t("update.card.afterRuns"), from: now, to: status.version, body: t("update.card.afterRunsBody", { count: status.runs }), pause: status.version }
+        : { tone: "new", title: t("update.card.available"), from: now, to: status.version,
+          body: status.note?.kind === "withdrawn" ? t("update.card.withdrawnBefore", { version: status.note.version }) : undefined,
+          action: { label: t("update.start"), run: () => void pressUpdate(status) } };
+    }
+    case "fetching": return { tone: "busy", title: t("update.card.fetching"), from: now, to: status.version };
+    case "waiting": return { tone: "busy", title: t("update.card.waiting"), from: now, to: status.version, body: t("update.card.waitingBody", { count: status.runs }),
+      action: { label: t("update.postpone"), run: () => void postponeUpdate(status.opId), secondary: true } };
+    case "applying": return { tone: "busy", title: t("update.card.applying"), from: now, to: status.version, body: t("update.card.applyingBody") };
+    case "recovering": return { tone: "busy", title: t("update.card.recovering"), from: now, to: status.version, body: t("update.card.applyingBody") };
+    case "failed": return { tone: "warn", from: now, to: status.version,
+      title: status.runConflict ? t("update.card.runsActive") : t("update.card.failed"),
+      body: status.runConflict ? t("update.card.runsActiveBody", { count: status.runConflict.runs })
+        : t(`update.card.failedBody.${status.category}`),
+      action: { label: t("update.retry"), run: () => void retryUpdate(status) }, pause: status.runConflict ? status.version : undefined };
+    case "attention": return { tone: "warn", title: t("update.card.attention"), from: now, to: status.version ?? "", body: t("update.card.attentionBody"),
+      action: { label: t("update.continue"), run: () => void continueUpdate(status) } };
+    case "done": return { tone: "ok", title: t("update.card.done"), from: null, to: status.version, body: t("update.card.doneBody"),
+      action: { label: t("update.reload"), run: () => location.reload() } };
+    default: return null;
+  }
+}
+
+const CARD_MARK: Record<Card["tone"], { icon: IconName; className: string }> = {
+  ok: { icon: "check", className: "bg-[color:color-mix(in_oklab,var(--done)_14%,transparent)] text-done" },
+  new: { icon: "arrowDown", className: "bg-[color:color-mix(in_oklab,var(--new)_14%,transparent)] text-new" },
+  busy: { icon: "pending", className: "bg-[color:color-mix(in_oklab,var(--ink)_6%,transparent)] text-muted" },
+  warn: { icon: "warn", className: "bg-[color:color-mix(in_oklab,var(--warn)_14%,transparent)] text-warn" },
+};
+
+export function UpdateCard() {
+  const status = useUpdateStatus(), sending = useUpdateLocal((local) => local.sending);
+  const card = useCard(status);
+  if (!card) return null;
+  const mark = CARD_MARK[card.tone];
+  return <section data-update-card={status.kind} role="status" aria-live="polite" className="flex flex-wrap items-start gap-x-4 gap-y-4 rounded-lg border border-line px-5 py-4">
+    {/* On a phone the mark stands in the title's line, so the words keep the card's width. */}
+    <span className={cn("grid size-9 flex-none place-items-center rounded-full narrow:hidden", mark.className)}>
+      <Icon name={mark.icon} className={cn("size-4.5", card.tone === "busy" && "animate-spin [animation-duration:1.4s]")} strokeWidth={2.25} /></span>
+    <div className="min-w-0 flex-1 basis-56">
+      <h4 className={cn("m-0 text-base font-semibold [word-break:auto-phrase]", card.tone === "warn" && "text-warn")}>
+        <span className={cn("me-2 hidden size-6 place-items-center rounded-full align-[-5px] narrow:inline-grid", mark.className)}>
+          <Icon name={mark.icon} className={cn("size-3.5", card.tone === "busy" && "animate-spin [animation-duration:1.4s]")} strokeWidth={2.5} /></span>{card.title}</h4>
+      <p className="m-0 mt-0.5 flex flex-wrap items-baseline gap-x-3 text-sm text-muted tabular-nums">
+        <span>alpacawork {card.from ? <>{card.from}<Icon name="arrowRight" className="mx-1 inline size-3.5 align-[-2px]" /><span className="font-semibold text-ink">{card.to}</span></> : card.to}</span>
+        {card.to && <ReleaseNotes version={card.to} />}
+      </p>
+      {card.body && <p className="m-0 mt-2 text-sm text-muted [word-break:auto-phrase]">{card.body}</p>}
+      {/* Two presses (copy the pause, then retry) read as steps under the words that explain them. */}
+      {card.pause && <div className="mt-3 flex flex-wrap items-center gap-2 narrow:[&>*]:flex-1">
+        <PauseInstruction version={card.pause} />{card.action && <CardPress card={card} sending={sending} />}</div>}
+    </div>
+    {card.action && !card.pause && <div className="flex-none self-center narrow:w-full narrow:[&>*]:w-full"><CardPress card={card} sending={sending} /></div>}
+  </section>;
+}
+
+/** A card's press: the way forward in ink, a step aside (put off) outlined; held while its answer is awaited. */
+function CardPress({ card, sending }: { card: Card; sending: boolean }) {
+  const action = card.action!;
+  return <Button data-update-action variant={action.secondary ? "outline" : "default"} className={cn("narrow:min-h-11", BUSY_PRESS)}
+    aria-disabled={sending || undefined} onClick={() => { if (!sending) action.run(); }}>{action.label}</Button>;
 }
