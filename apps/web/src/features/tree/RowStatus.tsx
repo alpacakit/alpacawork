@@ -91,7 +91,7 @@ export function StatusTime({ task }: { task: Task }) {
 export function RunningRuns({ task }: { task: Task }) {
   const narrow = useNarrow();
   if (!runningRunsSaid(task)) return null;
-  return <span data-row-running-runs={runningRunsSaid(task)} className="flex min-w-0 shrink items-baseline gap-1.5 whitespace-nowrap">
+  return <span data-row-running-runs={runningRunsSaid(task)} className="ml-1 flex min-w-0 shrink items-baseline gap-1.5 whitespace-nowrap">
     <AgentCounts tasks={[task]} />
     {narrow && <NarrowTokenSpeed task={task} />}
   </span>;

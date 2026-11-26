@@ -546,7 +546,7 @@ function SectionHead({ section, first, shared, onToggle }: { section: Section; f
           <Icon name="right" className={cn("size-3 text-muted transition-transform motion-reduce:transition-none", section.open && "rotate-90")} />
         </button>
         {section.section === "done" && <TodayMarks />}
-        {section.section === "doing" && <span className={cn(HEAD_LINE, "ml-auto flex-none narrow:pr-1.5")}><HeadingAgents tops={sectionTops(section)} narrow={shared.narrow} /></span>}
+        {section.section === "doing" && <span className={cn(HEAD_LINE, "ml-auto min-w-0 shrink narrow:pr-1.5")}><HeadingAgents tops={sectionTops(section)} narrow={shared.narrow} /></span>}
       </h2>
       {shared.lane > 0 && section.section === "doing" && <SpeedLane width={shared.lane} className="mb-0.5"><HeadingTokenSpeed tops={sectionTops(section)} compact={shared.lane < SPEED_LANE} /></SpeedLane>}
     </div>
@@ -664,9 +664,9 @@ const TaskRow = memo(function TaskRow({ node, shared, visibleRows }: TaskRowProp
             {press(<>
               <RowProjectTile project={task.projectId} />
               <TaskId id={task.id} className="flex-none text-xs tabular-nums text-muted" />
-              {/* The title keeps about half the line; what stands at its end is cut first. */}
+              {/* The title keeps over a third of the line; what stands at its end (the agents first) gives way. */}
               <RowTitle title={task.title} className="min-w-[45%] flex-1 text-base text-ink" />
-            </>, "flex min-w-0 flex-1 items-center gap-1.5 text-left after:absolute after:inset-0 after:content-['']", endId)}
+            </>, "flex min-w-[38%] flex-1 items-center gap-1.5 text-left after:absolute after:inset-0 after:content-['']", endId)}
             {/* The row's one time at its end, with what is so of its state before it. It stands beside the press, as its time
                 is a press of its own; the press's cover lies over the rest of it, so a press there still opens the task. */}
             <RowEnd id={endId} task={task} childCount={progress ? `${progress.done}/${progress.total}` : null} />

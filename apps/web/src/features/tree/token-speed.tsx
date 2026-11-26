@@ -6,7 +6,7 @@
  * cells follow the clock: each reads the workspace once a second and re-renders only when what it shows has changed,
  * so a tick neither re-renders the rows nor changes any layout (every number sits in a fixed-width slot).
  */
-import { useLayoutEffect, useSyncExternalStore, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { runOutputSpeed, type RunOutputSpeed } from "@alpacawork/contract/run";
 import { Icon } from "@/components/ui/icon";
@@ -211,28 +211,65 @@ export const TIME_SLOT = "inline-block min-w-[4.5em] text-right narrow:min-w-[3.
 /** The speed's slot on a phone, held while agents run so the columns stay put before a count arrives. */
 const NARROW_SPEED_SLOT = "inline-block min-w-[5ch] text-right tabular-nums";
 
+/** Room kept for the "+count" that stands for the agents left out. */
+const REST_WIDTH = 20, AGENT_GAP = 10;
+
 /**
  * Which agents run and how many: each agent's name and its count, most first, so a row says "claude 2  codex 1" at a
- * glance. Past `shown` names the rest stand as one "+count", so a row's title keeps its room; its press lists them all.
- * A count no loaded Run names keeps the square. Read as words, it is the total and then each agent's count.
+ * glance. It takes the room the row leaves it: the names that do not fit stand as one "+count" of their agents (none
+ * fitting, the square and the total), and its press lists them all. A count no loaded Run names keeps the square. Read
+ * as words, it is the total and then each agent's count.
  */
-export function AgentCounts({ tasks, shown = 2 }: { tasks: readonly Task[]; shown?: number }) {
+export function AgentCounts({ tasks }: { tasks: readonly Task[] }) {
   const { t } = useTranslation("tree");
   const key = useWorkspaceSelector((data) => JSON.stringify(runningAgents(tasks, data)));
   const agents = JSON.parse(key) as [string | null, number][];
+  const box = useRef<HTMLSpanElement>(null);
+  // How many names fit; all of them while measuring, after the agents or the row's width change.
+  const [fit, setFit] = useState({ key, count: agents.length });
+  const measuring = fit.key !== key || fit.count >= agents.length;
+  useLayoutEffect(() => {
+    const el = box.current;
+    if (!el || !measuring) return;
+    const widths = [...el.querySelectorAll<HTMLElement>("[data-agent]")].map((item) => item.offsetWidth);
+    let count = widths.length;
+    if (el.scrollWidth > el.clientWidth + 1) {
+      let used = REST_WIDTH;
+      count = 0;
+      while (count < widths.length && used + widths[count]! + AGENT_GAP <= el.clientWidth) used += widths[count++]! + AGENT_GAP;
+    }
+    if (fit.key !== key || fit.count !== count) setFit({ key, count });
+  });
+  // Measure again when the row's width changes, or when what stands beside it (a time that arrives) squeezes it.
+  useLayoutEffect(() => {
+    // The title column's cell on a computer (its row's width does not follow the column), the heading, or a phone's row.
+    const el = box.current, row = el?.closest("[data-row-label], h2, li");
+    if (!el || !row || typeof ResizeObserver === "undefined") return;
+    let width = row.clientWidth;
+    const observer = new ResizeObserver(() => {
+      if (row.clientWidth === width && el.scrollWidth <= el.clientWidth + 1) return;
+      width = row.clientWidth;
+      setFit((was) => ({ key: was.key, count: Number.MAX_SAFE_INTEGER }));
+    });
+    observer.observe(row);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
   if (!agents.length) return null;
   const total = agents.reduce((sum, [, count]) => sum + count, 0);
   const words = agents.map(([agent, count]) => `${agent ?? "?"} ${count}`).join(", ");
-  const named = agents.length > shown ? agents.slice(0, shown - 1) : agents;
+  const named = measuring ? agents : agents.slice(0, fit.count);
   const rest = agents.slice(named.length).reduce((sum, [, count]) => sum + count, 0);
-  return <span data-agent-counts title={words} className="flex flex-none items-baseline gap-2.5 whitespace-nowrap tabular-nums">
+  return <span ref={box} data-agent-counts title={words} className="flex min-w-0 shrink items-baseline gap-2.5 overflow-hidden whitespace-nowrap tabular-nums">
     <span className="sr-only">{`${t("status.runningRuns", { count: total })}: ${words}`}</span>
-    {named.map(([agent, count]) => <span key={agent ?? ""} aria-hidden="true">
+    {named.map(([agent, count]) => <span key={agent ?? ""} data-agent aria-hidden="true" className="flex-none">
       {agent === null ? <Icon name="runningRuns" className="mr-0.5 inline size-[0.7em] align-[-0.02em] text-muted" />
         : <span className="mr-1 text-muted">{agent}</span>}
       <span className="text-ink/80">{count}</span>
     </span>)}
-    {rest > 0 && <span aria-hidden="true" className="text-muted">+{rest}</span>}
+    {rest > 0 && <span aria-hidden="true" className="flex-none text-muted">
+      {named.length ? `+${rest}` : <><Icon name="runningRuns" className="mr-0.5 inline size-[0.7em] align-[-0.02em]" />{rest}</>}
+    </span>}
   </span>;
 }
 
@@ -241,7 +278,7 @@ export function HeadingAgents({ tops, narrow }: { tops: readonly Task[]; narrow:
   const agents = tops.reduce((sum, task) => sum + runningRunsSaid(task), 0);
   if (!agents) return null;
   return <span data-heading-agents className="flex min-w-0 items-baseline gap-1.5 whitespace-nowrap text-xs font-normal tabular-nums text-muted">
-    <AgentCounts tasks={tops} shown={3} />
+    <AgentCounts tasks={tops} />
     {narrow && <NarrowTotal tops={tops} />}
     <span aria-hidden="true" className={cn(TIME_SLOT, "invisible")}>0</span>
   </span>;
