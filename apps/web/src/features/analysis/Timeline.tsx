@@ -88,7 +88,7 @@ export function Timeline({ task, trace, findings }: { task: string; trace: Trace
     <Lanes trace={shown} lanes={trace.lanes} window={window} findings={findings} at={shownAt} zone={zone}
       onDrag={ms => setDragging(ms)} onLetGo={ms => { setDragging(null); setAt(ms); }} />
     {!steps && <p className="mt-1 text-xs text-soft">{t("timeline.stepsHidden")}</p>}
-    {steps && shown.cursor && <p className="mt-1 text-xs text-soft">{t("timeline.partial")}</p>}
+    {shown.cursor && <p className="mt-1 text-xs text-soft">{t("timeline.partial")}</p>}
     <Legend />
     {at !== null && <Situation task={task} at={scene!.at!} zone={zone} />}
   </section>;
@@ -117,9 +117,10 @@ function FindingSteps({ finding, findings, onAt }: { finding: Finding; findings:
 /** The instant shown in one line, over the lanes: its part of the wall time, the AIs running and the questions open. */
 function Moment({ task, at }: { task: string; at: string }) {
   const { t } = useTranslation("analysis");
-  const view = useAt(task, at).data;
+  const read = useAt(task, at), view = read.data;
   if (!view) return <p className="mt-3 h-5" />;
-  return <p data-moment="" className="mt-3 flex flex-wrap items-center gap-x-3 text-xs text-muted">
+  // Another instant's answer while this one's is read stands dimmed, as every answer for an earlier choice does.
+  return <p data-moment="" className={cn("mt-3 flex flex-wrap items-center gap-x-3 text-xs text-muted", read.isPlaceholderData && "opacity-50")}>
     {view.part && <span className="inline-flex items-center"><Square className={PART_COLOR[view.part]} /><b className="font-semibold text-ink">{t(`part.${view.part}`)}</b></span>}
     <span>{t("timeline.runningCount", { count: view.runs.length })}</span>
     <span>{t("timeline.openCount", { count: view.questions.length })}</span>

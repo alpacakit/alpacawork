@@ -203,12 +203,15 @@ export const resources = {
       queryFn: ({ client, queryKey, signal }) => readResource(client, queryKey, async () => {
         const route = `${commandRoute('analysis/trace')}?${queryKey[3]}`;
         const first = await api.request(route, analysisTraceViewSchema, signal);
-        let page = first;
-        for (let read = 1; page.cursor && read < TRACE_PAGES; read++) {
-          page = await api.request(`${route}&cursor=${encodeURIComponent(page.cursor)}`, analysisTraceViewSchema, signal);
+        let cursor = first.cursor;
+        for (let read = 1; cursor && read < TRACE_PAGES; read++) {
+          // The records changed between pages (a task at work): what was read stands, said to be a part (cursor set).
+          const page = await api.request(`${route}&cursor=${encodeURIComponent(cursor)}`, analysisTraceViewSchema, signal).catch(() => null);
+          if (!page) break;
           first.spans.push(...page.spans); first.marks.push(...page.marks);
+          cursor = page.cursor;
         }
-        return { ...first, cursor: page.cursor };
+        return { ...first, cursor };
       }),
       placeholderData: keepPreviousData,
     });
