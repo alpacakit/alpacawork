@@ -216,3 +216,11 @@ test('pi keeps provider/model as one value, off as an ordinary value, and adapte
   assert.deepEqual(explicit.launch.env, ['PI_CODING_AGENT_DIR', 'PI_CODING_AGENT_SESSION_DIR']);
   assert.ok(paths('pi', { ...setting, env: ['PI_CODING_AGENT_DIR'] }).includes('env.0'));
 });
+
+test('a coordinator launch, started or resumed, streams its partial messages so its output speed can be read', async () => {
+  const { prepareCoordinatorLaunch } = await import('@alpacawork/contract/agent-launch');
+  const compiled = compileAgentSetting('claude', defaultAgentSetting('claude'));
+  const started = prepareCoordinatorLaunch(compiled, { mode: 'start', path: '/synthetic/bin' });
+  const resumed = prepareCoordinatorLaunch(compiled, { mode: 'resume', path: '/synthetic/bin', explicit: { effort: 'low' }, previous: { adapter: 'claude', values: {} } });
+  for (const each of [started, resumed]) assert.ok(each.launch.argv.includes('--include-partial-messages'), each.mode);
+});
