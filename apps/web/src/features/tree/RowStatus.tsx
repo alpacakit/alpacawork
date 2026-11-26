@@ -6,6 +6,8 @@ import { useTranslation } from "react-i18next";
 import { Icon } from "@/components/ui/icon";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { Task } from "@/data/types";
+import { AGENT_SLOT, NarrowTokenSpeed, TIME_SLOT } from "./token-speed";
+import { useNarrow } from "@/state/view-store";
 import { useConnection } from "@/data/connection";
 import { usePeopleFor, useTaskIndexFor } from "@/data/queries";
 import { capitalized, dayClock } from "@/domain/day-clock";
@@ -89,10 +91,12 @@ export function StatusTime({ task }: { task: Task }) {
 export function RunningRuns({ task }: { task: Task }) {
   const { t } = useTranslation("tree");
   const count = runningRunsSaid(task);
+  const narrow = useNarrow();
   if (!count) return null;
-  return <span data-row-running-runs={count} className="flex-none whitespace-nowrap tabular-nums text-muted">
-    <span aria-hidden="true"><Icon name="runningRuns" className="mr-0.5 inline size-[0.7em] align-[-0.02em]" />{count}</span>
+  return <span data-row-running-runs={count} className="flex flex-none items-baseline gap-1.5 whitespace-nowrap tabular-nums text-muted">
+    <span aria-hidden="true" className={AGENT_SLOT}><Icon name="runningRuns" className="mr-0.5 inline size-[0.7em] align-[-0.02em]" />{count}</span>
     <span className="sr-only">{t("status.runningRuns", { count })}</span>
+    {narrow && <NarrowTokenSpeed task={task} />}
   </span>;
 }
 
@@ -268,7 +272,7 @@ export function RowEnd({ task, childCount, id, className }: { task: Task; childC
     <WaitedNote task={task} />
     <StatusNotes task={task} />
     <RunningRuns task={task} />
-    <StatusTime task={task} />
+    <TimeSlot task={task}><StatusTime task={task} /></TimeSlot>
   </span>;
 }
 
@@ -334,4 +338,9 @@ function failureWord(failure: string, t: T): string {
 
 function warningWord(warning: Task['rowFacts']['warning'], t: T): string {
   return warning === null || warning === 'unknown' ? t('tree:status.unclear') : failureWord(warning, t);
+}
+
+/** An In progress row's time in a fixed slot, so the squares before it line up down the section. */
+export function TimeSlot({ task, children }: { task: Task; children: ReactNode }) {
+  return runningRunsSaid(task) ? <span className={TIME_SLOT}>{children}</span> : <>{children}</>;
 }

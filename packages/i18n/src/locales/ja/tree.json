@@ -70,6 +70,14 @@
     "deleted": "削除",
     "restore": "元に戻す"
   },
+  "speed": {
+    "idle": "無出力 {{length}}",
+    "idleShort": "無出力",
+    "perSecond": "/s",
+    "rowTip": "出力の速さ {{rate}} tok/s（直近5秒の平均）\n直近1分: 平均 {{mean}}・最大 {{peak}}",
+    "totalTip_other": "作業中 {{count}}件の出力の速さの合計（直近5秒の平均）",
+    "unit": "tok/s"
+  },
   "status": {
     "cause": {
       "modelCapacity": "モデル混雑",

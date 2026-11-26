@@ -70,6 +70,14 @@
     "deleted": "已删除",
     "restore": "恢复"
   },
+  "speed": {
+    "idle": "无输出 {{length}}",
+    "idleShort": "无输出",
+    "perSecond": "/s",
+    "rowTip": "输出速度 {{rate}} tok/s（最近 5 秒平均）\n最近 1 分钟：平均 {{mean}}，最高 {{peak}}",
+    "totalTip_other": "{{count}} 个进行中任务的输出速度合计（最近 5 秒平均）",
+    "unit": "tok/s"
+  },
   "status": {
     "cause": {
       "modelCapacity": "模型繁忙",

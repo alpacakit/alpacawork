@@ -72,6 +72,15 @@
     "deleted": "Deleted",
     "restore": "Restore"
   },
+  "speed": {
+    "idle": "No output {{length}}",
+    "idleShort": "Idle",
+    "perSecond": "/s",
+    "rowTip": "Output speed {{rate}} tok/s (last 5 seconds' average)\nLast minute: average {{mean}}, peak {{peak}}",
+    "totalTip_one": "Total output speed of {{count}} task in progress (last 5 seconds' average)",
+    "totalTip_other": "Total output speed of {{count}} tasks in progress (last 5 seconds' average)",
+    "unit": "tok/s"
+  },
   "status": {
     "cause": {
       "modelCapacity": "Model busy",

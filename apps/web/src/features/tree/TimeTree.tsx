@@ -58,6 +58,7 @@ import { useConnection } from "@/data/connection";
 import { PullMark, usePullToRefresh } from "./pull-refresh";
 import { ReadFailure, ReadNote } from "@/components/ui/loadable";
 import { useDeviceValue } from "@/lib/device-storage";
+import { HeadingAgents, HeadingTokenSpeed, StripTokenSpeed } from "./token-speed";
 import { isOpen, SECTION_START, sectionFold, sectionsOpen, storedWith } from "./section-fold";
 import { useOfflineShown } from "@/data/reach";
 import { useListEntrance } from "./list-entrance";
@@ -526,7 +527,7 @@ const SECTION_MARK: Record<HomeSection, string> = { error: "bg-error", review: "
 function SectionHead({ section, first, shared, onToggle }: { section: Section; first: boolean; shared: Shared; onToggle: () => void }) {
   const { t } = useTranslation("tree");
   const name = { doing: t("home.running"), error: t("home.error"), review: t("home.turn"), awaited: t("home.awaited"), held: t("home.held"), todo: t("home.todo"), done: t("home.finished") }[section.section];
-  return <div data-section={section.section} data-motion-key={`section:${section.section}`} className="border-b border-rule">
+  return <div data-section={section.section} data-motion-key={`section:${section.section}`} className="flex border-b border-rule">
     <div style={frozen(shared)} className={cn("sticky left-0 flex h-8 bg-bg pl-list-text items-end pr-2 pb-1.5 text-base font-semibold text-ink narrow:h-11 narrow:items-center narrow:pb-0",
       !first && "h-12 pt-4 narrow:h-13 narrow:pt-2", columnEdge(shared))}>
       <h2 className="m-0 flex min-w-0 flex-1 text-base font-semibold">
@@ -540,9 +541,17 @@ function SectionHead({ section, first, shared, onToggle }: { section: Section; f
           <Icon name="right" className={cn("size-3 text-muted transition-transform motion-reduce:transition-none", section.open && "rotate-90")} />
         </button>
         {section.section === "done" && <TodayMarks />}
+        {section.section === "doing" && <span className={cn(HEAD_LINE, "ml-auto flex-none narrow:pr-1.5")}><HeadingAgents tops={sectionTops(section)} narrow={shared.narrow} /></span>}
       </h2>
     </div>
+    {section.section === "doing" && !shared.narrow && shared.strips && <HeadingTokenSpeed tops={sectionTops(section)} lead={shared.lead} className="items-end pb-1.5" />}
   </div>;
+}
+
+/** The section's rows that no other row in it holds. */
+function sectionTops(section: Section) {
+  const ids = new Set(section.tree.nodes.map(({ task }) => task.id));
+  return section.tree.nodes.filter(({ task, path }) => !path.some((id) => id !== task.id && ids.has(id))).map(listedTask);
 }
 
 /**
@@ -658,6 +667,7 @@ const TaskRow = memo(function TaskRow({ node, shared, visibleRows }: TaskRowProp
             <RowEnd id={endId} task={task} childCount={progress ? `${progress.done}/${progress.total}` : null} />
           </div>}
         </div>
+        {!narrow && shared.strips && <StripTokenSpeed task={task} lead={shared.lead} height={h} />}
         {shared.strips && (visibleRows === null || visibleRows.has(task.id)
           ? <RowStrip node={node} shared={shared} height={h} title={title} enter={enter} />
           : <EmptyStrip height={h} />)}
