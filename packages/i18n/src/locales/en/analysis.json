@@ -228,6 +228,8 @@
     "change": "Conditions changed",
     "command-stopped": "Command stopped at the limit",
     "compacted": "Conversation compacted",
+    "test": "Test command",
+    "produced": "Commit, pull request or linked deliverable",
     "instruction": "Instruction",
     "moved": "Moved",
     "question-withdrawn": "Question withdrawn",
@@ -282,6 +284,9 @@
     "repeated-failure": "Same failure again",
     "repeated-question": "Same question asked again",
     "rework": "Work done again",
+    "large-output": "Large tool result",
+    "same-test-same-commit": "Same test on the same checkout",
+    "outputChars": "{{count, number}} characters",
     "same-result": "Same result read again"
   },
   "same": "±0",

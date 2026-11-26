@@ -3,7 +3,7 @@ import { TASK_SEGMENT } from './task-id.js';
 import { ASPECTS, CAUSES } from './reasons.js';
 
 export const analysisFindingRules = ['long-wait', 'repeated-question', 'long-step', 'limit-hit', 'repeated-failure', 'same-result',
-  'fan-out', 'queue-wait', 'failed-run', 'rework', 'idle'] as const;
+  'fan-out', 'queue-wait', 'failed-run', 'rework', 'large-output', 'same-test-same-commit', 'idle'] as const;
 
 const period = z.strictObject({ kind: z.literal('period'), from: z.iso.date(), to: z.iso.date() });
 

@@ -504,10 +504,19 @@ test('a bash command whose closing quote is not its last character is shown as w
   const cut = boundBridgeEvent({ type: 'item.started', item: boundaryItem('command_execution', { id: 'c3',
     command: "/bin/bash -lc 'echo start\n" + 'echo line\n'.repeat(150_000) + "'" }) });
   appendFileSync(join(path, 'stdout.log'), JSON.stringify(cut) + '\n');
-  const index = await read(path, 'codex');
+  const adapter = AGENT_RUNTIME_ADAPTERS.codex;
+  const index = new RunStepIndex(path, adapter, path);
+  await index.update();
   assert.equal((await index.detail(0))?.input.text, redirected);
   assert.equal((await index.detail(1))?.input.text, 'cd /tmp; pwd');
   assert.ok((await index.detail(2))!.input.text.startsWith('echo start\necho line\n'));
+  const retained = [...index.observations()][2]?.evidence?.input;
+  assert.equal(retained?.fingerprint.line, 'echo start');
+  assert.equal(retained?.digest, undefined);
+  new OutputActivityReader(adapter).poll(path);
+  await index.update();
+  assert.deepEqual(index.range(2, 1).steps[0]?.fingerprint, retained?.fingerprint);
+  assert.equal(index.range(2, 1).steps[0]?.rawDigest, undefined);
 });
 
 test('a file whose name holds a line break, its heading cut partway, counts as hidden', async t => {

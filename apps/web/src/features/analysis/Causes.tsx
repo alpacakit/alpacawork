@@ -19,7 +19,7 @@ type Cause = { key: string; name: string; value: string; share: number | null; b
  */
 export function Causes({ accepted, open }: { accepted: Accepted; open: Open }) {
   const { t } = useTranslation("analysis");
-  const { causes, aspects } = accepted.instructions.by.user;
+  const { causes, aspects } = accepted.decisions.by.user;
   const fixed = causes.reduce((sum, cause) => sum + cause.count, 0);
   const time = accepted.time.review + accepted.time.answer + accepted.time.ai + accepted.time.other;
   const tokens = accepted.rounds.first.tokens + accepted.rounds.later.tokens;

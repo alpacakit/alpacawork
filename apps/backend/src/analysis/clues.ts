@@ -8,7 +8,7 @@ import { finishedClock, type AnalysisFacts, type Unit } from './facts.js';
 import { addSplit, emptySplit, splitWaits, type Activity, type WaitSplit } from './presence.js';
 import { clocks } from './rules.js';
 
-type Clues = Pick<AnalysisAcceptedTotals, 'waits' | 'answerItems' | 'instructions' | 'questionsReplaced'>;
+type Clues = Pick<AnalysisAcceptedTotals, 'waits' | 'answerItems' | 'decisions' | 'questionsReplaced'>;
 class Decisions {
   private readonly taken = new Map<string, number>();
   private readonly causes = new Map<string, number>();
@@ -32,7 +32,7 @@ export class CluesSum {
   readonly answerItems = { total: 0, choice: 0, recommended: 0, recommendable: 0, other: 0, stop: 0, unmatched: 0 };
   private readonly decisions = new Decisions();
   private readonly by = { user: new Decisions(), ai: new Decisions() };
-  private total = 0; private unclassifiedInstructions = 0;
+  private decisionCount = 0; private unclassifiedInstructions = 0;
   private questionsReplaced = 0;
 
   add(unit: Unit, waits: WaitSplit) {
@@ -49,7 +49,7 @@ export class CluesSum {
         if (question.recommends[item.n - 1]) items.recommendable++;
       }
     }
-    this.total += unit.instructions.decisions.length;
+    this.decisionCount += unit.instructions.decisions.length;
     this.unclassifiedInstructions += unit.instructions.unclassifiedInstructions;
     for (const { by, taken } of unit.instructions.decisions) {
       this.decisions.add(taken);
@@ -60,7 +60,7 @@ export class CluesSum {
   clues(): Clues {
     return { waits: { ...this.waits }, answerItems: { ...this.answerItems },
       questionsReplaced: this.questionsReplaced,
-      instructions: { total: this.total, unclassifiedInstructions: this.unclassifiedInstructions, ...this.decisions.counts(),
+      decisions: { total: this.decisionCount, unclassifiedInstructions: this.unclassifiedInstructions, ...this.decisions.counts(),
         by: { user: this.by.user.counts(), ai: this.by.ai.counts() } } };
   }
 }

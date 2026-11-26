@@ -36,7 +36,7 @@ const firstText = (...values: unknown[]) => values.find((value): value is string
  * closing quote that is the command's last character, every other quote inside being the escaped quote Codex writes;
  * (b) the bridge cut the command short (`cut`), so its closing quote is gone. Any other command is shown as written.
  */
-function shellScript(command: unknown, cut = false): unknown {
+export function shellScript(command: unknown, cut = false): unknown {
   if (typeof command !== 'string') return command;
   const head = /^(?:\/bin\/|\/usr\/bin\/)?(?:bash|sh) -l?c (['"])/.exec(command);
   if (!head) return command;

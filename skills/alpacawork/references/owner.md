@@ -60,7 +60,7 @@ Keep the making and the judgment about the next step with the same agent. Whoeve
 
 ## Receiving a child's result
 
-When following up on the result of a member or a child's owner, or releasing a member after their result, choose `--taken` using the meanings and choosing order in `task request -h` or `agent release -h`. Choose one `--cause` for fix, redo or dropped, and `--aspects` when they help. When stopping a child whose result you drop, record `--cause` on that stop. Taking a review's advice is adopting the review.
+When following up on the result of a member or a child's owner, or releasing a member after their result, choose `--taken` using the meanings and choosing order in `task request -h` or `agent release -h`. Choose one `--cause` for fix, redo or dropped, and `--aspects` when they help. When stopping a child whose result you drop, record `--cause` on that stop. Taking a review's advice is adopting the review. Use `alpacawork run summary --run <ID>` when you need to verify what a Run tested or produced.
 
 - You receive a child's result after its request closes, together with everything else that has arrived by then. Receipt does not wait for other requests to close. For acceptance, verify before you report the end whether the results of your children and members meet your done conditions (for how to verify, see ["Checking a result against the request" in the main skill](../SKILL.md#checking-a-result-against-the-request)). If something is missing, have the same agent fix it with `task request`.
 - A request to a child also stays open while that child has a question open ([Waking](lifecycle.md#waking)).

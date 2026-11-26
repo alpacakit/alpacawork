@@ -23,9 +23,10 @@ import type { ActivityEvent } from './activity-events.js';
 import { runStepKind } from './recent-work.js';
 import { STEP_LINE_LIMIT } from './readers/jsonl.js';
 import { callOmitted, hiddenFiles, joinStepCalls, stepInputDocument } from '../agents/adapters/activity.js';
+import { stepEvidence, type ObservedStep } from './step-evidence.js';
 import { readStepJournalFrom } from './step-journal.js';
 import { RunStore } from '@alpacawork/runs';
-import { isRunMoving, runFolder } from '@alpacawork/contract/run';
+import { isRunMoving, runFolder, type RunRecord } from '@alpacawork/contract/run';
 import { runtimeAdapter } from '../agents/registry.js';
 
 /**
@@ -37,9 +38,9 @@ const CHUNK = 1024 * 1024;
 type Settled = 'done' | 'failed';
 type Step = Omit<RunStepEntry, 'n' | Timed | 'subagentSteps'> & { start: number; end: number | null;
   /** The number (from 0) of the output line that started it: with its ID, how the step journal names it. */ line: number;
-  /** A line that could not be read came while it ran. */ unsure: boolean };
+  /** A line that could not be read came while it ran. */ unsure: boolean; evidence?: ObservedStep['evidence'] };
 /** What of a step only its Run's step journal knows. */
-type Timed = 'startedAt' | 'startSource' | 'endedAt' | 'endSource' | 'fingerprint' | 'output';
+type Timed = 'startedAt' | 'startSource' | 'endedAt' | 'endSource' | 'fingerprint' | 'output' | 'rawDigest' | 'head';
 const untimed: Pick<RunStepEntry, Timed> = { startedAt: null, startSource: null, endedAt: null, endSource: null, fingerprint: null, output: null };
 
 const name = (value: unknown) => typeof value === 'string' ? clipRunText(value, RUN_TOOL_NAME_LIMIT) || null : null;
@@ -76,7 +77,7 @@ export class RunStepIndex {
   /** How the Run ended, once it has: what its output left running is settled so, and its last line is whole. */
   private ended: Settled | null = null;
 
-  constructor(private readonly folder: string, private readonly adapter: AgentAdapter) {}
+  constructor(private readonly folder: string, private readonly adapter: AgentAdapter, private readonly cwd?: string, private readonly readTests = true) {}
 
   private observe(event: ActivityEvent, at: number, line: number): void {
     const { kind, id } = event;
@@ -102,6 +103,10 @@ export class RunStepIndex {
     if (kind === 'tool_end') {
       step.state = event.outcome?.unknown ? 'unknown' : event.outcome?.failed ? 'failed' : 'done'; step.end = at; step.unsure = false;
     }
+    if (this.cwd !== undefined) {
+      const evidence = stepEvidence(step.evidence, event, this.byId.get(id)!, this.cwd, this.readTests);
+      if (evidence !== undefined) step.evidence = evidence;
+    }
     step.changed = ++this.version;
   }
 
@@ -114,14 +119,19 @@ export class RunStepIndex {
   }
 
   /** A line that could not be read: any step running now may have ended in it. */
-  private unreadable(): void {
+  unreadable(): void {
     for (const step of this.steps) if (step.state === 'running') step.unsure = true;
   }
 
   private accept(line: Buffer, at: number, number: number): void {
     const value = parse(line);
     if (value === undefined) { this.unreadable(); return; }
-    for (const event of this.adapter.activity(value, new Date().toISOString())) this.observe(event, at, number);
+    this.observeRow(value, number, at);
+  }
+
+  /** Index an already decoded row, including its original line number. */
+  observeRow(value: unknown, line: number, at = 0): void {
+    for (const event of this.adapter.activity(value, new Date().toISOString())) this.observe(event, at, line);
   }
 
   /**
@@ -129,7 +139,7 @@ export class RunStepIndex {
    * next generation. While the Run goes on, a last line with no line end may still be written and waits; once the Run
    * has ended (`ended`), it is whole and read as the others are.
    */
-  async update(ended: Settled | null = null): Promise<void> {
+  async update(ended: Settled | null = null, maxBytes = Infinity): Promise<void> {
     this.ended ??= ended;
     let handle: FileHandle;
     try { handle = await open(join(this.folder, RUN_FILES.stdout), 'r'); }
@@ -143,8 +153,8 @@ export class RunStepIndex {
       }
       const chunk = Buffer.alloc(CHUNK);
       let pending: Buffer[] = [], pendingLength = 0, lineStart = this.offset, position = this.offset, dropping = false, lines = this.lines;
-      for (;;) {
-        const { bytesRead } = await handle.read(chunk, 0, CHUNK, position);
+      while (position < maxBytes) {
+        const { bytesRead } = await handle.read(chunk, 0, Math.min(CHUNK, maxBytes - position), position);
         if (!bytesRead) break;
         const bytes = chunk.subarray(0, bytesRead);
         let from = 0;
@@ -160,7 +170,7 @@ export class RunStepIndex {
         else { pending = []; pendingLength = 0; dropping = true; }
         position += bytesRead;
       }
-      if (this.ended && (pendingLength || dropping)) {
+      if (this.ended && position >= stat.size && (pendingLength || dropping)) {
         if (dropping) this.unreadable(); else this.accept(Buffer.concat(pending), lineStart, lines);
         lineStart = position; lines++;
       }
@@ -186,7 +196,8 @@ export class RunStepIndex {
       const name = `${entry.line}\0${entry.id}`, held = { ...this.times.get(name) ?? untimed };
       // A time once written stands: a second line of the same event (written after a crash) changes nothing.
       if (entry.event === 'start' ? held.startedAt !== null : held.endedAt !== null) continue;
-      if (entry.event === 'start') Object.assign(held, { startedAt: entry.at, startSource: entry.source, fingerprint: entry.fingerprint });
+      if (entry.event === 'start') Object.assign(held, { startedAt: entry.at, startSource: entry.source, fingerprint: entry.fingerprint,
+        ...(entry.rawDigest !== undefined && { rawDigest: entry.rawDigest }), ...(entry.head !== undefined && { head: entry.head }) });
       else Object.assign(held, { endedAt: entry.at, endSource: entry.source, output: entry.output });
       this.times.set(name, held); changed.add(name);
     }
@@ -197,9 +208,18 @@ export class RunStepIndex {
   get total(): number { return this.steps.length; }
 
   private entry = (step: Step, n: number): RunStepEntry => {
-    const { start: _start, end: _end, unsure: _unsure, line, ...rest } = step;
+    const { start: _start, end: _end, unsure: _unsure, line, evidence: _evidence, ...rest } = step;
     return { n, ...rest, ...this.times.get(`${line}\0${step.id}`) ?? untimed, subagentSteps: this.inside.get(step.id) ?? 0 };
   };
+
+  /** Bounded projections can share the same step identities as the CLI and screen. */
+  *observations(maxBytes = Infinity): Generator<ObservedStep> {
+    for (const [n, step] of this.steps.entries()) {
+      if (step.start >= maxBytes) break;
+      yield { entry: this.entry(step, n),
+        ...(step.evidence && { evidence: step.evidence }), completed: step.end !== null && step.end < maxBytes };
+    }
+  }
 
   /** Steps `from` on, at most `limit` (the latest `limit` when `from` is not given). */
   range(from: number | undefined, limit: number): RunStepsPage {
@@ -274,15 +294,15 @@ async function lineAt(handle: FileHandle, at: number): Promise<Buffer> {
 const indexes = new Map<string, { index: RunStepIndex; reading: Promise<unknown> }>();
 const INDEX_LIMIT = 16;
 /** One Run's index brought up to date, its reads one after another. */
-export function runStepIndex(folder: string, adapterId: string, adapter: AgentAdapter, ended: Settled | null): Promise<RunStepIndex> {
-  const key = `${folder}\0${adapterId}`;
+export function runStepIndex(folder: string, adapterId: string, adapter: AgentAdapter, ended: Settled | null, cwd?: string, maxBytes = Infinity): Promise<RunStepIndex> {
+  const key = `${folder}\0${adapterId}\0${maxBytes}`;
   let held = indexes.get(key);
   if (held) indexes.delete(key);
-  else held = { index: new RunStepIndex(folder, adapter), reading: Promise.resolve() };
+  else held = { index: new RunStepIndex(folder, adapter, cwd), reading: Promise.resolve() };
   indexes.set(key, held);
   if (indexes.size > INDEX_LIMIT) indexes.delete(indexes.keys().next().value!);
   const index = held.index;
-  const read = held.reading.catch(() => undefined).then(() => index.update(ended)).then(() => index);
+  const read = held.reading.catch(() => undefined).then(() => index.update(ended, maxBytes)).then(() => index);
   held.reading = read;
   return read;
 }
@@ -293,8 +313,13 @@ export async function readRunStepIndex(root: string, run: string): Promise<RunSt
   let record;
   try { record = store?.runtimeGet(run); } finally { store?.close(); }
   if (!record || record.role === 'coordinator') throw new Problem(PROBLEM_CODE.notFound, 'Run does not exist', { run }, { reason: { kind: 'run_does_not_exist' } });
+  return runStepIndexOf(root, record);
+}
+
+/** Read steps from an existing Run snapshot, optionally bounding the stdout prefix. */
+export async function runStepIndexOf(root: string, record: RunRecord, maxBytes = Infinity): Promise<RunStepIndex | null> {
   const adapter = runtimeAdapter(record.launch.adapter);
   if (!adapter) return null;
   return runStepIndex(runFolder(root, record.id), record.launch.adapter, adapter,
-    isRunMoving(record.state) ? null : record.state === 'succeeded' ? 'done' : 'failed');
+    isRunMoving(record.state) ? null : record.state === 'succeeded' ? 'done' : 'failed', record.cwd, maxBytes);
 }

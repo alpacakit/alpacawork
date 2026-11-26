@@ -1,3 +1,4 @@
+import { runSummarySchema } from './run-summary.js';
 import { analysisSubjectSchema } from '@alpacawork/raw/analysis-subject';
 import { analysisTasksInput, analysisUsageInput, analysisUsageSeriesInput, analysisUsageSeriesViewSchema, analysisListInput, analysisTaskInput, analysisBreakdownInput, analysisBreakdownViewSchema,
   analysisTraceInput, analysisTraceViewSchema, analysisFindingsInput, analysisFindingsViewSchema, analysisAtInput, analysisAtViewSchema,
@@ -31,7 +32,7 @@ import { digestSchema, REPORT_TITLE_GUIDE_WIDTH, REPORT_TITLE_MAX_WIDTH, reportS
 import {
   dependencySetInput, dependencyClearInput, taskReturnsInput, taskValuesInput, taskListInput, taskGetInput, taskCreateInput, taskUpdateInput, taskReportInput,
   taskRequestInput, taskCommentInput, taskMoveInput, taskLifecycleInput, agentAssignInput,
-  agentHandoverInput, agentReleaseInput, runGetInput, runListInput, runStepsInput, runConditionsInput, runStopInput,
+  agentHandoverInput, agentReleaseInput, runGetInput, runListInput, runStepsInput, singleRunInput, runStopInput,
   fieldSetInput, configSetShape, emptyInput, personSettingsSetShape, fieldGetInput, fieldDeleteInput, fieldUseInput,
   fieldUseRules, taskGetIncludes, type InputRule,
   ruleHelp, taskListRules, taskCreateRules, taskUpdateRules, taskReportRules, taskRequestRules, agentAssignRules,
@@ -345,7 +346,7 @@ const definitions = {
   'analysis/findings': command('read', 'Find places in one task\'s timeline worth a look, each by a fixed rule with its threshold and the ' +
     'records it stands on, the longest first; always over the task and every task under it', analysisFindingsInput, [
     ...analysisTimelineScope, list('rules', `Rules to apply (${analysisFindingRules.join(', ')}; default: all)`),
-    list('threshold', 'Threshold as rule=value: minutes for a time, a count for a repeat (e.g. long-wait=60)'),
+    list('threshold', 'Threshold as rule=value: minutes for time, a count for repeats or characters for large-output (e.g. long-wait=60)'),
     number('limit', 'Most findings (up to 100, default 20)'),
   ], { output: analysisFindingsViewSchema, help: help(
     ...analysisFindingRules.map(rule => `${rule}: ${ANALYSIS_FINDING_RULE_MEANINGS[rule]}.`),
@@ -544,9 +545,16 @@ const definitions = {
       'A Run from before step times were kept has null times; an end not yet seen is null too.') }),
   'run/conditions': command('read', 'Read how a Run was launched (agent, model, effort) and what it ran under: alpacawork\'s version and ' +
     'release, the commit where the agent worked, each skill it could read and the person\'s own instruction files, each with a digest',
-    runConditionsInput, [text('run', 'Run ID')],
+    singleRunInput, [text('run', 'Run ID')],
     { output: runConditionsViewSchema, help: help('A Run from before conditions were kept has null conditions. Two Runs whose digests differ ran under a change.',
       'A project policy change is a body_updated record of the project (task get --task <project> --log <count>).') }),
+  'run/summary': command('read', 'Read a Run’s tools, skills, outputs, tests, produced records, basis and conversation changes',
+    singleRunInput, [text('run', 'Run ID')], { output: runSummarySchema, help: help(
+      'The produced field lists commits, pull requests and files found in the Run. Analysis trace matches those records to Task deliverables.',
+      'Tests and repeats come from retained output and the step journal. An observed revision comes from Git when the manager sees the shell step start.',
+      'dirSource is tool for a directory reported by the tool, command for an absolute path in the command, relative-command for a relative path in the command, or cwd for the Run’s launch directory. A missing diff digest cannot identify dirty content.',
+      'A pending summary has yet to be collected. Partial summaries cover only the records read. Older and unsupported Runs may have only conversation changes.',
+      'Output sizes are characters in tool results, including reported omissions.') }),
   'run/list': command('read', 'List the unfinished Runs (queued, running, needs_review), whatever state their Task is in',
     runListInput, [
       text('under', 'Only the Runs of this Task and the Tasks below it'),

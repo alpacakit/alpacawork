@@ -271,7 +271,7 @@ export const runGetInput = z.object({ run: runIdSchema, kind: runFileKindSchema.
 /** run list: the unfinished Runs, one page at a time in Run-number order, optionally below one Task. */
 export const runListInput = z.object({ under: taskIdSchema.optional(), limit: searchOptions.limit, cursor: searchOptions.cursor }).strict();
 /** run conditions: what one Run ran under. */
-export const runConditionsInput = z.object({ run: runIdSchema });
+export const singleRunInput = z.object({ run: runIdSchema });
 /**
  * run steps: a Run's steps with when each started and ended, `from` on (the latest `limit` without `from`); with
  * `step`, what that one step ran and got back instead.

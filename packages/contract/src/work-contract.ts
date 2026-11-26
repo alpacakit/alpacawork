@@ -57,6 +57,13 @@ export type StepTimeSource = z.infer<typeof stepTimeSourceSchema>;
 /** A step's input with paths, digests, IDs and numbers replaced, and a digest of the whole input when it has more lines. */
 export const stepFingerprintSchema = z.object({ line: z.string().max(RUN_STEP_TEXT_LIMIT), bodyDigest: z.string().regex(/^[0-9a-f]{16}$/).nullable() }).strict();
 export type StepFingerprint = z.infer<typeof stepFingerprintSchema>;
+export const rawDigestSchema = z.string().regex(/^[0-9a-f]{64}$/);
+export const checkoutDirSource = z.enum(['tool', 'cwd', 'command', 'relative-command']);
+export const stepHeadSchema = z.strictObject({
+  commit: z.string().regex(/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/), dirty: z.boolean().nullable(),
+  diffDigest: rawDigestSchema.optional(), dir: z.string().startsWith('/'), dirSource: checkoutDirSource,
+});
+export type StepHead = z.infer<typeof stepHeadSchema>;
 /** `whole`: the digest covers all of it; false when the agent cut what came back, so it covers the start alone. */
 export const stepOutputSchema = z.object({ chars: z.number().int().nonnegative(), digest: z.string().regex(/^[0-9a-f]{16}$/), whole: z.boolean() }).strict();
 export type StepOutput = z.infer<typeof stepOutputSchema>;
@@ -68,6 +75,7 @@ export type StepOutput = z.infer<typeof stepOutputSchema>;
 export const stepJournalEntrySchema = z.discriminatedUnion('event', [
   z.object({ event: z.literal('start'), line: z.number().int().nonnegative(), id: z.string().min(1).max(RUN_TOOL_ID_LIMIT),
     at: z.iso.datetime({ offset: true }), source: stepTimeSourceSchema, fingerprint: stepFingerprintSchema.nullable(),
+    rawDigest: rawDigestSchema.optional(), head: stepHeadSchema.nullable().optional(),
     parentId: z.string().min(1).max(RUN_TOOL_ID_LIMIT).nullable() }).strict(),
   z.object({ event: z.literal('end'), line: z.number().int().nonnegative(), id: z.string().min(1).max(RUN_TOOL_ID_LIMIT),
     at: z.iso.datetime({ offset: true }), source: stepTimeSourceSchema,
@@ -95,6 +103,7 @@ export const runStepEntrySchema = z.object({
   endedAt: z.iso.datetime({ offset: true }).nullable(), endSource: stepTimeSourceSchema.nullable(),
   /** What it ran with the parts that change from run to run replaced (stepFingerprint), so repeats read as one. */
   fingerprint: stepFingerprintSchema.nullable(),
+  rawDigest: rawDigestSchema.optional(), head: stepHeadSchema.nullable().optional(),
   /** What came back: its size in characters and a digest of it, so a read that got the same answer again shows. */
   output: stepOutputSchema.nullable(),
   /** The step of the agent's own sub-agent that ran it (its tool call ID); null for the agent's own steps. */

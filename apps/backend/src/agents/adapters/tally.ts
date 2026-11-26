@@ -1,15 +1,14 @@
 import { z } from 'zod';
+import { runUsageSummarySchema } from '@alpacawork/contract/run-summary';
+import { noOutputs, noProduced } from '../../runs/step-evidence.js';
 import { simpleInvocations } from '../../runs/shell-command.js';
 import { object } from './output.js';
 
-export const TALLY_VERSION = 2;
+export const TALLY_VERSION = 3;
 const name = z.string().regex(/^[A-Za-z0-9_.:/@+ -]{1,160}$/);
-const count = z.number().int().nonnegative();
-export const tallySchema = z.strictObject({
+export const tallySchema = runUsageSummarySchema.extend({
   v: z.literal(TALLY_VERSION), provider: name, model: name.nullable(),
-  tools: z.record(name, count), mcp: z.record(name, count),
-  skills: z.record(name, z.strictObject({ call: count, read: count })),
-  subagentTools: count, state: z.enum(['complete', 'partial', 'unsupported']),
+  state: z.enum(['complete', 'partial', 'unsupported']),
 });
 export type Tally = z.infer<typeof tallySchema>;
 
@@ -103,7 +102,7 @@ export class TallyParser {
     for (const name of item.read) prior.read.add(name);
   }
 
-  finish(state: Tally['state']): Tally {
+  finish(state: Tally['state'], evidence: Pick<Tally, 'outputs' | 'produced' | 'basis'> = { outputs: noOutputs(), produced: noProduced(), basis: [] }): Tally {
     const tools: Tally['tools'] = Object.create(null), mcp: Tally['mcp'] = Object.create(null);
     const skills: Tally['skills'] = Object.create(null);
     let subagentTools = 0;
@@ -115,6 +114,6 @@ export class TallyParser {
       for (const skill of item.read) (skills[skill] ??= { call: 0, read: 0 }).read++;
     }
     return { v: TALLY_VERSION, provider: safeName(this.provider) ?? 'unknown', model: this.model, tools, mcp, skills,
-      subagentTools, state: state === 'complete' && this.partial ? 'partial' : state };
+      ...evidence, subagentTools, state: state === 'complete' && this.partial ? 'partial' : state };
   }
 }

@@ -21,7 +21,7 @@ function count(value: string | undefined): number | undefined {
  * `find` reads the Run and refuses a caller who may not read it (its Task's read, or the coordinator's conversation
  * for a Run of no Task); a Run that does not exist is not found.
  */
-export function installRunStepsRoutes(api: Hono, root: string, find: (request: Request, run: RunId) => Pick<RuntimeRunRecord, 'id' | 'state' | 'launch'>) {
+export function installRunStepsRoutes(api: Hono, root: string, find: (request: Request, run: RunId) => Pick<RuntimeRunRecord, 'id' | 'state' | 'launch' | 'cwd'>) {
   const opened = async (request: Request, param: string) => {
     const id = runIdSchema.safeParse(param);
     if (!id.success) throw notFound('Run');
@@ -30,7 +30,7 @@ export function installRunStepsRoutes(api: Hono, root: string, find: (request: R
     if (!adapter) return null;
     // Once the Run has ended, its output is whole, and what it left running ended with it.
     return runStepIndex(runFolder(root, run.id), run.launch.adapter, adapter,
-      isRunMoving(run.state) ? null : run.state === 'succeeded' ? 'done' : 'failed');
+      isRunMoving(run.state) ? null : run.state === 'succeeded' ? 'done' : 'failed', run.cwd);
   };
   const headers = { 'Cache-Control': 'no-store' };
   api.get('/api/runs/:run/steps', async c => {
