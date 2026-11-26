@@ -21,7 +21,9 @@ import { useDraftStore, draftKey } from '../src/features/forms/draft-store';
 import { textDocument } from '../src/features/coordinator/editor/document';
 import { edited } from '../src/features/coordinator/editor/lifecycle';
 import { indexOf, tree } from './fixtures';
-import { snapshotJson } from './conversation-fixture';
+import { messageJson, serving } from './conversation-fixture';
+/** serve's answers, holding this conversation (its `cancelled`: the withdrawals serve knows of). */
+const serve = (fixture: Parameters<typeof serving>[0]) => (url: RequestInfo | URL, init?: RequestInit) => serving(fixture)(String(url), init);
 const root = '/coordinator-restore', conversationId = 'same-conversation', restored = '1f347e6d-caba-4994-aa45-a9cf99182996';
 const fixed = { conversationId, text: 'frozen words', attachments: [] };
 const conversation = { id: conversationId, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, cancelled: [], turns: [] };
@@ -38,7 +40,7 @@ beforeEach(() => { vi.useFakeTimers({ toFake: ['Date'] }); queryClient.clear(); 
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); queryClient.clear(); });
 
 test('normal retransmission uses the fixed request ID/body and admission pin; a direct call after restore carries the old pin', async () => {
-  const id = admitted(), fetcher = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(snapshotJson(conversation)));
+  const id = admitted(), fetcher = vi.spyOn(globalThis, 'fetch').mockImplementation(async (_url, init) => new Response(messageJson(conversation, JSON.parse(String(init?.body)).id, 'queued')));
   const input = { ...fixed, id };
   await askCoordinator(input); await askCoordinator(input);
   const first = fetcher.mock.calls[0]![1]!;
@@ -119,7 +121,7 @@ test.each(['normal', 'queued', 'restored', 'unproven'] as const)('explicit cance
   if (kind === 'restored') act(() => { const index = readIndex(queryClient)!; receiveFullIndex(queryClient, { ...index, rev: index.rev + 1, restoreId: restored }); });
   const pinKey = 'alpacawork-write-identity:' + JSON.stringify([root, id]);
   if (kind === 'unproven') sessionStorage.removeItem(pinKey);
-  const fetcher = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(snapshotJson({ ...conversation, cancelled: [id] })));
+  const fetcher = vi.spyOn(globalThis, 'fetch').mockImplementation(serve({ ...conversation, cancelled: [id] }));
   const notices = vi.spyOn(notify, 'success');
   if (kind === 'queued') {
     const entries = useDraftStore.getState().entries, [key, entry] = Object.entries(entries).find(([, x]) => x.values.requestId === id && x.values.stage)!;
@@ -159,7 +161,7 @@ test.each(['en', 'ja'] as const)('kept cancellation rows and folded words preser
       const pinKey = 'alpacawork-write-identity:' + JSON.stringify([root, id]);
       if (kind === 'unproven') sessionStorage.removeItem(pinKey);
       const beforePin = sessionStorage.getItem(pinKey);
-      const fetcher = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(snapshotJson({ ...conversation, cancelled: [id] })));
+      const fetcher = vi.spyOn(globalThis, 'fetch').mockImplementation(serve({ ...conversation, cancelled: [id] }));
       const notices = vi.spyOn(notify, 'success');
       if (kind === 'queued') {
         const entries = useDraftStore.getState().entries, [key, entry] = Object.entries(entries).find(([, x]) => x.values.requestId === id && x.values.stage)!;

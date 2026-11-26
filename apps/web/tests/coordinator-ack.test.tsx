@@ -1,7 +1,7 @@
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { i18n, startI18n } from '@alpacawork/i18n';
-import { snapshotJson, setConversationState, SERVED } from './conversation-fixture';
+import { snapshotJson, setConversationState, SERVED, serving, servedJson, messageJson } from './conversation-fixture';
 import { TestWorkspace, screenData, tree } from './fixtures';
 import { CoordinatorCard } from '../src/features/coordinator/CoordinatorCard';
 import { ShownConversationProvider } from '../src/features/coordinator/shown';
@@ -25,9 +25,18 @@ const turn = (id: string, status: CoordinatorTurn['status']): CoordinatorTurn =>
 const work = turn('working', 'running'), queued = turn('waiting', 'queued');
 const conversation = (turns = [work, queued], cancelled: string[] = []) => ({ id: cid, nextLaunch: { agent: 'fake', values: {} }, ...SERVED, busy: true, turns, cancelled });
 const response = (value: unknown) => new Response(snapshotJson(value));
+/** A send's, withdrawal's or send-now's answer: the snapshot and where that message now is. */
+const answer = (value: ReturnType<typeof conversation>, id: string, status?: Parameters<typeof messageJson>[2]) => new Response(messageJson(value, id, status));
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(done => { resolve = done; }); return { promise, resolve }; }
 function Rows() { return <WaitingRows queue={useWaiting()} open={() => {}} />; }
 function mount() { return render(<TestWorkspace><ShownConversationProvider><Rows /></ShownConversationProvider></TestWorkspace>); }
+/** Clear conversation is in the usage menu, opened from the send row. */
+function openClear() {
+  fireEvent.click(document.querySelector('[data-coordinator-context]')!);
+  return document.querySelector<HTMLButtonElement>('[data-coordinator-clear]')!;
+}
+/** While clearing, the conversation's column takes no presses. */
+const clearing = () => document.querySelector('[data-reading-column][aria-busy=true]');
 function mountInput() { return render(<TestWorkspace><ShownConversationProvider><Rows /><CoordinatorThread turns={[]} retry={() => {}} /><CoordinatorInput launch={{ next: { agent: 'fake', values: {} }, ready: false }} /></ShownConversationProvider></TestWorkspace>); }
 function local() {
   const key = draftKey(root, 'coordinator', cid), id = crypto.randomUUID();
@@ -39,6 +48,7 @@ function local() {
 }
 beforeAll(() => startI18n());
 beforeEach(async () => { useToasts.setState({ toasts: [] }); await i18n.changeLanguage('en'); screenData(tree()); setConversationState({ root, conversation: conversation(), open: true, expanded: true, engaged: false }); });
+// Withdrawals a test's serve answered are this page's knowledge: the next test starts with none.
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); useOutbox.setState({ live: new Set() }); setConversationState({ conversation: null }); });
 
 test('send-now replaces its button immediately and admits one POST in the same event', async () => {
@@ -57,18 +67,18 @@ test('clear replaces the confirmed button and admits one POST in the same event'
   const fetcher = vi.fn((url: string) => url === '/api/coordinator/clear' ? pending.promise : Promise.resolve(response(conversation())));
   vi.stubGlobal('fetch', fetcher);
   render(<TestWorkspace><CoordinatorCard /></TestWorkspace>);
-  const clear = document.querySelector<HTMLButtonElement>('[data-coordinator-clear]')!;
+  const clear = openClear();
   fireEvent.click(clear);
   act(() => { clear.click(); clear.click(); });
   expect(document.querySelector('button[data-coordinator-clear]')).toBeNull();
-  expect(screen.getByText('Clearing…')).toBeTruthy();
+  expect(clearing()).not.toBeNull();
   expect(fetcher.mock.calls.filter(([url]) => url === '/api/coordinator/clear')).toHaveLength(1);
   await act(async () => { pending.resolve(response({ ...conversation([]), id: 'new-conversation' })); });
 });
 
 test('a withdrawal during checking prevents the pending ask from posting', async () => {
   const { id } = local(), ask = begin(root, id)!;
-  const fetcher = vi.fn().mockResolvedValue(response(conversation([work], [id]))); vi.stubGlobal('fetch', fetcher);
+  const fetcher = vi.fn(serving(conversation([work], [id]))); vi.stubGlobal('fetch', fetcher);
   const withdrawing = useConversation.getState().messageAction('withdraw', id);
   expect(useDraftStore.getState().entries[outgoingKey(root, id)]?.values.last).toBe('withdraw');
   expect(ask.check()).toBe('retained');
@@ -105,9 +115,10 @@ for (const end of ['running', 'cancelled', 'changed', 'requested'] as const) tes
   const after = end === 'changed' ? { ...conversation([]), id: 'new-conversation' }
     : end === 'cancelled' ? conversation([work], [queued.id])
     : conversation([work, { ...queued, ...(end === 'requested' ? { joinRequested: true as const } : { status: 'running' as const, waiting: false }) }]);
-  const fetcher = vi.fn((url: string) => Promise.resolve(url.endsWith('/send-now') ? new Response('', { status: 503 }) : response(after)));
+  const fetcher = vi.fn((url: string, init?: RequestInit) => Promise.resolve(url.endsWith('/send-now') ? new Response('', { status: 503 }) : new Response(servedJson(url, init, after))));
   vi.stubGlobal('fetch', fetcher); mount(); fireEvent.click(screen.getByRole('button', { name: 'Send now' }));
-  await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2));
+  // Not in the read, the message's own status is asked too.
+  await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(end === 'cancelled' ? 3 : 2));
   await waitFor(() => expect(document.querySelector('[data-coordinator-row-control=requested]') !== null || !document.querySelector('[data-coordinator-waiting]')).toBe(true));
   expect(failure).not.toHaveBeenCalled();
 });
@@ -164,7 +175,7 @@ test.each([false, true])('withdrawal unknown restores the same right close icon 
   const { id } = local(), ask = begin(root, id)!; ask.check();
   if (!askLive) ask.finish();
   const first = deferred<Response>(), retry = deferred<Response>(); let posts = 0;
-  const fetcher = vi.fn((url: string, _init?: RequestInit) => url.endsWith('/withdraw') ? ++posts === 1 ? first.promise : retry.promise : Promise.resolve(response(conversation())));
+  const fetcher = vi.fn((url: string, init?: RequestInit) => url.endsWith('/withdraw') ? ++posts === 1 ? first.promise : retry.promise : Promise.resolve(new Response(servedJson(url, init, conversation()))));
   vi.stubGlobal('fetch', fetcher); const view = mount();
   const row = () => document.querySelector<HTMLElement>(`[data-coordinator-waiting="${id}"]`)!;
   const close = () => row().querySelector<HTMLButtonElement>('[data-coordinator-row-control] button[data-coordinator-withdraw]')!;
@@ -192,7 +203,7 @@ test.each([false, true])('withdrawal unknown restores the same right close icon 
     expect(fetcher.mock.calls.filter(([url]) => url === '/api/coordinator')).toHaveLength(1);
     expect(fetcher.mock.calls.filter(([url]) => url.endsWith('/withdraw')).map(call => JSON.parse((call[1] as RequestInit).body as string)))
       .toEqual([{ conversationId: cid, id }, { conversationId: cid, id }]);
-    await act(async () => { retry.resolve(response(conversation([work], [id]))); });
+    await act(async () => { retry.resolve(answer(conversation([work], [id]), id)); });
     expect(row()).toBeNull();
   } finally { ask.finish(); }
 });
@@ -202,19 +213,22 @@ for (const changed of [false, true]) test(`clear failure after one read: changed
   const after = changed ? { ...conversation([]), id: 'new-conversation' } : conversation();
   const fetcher = vi.fn((url: string) => url.endsWith('/clear') ? pending.promise : Promise.resolve(response(after)));
   vi.stubGlobal('fetch', fetcher); render(<TestWorkspace><CoordinatorCard /></TestWorkspace>);
-  const clear = document.querySelector<HTMLButtonElement>('[data-coordinator-clear]')!; fireEvent.click(clear);
+  const clear = openClear(); fireEvent.click(clear);
   act(() => { clear.click(); clear.click(); });
   await act(async () => { pending.resolve(new Response('', { status: 503 })); });
   expect(failure).toHaveBeenCalledTimes(changed ? 0 : 1);
   expect(fetcher.mock.calls.filter(([url]) => url === '/api/coordinator')).toHaveLength(1);
-  await waitFor(() => expect(document.querySelector('[data-coordinator-clear]') !== null).toBe(!changed));
+  // Kept, the conversation can be cleared again; cleared after all, the new one is shown.
+  await waitFor(() => expect(clearing()).toBeNull());
+  expect(useConversation.getState().conversation?.id).toBe(changed ? 'new-conversation' : cid);
+  if (!changed) expect(openClear().disabled).toBe(false);
 });
 
 test('the central sender waits for clear, and never posts an old conversation after it changes', async () => {
   const pending = deferred<Response>();
   const fetcher = vi.fn((url: string) => url.endsWith('/clear') ? pending.promise : Promise.resolve(response(conversation())));
   vi.stubGlobal('fetch', fetcher); render(<TestWorkspace><CoordinatorCard /></TestWorkspace>);
-  const clear = document.querySelector<HTMLButtonElement>('[data-coordinator-clear]')!; fireEvent.click(clear); fireEvent.click(clear);
+  const clear = openClear(); fireEvent.click(clear); fireEvent.click(clear);
   const sending = useConversation.getState().ask({ conversationId: cid, id: 'reader-request', text: 'Reader send', attachments: [] });
   const result = expect(sending).rejects.toThrow('changed');
   expect(fetcher.mock.calls.filter(([url]) => url === '/api/coordinator/messages')).toHaveLength(0);
@@ -255,7 +269,7 @@ test.each([false, true])('deliveryError shows only the close icon (requested=%s)
 
 test('a requested row can be withdrawn through the same close icon', async () => {
   const removing = deferred<Response>();
-  const fetcher = vi.fn((url: string) => url.endsWith('/withdraw') ? removing.promise : Promise.resolve(response(conversation([work, { ...queued, joinRequested: true }]))));
+  const fetcher = vi.fn((url: string, init?: RequestInit) => url.endsWith('/withdraw') ? removing.promise : Promise.resolve(new Response(servedJson(url, init, conversation([work, { ...queued, joinRequested: true }])))));
   vi.stubGlobal('fetch', fetcher); mount();
   fireEvent.click(screen.getByRole('button', { name: 'Send now' }));
   await waitFor(() => expect(useConversation.getState().conversation?.turns.at(-1)?.joinRequested).toBe(true));
@@ -264,7 +278,7 @@ test('a requested row can be withdrawn through the same close icon', async () =>
   fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
   expect(screen.getByText('Cancelling…')).toBeTruthy();
   expect(screen.queryByRole('button', { name: 'Cancel' })).toBeNull();
-  await act(async () => { removing.resolve(response(conversation([work], [queued.id]))); });
+  await act(async () => { removing.resolve(answer(conversation([work], [queued.id]), queued.id)); });
   expect(document.querySelector(`[data-coordinator-waiting="${queued.id}"]`)).toBeNull();
   expect(fetcher.mock.calls.map(([url]) => url)).toEqual(['/api/coordinator/messages/send-now', '/api/coordinator/messages/withdraw']);
 });
@@ -278,11 +292,11 @@ test(`${action} reports its own outcome after one ${read} check`, async () => {
   vi.stubGlobal('fetch', fetcher);
   if (action === 'clear') {
     render(<TestWorkspace><CoordinatorCard /></TestWorkspace>);
-    const clear = document.querySelector<HTMLButtonElement>('[data-coordinator-clear]')!;
+    const clear = openClear();
     fireEvent.click(clear); fireEvent.click(clear);
   } else { mount(); fireEvent.click(screen.getByRole('button', { name: '今すぐ送る' })); }
   await waitFor(() => expect(fetcher.mock.calls.filter(([url]) => url === '/api/coordinator')).toHaveLength(1));
-  await waitFor(() => expect(document.querySelector('[data-coordinator-clearing], [data-coordinator-row-control="requested"]')).toBeNull());
+  await waitFor(() => expect(clearing() ?? document.querySelector('[data-coordinator-row-control="requested"]')).toBeNull());
   const texts = useToasts.getState().toasts.map(toast => toast.text);
   const expected = action === 'clear' ? read === 'lost' ? '会話を削除できたか分かりません。' : '会話を削除できませんでした。'
     : read === 'lost' ? '送信できたか分かりません。' : '送信できませんでした。列で待っています。';
@@ -296,15 +310,18 @@ test.each(['send-now', 'withdraw', 'clear'] as const)('keyboard focus stays at %
   vi.stubGlobal('fetch', fetcher);
   if (action === 'clear') render(<TestWorkspace><CoordinatorCard /></TestWorkspace>); else mount();
   const selector = action === 'clear' ? '[data-coordinator-clear]' : action === 'withdraw' ? '[data-coordinator-withdraw]' : '[data-coordinator-send-now]';
-  const button = document.querySelector<HTMLButtonElement>(selector)!;
+  const button = action === 'clear' ? openClear() : document.querySelector<HTMLButtonElement>(selector)!;
   if (action === 'clear') fireEvent.click(button);
   button.focus(); expect(document.activeElement).toBe(button);
   // A keyboard activation dispatches a detail=0 click, unlike a pointer press.
   fireEvent.click(button, { detail: 0 });
-  const place = action === 'clear' ? document.querySelector('[data-coordinator-clearing]')!.parentElement! : document.querySelector('[data-coordinator-row-control]')!;
+  // Clear closes its menu: focus goes back to the menu's button, where clear is pressed again.
+  const place = action === 'clear' ? document.querySelector('[data-coordinator-context]')! : document.querySelector('[data-coordinator-row-control]')!;
+  if (action === 'clear') await waitFor(() => expect(document.activeElement).toBe(place));
   expect(document.activeElement).not.toBe(document.body); expect(place.contains(document.activeElement)).toBe(true);
   await act(async () => { pending.resolve(new Response('', { status: 503 })); });
   expect(document.activeElement).not.toBe(document.body); expect(place.contains(document.activeElement)).toBe(true);
+  if (action === 'clear') { expect(document.activeElement).toBe(place); expect(openClear().disabled).toBe(false); return; }
   expect(document.querySelector(selector)).not.toBeNull();
   expect(document.activeElement).toBe(document.querySelector(selector));
 });
@@ -320,7 +337,7 @@ test(`a late server refusal is recoverable in the current conversation (occupied
       completedUploads: JSON.stringify(['old-upload']), removeOps: '{}', readerCopies: '{}' } });
     updateDraft(key, { values: { ...useDraftStore.getState().entries[key]!.values, attachments: useDraftStore.getState().entries[outgoingKey(root, id)]!.values.attachments! } });
   }
-  const fetcher = vi.fn((url: string) => url === '/api/coordinator/messages' ? pending.promise : Promise.resolve(response({ ...conversation([]), id: 'current' })));
+  const fetcher = vi.fn((url: string, init?: RequestInit) => url === '/api/coordinator/messages' ? pending.promise : serving({ ...conversation([]), id: 'current' })(url, init));
   vi.stubGlobal('fetch', fetcher); mountInput();
   await waitFor(() => expect(fetcher.mock.calls.filter(([url]) => url === '/api/coordinator/messages')).toHaveLength(1));
   act(() => setConversationState({ conversation: { ...conversation([]), id: 'current' } }));
@@ -370,7 +387,7 @@ test(`a late server refusal is recoverable in the current conversation (occupied
       if (url === '/api/coordinator/messages') {
         const sent = JSON.parse(init!.body as string);
         expect(sent.conversationId).toBe('current'); expect(sent.attachments).toEqual([]);
-        return Promise.resolve(response({ ...conversation([{ ...queued, id: sent.id, ask: sent.text }]), id: 'current' }));
+        return Promise.resolve(answer({ ...conversation([{ ...queued, id: sent.id, ask: sent.text }]), id: 'current' }, sent.id));
       }
       return Promise.resolve(new Response('', { status: 404 }));
     });
@@ -386,7 +403,8 @@ test(`a late server refusal is recoverable in the current conversation (occupied
 for (const read of ['queued', 'absent', 'lost'] as const)
 test(`withdrawal uses the common recovery rule (${read})`, async () => {
   await i18n.changeLanguage('ja');
-  const fetcher = vi.fn((url: string) => Promise.resolve(url.endsWith('/withdraw') || read === 'lost' ? new Response('', { status: 503 }) : response(conversation(read === 'absent' ? [work] : [work, queued]))));
+  const fetcher = vi.fn((url: string, init?: RequestInit) => Promise.resolve(url.endsWith('/withdraw') || read === 'lost' ? new Response('', { status: 503 })
+    : new Response(servedJson(url, init, conversation(read === 'absent' ? [work] : [work, queued])))));
   vi.stubGlobal('fetch', fetcher);
   if (read === 'queued') render(<TestWorkspace><CoordinatorCard /></TestWorkspace>); else mount();
   fireEvent.click(screen.getByRole('button', { name: '取り消す' }));
@@ -394,6 +412,9 @@ test(`withdrawal uses the common recovery rule (${read})`, async () => {
   const outcome = read === 'queued' ? '取り消せませんでした。' : '取り消せたか分かりません。';
   // A queued rejection needs a notice; uncertainty already carried by the actual row needs no duplicate.
   await waitFor(() => expect(screen.queryAllByText(outcome).length + useToasts.getState().toasts.filter(toast => toast.text === outcome).length).toBe(1));
+  // One check: the conversation, then the message's own status when the conversation no longer holds it.
+  const status = `/api/coordinator/messages/${queued.id}/status`;
+  expect(fetcher.mock.calls.slice(0, 3).map(([url]) => url)).toEqual(['/api/coordinator/messages/withdraw', '/api/coordinator', ...read === 'absent' ? [status] : []]);
   expect(fetcher.mock.calls.filter(([url]) => url === '/api/coordinator')).toHaveLength(1);
   expect(document.querySelector('[data-coordinator-row-control] [data-coordinator-withdraw]')).not.toBeNull();
   if (read === 'queued') {
@@ -410,7 +431,7 @@ for (const nextSending of [false, true]) test.each(['send-now', 'withdraw'] as c
   const first = document.querySelector<HTMLElement>(`[data-coordinator-waiting="${queued.id}"]`)!;
   const control = first.querySelector<HTMLButtonElement>(action === 'withdraw' ? '[data-coordinator-withdraw]' : '[data-coordinator-send-now]')!;
   control.focus(); fireEvent.click(control, { detail: 0 });
-  await act(async () => { pending.resolve(response(conversation([work, ...remaining], action === 'withdraw' ? [queued.id] : []))); });
+  await act(async () => { pending.resolve(answer(conversation([work, ...remaining], action === 'withdraw' ? [queued.id] : []), queued.id, action === 'withdraw' ? 'withdrawn' : 'running')); });
   expect(document.activeElement).not.toBe(document.body);
   expect(document.activeElement?.closest('[data-coordinator-waiting]')?.getAttribute('data-coordinator-waiting')).toBe(nextSending ? 'last' : 'next');
 });
@@ -418,7 +439,7 @@ for (const nextSending of [false, true]) test.each(['send-now', 'withdraw'] as c
 test('the last queue removal focuses the queue itself', async () => {
   const pending = deferred<Response>(); vi.stubGlobal('fetch', vi.fn(() => pending.promise)); mount();
   const cancel = screen.getByRole('button', { name: 'Cancel' }); cancel.focus(); fireEvent.click(cancel, { detail: 0 });
-  await act(async () => { pending.resolve(response(conversation([work], [queued.id]))); });
+  await act(async () => { pending.resolve(answer(conversation([work], [queued.id]), queued.id)); });
   expect(document.activeElement).toBe(screen.getByRole('list', { name: 'Messages waiting to be sent' }));
 });
 
@@ -426,10 +447,10 @@ test('clear success focuses the input', async () => {
   const pending = deferred<Response>();
   vi.stubGlobal('fetch', vi.fn((url: string) => url.endsWith('/clear') ? pending.promise : Promise.resolve(response({ ...conversation([]), id: 'current' }))));
   render(<TestWorkspace><CoordinatorCard /></TestWorkspace>);
-  const clear = document.querySelector<HTMLButtonElement>('[data-coordinator-clear]')!;
+  const clear = openClear();
   fireEvent.click(clear); clear.focus(); fireEvent.click(clear, { detail: 0 });
   await act(async () => { pending.resolve(response({ ...conversation([]), id: 'current' })); });
-  expect(document.activeElement).toBe(document.querySelector('[data-one-input]'));
+  await waitFor(() => expect(document.activeElement).toBe(document.querySelector('[data-one-input]')));
 });
 
 test('a blurred operation never takes focus back on the next snapshot', async () => {

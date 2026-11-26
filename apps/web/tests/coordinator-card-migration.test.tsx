@@ -1,6 +1,6 @@
 import { readConversationThroughOwner, SERVED } from './conversation-fixture';
 import { queryClient } from '../src/data/query-client';
-import { snapshotJson } from './conversation-fixture';
+import { snapshotJson, statusJson } from './conversation-fixture';
 import { setConversationState } from './conversation-fixture';
 /** Full reader/card wiring. Geometry, focus motion and native History stay in browser checks. */
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest';
@@ -43,6 +43,9 @@ beforeEach(async () => {
     if (String(url) === '/api/coordinator/messages') { posted.push(JSON.parse(String(init?.body))); return new Response('{}', { status: 500 }); }
     if (String(url) === '/api/coordinator/clear') { current = empty('new-conversation'); return reply(current); }
     if (String(url) === '/api/coordinator') return reply(current);
+    // Every send here goes unanswered: serve never took it.
+    const status = /^\/api\/coordinator\/messages\/([^/]+)\/status$/.exec(String(url));
+    if (status) return new Response(statusJson(decodeURIComponent(status[1]!), 'missing'));
     if (String(url).includes('/skills')) return reply({ skills: [], unavailable: false });
     return reply({ status: 'unavailable', skills: [], profile: 'claude' });
   });
@@ -114,6 +117,8 @@ for (const submitted of [false, true]) test(`clear preserves an unsent draft but
     expect(useConversation.getState().conversation?.turns.some(turn => turn.id === original[1].values.requestId)).toBe(false);
     expect(readDrafts().entries[original[0]]).toEqual(original[1]);
   }
+  // Clearing is in the usage menu, and takes a second press.
+  fireEvent.click(document.querySelector('[data-coordinator-context]')!);
   const clear = document.querySelector('[data-coordinator-clear]')!; fireEvent.click(clear); fireEvent.click(clear);
   await waitFor(() => expect(useConversation.getState().conversation?.id).toBe('new-conversation'));
   expect(document.querySelector('[data-attachment-state=saved]')).toBeNull();

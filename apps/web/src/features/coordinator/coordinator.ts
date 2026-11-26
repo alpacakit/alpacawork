@@ -175,9 +175,10 @@ function actionResult(action: Action, conversationId: string, id: string | undef
 }
 async function checkAction(action: Action, conversationId: string, id?: string): Promise<ActionResult> {
   try {
-    // A withdrawal is settled by the message's own status: a snapshot holds the open turns only.
-    if (action === 'withdraw' && id) learnStatus(conversationId, await readCoordinatorMessage(id));
-    await readConversationSnapshot();
+    const read = (await readConversationSnapshot()).conversation;
+    // A message the snapshot no longer holds may have been withdrawn: its own status says so (a snapshot names none).
+    if (id && action !== 'clear' && action !== 'reset' && read.id === conversationId && !read.turns.some(turn => turn.id === id))
+      learnStatus(conversationId, await readCoordinatorMessage(id));
   }
   catch (error) {
     recordFailure(error, 'coordinator action check');
@@ -493,7 +494,9 @@ function takeSnapshot(snapshot: CoordinatorSnapshot, origin: Sending, replace = 
     throw new ApiError('Conversation response answered another scope', 'invalid_response', 'check');
   // Persisted delivery facts survive a serve generation change; only drawing requires its read proof.
   const taken = take(snapshot.conversation, origin, replace, snapshot.generation === origin.proof.generation);
-  if (taken === 'shown') acceptCoordinatorSnapshot(queryClient, snapshot, origin.proof);
+  // The read keeps the snapshot alone: an answer's own facts (its message, its reset) are not part of it.
+  const { root, generation, revision, conversation } = snapshot;
+  if (taken === 'shown') acceptCoordinatorSnapshot(queryClient, { root, generation, revision, conversation }, origin.proof);
   return taken;
 }
 async function fetchSnapshot(fetch: () => Promise<CoordinatorSnapshot>): Promise<CoordinatorSnapshot> {

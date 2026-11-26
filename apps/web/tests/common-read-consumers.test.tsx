@@ -151,7 +151,7 @@ test('explicit conversation refresh waits for the common live anchor and its own
   receiveFullIndex(queryClient, index); cutReadScope(queryClient);
   const fetcher = vi.spyOn(globalThis, 'fetch').mockImplementation(async url => String(url).endsWith('/workspace/live') ? json(index) : json(snapshot));
   await useConversation.getState().refresh();
-  expect(useConversation.getState().conversation).toEqual(snapshot.conversation);
+  expect(useConversation.getState().conversation).toEqual({ ...snapshot.conversation, cancelled: [] });
   expect(fetcher.mock.calls.map(([url]) => String(url))).toEqual(['/api/workspace/live', '/api/coordinator']);
 });
 
@@ -164,7 +164,7 @@ for (const order of ['index-before-receipt', 'receipt-before-index'] as const) t
     waiting: false, answer: '', answeredAt: null, seen: false, error: null, result: null,
   }] };
   const empty = conversationSnapshot({ ...conversation, busy: false, turns: [] });
-  const queued = conversationSnapshot(conversation);
+  const queued = conversationSnapshot(conversation), accepted = { ...queued, message: { id: 'request', status: 'queued' } };
   const running = conversationSnapshot({ ...conversation, turns: conversation.turns.map(turn => ({ ...turn, status: 'running' as const })) });
   receiveFullIndex(queryClient, { ...index, rev: index.rev + 1, person: { ...index.person, coordinator: { id: conversation.id, revision: empty.revision } } });
   const old = deferred<Response>(), receipt = deferred<Response>(), replacement = deferred<Response>();
@@ -188,9 +188,9 @@ for (const order of ['index-before-receipt', 'receipt-before-index'] as const) t
       receiveFullIndex(queryClient, { ...held, rev: held.rev + 1, person: { ...held.person, coordinator: { id: conversation.id, revision: running.revision } } });
     };
     if (order === 'index-before-receipt') {
-      publish(); receipt.resolve(json(queued)); await sending;
+      publish(); receipt.resolve(json(accepted)); await sending;
     } else {
-      receipt.resolve(json(queued)); await sending; publish();
+      receipt.resolve(json(accepted)); await sending; publish();
     }
     await waitFor(() => expect(gets).toBe(3));
     const query = readQuery(queryClient, ['coordinator', root])!;

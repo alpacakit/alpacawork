@@ -2,7 +2,7 @@
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { i18n, startI18n } from '@alpacawork/i18n';
-import { conversationSnapshot, setConversationState, snapshotJson, SERVED } from './conversation-fixture';
+import { conversationSnapshot, setConversationState, snapshotJson, SERVED, messageJson, messageStatus, statusJson } from './conversation-fixture';
 import { TestWorkspace, screenData, tree } from './fixtures';
 import { CoordinatorInput } from '../src/features/coordinator/CoordinatorInput';
 import { LastWordsPill } from '../src/features/coordinator/LastWords';
@@ -21,7 +21,9 @@ const values = (text = '', requestId: string = crypto.randomUUID()) => ({ doc: J
 const fixed = (text = 'words') => ({ conversationId: cid, text, agent: 'claude', attachments: [] });
 const turn = (id: string, ask = 'words') => ({ id, ask, at: '2026-10-28T08:00:00Z', attachments: [], status: 'queued' as const, waiting: false, seen: false, answer: null, answeredAt: null, error: null, result: null });
 const conv = (turns: ReturnType<typeof turn>[] = [], cancelled: string[] = []) => ({ id: cid, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, turns, cancelled });
-const reply = (value: unknown, status = 200) => new Response(snapshotJson(value), { status });
+type Conv = ReturnType<typeof conv>;
+/** Serve's answer; a conversation answer keeps the conversation it holds, so a message request's answer can name its message. */
+const reply = (value: unknown, status = 200) => Object.assign(new Response(snapshotJson(value), { status }), { held: value as Conv });
 function setup(text = 'words') {
   setConversationState({ root, conversation: conv(), open: true, expanded: true, engaged: false, error: null });
   const id = crypto.randomUUID(); useDraftStore.setState({ entries: { [key]: { status: 'editing', values: values(text, id) } }, unavailable: false }); return id;
@@ -37,8 +39,26 @@ function mount(input = true) { return render(<TestWorkspace data={screenData(tre
 beforeAll(async () => { await startI18n(); });
 beforeEach(async () => { await i18n.changeLanguage('ja'); useOutbox.setState({ live: new Set(), resend: null }); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); useOutbox.setState({ live: new Set(), resend: null }); setConversationState({ conversation: null }); });
+/**
+ * Serve for one test: a send's or a withdrawal's answer names its message as the conversation it holds does (its
+ * `cancelled` are the withdrawals serve knows of), and a message's status is what serve last answered of it.
+ */
 function fetcher(post: () => Promise<Response> | Response, get: () => Response = () => reply(conv()), withdraw: () => Promise<Response> | Response = () => reply(conv())) {
-  const fetch = vi.fn().mockImplementation((url: string) => url === '/api/coordinator/messages' ? post() : url === '/api/coordinator/messages/withdraw' ? withdraw() : url === '/api/coordinator' ? get() : reply({ status: 'unavailable', profile: 'claude', skills: [] }));
+  const said = new Map<string, Conv>();
+  const named = (id: string) => async (answer: Response) => {
+    const held = (answer as Response & { held?: Conv }).held;
+    if (!answer.ok || !held || !('turns' in held)) return answer;
+    said.set(id, held); return new Response(messageJson(held, id));
+  };
+  const fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+    const id = typeof init?.body === 'string' ? (JSON.parse(init.body) as { id?: string }).id : undefined;
+    if (url === '/api/coordinator/messages') return Promise.resolve(post()).then(named(id!));
+    if (url === '/api/coordinator/messages/withdraw') return Promise.resolve(withdraw()).then(named(id!));
+    if (url === '/api/coordinator') return get();
+    const status = /^\/api\/coordinator\/messages\/(.+)\/status$/.exec(url)?.[1];
+    if (status) { const held = said.get(status); return new Response(statusJson(status, held ? messageStatus(held, status) : 'missing')); }
+    return reply({ status: 'unavailable', profile: 'claude', skills: [] });
+  });
   vi.stubGlobal('fetch', fetch); return fetch;
 }
 const finish = () => waitFor(() => expect(useOutbox.getState().live.size).toBe(0));
@@ -46,7 +66,7 @@ const cancel = () => fireEvent.click(screen.getAllByRole('button', { name: '取�
 
 test('2xx accepted evidence settles its request even when the response generation cannot be drawn', async () => {
   const id = setup(), errors = vi.spyOn(notify, 'error');
-  fetcher(() => new Response(JSON.stringify({ ...conversationSnapshot(conv([turn(id)])), generation: 'another-generation' })));
+  fetcher(() => new Response(JSON.stringify({ ...JSON.parse(messageJson(conv([turn(id)]), id)), generation: 'another-generation' })));
   mount(); fireEvent.click(document.querySelector('[data-ask-send]')!);
   await waitFor(() => expect(outgoing(useDraftStore.getState().entries, root)[0]?.stage).toBe('accepted'));
   expect(holds(useDraftStore.getState().entries, root, cid)).toBe(false);
@@ -100,12 +120,12 @@ test('repeated cancel is disabled while in flight; followers wait until confirma
   const posted: any[] = []; const fetch = fetcher(() => reply(conv()), () => reply(conv()), () => pending);
   fetch.mockImplementation((url: string, init?: RequestInit) => {
     if (url === '/api/coordinator/messages/withdraw') return pending;
-    if (url === '/api/coordinator/messages') { const input = JSON.parse(String(init!.body)); posted.push(input); return reply(conv(posted.map(p => turn(p.id, p.text)), [id])); }
+    if (url === '/api/coordinator/messages') { const input = JSON.parse(String(init!.body)); posted.push(input); return new Response(messageJson(conv(posted.map(p => turn(p.id, p.text)), [id]), input.id)); }
     return reply(conv());
   });
   mount(); const pressed = screen.getAllByRole('button', { name: '取り消す' })[0]!; fireEvent.click(pressed); fireEvent.click(pressed);
   expect(screen.getByText('取り消し中…')).toBeTruthy(); expect(posted).toEqual([]);
-  await act(async () => { resolve(reply(conv([], [id]))); });
+  await act(async () => { resolve(new Response(messageJson(conv([], [id]), id))); });
   await waitFor(() => expect(posted.map(p => p.id)).toEqual([b, c])); await finish();
   expect(fetch.mock.calls.filter(([url]) => url === '/api/coordinator/messages/withdraw')).toHaveLength(1);
 });
@@ -364,7 +384,7 @@ test('an unknown reader withdrawal replaces Check with Cancel and the action ret
 });
 test('an undrawable cancellation restores input and announces that restoration once', async () => {
   useToasts.setState({ toasts: [] }); const id = queued();
-  fetcher(() => reply(conv()), () => reply(conv()), () => new Response(JSON.stringify({ ...conversationSnapshot(conv([], [id])), generation: 'restarted-serve' })));
+  fetcher(() => reply(conv()), () => reply(conv()), () => new Response(JSON.stringify({ ...JSON.parse(messageJson(conv([], [id]), id)), generation: 'restarted-serve' })));
   mount(); cancel(); await finish();
   expect(useDraftStore.getState().entries[key]!.values.doc).toContain('words');
   expect(useDraftStore.getState().entries[key]!.values.requestId).not.toBe(id);
@@ -493,6 +513,10 @@ for (const branch of ['started', 'pending'] as const) for (const edited of [fals
     if (String(url) === '/api/coordinator') {
       if (branch === 'started') throw new TypeError('synthetic read outage');
       return reply(conv([turn(id, 'already started words')]));
+    }
+    if (String(url) === `/api/coordinator/messages/${id}/status`) {
+      if (branch === 'started') throw new TypeError('synthetic read outage');
+      return new Response(statusJson(id, 'queued'));
     }
     if (String(url) === '/api/coordinator/messages') { posts.push(JSON.parse(String(init?.body))); return reply(conv()); }
     return reply({ status: 'unavailable', profile: 'claude', skills: [] });

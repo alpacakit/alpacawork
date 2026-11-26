@@ -1,4 +1,4 @@
-import { snapshotJson, SERVED } from './conversation-fixture';
+import { snapshotJson, messageJson, servedJson, SERVED } from './conversation-fixture';
 import { setConversationState } from './conversation-fixture';
 /** Coordinator async boundaries, not Task POST ABA nor the seen ACK. */
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest';
@@ -121,7 +121,7 @@ for (const boundary of ['root', 'generation'] as const) for (const stage of ['pr
       if (url === '/api/coordinator' && stage === 'refresh/draw' && ++reads === 1) return gate.promise;
       // A new-session follow-up GET is a new server snapshot, never a consumed old Response.
       if (url === '/api/coordinator') return reply(conv());
-      if (url === '/api/coordinator/messages') { submitted = JSON.parse(String(init?.body)); return stage === 'POST/draw' ? gate.promise : reply(accepted()); }
+      if (url === '/api/coordinator/messages') { submitted = JSON.parse(String(init?.body)); return stage === 'POST/draw' ? gate.promise : new Response(messageJson(accepted(), submitted.id)); }
       if (url.includes('task/view')) return reply(viewsOf(served).find(v => v.task.id === new URL(url, 'http://fixture').searchParams.get('task')));
       return reply(conv());
     });
@@ -162,7 +162,7 @@ for (const boundary of ['root', 'generation'] as const) for (const stage of ['pr
         .map(([key, entry]) => [key, { requestId: entry.values.requestId, values: availableInput(useDraftStore.getState().entries, index.root, key) }])),
       card: useSitting.getState().card, selected: useViewStore.getState().selected };
     await act(async () => {
-      gate.resolve(stage === 'preflight' ? reply(catalog) : reply(accepted()));
+      gate.resolve(stage === 'preflight' ? reply(catalog) : stage === 'POST/draw' ? new Response(messageJson(accepted(), submitted.id)) : reply(accepted()));
       await refreshing;
     });
     await waitFor(() => expect(useOutbox.getState().live.size).toBe(0)); await tick();
@@ -198,9 +198,10 @@ test.each(['the first send', 'a resend of the same ID after an unknown answer'])
       if (lost) { lost = false; throw new TypeError('network'); }
       if (!body.text.includes('$')) return new Response(JSON.stringify({ error: { code: 'conflict', message: 'Coordinator AI changed', retry: 'fix',
         reason: { kind: 'skill_invocation_mismatch' } } }), { status: 409 });
-      return reply(conv([{ id: body.id, at: new Date().toISOString(), ask: body.text, attachments: [], status: 'queued', waiting: true, answer: null, answeredAt: null, seen: false, error: null, result: null }]));
+      return new Response(messageJson(conv([{ id: body.id, at: new Date().toISOString(), ask: body.text, attachments: [], status: 'queued', waiting: true, answer: null, answeredAt: null, seen: false, error: null, result: null }]), body.id));
     }
-    return reply(conv());
+    // An unanswered send serve never took: its status says it is missing.
+    return new Response(servedJson(url, init, conv()));
   });
   vi.stubGlobal('fetch', fetcher);
   const input = (agent: string) => <TestWorkspace data={screenData(served)}><CoordinatorInput launch={{ next: { agent, values: {} }, ready: false }} /></TestWorkspace>;

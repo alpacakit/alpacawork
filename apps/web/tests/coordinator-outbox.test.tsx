@@ -1,4 +1,4 @@
-import { snapshotJson, SERVED } from './conversation-fixture';
+import { snapshotJson, messageJson, serving, SERVED } from './conversation-fixture';
 import { setConversationState } from './conversation-fixture';
 import { answerTask } from './fixtures';
 import { labelled } from './fixtures';
@@ -119,11 +119,12 @@ test("an accepted answer that loses the race to be drawn keeps the request drawn
   const id = setup(); freeze(root, fixed(), useDraftStore.getState().entries[key]?.values ?? {}, { from: key });
   const attempt = begin(root, id)!; attempt.check(); attempt.finish();
   let resolve!: (response: Response) => void; const pending = new Promise<Response>(done => { resolve = done; });
-  const fetcher = vi.fn().mockReturnValueOnce(pending).mockResolvedValueOnce(reply(conv())).mockResolvedValue(reply(conv(cid, [sentTurn(id, "sent", "queued")])));
+  const queued = conv(cid, [sentTurn(id, "sent", "queued")]);
+  const fetcher = vi.fn().mockReturnValueOnce(pending).mockResolvedValueOnce(reply(conv())).mockImplementation(serving(queued));
   vi.stubGlobal("fetch", fetcher);
   const post = useConversation.getState().ask({ ...fixed(), id });
   await useConversation.getState().refresh();
-  resolve(reply(conv(cid, [sentTurn(id, "sent", "queued")])));
+  resolve(new Response(messageJson(queued, id)));
   await post;
   // Not drawn yet: kept to draw (accepted, not holding the next send), and a newer read is asked for.
   expect(useDraftStore.getState().entries[outgoingKey(root, id)]?.values.stage).toBe("accepted");
@@ -229,7 +230,7 @@ test(`ordinary text (${about}, ${state}) has no expected write or failure toast`
   vi.stubGlobal('fetch', vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
     if (url === '/api/coordinator/messages') {
       posted = JSON.parse(String(init!.body));
-      return reply(conv(cid, [{ ...sentTurn(id, posted.text, 'succeeded'), result: { writes: [], refused: [] } }]));
+      return new Response(messageJson(conv(cid, [{ ...sentTurn(id, posted.text, 'succeeded'), result: { writes: [], refused: [] } }]), id));
     }
     return reply({ status: 'unavailable', profile: 'claude', skills: [] });
   }));
@@ -334,7 +335,7 @@ for (const replacement of ['all','operation','context-operation','append'] as co
  useDraftStore.setState({entries:{[key]:{status:'editing',values:{...values('',id),doc:JSON.stringify(markReaderOperation(textDocument(`${task.id} Approve`))),readerIntent:JSON.stringify({task:task.id,action:'continue',aboutRun:'R1',expectedTaskHash:task.hash}),readerIntentTurn:JSON.stringify(readerTurn(task))}}}});
  let posted:any;const errors=vi.spyOn(notify,'error');
  vi.stubGlobal('fetch',vi.fn().mockImplementation(async(url:string,init?:RequestInit)=>{
-  if(url==='/api/coordinator/messages'){posted=JSON.parse(String(init!.body));return reply(conv(cid,[{...sentTurn(id,posted.text,'succeeded'),context:task.id,result:{writes:posted.intent ? [{task:task.id,record:'L9',kind:'request_accepted',toState:null}] : [],refused:[]}}]));}
+  if(url==='/api/coordinator/messages'){posted=JSON.parse(String(init!.body));return new Response(messageJson(conv(cid,[{...sentTurn(id,posted.text,'succeeded'),context:task.id,result:{writes:posted.intent ? [{task:task.id,record:'L9',kind:'request_accepted',toState:null}] : [],refused:[]}}]),id));}
   return reply({status:'unavailable',profile:'claude',skills:[]});
  }));
  render(<TestWorkspace data={data}><CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }}/></TestWorkspace>);

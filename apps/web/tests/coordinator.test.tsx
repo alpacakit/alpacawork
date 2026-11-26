@@ -1,5 +1,5 @@
 import { announceConversation, SERVED } from './conversation-fixture';
-import { snapshotJson } from './conversation-fixture';
+import { snapshotJson, messageJson } from './conversation-fixture';
 import { setConversationState } from './conversation-fixture';
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -171,7 +171,7 @@ test("a turn sent again goes with the reply reference as well as the questions i
 
 test("a server accepted message appears and a later read supplies its answer", async () => {
   const fetcher = vi.fn().mockResolvedValueOnce(reply(empty))
-    .mockResolvedValueOnce(reply({ ...empty, turns: [turn] }))
+    .mockResolvedValueOnce(new Response(messageJson({ ...empty, turns: [turn as CoordinatorTurn] }, turn.id)))
     .mockResolvedValueOnce(reply({ ...empty, turns: [{ ...turn, status: "succeeded", waiting: false, answer: "Checked", answeredAt: new Date().toISOString() }] }));
   stubFetch(fetcher);
   await useConversation.getState().refresh();
@@ -290,7 +290,7 @@ test("a send's answer arriving after a newer read of the conversation does not b
   const pending = useConversation.getState().ask({ conversationId: useConversation.getState().conversation!.id, id: turn.id, text: turn.ask, attachments: [] });
   announceConversation("a:answered");
   await waitFor(() => expect(useConversation.getState().conversation?.turns[0]?.answer).toBe("final answer"));
-  release(reply({ ...empty, turns: [{ ...turn, status: "queued", waiting: true }] }));
+  release(new Response(messageJson({ ...empty, turns: [{ ...turn, status: "queued", waiting: true }] }, turn.id)));
   expect(await pending).toBe(true);
   expect(useConversation.getState().conversation?.turns[0]?.answer).toBe("final answer");
 });
@@ -319,7 +319,7 @@ test("a late queue action cannot replace a newer completed conversation read", a
   const action = useConversation.getState().messageAction('send-now', 'queued');
   announceConversation('a:queue-action-answered');
   await waitFor(() => expect(useConversation.getState().conversation?.turns[0]?.answer).toBe('newest answer'));
-  release(reply({ ...empty, turns: [{ ...turn, status: 'running', waiting: false }] }));
+  release(new Response(messageJson({ ...empty, turns: [{ ...turn, status: 'running', waiting: false }] }, 'queued')));
   await action;
   expect(useConversation.getState().conversation?.turns[0]?.answer).toBe('newest answer');
 });

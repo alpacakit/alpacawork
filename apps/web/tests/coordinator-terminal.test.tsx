@@ -1,9 +1,9 @@
 import { rememberWriteIdentity } from '../src/data/write-identity';
 import { announceConversation, SERVED } from './conversation-fixture';
-import { snapshotJson } from './conversation-fixture';
+import { snapshotJson, messageJson, serving } from './conversation-fixture';
 import { setConversationState } from './conversation-fixture';
 import { beforeEach, afterEach, expect, test, vi } from 'vitest';
-import { useConversation } from '../src/features/coordinator/coordinator';
+import { useConversation, withStatus } from '../src/features/coordinator/coordinator';
 import { queryClient } from '../src/data/query-client';
 import { intentAbout, reconcileReaderSends, useReaderSend } from '../src/features/coordinator/reader-send';
 import { captureReaderIntent, captureReaderSend } from './reader-send-fixture';
@@ -32,7 +32,7 @@ beforeEach(() => {
   useSitting.setState(useSitting.getInitialState());
   useViewStore.getState().openTask(task.id, { reader: true });
   useSitting.setState({ card: { taskId: task.id } });
-  setConversationState({ root: scope.root, conversation: snapshot(), open: false, error: null });
+  setConversationState({ root: scope.root, conversation: snapshot(), open: false, error: null, withdrawn: null });
 });
 afterEach(() => vi.unstubAllGlobals());
 
@@ -57,21 +57,23 @@ test('labels are opaque: answer names and a complete task title do not target an
 });
 test('a terminal fact survives a newer displayed snapshot and a later queued ask reply', async () => {
   admit(); const cancel = deferred<Response>();
-  const fetcher = vi.fn().mockReturnValueOnce(cancel.promise).mockImplementation(() => Promise.resolve(response(snapshot('c', [], [queued]))));
+  const fetcher = vi.fn().mockReturnValueOnce(cancel.promise).mockImplementation(serving(snapshot('c', [], [queued])));
   vi.stubGlobal('fetch', fetcher);
   const pending = useConversation.getState().messageAction('withdraw', 'message');
   await useConversation.getState().refresh(); // A later request wins the display race.
-  cancel.resolve(response(snapshot('c', ['message']))); await pending;
+  cancel.resolve(new Response(messageJson(snapshot('c'), 'message', 'withdrawn'))); await pending;
   expect(receipt()?.status).toBe('cancelled'); expect(keptDepartures()).toEqual([]);
   await useConversation.getState().ask({ conversationId: 'c', id: 'message', text: queued.ask, attachments: [] });
   expect(receipt()?.status).toBe('cancelled'); expect(keptDepartures()).toEqual([]);
 });
 test('another device cancellation read settles even with an older ask response in flight', async () => {
   admit(); const ask = deferred<Response>();
-  vi.stubGlobal('fetch', vi.fn().mockReturnValueOnce(ask.promise).mockResolvedValue(response(snapshot('c', ['message']))));
+  vi.stubGlobal('fetch', vi.fn().mockReturnValueOnce(ask.promise).mockImplementation(serving(snapshot('c', ['message']))));
   const pending = useConversation.getState().ask({ conversationId: 'c', id: 'message', text: queued.ask, attachments: [] });
+  // The read no longer holds the message; its own status says another device withdrew it.
   await useConversation.getState().refresh();
-  ask.resolve(response(snapshot('c', [], [queued]))); await pending;
+  await withStatus(useConversation.getState().conversation!, 'message');
+  ask.resolve(new Response(messageJson(snapshot('c', [], [queued]), 'message'))); await pending;
   expect(receipt()?.status).toBe('cancelled'); expect(keptDepartures()).toEqual([]);
   expect(useConversation.getState().conversation?.cancelled).toEqual(['message']);
 });
@@ -123,7 +125,7 @@ test('a carried-out message stays confirmed under delayed queued errors and canc
   expect(receipt()?.status).toBe('confirmed');
 });
 for (const next of [snapshot('another', ['message']), snapshot('c')]) test(`ask cannot complete from another scope or absent message: ${next.id}`, async () => {
-  admit(); vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(next)));
+  admit(); vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(messageJson(next, 'message'))));
   await expect(useConversation.getState().ask({ conversationId: 'c', id: 'message', text: queued.ask, attachments: [] })).rejects.toMatchObject({ retry: 'check' });
   expect(receipt()?.status).toBe('pending'); expect(useConversation.getState().conversation?.id).toBe('c');
 });

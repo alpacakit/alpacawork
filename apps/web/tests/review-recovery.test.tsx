@@ -1,4 +1,4 @@
-import { snapshotJson, SERVED } from './conversation-fixture';
+import { snapshotJson, servedJson, SERVED } from './conversation-fixture';
 import { setConversationState } from './conversation-fixture';
 import { canSendWrites, detailWriteBasis } from '../src/data/connection';
 import { getReadProof, readQuery, recordReadProof } from '../src/data/read-model';
@@ -48,7 +48,7 @@ function setup({restored=true, changed=false, changedTurn=false, changedPlacemen
  }
  const posts:Record<string,any>[]=[];
  vi.stubGlobal('fetch',vi.fn().mockImplementation(async(url,init)=>{
-  if(String(url)==='/api/coordinator') return new Response(snapshotJson(conv()));
+  if(String(url)==='/api/coordinator'||String(url).endsWith('/status')) return new Response(servedJson(String(url),init,conv()));
   if(String(url)==='/api/coordinator/messages'){
    posts.push(JSON.parse(String(init?.body)));
    if(failFirst&&posts.length===1)return new Response(snapshotJson({error:{code:'conflict',message:'Rejected for this attempt',retry:'reread'}}),{status:409});

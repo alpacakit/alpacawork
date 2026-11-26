@@ -39,10 +39,18 @@ export function CoordinatorContext({ className }: { className?: string }) {
     setOpen(false);
     void shown.press(conversation.id, "reset", () => useConversation.getState().reset()).catch(error => recordFailure(error, "coordinator reset"));
   };
-  const clear = () => {
+  const clear = (pressed: HTMLElement) => {
     if (!asking) { setAsking(true); return; }
-    setOpen(false); countUse("coord.clear");
-    void shown.press(conversation.id, "clear", () => useConversation.getState().clear()).catch(error => recordFailure(error, "coordinator clear"));
+    const surface = pressed.ownerDocument;
+    setAsking(false); setOpen(false); countUse("coord.clear");
+    // Emptied, the conversation is written to next: the input takes the focus the closing menu would give back (by the
+    // press that cleared it; a press while it clears adds nothing).
+    void shown.press(conversation.id, "clear", async () => {
+      await useConversation.getState().clear();
+      // After the closed menu has given the focus back to the ring, and the emptied conversation's input is drawn.
+      setTimeout(() => surface.querySelector<HTMLElement>("[data-one-input]")?.focus({ preventScroll: true }));
+    })
+      .catch(error => recordFailure(error, "coordinator clear"));
   };
   return <Popover open={open} onOpenChange={setOpen}>
     <PopoverTrigger data-coordinator-context aria-label={`${t("coordinatorCard.context.tip")} ${words.label}`} title={t("coordinatorCard.context.tip")}
@@ -67,8 +75,8 @@ export function CoordinatorContext({ className }: { className?: string }) {
 
 /** One of the menu's two actions: its mark, its name, and under it what it does. */
 function MenuAction({ icon, name, about, danger = false, disabled, onPress, ...data }: {
-  icon: "reload" | "clear"; name: string; about: string; danger?: boolean; disabled: boolean; onPress: () => void } & Record<`data-${string}`, unknown>) {
-  return <button type="button" {...data} disabled={disabled} onClick={onPress}
+  icon: "reload" | "clear"; name: string; about: string; danger?: boolean; disabled: boolean; onPress: (pressed: HTMLElement) => void } & Record<`data-${string}`, unknown>) {
+  return <button type="button" {...data} disabled={disabled} onClick={event => onPress(event.currentTarget)}
     className={cn("grid w-full cursor-pointer grid-cols-[auto_1fr] gap-x-2.5 rounded-sm px-2.5 py-2 text-left outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-ink/40 disabled:cursor-default disabled:hover:bg-transparent",
       danger ? "text-error" : "text-ink", disabled && "[&>[data-name]]:text-muted [&>svg]:text-muted")}>
     <Icon name={icon} className="mt-0.5 size-4 flex-none" />

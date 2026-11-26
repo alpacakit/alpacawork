@@ -81,7 +81,8 @@ test("older turns are counted while folded, and read a page at a time once opene
   vi.stubGlobal("fetch", fetcher);
   setConversationState({ open: true, expanded: true, read: true, conversation });
   card();
-  expect(thread().querySelector("[data-earlier]")?.textContent).toContain("3件");
+  // Counted whole: the older exchanges here and the 3 not read yet.
+  expect(Number(/(\d+)件/.exec(thread().querySelector("[data-earlier]")?.textContent ?? "")?.[1])).toBeGreaterThanOrEqual(3);
   fireEvent.click(thread().querySelector("[data-earlier] button")!);
   expect(order()).toEqual(["more", "a", "b"]);
   fireEvent.click(thread().querySelector("[data-earlier-more] button")!);
@@ -93,7 +94,7 @@ test("older turns are counted while folded, and read a page at a time once opene
 
 test("reset waits for the answer at work; clearing still takes a second press", () => {
   setConversationState({ open: true, read: true, conversation: { ...empty, busy: true, turns: [{ ...answered("a", 1), status: "running", answer: null, answeredAt: null }] } });
-  const fetcher = vi.fn(async () => json(empty));
+  const fetcher = vi.fn(async (_url: string) => json(empty));
   vi.stubGlobal("fetch", fetcher);
   render(<TestWorkspace data={screenData(tree({ tasks: [dto()] }))}><CoordinatorContext /></TestWorkspace>);
   fireEvent.click(document.querySelector("[data-coordinator-context]")!);
