@@ -98,7 +98,8 @@ test('the skills list responds while GitHub waits, and the latest endpoint retur
   await initializeWorkspace(root, [], { firstRun: false });
   const fetchLocal = globalThis.fetch;
   const deadline = new AbortController();
-  const started = Promise.withResolvers<void>();
+  let resolveStarted!: () => void;
+  const started = { promise: new Promise<void>(resolve => { resolveStarted = resolve; }), resolve: () => resolveStarted() };
   const calls: { url: URL; signal: AbortSignal | null | undefined }[] = [];
   t.mock.method(globalThis, 'fetch', (url: URL, options?: RequestInit) => {
     const signal = options?.signal;
