@@ -499,12 +499,12 @@ const definitions = {
     [text('run', 'Run ID'), text('kind', 'result (default) or prompt, the delivered start text')], { output: controlRunFilesSchema }),
   'run/steps': command('read', 'Read a Run\'s steps (tool calls) in order: what each ran on one line, how it ended, when it started and ' +
     'ended and where those times came from (reported: the agent\'s output said it; observed: the time the line was read, within about a second; ' +
-    'transcript: read afterwards from the agent\'s own conversation record, for a Run from before times were kept), a ' +
+    'transcript: read afterwards from the agent\'s own conversation record), a ' +
     'fingerprint of what it ran (paths, IDs and numbers replaced) and the size of what came back', runStepsInput,
     [text('run', 'Run ID'), number('from', 'First step number (from 0); without it, the latest steps'),
       number('limit', 'Most steps to read (up to 200)'), number('step', 'One step\'s number: what it ran and got back, in full')],
     { output: z.union([runStepsPageSchema, runStepDetailSchema]), help: help(
-      'A Run from before step times were kept has null times unless they were imported from the agent\'s conversation record; an end not yet seen is null too.') }),
+      'A Run from before step times were kept has null times; an end not yet seen is null too.') }),
   'run/conditions': command('read', 'Read how a Run was launched (agent, model, effort) and what it ran under: alpacawork\'s version and ' +
     'release, the commit where the agent worked, each skill it could read and the person\'s own instruction files, each with a digest',
     runConditionsInput, [text('run', 'Run ID')],

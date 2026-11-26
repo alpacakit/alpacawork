@@ -147,6 +147,15 @@ const paths = {
   download: <path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14" />,
   /* Hand to another app: an arrow up out of the tray it leaves. */
   share: <path d="M12 15V3.5M7.5 8 12 3.5 16.5 8M8 11H5.5v9.5h13V11H16" />,
+  /* The same, as Android and Windows draw it: three points, one handing on to two. */
+  shareNodes: (
+    <>
+      <circle cx="17.5" cy="5.5" r="2.5" />
+      <circle cx="6.5" cy="12" r="2.5" />
+      <circle cx="17.5" cy="18.5" r="2.5" />
+      <path d="m8.7 10.7 6.6-3.9M8.7 13.3l6.6 3.9" />
+    </>
+  ),
   image: (
     <>
       <rect x="3.5" y="5" width="17" height="14" rx="1.5" />
@@ -230,6 +239,9 @@ const paths = {
 } satisfies Record<string, ReactNode>;
 
 export type IconName = keyof typeof paths;
+
+/** Handing to another app is drawn as this device's own system draws it: Apple's tray and arrow, or the three points. */
+export const shareIcon = (): IconName => /Mac|iPhone|iPad/.test(navigator.platform) ? "share" : "shareNodes";
 
 export function Icon({
   name,

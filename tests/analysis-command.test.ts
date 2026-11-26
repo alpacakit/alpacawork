@@ -185,7 +185,7 @@ test('analysis commands share selection, contribution and tally rules over a sma
       assert.equal(daily.accepted.value.leadMedianMs, (medians[0]! + medians[1]!) / 2);
       assert.deepEqual(daily.series.points.find(point => point.from === '2026-09-24')?.accepted,
         { leadMedianMs: null, submits: 0, questions: 0, prs: 0, time: { review: 0, answer: 0, ai: 0, other: 0 },
-          waits: { away: 0, otherTasks: 0, thisTask: 0 }, answerItems: { total: 0, choice: 0, recommended: 0, recommendable: 0, other: 0, stop: 0, unmatched: 0 }, answersWithoutParts: 0, instructions: { total: 0, unlabeled: 0, kinds: [], fixes: [] }, questionsReplaced: 0, noQuestions: 0, passedNoQuestions: 0, submitsEstimated: 0,
+          waits: { away: 0, otherTasks: 0, thisTask: 0 }, answerItems: { total: 0, choice: 0, recommended: 0, recommendable: 0, other: 0, stop: 0, unmatched: 0 }, instructions: { total: 0, unlabeled: 0, kinds: [], fixes: [] }, questionsReplaced: 0, noQuestions: 0, passedNoQuestions: 0,
           rounds: { first: { ms: 0, tokens: 0 }, later: { ms: 0, tokens: 0 } } });
       assert.equal(tasks.grass.finished.reduce((a, b) => a + b, 0), 2);
       for (const set of ['passed', 'reworked', 'stopped', 'doneUnaccepted', 'accepted', 'finished'] as const)

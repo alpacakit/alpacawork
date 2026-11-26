@@ -89,7 +89,8 @@ export function arrive(element: SVGElement | HTMLElement | null) {
 
 /**
  * A surface rising into place after `delay` ms (animate-rise, for what comes in later than it is drawn); reduced motion
- * only fades it in. Risen again before it has finished, it starts again (one rise at a time).
+ * only fades it in. Risen again before it has finished, it starts again (one rise at a time). Nothing is held once it
+ * lands: it ends as the surface is drawn anyway.
  */
 const rising = new WeakMap<Element, Animation>();
 export function rise(element: Element | null, delay = 0) {
@@ -97,7 +98,7 @@ export function rise(element: Element | null, delay = 0) {
   rising.get(element)?.cancel();
   const shift = distance("shift");
   rising.set(element, element.animate(shift ? [{ opacity: 0, translate: `0 ${shift}px` }, { opacity: 1, translate: "0 0" }] : [{ opacity: 0 }, { opacity: 1 }],
-    { duration: duration(shift ? "base" : "fast"), delay, easing: easing("out"), fill: "both" }));
+    { duration: duration(shift ? "base" : "fast"), delay, easing: easing("out"), fill: "backwards" }));
 }
 
 /**
@@ -394,16 +395,17 @@ export function moveAcross(element: HTMLElement | null, fromLeft: number) {
 
 /**
  * Reading moved by `by` pixels at once (its scroll position set): what is read glides there from where it stood, on
- * the compositor. A glide still under way goes on from where it is drawn. Nothing moves under reduced motion.
+ * the compositor. A glide still under way goes on from where it is drawn. Nothing moves under reduced motion. `curve`:
+ * the one it glides on, a disclosure's (in-out) where something unfolds with it.
  */
-export function glideReading(element: HTMLElement, by: number) {
+export function glideReading(element: HTMLElement, by: number, curve: Curve = "move") {
   if (!canAnimate(element)) return;
   const moving = element.getAnimations().filter((each) => each.id === "reading-glide");
   const drawn = moving.length ? new DOMMatrixReadOnly(getComputedStyle(element).transform).m42 : 0;
   moving.forEach((each) => each.cancel());
   const from = by + drawn;
   if (reducedMotion() || Math.abs(from) < 1) return;
-  element.animate([{ transform: `translateY(${from}px)` }, { transform: "none" }], { id: "reading-glide", duration: duration("base"), easing: easing("move") });
+  element.animate([{ transform: `translateY(${from}px)` }, { transform: "none" }], { id: "reading-glide", duration: duration("base"), easing: easing(curve) });
 }
 
 /** What a surface looks like, for the one that takes its place: its height and its corners (top left, top right, bottom

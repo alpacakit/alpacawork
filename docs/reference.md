@@ -116,9 +116,7 @@ for `--period all` and is `null` when the scope has no records.
 Task counts use Tasks the user directly requested. A review round (`submits`) is a submit for review, or a question to
 the user from the Task or any Task under it that asks whether to take a result as it is (one of its items has
 `decide_kind` `accept`). `submits` counts the times a result was put to the user, not the round it passed on: a Task
-whose question was answered "take it" and that was then submitted for review has two. A question asked before its kind
-was recorded is read from its words (merge, adopt, accept and the like); `submitsEstimated` counts the accepted Tasks
-whose rounds rest on that reading. A Task is reworked when the user sent it back, gave an instruction at review or after
+whose question was answered "take it" and that was then submitted for review has two. A Task is reworked when the user sent it back, gave an instruction at review or after
 acceptance, gave an instruction in place of answering a question asking to take a result, or it was submitted for review
 twice or more. An instruction that names a withdrawn question it answers counts as one given in place of its answer; one given
 after the acceptance counts in `instructionsAfterAccept` instead.
@@ -148,12 +146,12 @@ still open running to now), and `analysis task` gives one Task's.
 `answerItems` counts the answered items of those questions by the kind of the answer's recorded part: one of the choices
 (`choice`, and `recommended` of those), none of them with the user's own words (`other`), `stop`, or no choice named
 (`unmatched`); `recommendable` counts the items whose asker recommended a choice. Answered questions with no recorded
-parts are `answersWithoutParts`. `questionsReplaced` counts questions withdrawn by an instruction in place of an answer.
+parts are not counted. `questionsReplaced` counts questions withdrawn by an instruction in place of an answer.
 `instructions` counts the user's instructions and send-backs to the Task or any Task under it after the request
 (answers are not counted) by the label their sender gave each (`kinds`, and `fixes` for the kinds of fix; an instruction can
 name several fixes, and kinds with no count are left out); `unlabeled` were sent without one. `noQuestions` counts the
 accepted Tasks with no question to the user besides those asking to take a result, and `passedNoQuestions` those of them
-accepted without rework. `analysis task` returns the same values for one Task, with `submitsEstimated` as true or false.
+accepted without rework. `analysis task` returns the same values for one Task.
 `rounds` splits a Task's time from its request into review rounds: each is the work up to one review (as `submits` counts
 them) and the wait until the user answered, withdrew or sent it back, the next starting where it closed and the last
 running to the end (or now). Each round's `tokens` are those of the Runs of the Task and under it that started in it. In
@@ -176,8 +174,8 @@ question's span starts where it was asked. As in the counts, a question asking t
 `time` (`review`, `answer`) and `waits` follow the same rule as `analysis task`: an open question to the user counts even
 while an AI works, so they can exceed `waiting-answer` + `waiting-review`; for a top-level Task they are the same numbers.
 A Run has step times only from when they were kept. `coverage.steps.unknown` names the Runs without them by reason:
-`before-step-times` (the Run started before they were kept), `provider-unsupported` (its agent's output names no steps
-alpacawork reads) and `missing-step-times` (its output has steps whose times were not kept). While any Run in the period
+`provider-unsupported` (its agent's output names no steps alpacawork reads) and `missing-step-times` (its step times were
+not kept). While any Run in the period
 lacks them, the step-level values (`toolMs`, `thinkingMs`, `stepWorkMs`) are `null`, not 0, and that Run has no
 `thinking` spans (the time inside a Run with no step running). Spans and marks come in time order, `--limit` at a time;
 `cursor` reads the next page of the same `head.version` of the records and is refused once they change. `head.settled`

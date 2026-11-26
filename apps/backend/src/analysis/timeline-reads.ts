@@ -92,9 +92,9 @@ async function stepsOf(root: string, run: RunRecord): Promise<{ steps: TraceStep
   const folder = runFolder(root, run.id), journal = statSync(join(folder, RUN_FILES.steps), { throwIfNoEntry: false });
   const key = `${root}\0${run.id}\0${journal?.size ?? 0}`, kept = run.ended_at === null ? undefined : endedSteps.get(key);
   if (kept) return { steps: kept, missing: null };
-  // Step times and conditions came in together: a Run with neither started before step times were kept.
+  // A Run that kept neither step times nor its conditions has no times to read.
   if (!journal && !existsSync(join(folder, RUN_FILES.conditions)))
-    return { steps: null, missing: 'before-step-times' };
+    return { steps: null, missing: 'missing-step-times' };
   const index = await readRunStepIndex(root, run.id);
   if (!index) return { steps: null, missing: 'provider-unsupported' };
   const steps: TraceStep[] = [];

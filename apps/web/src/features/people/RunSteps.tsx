@@ -5,6 +5,11 @@ import { readRunStep, readRunSteps } from "@/data/run-steps";
 import { ApiError } from "@/data/client";
 import { Message } from "@/components/ui/message";
 import { cn } from "@/lib/utils";
+import { DisclosureBody } from "@/components/ui/disclosure";
+import { RegionSkeleton } from "@/components/ui/skeleton";
+import { useWaited } from "@/components/ui/loadable";
+import { reducedMotion } from "@/lib/motion";
+import { keepPressedRow } from "@/features/reader/reading-position";
 
 /* Hallmark · component: an agent's work line and its steps · genre: modern-minimal · theme: the app's own tokens (ink,
  * soft, muted, error, working, line) · states: folded (one line: the moving mark and the agent's words for its step,
@@ -132,13 +137,15 @@ async function readChanges(run: string, version: number, signal: AbortSignal): P
  * The steps of Run `run`, read while `shown`: the latest few first, and earlier ones a page at a time on `earlier`.
  * Whenever `signal` changes (a step of the Run started or ended, any of them), only what changed since the list's
  * version is read and taken in, so how far it was gone back and the steps opened in it stay as they are. Every answer
- * is taken in one way (takeIn). Nothing is read while they are not shown.
+ * is taken in one way (takeIn). Nothing is read while they are not shown; what was read of this Run stays, so they
+ * are shown at once when they are shown again, and read anew from the latest then.
  */
 export function useRunSteps(run: string | undefined, shown: boolean, signal: string | number = ""): StepsRead {
   const [state, setState] = useState<{ run?: string; listed: ListedSteps | null; failed: boolean }>({ listed: null, failed: false });
   const current = useRef(state);
   current.current = state;
-  const live = shown && !!run && state.run === run;
+  // What was read is of this Run's list: kept while it is not shown, to be shown at once when it is again.
+  const mine = !!run && state.run === run;
   // A list of a replaced output is read again from its latest steps.
   const [restart, setRestart] = useState(0);
   const take = useCallback((answer: Answer, at?: Parameters<typeof takeIn>[2]) => {
@@ -150,20 +157,24 @@ export function useRunSteps(run: string | undefined, shown: boolean, signal: str
     current.current = { run, failed: false, listed };
     setState(current.current);
   }, [run]);
+  // Opened again, a failure of the last time is not said again before this read answers: set before it is drawn.
+  useLayoutEffect(() => {
+    if (run && shown) setState(previous => previous.failed ? { ...previous, failed: false } : previous);
+  }, [run, shown, restart]);
   // The signal the list is up to date with: a first read is, so only a later change reads what changed.
   const told = useRef(signal);
   useEffect(() => {
     told.current = signal;
-    if (!run || !shown) { setState({ listed: null, failed: false }); return; }
+    if (!run || !shown) return;
     const abort = new AbortController();
     readRunSteps(run, { limit: FIRST }, abort.signal).then(page =>
       setState({ run, failed: false, listed: takeIn(null, page, { caughtUp: page.version }) }),
-    () => { if (!abort.signal.aborted) setState({ run, listed: null, failed: true }); });
+    () => { if (!abort.signal.aborted) setState(previous => previous.run === run && previous.listed ? { ...previous, failed: true } : { run, listed: null, failed: true }); });
     return () => abort.abort();
   }, [run, shown, restart]);
   // Read again by what changed since the version held; a read under way finishes first, then the next takes its version.
   const reading = useRef<Promise<unknown>>(Promise.resolve());
-  const loaded = live && !!state.listed;
+  const loaded = shown && mine && !!state.listed;
   useEffect(() => {
     if (!run || !loaded || told.current === signal) return;
     told.current = signal;
@@ -187,7 +198,7 @@ export function useRunSteps(run: string | undefined, shown: boolean, signal: str
   }, [run, take]);
   const again = useCallback(() => setRestart(count => count + 1), []);
   // The same object while nothing in it changes, so what is drawn from it is not drawn again for nothing.
-  return useMemo(() => live ? { ...state, earlier, again } : { listed: null, failed: false, earlier, again }, [live, state, earlier, again]);
+  return useMemo(() => mine ? { ...state, earlier, again } : { listed: null, failed: false, earlier, again }, [mine, state, earlier, again]);
 }
 
 const BLOCK = "m-0 px-2.5 py-2 font-mono whitespace-pre-wrap [overflow-wrap:anywhere]";
@@ -200,10 +211,11 @@ function StepText({ text, tone, prompt, ...data }: { text: RunStepText; tone: st
     {!!text.omittedFiles && <span data-run-step-more-files className="block font-sans text-muted">{t("now.step.omittedFiles", { count: text.omittedFiles })}</span>}</pre>;
 }
 /**
- * What one step ran and got back, read when it is opened and again when it changes. It is shown only when it is of
- * the list's generation and not older than the step as the list holds it, so the opened text is always that line's.
- * Of a newer generation, or not found (the output it was read from is no longer there), the list is read anew
- * (`again`), and this step is read again once the list holds it.
+ * What one step ran and got back, read when it is opened and again when it changes, and held while it is closed: the
+ * row is one step (its place and its ID), so what was read of it stays its text, drawn as it folds and at once when it
+ * is opened again, until a newer read takes its place. An answer of another generation than the list is not taken; of a newer one, the
+ * list is read anew (`again`), and this step is read again once the list holds it. Not found (the output it was read
+ * from is no longer there), the list is read anew too.
  */
 function useStepDetail(run: string, step: RunStepEntry, generation: number, open: boolean, again: () => void) {
   const [detail, setDetail] = useState<{ value: RunStepDetail | null; failed: boolean } | null>(null);
@@ -212,35 +224,50 @@ function useStepDetail(run: string, step: RunStepEntry, generation: number, open
     if (!open) return;
     const abort = new AbortController();
     readRunStep(run, n, abort.signal).then(value => {
-      if (value.generation > generation) again();
+      if (abort.signal.aborted || value.generation < generation) return;
+      if (value.generation > generation) { again(); return; }
       setDetail({ value, failed: false });
     }, error => {
       if (abort.signal.aborted) return;
-      if (error instanceof ApiError && error.code === "not_found") { again(); setDetail(null); return; }
-      setDetail({ value: null, failed: true });
+      if (error instanceof ApiError && error.code === "not_found") { again(); return; }
+      setDetail(held => held?.value ? held : { value: null, failed: true });
     });
     return () => abort.abort();
   }, [run, n, changed, open, generation, again]);
-  if (!open || !detail) return null;
-  return detail.value && (detail.value.generation !== generation || detail.value.changed < changed) ? null : detail;
+  return detail;
 }
-/** One step of the list: its line, and on a press what it ran and what came back, in full. */
+/** The fade over a scrolled box's top (LogBox's mask): a line brought into sight stays under it. */
+const fadeHeight = (element: HTMLElement) => 2 * Number.parseFloat(getComputedStyle(element.ownerDocument.documentElement).fontSize);
+/**
+ * One step of the list: its line, and on a press what it ran and what came back, in full. It unfolds as every
+ * disclosure does (DisclosureBody), at once with what it shows when that is read soon, else with a placeholder of its
+ * shape in its place; once unfolded, the box glides just so far that its first lines come into sight, the pressed line
+ * staying in sight under the box's fade.
+ */
 const StepRow = memo(function StepRow({ run, step, generation, open, toggle, again }: { run: string; step: RunStepEntry; generation: number;
-  open: boolean; toggle: (step: RunStepEntry) => void; again: () => void }) {
+  open: boolean; toggle: (step: RunStepEntry, row: HTMLElement) => void; again: () => void }) {
   const { t } = useTranslation("people");
   const detail = useStepDetail(run, step, generation, open, again);
   const item = useRef<HTMLLIElement>(null);
-  const shown = !!detail?.value;
-  // Opened, what it ran and got back comes into the box's sight, its own line kept at the top at most.
-  useLayoutEffect(() => {
-    const row = item.current, box = row?.closest<HTMLElement>("[data-run-log]");
-    if (!shown || !row || !box) return;
-    const area = box.getBoundingClientRect(), place = row.getBoundingClientRect();
-    const below = place.bottom - area.bottom;
-    if (below > 0) box.scrollTop += Math.min(below, place.top - area.top);
+  const waited = useWaited(open && !detail);
+  const unfolded = open && (!!detail || waited);
+  const shown = unfolded && !!detail?.value;
+  useEffect(() => {
+    const row = item.current, box = row?.closest<HTMLElement>("[data-run-log]"), body = row?.querySelector<HTMLElement>("[data-disclosure-body]");
+    if (!shown || !row || !box || !body) return;
+    const reveal = () => {
+      const area = box.getBoundingClientRect(), place = row.getBoundingClientRect();
+      const by = Math.min(place.bottom - area.bottom, place.top - area.top - fadeHeight(box));
+      if (by > 0) box.scrollBy({ top: by, behavior: reducedMotion() ? "instant" : "smooth" });
+    };
+    const moving = () => body.getAnimations().some(move => move.playState === "running");
+    if (!moving()) { reveal(); return; }
+    const arrived = (event: TransitionEvent) => { if (event.target === body && !moving()) { body.removeEventListener("transitionend", arrived); reveal(); } };
+    body.addEventListener("transitionend", arrived);
+    return () => body.removeEventListener("transitionend", arrived);
   }, [shown]);
   return <li ref={item} data-run-step={step.state} className="min-w-0">
-    <button type="button" aria-expanded={open} onClick={() => toggle(step)}
+    <button type="button" aria-expanded={open} onClick={event => toggle(step, event.currentTarget)}
       className="flex w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-sm py-0.5 text-left text-soft outline-none hover:text-ink focus-visible:outline-2 focus-visible:outline-ring narrow:py-1.5">
       <span data-run-step-mark className={cn("w-2.5 flex-none text-center font-sans", step.state === "failed" ? "text-error" : step.state === "running" ? "text-working motion-safe:animate-pulse" : "text-muted")}>
         <span aria-hidden>{step.state === "running" ? "●" : step.state === "failed" ? "✗" : step.state === "unknown" ? "?" : "✓"}</span>
@@ -248,7 +275,7 @@ const StepRow = memo(function StepRow({ run, step, generation, open, toggle, aga
           : step.state === "unknown" ? t("now.step.state.unknown") : t("now.step.state.done")}</span></span>
       <LineWords line={step} />
     </button>
-    {open && <div data-run-step-open className="mt-1 mb-2 ml-4 flex min-w-0 flex-col gap-1">
+    <DisclosureBody open={unfolded} swap={detail?.value ? `read ${detail.value.changed}` : detail ? "failed" : "wait"} className="mr-0 pr-0"><div data-run-step-open={unfolded || undefined} className="mt-1 mb-2 ml-4 flex min-w-0 flex-col gap-1">
       {detail?.value ? <>
         <div className={cn("min-w-0 overflow-hidden rounded-sm border border-line bg-bg", step.state === "failed" && "border-l-2 border-l-error")}>
           <StepText data-run-step-input text={detail.value.input} tone="text-ink" prompt={step.kind === "command"} />
@@ -257,44 +284,57 @@ const StepRow = memo(function StepRow({ run, step, generation, open, toggle, aga
         {step.state === "unknown" && <Message tone="caution" size="line" quiet title={t("now.step.unknown")} className="text-xs" />}
         {detail.value.detailsDropped && <Message tone="caution" size="line" quiet data-run-step-dropped title={t("now.step.detailsDropped")} className="text-xs" />}</>
         : detail?.failed ? <Message tone="error" size="line" title={t("now.step.unreadableOne")} className="text-xs" />
-        : <span className="text-muted">{t("now.step.reading")}</span>}
-    </div>}
+        : <RegionSkeleton shape="runStep" />}
+    </div></DisclosureBody>
   </li>;
 });
 const NOTE = "py-0.5 text-muted narrow:py-1.5";
 /**
- * A Run's steps, oldest first, one line each, each opening to what it ran and what came back. It starts at the latest
- * few; steps that come after are added under them, so what is being read stays where it is, and a press at the top
- * reads the ones before, a page at a time, back to the Run's first.
+ * A Run's steps, oldest first, one line each, each opening to what it ran and what came back, under the line that
+ * opens them (`open`). They unfold and fold as every disclosure does (DisclosureBody): at once with the steps when they
+ * are read soon, else with a placeholder of their shape first. Folded, what was read stays drawn as it folds and is
+ * shown at once when opened again, brought up to date under it (useRunSteps keeps it, and reads nothing while folded). It starts at the latest few; steps that come after are added under them, so what is being read stays
+ * where it is, and a press at the top reads the ones before, a page at a time, back to the Run's first.
  */
-export const StepList = memo(function StepList({ steps, className }: { steps: StepsRead; className?: string }) {
+export const StepList = memo(function StepList({ steps, open, className }: { steps: StepsRead; open: boolean; className?: string }) {
   const { t } = useTranslation("people");
   const { listed, run } = steps;
-  const toggle = useCallback((step: RunStepEntry) => setOpened(previous => {
-    const next = new Map(previous);
-    if (!next.delete(step.n)) next.set(step.n, step.id);
-    return next;
-  }), []);
-  // The steps opened, by their place in the Run (`n`, one per step whatever its tool call's ID) and the step there. A
-  // list read anew keeps open those whose place still holds the same step; the rest are closed.
+  const toggle = useCallback((step: RunStepEntry, row: HTMLElement) => {
+    // What is under the box moves as the step opens or closes; the box (where it was pressed) stays where it is.
+    const box = row.closest<HTMLElement>("[data-run-log]");
+    if (box) keepPressedRow(box);
+    setOpened(previous => {
+      const next = new Map(previous);
+      if (!next.delete(step.n)) next.set(step.n, step.id);
+      return next;
+    });
+  }, []);
+  // The steps opened, by their place in the Run (`n`) and the step there (its ID). A list read anew keeps open those
+  // whose place still holds the same step; the rest are closed.
   const [opened, setOpened] = useState<ReadonlyMap<number, string>>(new Map());
-  const held = listed?.steps;
   useEffect(() => {
-    if (!held) return;
-    const at = new Map(held.map(step => [step.n, step.id]));
+    if (!listed) return;
+    const at = new Map(listed.steps.map(step => [step.n, step.id]));
     setOpened(previous => [...previous].every(([n, id]) => at.get(n) === id) ? previous
       : new Map([...previous].filter(([n, id]) => at.get(n) === id)));
   }, [listed?.generation]); // eslint-disable-line react-hooks/exhaustive-deps -- pruned only when a list is read anew
-  if (!listed || !run) return steps.failed ? <Message tone="error" size="line" title={t("now.step.unreadable")} className={cn("text-xs", NOTE, className)} /> : null;
-  if (!listed.steps.length) return <Message tone="empty" size="line" quiet title={t("now.step.none")} className={cn("text-xs", NOTE, className)} />;
-
-  return <LogBox listed={listed} className={className}><ol data-run-steps="open" className="m-0 flex list-none flex-col p-0 text-xs">
-    {listed.from > 0 && <li><button type="button" data-run-steps-more onClick={steps.earlier}
-      className={cn("cursor-pointer rounded-sm underline-offset-2 outline-none hover:text-ink hover:underline focus-visible:outline-2 focus-visible:outline-ring", NOTE)}>
-      {t("now.step.older", { count: Math.min(EARLIER, listed.from), rest: listed.from })}</button></li>}
-    {steps.failed && <li><Message tone="error" size="line" title={t("now.step.unreadable")} className={cn("text-xs", NOTE)} /></li>}
-    {listed.steps.map(step => <StepRow key={`${listed.generation}:${step.n}`} run={run} step={step} generation={listed.generation}
-      open={opened.get(step.n) === step.id} toggle={toggle} again={steps.again} />)}</ol></LogBox>;
+  // Folded, the steps opened in it close with it: opened again, it stands at its foot as it first did.
+  useEffect(() => { if (!open) setOpened(previous => previous.size ? new Map() : previous); }, [open]);
+  const waited = useWaited(open && !listed && !steps.failed);
+  const unfolded = open && (!!listed || steps.failed || waited);
+  return <DisclosureBody open={unfolded} swap={listed ? "read" : steps.failed ? "failed" : "wait"} className="mr-0 pr-0">
+    {listed && run ? (listed.steps.length
+      ? <LogBox listed={listed} open={open} className={className}><ol data-run-steps={open ? "open" : "folded"} className="m-0 flex list-none flex-col p-0 text-xs">
+        {listed.from > 0 && <li><button type="button" data-run-steps-more onClick={steps.earlier}
+          className={cn("cursor-pointer rounded-sm underline-offset-2 outline-none hover:text-ink hover:underline focus-visible:outline-2 focus-visible:outline-ring", NOTE)}>
+          {t("now.step.older", { count: Math.min(EARLIER, listed.from), rest: listed.from })}</button></li>}
+        {steps.failed && <li><Message tone="error" size="line" title={t("now.step.unreadable")} className={cn("text-xs", NOTE)} /></li>}
+        {listed.steps.map(step => <StepRow key={`${step.n}:${step.id}`} run={run} step={step} generation={listed.generation}
+          open={opened.get(step.n) === step.id} toggle={toggle} again={steps.again} />)}</ol></LogBox>
+      : <Message tone="empty" size="line" quiet title={t("now.step.none")} className={cn("text-xs", NOTE, className)} />)
+      : steps.failed ? <Message tone="error" size="line" title={t("now.step.unreadable")} className={cn("text-xs", NOTE, className)} />
+      : <RegionSkeleton shape="runSteps" className={className} />}
+  </DisclosureBody>;
 });
 
 /**
@@ -302,7 +342,7 @@ export const StepList = memo(function StepList({ steps, className }: { steps: St
  * in sight however long the Run worked. It opens at its foot (the latest step, as a terminal does), stays at its foot
  * while new steps come if it was there, and keeps the reader's place when earlier steps are added at its top.
  */
-function LogBox({ listed, className, children }: { listed: ListedSteps; className?: string; children: ReactNode }) {
+function LogBox({ listed, open, className, children }: { listed: ListedSteps; open: boolean; className?: string; children: ReactNode }) {
   const box = useRef<HTMLDivElement>(null);
   // Where the reader was when the steps last changed or they last scrolled: at the foot, or how high the list was.
   const at = useRef<{ from: number; height: number; foot: boolean } | null>(null);
@@ -315,15 +355,23 @@ function LogBox({ listed, className, children }: { listed: ListedSteps; classNam
     // Lines above what is shown fade in at the top, so a box opened at its foot says there is more before (no redraw).
     element.toggleAttribute("data-above", element.scrollTop > 4);
   }, []);
+  // Opened again, it opens at its foot as it first did, with what was read before, before it is read anew.
+  useLayoutEffect(() => {
+    const element = box.current;
+    if (!open || !element) return;
+    element.scrollTop = element.scrollHeight;
+    remember();
+  }, [open, remember]);
   useLayoutEffect(() => {
     const element = box.current;
     if (!element) return;
     const before = at.current;
     if (before && listed.from < before.from) element.scrollTop += element.scrollHeight - before.height;
-    else if (!before || before.foot) element.scrollTop = element.scrollHeight;
+    // Read anew from the latest (opened again), it opens at its foot as it first did.
+    else if (!before || before.foot || listed.from > before.from) element.scrollTop = element.scrollHeight;
     remember();
   }, [listed, remember]);
   return <div ref={box} data-run-log onScroll={remember}
-    className={cn("max-h-[min(19rem,45vh)] overflow-y-auto rounded-md border border-line bg-well px-2.5 py-1.5 [scrollbar-width:thin] narrow:max-h-[min(22rem,50vh)] has-[[data-run-step-open]]:max-h-[min(32rem,70vh)] narrow:has-[[data-run-step-open]]:max-h-[min(32rem,70vh)] data-above:[mask-image:linear-gradient(to_bottom,transparent,black_2rem)]", className)}>
+    className={cn("max-h-[min(19rem,45vh)] overflow-y-auto transition-[max-height] duration-(--motion-base) rounded-md border border-line bg-well px-2.5 py-1.5 [scrollbar-width:thin] narrow:max-h-[min(22rem,50vh)] has-[[data-run-step-open]]:max-h-[min(32rem,70vh)] narrow:has-[[data-run-step-open]]:max-h-[min(32rem,70vh)] data-above:[mask-image:linear-gradient(to_bottom,transparent,black_2rem)]", className)}>
     {children}</div>;
 }

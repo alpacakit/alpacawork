@@ -121,7 +121,6 @@
       "older_other": "显示之前的 {{count}} 项（还剩 {{rest}} 项）",
       "omitted_other": "此后 {{count}} 个字符过长，已省略",
       "omittedFiles_other": "另有 {{count}} 个文件",
-      "reading": "正在读取…",
       "state": {
         "done": "已完成",
         "failed": "失败",
