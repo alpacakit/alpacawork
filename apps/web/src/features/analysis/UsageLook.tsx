@@ -26,7 +26,7 @@ const VALUES = {
   cache: { read: (c: UsageCounts) => c.tokens.cache, kind: "tokens" },
   runMs: { read: (c: UsageCounts) => c.runMs, kind: "hours" },
   launches: { read: (c: UsageCounts) => c.launches, kind: "times" },
-  newConversations: { read: (c: UsageCounts) => c.newConversations, kind: "conversations" },
+  newConversations: { read: (c: UsageCounts) => c.newConversations, kind: "times" },
 } as const satisfies Record<string, { read: (c: UsageCounts) => number; kind: Kind }>;
 type ValueKey = keyof typeof VALUES;
 
@@ -122,7 +122,7 @@ export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days
           { color: "", name: t("usage.cache"), value: format("tokens", c.cache), list: c.cache ? onBin("used", "cache") : undefined }]; } },
     { name: t("usage.runMs"), total: i => format("hours", amount.runMs(i)), list: onBin("used", "runMs"), line: perLine("runMs") },
     launchesSay(launches, t("usage.launches"), launches.shownFiltered ? undefined : perLine("launches"), launches.shownFiltered ? undefined
-      : i => [{ color: "", name: t("usage.newConversations"), value: format("conversations", points[i]!.counts.newConversations),
+      : i => [{ color: "", name: t("usage.newConversations"), value: format("times", points[i]!.counts.newConversations),
         list: points[i]!.counts.newConversations ? onBin("used", "newConversations") : undefined }], i => points[i]!.counts.launches),
 
     callsSay(calls, t("chart.notCounted")),
@@ -179,7 +179,7 @@ export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days
         </div>
         <LaunchControls launches={launches} />
         <div className={cn("transition-opacity duration-(--motion-base)", !launches.current && "opacity-50")}><Parts items={[...launchesParts(launches, open), ...launches.shownFiltered ? [] : [{ color: "", name: t("usage.newConversations"),
-          ...part("conversations", now.newConversations, { set: "used", value: "newConversations" }) }]]}
+          ...part("times", now.newConversations, { set: "used", value: "newConversations" }) }]]}
           line={launches.shownFiltered ? undefined : perEntry("launches")} /></div>
       </>}>
         {/* Each bin's launches stacked by model or effort, the most used at the foot; in one colour where the series does
@@ -224,7 +224,7 @@ export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days
       <RuleCard><Rule name={t("def.runName")}>{t("def.runText")}</Rule>
         <Rule name={t("def.launchName")}>{t("def.launchText")}</Rule>
         <Rule name={t("def.conversationName")}>{t("def.conversationText")}</Rule></RuleCard>
-      <RuleCard><Rule name={t("def.finishedName")}>{t("def.finishedText")}</Rule>
+      <RuleCard><Rule name={t("def.finishedName")}>{t("def.finishedTasksText")}</Rule>
         <Rule name={t("def.perFinishedName")}>{t("def.perFinishedText")}</Rule></RuleCard>
       <RuleCard><Rule name={t("usage.tasks")}>{t("def.usedTasksText")}</Rule>
         <Rule name={t("def.skillName")}>{t("def.skillText")}</Rule>
@@ -266,7 +266,7 @@ function Breakdown({ span, root, group, days, open, choose }: {
   const columns = by === "skill" ? [head(t("usage.skillUses"), "times"), head(t("usage.tasks"), "tasks")]
     : counted ? [head(t("usage.calls"), "times"), head(t("usage.launches"), "times"), head(t("usage.tasks"), "tasks")]
       : [...tokenKeys.map(tokenHead), head(t("usage.launches"), "times"), head(t("usage.runMs"), "hours"),
-        head(t("usage.newConversations"), "conversations"), head(t("usage.tasks"), "tasks")];
+        head(t("usage.newConversations"), "times"), head(t("usage.tasks"), "tasks")];
   const table = rows.map(row => {
     const c = row.counts, tasks = cell("tasks", c.tasks, () => open({ set: "used", value: "launches", ...member(row.key) }));
     const launches = cell("times", c.launches, () => open({ set: "used", value: "launches", ...member(row.key) }));

@@ -41,7 +41,7 @@ export function writeValue(value: ListValue, amount: number): string {
     case "submits": case "launches": case "calls": return format("times", amount);
     case "questions": return format("questions", amount);
     case "prs": return format("prs", amount);
-    case "newConversations": return format("conversations", amount);
+    case "newConversations": return format("times", amount);
     case "tokens": case "output": case "input": case "cache": return format("tokens", amount);
   }
 }
