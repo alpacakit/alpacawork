@@ -8,6 +8,7 @@ import { BreakdownTable } from "./BreakdownTable";
 import { cell, head, useFinishedParts, type Open } from "./TasksLook";
 import { BarChart, binsKey, ChartGroup, DayAxis, inSpanOf, Lead, Leads, lineTop, Parts, Row, RowName, spanMost, useLineLabel, useScale, type DayList, type RowSay } from "./rows";
 import { ReadPart, useReadSet, ChartHead, Compare, Num, Rule, RuleCard, Rules, rowName, Section, Seg, Value, useChoices, type UsageGroup } from "./parts";
+import { analysisRecordStart } from "@alpacawork/contract/analysis";
 import { tokenTotal, type TasksView, type UsageCounts, type UsageView } from "./contract";
 import type { Span } from "./place";
 import { useBreakdown, useNear } from "./data";
@@ -48,7 +49,7 @@ export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days
   const choose = useChoices(state => state.choose);
   const length = daysBetween(days.from, days.to);
   const now = view.counts.value, before = view.counts.previous;
-  const whole = view.head.firstDay === days.from && view.head.today === days.to;
+  const whole = analysisRecordStart(view.head) === days.from && view.head.today === days.to;
   const ever = whole ? null : view.ever, taskEver = whole ? null : tasks?.ever ?? null;
   const finished = tasks?.counts.value ?? null;
 

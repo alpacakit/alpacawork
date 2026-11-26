@@ -7,6 +7,7 @@ import { Grass } from "./charts";
 import { BreakdownTable, type Cell } from "./BreakdownTable";
 import { BarChart, binsKey, ChartGroup, DayAxis, inSpanOf, Lead, Leads, lineTop, Parts, Row, spanMost, useLineLabel, useScale, type DayList, type RowSay } from "./rows";
 import { ReadPart, useReadSet, ChartHead, Compare, gapTone, Num, OPEN, OpenMark, Rule, RuleCard, Rules, rowName, Section, Seg, Value, tip, useChoices, type TaskGroup } from "./parts";
+import { analysisRecordStart } from "@alpacawork/contract/analysis";
 import type { ListSet, ListValue, TasksView } from "./contract";
 import type { ListPlace, Span } from "./place";
 import { useBreakdown, useChanges, useNear } from "./data";
@@ -36,7 +37,7 @@ export const TasksLook = memo(function TasksLook({ view, span, root, days, open,
   const length = daysBetween(days.from, days.to);
   const now = view.counts.value, before = view.counts.previous;
   const accepted = view.accepted.value, acceptedBefore = view.accepted.previous;
-  const whole = view.head.firstDay === days.from && view.head.today === days.to;
+  const whole = analysisRecordStart(view.head) === days.from && view.head.today === days.to;
   const ever = whole ? null : view.ever;
   const time = accepted.time, you = time.review + time.answer, total = you + time.ai + time.other;
   const project = useViewStore(state => state.project);

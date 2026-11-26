@@ -97,8 +97,21 @@ const share = z.number().min(0).max(1).nullable();
 const days = z.strictObject({ from: analysisDaySchema, to: analysisDaySchema });
 export const analysisHeadSchema = z.strictObject({
   timeZone: z.string(), today: analysisDaySchema, firstDay: analysisDaySchema.nullable(), project: projectIdSchema.nullable(),
-  period: days.nullable(), previous: days.nullable(),
+  period: days, previous: days.nullable(),
 });
+/**
+ * The day the record is counted from. A project with nothing recorded yet is counted as if its record began today: the
+ * span chosen keeps its days and every count is zero, while `firstDay` stays null so the reader can tell nothing is
+ * recorded yet.
+ */
+export const analysisRecordStart = (head: { firstDay: string | null; today: string }) => head.firstDay ?? head.today;
+/** The first day a chart draws: the record's first, or the chosen span's when the record is shorter, so a chart always
+ * shows every day of the span. */
+export const analysisChartStart = (head: { firstDay: string | null; today: string; period: { from: string } }) => {
+  const first = analysisRecordStart(head);
+  return head.period.from < first ? head.period.from : first;
+};
+
 const pair = <T extends z.ZodType>(value: T) => z.strictObject({ value, previous: value.nullable() });
 const point = days.extend({ complete: z.boolean() });
 const series = <T extends z.ZodType>(point: T) => z.strictObject({
