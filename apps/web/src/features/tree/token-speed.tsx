@@ -9,6 +9,7 @@
 import { useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { runOutputSpeed, type RunOutputSpeed } from "@alpacawork/contract/run";
+import { AgentMark } from "@/components/ui/agent-mark";
 import { Icon } from "@/components/ui/icon";
 import type { Task } from "@/data/types";
 import { useWorkspaceSelector, useWorkspaceStore, type WorkspaceData } from "@/data/workspace-store";
@@ -211,21 +212,21 @@ export const TIME_SLOT = "inline-block min-w-[4.5em] text-right narrow:min-w-[3.
 /** The speed's slot on a phone, held while agents run so the columns stay put before a count arrives. */
 const NARROW_SPEED_SLOT = "inline-block min-w-[5ch] text-right tabular-nums";
 
-/** The gap between agents (gap-2.5). */
-const AGENT_GAP = 10;
+/** The gap between agents (gap-2). */
+const AGENT_GAP = 8;
 
 /**
- * Which agents run and how many: each agent's name and its count, most first, so a row says "claude 2  codex 1" at a
- * glance. It takes the room the row leaves it: the names that do not fit stand as one "+count" of their agents (none
- * fitting, the square and the total), and its press lists them all. A count no loaded Run names keeps the square. Read
- * as words, it is the total and then each agent's count.
+ * Which agents run and how many: each agent's mark (AgentMark) and its count, most first, so a row says at a glance
+ * which AI works on it. It takes the room the row leaves it: the marks that do not fit stand as one "+count" of their
+ * agents (none fitting, the square and the total), and its press lists the names. A count no loaded Run names keeps
+ * the square. Read as words, it is the total and then each agent's name and count.
  */
 export function AgentCounts({ tasks }: { tasks: readonly Task[] }) {
   const { t } = useTranslation("tree");
   const key = useWorkspaceSelector((data) => JSON.stringify(runningAgents(tasks, data)));
   const agents = JSON.parse(key) as [string | null, number][];
   const box = useRef<HTMLSpanElement>(null);
-  // How many names fit; all of them while measuring, after the agents or the row's width change.
+  // How many marks fit; all of them while measuring, after the agents or the row's width change.
   const [fit, setFit] = useState({ key, count: agents.length });
   const measuring = fit.key !== key || fit.count >= agents.length;
   useLayoutEffect(() => {
@@ -262,11 +263,10 @@ export function AgentCounts({ tasks }: { tasks: readonly Task[] }) {
   const words = agents.map(([agent, count]) => `${agent ?? "?"} ${count}`).join(", ");
   const named = measuring ? agents : agents.slice(0, fit.count);
   const rest = agents.slice(named.length).reduce((sum, [, count]) => sum + count, 0);
-  return <span ref={box} data-agent-counts title={words} className="flex min-w-0 shrink items-baseline gap-2.5 overflow-hidden whitespace-nowrap tabular-nums">
+  return <span ref={box} data-agent-counts title={words} className="flex min-w-0 shrink items-center gap-2 self-center overflow-hidden whitespace-nowrap tabular-nums">
     <span className="sr-only">{`${t("status.runningRuns", { count: total })}: ${words}`}</span>
-    {named.map(([agent, count]) => <span key={agent ?? ""} data-agent aria-hidden="true" className="flex-none">
-      {agent === null ? <Icon name="runningRuns" className="mr-0.5 inline size-[0.7em] align-[-0.02em] text-muted" />
-        : <span className="mr-1 text-muted">{agent}</span>}
+    {named.map(([agent, count]) => <span key={agent ?? ""} data-agent aria-hidden="true" className="flex flex-none items-center gap-[3px]">
+      {agent === null ? <Icon name="runningRuns" className="size-[0.7em] text-muted" /> : <AgentMark name={agent} />}
       <span className="text-ink/80">{count}</span>
     </span>)}
     {rest > 0 && <span aria-hidden="true" className="flex-none text-muted">
