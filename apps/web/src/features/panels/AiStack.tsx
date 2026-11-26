@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { AgentMark } from '@/components/ui/agent-mark';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
@@ -92,12 +93,16 @@ function StackRow({ row, index, count, agents, enabled, issues, refused, repeats
   return <li data-ai-stack-row={row.agent} data-ai-stack-row-id={row.id} data-invalid={issues.length || refused ? '' : undefined} data-repeats={repeats === null ? undefined : repeats + 1}
     className="col-span-4 grid grid-cols-subgrid items-baseline gap-x-2 border-t border-line px-4 py-3 narrow:grid-cols-[minmax(0,1fr)_auto] narrow:gap-x-2 narrow:px-3">
     <span aria-hidden className={cn('whitespace-nowrap narrow:self-center', index === 0 ? 'font-semibold' : 'text-muted')}>{name}</span>
-    <NativeSelect variant="field" className="w-full min-w-28 font-semibold narrow:col-span-2 narrow:row-start-2 narrow:mt-1" value={row.agent} aria-invalid={issues.some(issue => issue.kind !== 'value') || !!refused || undefined}
+    {/* The agent's logo stands inside its box, before its name (a choice's own words cannot carry a drawing). */}
+    <div className="relative min-w-28 narrow:col-span-2 narrow:row-start-2 narrow:mt-1">
+    <AgentMark name={row.agent} className="pointer-events-none absolute top-1/2 left-2.5 z-1 -translate-y-1/2" />
+    <NativeSelect variant="field" className="w-full pl-8 font-semibold" value={row.agent} aria-invalid={issues.some(issue => issue.kind !== 'value') || !!refused || undefined}
       aria-label={t('agentSettings.aiStack.agentFor', { role: name })}
       onChange={event => { const next = agents.find(each => each.name === event.target.value); if (next) onChange(withRowAgent(next, row)); }}>
       {!listed && <option value={row.agent}>{row.agent}</option>}
       {enabled.map(each => <option key={each.id} value={each.name}>{each.name}</option>)}
     </NativeSelect>
+    </div>
     {choices.length > 0 && <div className="grid min-w-0 grid-cols-[max-content_minmax(0,9rem)_max-content_minmax(0,9rem)] items-baseline gap-x-2 gap-y-2 narrow:col-span-2 narrow:row-start-3 narrow:mt-2 narrow:grid-cols-[4.5rem_minmax(0,1fr)] narrow:gap-x-2">
       {choices.map((choice, at) => {
         const { value, refused } = choice;

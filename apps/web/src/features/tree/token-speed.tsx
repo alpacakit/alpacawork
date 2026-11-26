@@ -210,7 +210,7 @@ export function HeadingTokenSpeed({ tops, compact }: { tops: readonly Task[]; co
 }
 
 /** The time's slot after it on In progress rows: a fixed width so the squares line up whatever the time says. */
-export const TIME_SLOT = "inline-block min-w-[4.5em] text-right narrow:min-w-[3.5em]";
+export const TIME_SLOT = "inline-block min-w-[3.75em] text-right narrow:min-w-[3.5em]";
 /** The speed's slot on a phone, held while agents run so the columns stay put before a count arrives. */
 const NARROW_SPEED_SLOT = "inline-block min-w-[5ch] text-right tabular-nums";
 
@@ -240,15 +240,14 @@ export function AgentCounts({ tasks }: { tasks: readonly Task[] }) {
   };
   const ordered = [...agents].sort(([a], [b]) => place(a) - place(b));
   const shown = ordered.slice(0, KINDS_SHOWN), rest = ordered.slice(KINDS_SHOWN).reduce((sum, [, count]) => sum + count, 0);
-  return <span data-agent-counts title={words} className="flex flex-none items-baseline gap-2 whitespace-nowrap tabular-nums">
+  return <span data-agent-counts title={words} className="flex flex-none items-center gap-2 self-center whitespace-nowrap tabular-nums">
     <span className="sr-only">{`${t("status.runningRuns", { count: total })}: ${words}`}</span>
-    {/* Each logo sits on the text's line, a little below it as a capital's middle is, so every group stands level. */}
-    {shown.map(([agent, count]) => <span key={agent ?? ""} data-agent aria-hidden="true" className="flex-none">
-      {agent === null ? <Icon name="runningRuns" className="inline size-[0.7em] align-[-0.02em] text-muted" />
-        : <AgentMark name={agent} className="size-[1em] align-[-0.17em]" />}
-      {(count > 1 || agent === null) && <span className="ml-[3px] text-[0.8em] font-medium text-ink/70">{count}</span>}
+    {/* A logo and its count share one middle: the count's box is trimmed to its figures, so their middle is the logo's. */}
+    {shown.map(([agent, count]) => <span key={agent ?? ""} data-agent aria-hidden="true" className="flex flex-none items-center gap-[3px]">
+      {agent === null ? <Icon name="runningRuns" className="size-[0.7em] text-muted" /> : <AgentMark name={agent} className="size-[1.05em]" />}
+      {(count > 1 || agent === null) && <span className="text-[0.8em] font-medium text-ink/70 [text-box:trim-both_cap_alphabetic]">{count}</span>}
     </span>)}
-    {rest > 0 && <span aria-hidden="true" className="text-[0.8em] text-muted">+{rest}</span>}
+    {rest > 0 && <span aria-hidden="true" className="text-[0.8em] text-muted [text-box:trim-both_cap_alphabetic]">+{rest}</span>}
   </span>;
 }
 
