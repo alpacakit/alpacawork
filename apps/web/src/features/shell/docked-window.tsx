@@ -22,12 +22,15 @@ export function WindowWidthHandle({ label, taskId = null, widest, fills = true }
   label: string; taskId?: string | null; widest?: (viewport: number) => number; fills?: boolean;
 }) {
   const full = useViewStore((state) => state.readerFull) && fills;
-  const setWidth = useViewStore((state) => state.setReaderWidth);
-  type Width = Parameters<typeof setWidth>[0];
+  const setReaderWidth = useViewStore((state) => state.setReaderWidth), setWindowWidth = useViewStore((state) => state.setWindowWidth);
+  type Width = Parameters<typeof setReaderWidth>[0];
   // The width kept is the one drawn: a window that stopped at its widest gives that back, not as far as the pointer went.
+  // One that never fills the screen keeps its width only, and leaves the reader full or not as it was.
   const set = (width: Width) => {
     const most = widest?.(innerWidth);
-    setWidth(most === undefined ? width : width === "full" ? fills ? width : most : typeof width === "number" ? Math.min(width, most) : width);
+    const kept = most === undefined ? width : width === "full" ? fills ? width : most : typeof width === "number" ? Math.min(width, most) : width;
+    if (fills) setReaderWidth(kept);
+    else setWindowWidth(kept === "full" ? most ?? null : kept);
   };
   // A change by the keys or a double press is the person's too, as one held for that change alone.
   const once = (width: Width) => { holdReaderEdge(true); set(width); holdReaderEdge(false); };

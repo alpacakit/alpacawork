@@ -50,8 +50,8 @@ const subscribeReaderGeometry = (notify: () => void) => {
   return () => { stopWidth(); stopViewport(); };
 };
 const canFitDock = () => innerWidth >= MIN_DOCK_VIEWPORT_WIDTH;
-const analysisFitsBeside = () =>
-  readerListReservation(fitReaderWidth(readerWidth.get(), innerWidth), innerWidth) <= widestBesideAnalysis(innerWidth);
+/** The narrowest window leaves the charts their least: the window stands beside them, no wider than that leaves (dockedWidth). */
+const analysisFitsBeside = () => widestBesideAnalysis(innerWidth) >= READER_MIN_WIDTH;
 const viewportWidth = () => innerWidth;
 const readerOverlaps = () => {
   const width = fitReaderWidth(readerWidth.get(), innerWidth);
@@ -61,11 +61,13 @@ const readerOverlaps = () => {
  * The docked reader's width: as set (fitReaderWidth), but while a diff or a file stands beside it,
  * no wider than leaves that place its least width (VIEW_BESIDE_WIDTH): widening the reader then stops at it, rather than
  * the diff giving its place up. One rule for every width of screen: the diff stands beside the reader wherever the
- * narrowest reader leaves it that much, else the reader takes the whole screen and the diff stands over its reports.
+ * narrowest reader leaves it that much, else the reader takes the whole screen and the diff stands over its reports. The
+ * same for what a number of the analysis opens beside its charts (`besideAnalysis`): no wider than leaves them their least.
  */
-const dockedWidth = (width: number | null, viewport: number, viewing: boolean) => {
+const dockedWidth = (width: number | null, viewport: number, viewing: boolean, besideAnalysis: boolean) => {
   const fit = fitReaderWidth(width, viewport);
-  return viewing ? Math.min(fit, readerWidthBeside(viewport, VIEW_BESIDE_WIDTH)) : fit;
+  return viewing ? Math.min(fit, readerWidthBeside(viewport, VIEW_BESIDE_WIDTH))
+    : besideAnalysis ? Math.min(fit, widestBesideAnalysis(viewport)) : fit;
 };
 const viewFitsBeside = () => innerWidth - READER_MIN_WIDTH - 3 * windowMargin() >= VIEW_BESIDE_WIDTH;
 
@@ -146,7 +148,7 @@ export function Workbench() {
     // The page is as tall as the screen: the bars take what they need and the tree (or the page reader) takes the
     // rest, down to its smallest height, below which the page scrolls. One pixel is left for the box that ends
     // the page (the Toaster's).
-    <ListNavigationProvider><PageFrame docked={docked} viewing={listAway} barHeight={barHeight} barHidden={barHidden}>
+    <ListNavigationProvider><PageFrame docked={docked} viewing={listAway} besideAnalysis={!readerOpen && layerBeside} barHeight={barHeight} barHidden={barHidden}>
       {ready && <WorkspaceEffects />}
       {ready && <TelemetryReaskDialog />}
       <Bar inert={covered || listAway} away={listAway}>
@@ -211,11 +213,11 @@ function useReaderOpen() {
 
 /** The page's geometry changes synchronously with every requested width. Its children keep their own data
  * subscriptions; only a real change of their box (the time strip's ResizeObserver) needs to draw them again. */
-function PageFrame({ docked, viewing, barHeight, barHidden, children }: {
-  docked: boolean; viewing: boolean; barHeight: number; barHidden: boolean; children: ReactNode;
+function PageFrame({ docked, viewing, besideAnalysis, barHeight, barHidden, children }: {
+  docked: boolean; viewing: boolean; besideAnalysis: boolean; barHeight: number; barHidden: boolean; children: ReactNode;
 }) {
   const screen = useSyncExternalStore(subscribeViewport, viewportWidth, viewportWidth);
-  const width = dockedWidth(useDeviceValue(readerWidth), screen, viewing);
+  const width = dockedWidth(useDeviceValue(readerWidth), screen, viewing, besideAnalysis);
   // While the reader's edge is held, the page keeps the geometry it had (what is laid out by it, the list first, keeps
   // its layout until let go) and only the reader takes the width the hand asks: a change of the page's variables restyles
   // all it holds, too much for every move of the hand. A diff beside the reader stands by that geometry, so it follows.

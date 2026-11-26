@@ -163,6 +163,16 @@ test("the window beside the analysis's charts is resized by its edge, no wider t
   }).toBe(true);
 });
 
+test("a details width wider than the charts can give still opens the analysis's window beside them, at the widest they leave", async ({ page, runtime }) => {
+  await page.setViewportSize({ width: 1600, height: 900 });
+  await page.addInitScript(() => localStorage.setItem("alpacawork.screen.width", "1100"));
+  await page.goto(`${runtime.origin}/?face=analysis`);
+  await page.getByRole("button", { name: "Make a card", exact: true }).click();
+  const panel = page.locator("aside[data-analysis-panel]");
+  await expect(panel.locator("[data-window-width]")).toBeVisible();
+  await expect.poll(async () => Math.round((await panel.boundingBox())!.width)).toBe(1600 - 24 - 36 - 680);
+});
+
 test.describe("phone", () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
