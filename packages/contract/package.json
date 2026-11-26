@@ -73,6 +73,10 @@
       "types": "./dist/command-path.d.ts",
       "default": "./dist/command-path.js"
     },
+    "./run-summary": {
+      "types": "./dist/run-summary.d.ts",
+      "default": "./dist/run-summary.js"
+    },
     "./analysis": {
       "types": "./dist/analysis.d.ts",
       "default": "./dist/analysis.js"

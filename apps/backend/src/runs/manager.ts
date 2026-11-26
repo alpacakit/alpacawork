@@ -113,7 +113,7 @@ async function observeRun(root: string, id: string, attempt: string): Promise<vo
   const activity = new OutputActivityReader(adapter, undefined,
     update => { try { recordReportedContext(root, launch.adapter, launch.values.model ?? null, update); }
       catch (error) { console.error('Reported context could not be kept', error); } },
-    fill => journal.append('compacted', fill));
+    (fill, observedAt) => journal.append('compacted', { ...fill, observedAt }), snapshot.cwd);
   const finishActivity = (state: 'done' | 'failed') => {
     try { activity.finish(folder, state); } catch (error) { console.error('Activity finish failed', error); }
   };

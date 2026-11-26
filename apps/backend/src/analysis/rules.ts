@@ -52,13 +52,7 @@ export function modelRun(run: RunEvidence): ModelRun {
     model: typeof model === 'string' ? model : null, effort: typeof effort === 'string' ? effort : null };
 }
 
-export function prLinks(values: Iterable<string>): Set<string> {
-  const result = new Set<string>();
-  for (const text of values)
-    for (const match of text.matchAll(/(?<![\w.@/-])https:\/\/github\.com\/([\w-]+)\/([\w.-]+)\/pull\/([1-9]\d*)(?![\w-])/gi))
-      result.add(`https://github.com/${match[1]!.toLowerCase()}/${match[2]!.toLowerCase()}/pull/${match[3]}`);
-  return result;
-}
+export { prLinks } from '../references.js';
 
 const instruction = (entry: TaskLog) => entry.kind === 'request_accepted' && !entry.answers && speaksForUser(entry.actor);
 const sendBack = (entry: TaskLog) => entry.kind === 'review_sent_back' && speaksForUser(entry.actor);

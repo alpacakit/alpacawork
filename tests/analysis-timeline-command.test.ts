@@ -4,6 +4,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
+import { setTimeout as delay } from 'node:timers/promises';
+import { runSummarySchema } from '@alpacawork/contract/run-summary';
 import { controlDatabasePath } from '@alpacawork/db';
 import { RUN_FILES, runFolder } from '@alpacawork/contract/run';
 import { commandPath } from '@alpacawork/contract/command-path';
@@ -50,13 +52,14 @@ function prepare(root: string) {
   mkdirSync(folder, { recursive: true });
   writeFileSync(join(folder, RUN_FILES.stdout), [
     { type: 'item.started', item: { id: 'call', type: 'command_execution', command: 'pnpm test', status: 'in_progress' } },
-    { type: 'item.completed', item: { id: 'call', type: 'command_execution', command: 'pnpm test', status: 'completed', exit_code: 0, aggregated_output: 'ok' } },
+    { type: 'item.completed', item: { id: 'call', type: 'command_execution', command: 'pnpm test', status: 'completed', exitCode: 0, aggregatedOutput: 'ok' } },
   ].map(line => JSON.stringify(line)).join('\n') + '\n');
   writeFileSync(join(folder, RUN_FILES.steps), [
     { event: 'start', line: 0, id: 'call', at: instant(10), source: 'reported', fingerprint: { line: 'pnpm test', bodyDigest: null }, parentId: null },
   ].map(line => JSON.stringify(line)).join('\n') + '\n');
   writeFileSync(join(folder, RUN_FILES.conditions), JSON.stringify({ v: 1, observedAt: instant(1), version: '0.0.0', release: null, source: null,
     cwd: { path: '/fictional', commit: null }, skills: [], instructions: [] }));
+  writeFileSync(join(root, '.alpacawork', 'analysis-tally-since'), instant(0));
   return { run, task, top: top! };
 }
 
@@ -71,6 +74,21 @@ test('analysis trace, findings and at answer one task\'s timeline over HTTP in t
     const { run, task, top } = prepare(root);
     const app = await startServer(root, 0);
     try {
+      const summaryUrl = new URL(commandPath('run/summary'), app.url);
+      summaryUrl.searchParams.set('run', run);
+      const getSummary = async () => {
+        const response = await fetch(summaryUrl);
+        assert.equal(response.status, 200);
+        return runSummarySchema.parse(await response.json());
+      };
+      let summary = await getSummary();
+      for (let i = 0; summary.state === 'pending' && i < 100; i++) {
+        await delay(30);
+        summary = await getSummary();
+      }
+      assert.equal(summary.state, 'complete');
+      assert.deepEqual(summary.outputs, { chars: 2, largest: [{ step: 0, chars: 2 }] });
+      assert.deepEqual(summary.tests.map(({ step, state, commit }) => [step, state, commit]), [[0, 'done', null]]);
       const read = async (verb: string, params: Record<string, string>, status = 200) => {
         const url = new URL(commandPath('analysis/' + verb), app.url);
         url.search = new URLSearchParams(params).toString();
@@ -90,6 +108,9 @@ test('analysis trace, findings and at answer one task\'s timeline over HTTP in t
       assert.notEqual(trace.head.version, before.head.version);
       await read('trace', { task, timeZone: 'UTC', limit: '1', cursor: before.cursor! }, 400);
       assert.ok(trace.coverage.steps.known.includes(run));
+      assert.ok(trace.coverage.summaries.known.includes(run));
+      assert.deepEqual(trace.marks.filter(mark => mark.kind === 'test').map(mark => [mark.run, mark.step, mark.atSource]),
+        [[run, 0, 'step']]);
       const step = trace.spans.find(span => span.kind === 'step');
       assert.deepEqual(step && [step.run, step.step, step.from, step.to], [run, 0, instant(10), instant(40)]);
       assert.equal(trace.breakdown.categories.reduce((sum, part) => sum + part.ms, 0), trace.breakdown.wall);

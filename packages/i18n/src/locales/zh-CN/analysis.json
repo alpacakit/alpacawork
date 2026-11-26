@@ -219,6 +219,8 @@
     "change": "条件变更",
     "command-stopped": "命令达上限被中止",
     "compacted": "对话压缩",
+    "test": "测试命令",
+    "produced": "提交、拉取请求或已关联的交付物",
     "instruction": "指示",
     "moved": "移动",
     "question-withdrawn": "撤回提问",
@@ -271,6 +273,9 @@
     "repeated-failure": "重复同一失败",
     "repeated-question": "重复同一提问",
     "rework": "返工",
+    "large-output": "较大的工具输出",
+    "same-test-same-commit": "在同一工作树上重复测试",
+    "outputChars": "{{count, number}} 个字符",
     "same-result": "重复读取相同结果"
   },
   "same": "±0",

@@ -237,6 +237,8 @@
     "change": "Condiciones cambiadas",
     "command-stopped": "Comando detenido en el límite",
     "compacted": "Conversación compactada",
+    "test": "Comando de prueba",
+    "produced": "Commit, pull request o entregable vinculado",
     "instruction": "Instrucción",
     "moved": "Movida",
     "question-withdrawn": "Pregunta retirada",
@@ -293,6 +295,9 @@
     "repeated-failure": "El mismo fallo otra vez",
     "repeated-question": "La misma pregunta otra vez",
     "rework": "Trabajo rehecho",
+    "large-output": "Resultado de herramienta extenso",
+    "same-test-same-commit": "Misma prueba en la misma copia de trabajo",
+    "outputChars": "{{count, number}} caracteres",
     "same-result": "El mismo resultado leído otra vez"
   },
   "same": "±0",

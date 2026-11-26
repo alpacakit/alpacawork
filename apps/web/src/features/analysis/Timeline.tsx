@@ -111,7 +111,7 @@ function FindingSteps({ finding, findings, onAt }: { finding: Finding; findings:
   return <div data-finding-steps="" className="mt-5 flex scroll-mt-4 flex-wrap items-center gap-x-3 gap-y-2">
     <p className={cn("me-auto min-w-0 font-semibold", !onAt && "text-muted")}>
       <span className="me-2 text-xs font-normal text-soft">{at + 1}/{findings.length}</span>{t(`rule.${finding.rule}`)}
-      <span className="ms-2 font-normal text-muted">{finding.count !== null && `${format("times", finding.count)} `}{duration(finding.durationMs)}</span>
+      <span className="ms-2 font-normal text-muted">{finding.count !== null && (finding.rule === "large-output" ? t("rule.outputChars", { count: finding.count }) : format("times", finding.count))}{finding.durationMs > 0 && ` ${duration(finding.durationMs)}`}</span>
       {finding.line && <span dir="auto" className="block text-xs font-normal text-muted line-clamp-2">「{finding.line}」</span>}</p>
     <span className="flex gap-2">
       <Button variant="outline" disabled={at <= 0} onClick={() => go(findings[at - 1])}><Icon name="up" className="size-3.5" />{t("timeline.previousFinding")}</Button>
@@ -269,7 +269,7 @@ function spanWords(span: TraceSpan, t: Say, zone: string) {
   return `${what}${length}${t("sep")}${range}`;
 }
 function markWords(mark: TraceMark, t: Say, zone: string) {
-  const line = mark.kind === "instruction" ? mark.firstLine : mark.kind === "report" ? mark.title : null;
+  const line = mark.kind === "instruction" ? mark.firstLine : mark.kind === "report" ? mark.title : mark.kind === "test" ? mark.line : mark.kind === "produced" ? mark.ref : null;
   return `${t(`mark.${mark.kind}`)} ${instant(mark.at, zone)}${line ? `\n${line}` : ""}`;
 }
 

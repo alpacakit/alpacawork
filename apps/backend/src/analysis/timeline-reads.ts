@@ -9,7 +9,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 import { ControlStore } from '@alpacawork/db';
 import { readValuesAt } from '../control/task-values-store.js';
-import { RUN_FILES, RUN_STEPS_PAGE_LIMIT, runFolder, type RunRecord } from '@alpacawork/contract/run';
+import { RUN_FILES, runFolder, type RunRecord } from '@alpacawork/contract/run';
 import { analysisStepsMissingSchema, type AnalysisEvidence } from '@alpacawork/contract/analysis';
 import type { AnalysisAtInput, AnalysisAtView, AnalysisChangesInput, AnalysisChangesView, AnalysisHead, AnalysisFindingsInput, AnalysisFindingsView, AnalysisTraceInput,
   AnalysisTraceScope, AnalysisTraceView } from '@alpacawork/contract/analysis';
@@ -17,7 +17,8 @@ import type { TaskLog } from '@alpacawork/raw/task-log-schema';
 import type { TaskBaseState } from '@alpacawork/raw';
 import { taskLogsOf } from '../control/task-history.js';
 import { readConditions } from '../runs/conditions.js';
-import { readRunStepIndex } from '../runs/run-steps.js';
+import { runStepIndexOf } from '../runs/run-steps.js';
+import { testObservations, type TestObservation } from '../runs/step-evidence.js';
 import { serverZone } from './calendar.js';
 import type { Activity } from './presence.js';
 import { Kept, type Slices } from './slices.js';
@@ -25,11 +26,15 @@ import { inDays } from './calendar.js';
 import { scopeChangeEvents, type ChangeRun } from './changes.js';
 import type { FactLaunch } from './facts.js';
 import { allRules, findFindings, STEP_RULES, thresholdsOf } from './findings.js';
-import { breakdown, iso, isOpen, timedSteps, lanes, marks, sceneUrl, segments, situationAt, spans, waited, wholePeriod,
-  type Interval, type TraceRecords, type TraceRequest, type TraceRun, type TraceStep, type TraceTask } from './timeline.js';
+import { breakdown, iso, isOpen, lanes, marks, sceneUrl, segments, situationAt, spans, timedSteps, waited, wholePeriod,
+  type Interval, type TraceRecords, type TraceRequest, type TraceRun, type TraceStep, type TraceTask, type TraceValueChange } from './timeline.js';
 
 import { directionChanged } from '../control/action-reasons.js';
 import { readFieldCatalog, readValueChanges } from '../control/task-values-store.js';
+
+import { deliverableRefs, fileReference, joinDeliverables } from './deliverables.js';
+import { readRunSummaryFacts, readSummaryStepIndex, summaryObservations } from './run-summary-read.js';
+import { readTallyScope } from './tally-scope.js';
 
 const FIRST_LINE = 200;
 const firstLine = (text: string) => {
@@ -89,47 +94,52 @@ function stoppedCommands(folder: string): TraceRun['stopped'] {
   return result.sort((a, b) => a.at - b.at);
 }
 
-/**
- * The steps of Runs that have ended, which never change again: reading a Run's steps reads its whole output, so a task
- * read again (another page, a finding, an instant) reads only the Runs still going.
- */
-const endedSteps = new Kept<string, TraceStep[]>(512);
-async function stepsOf(root: string, run: RunRecord): Promise<{ steps: TraceStep[] | null; missing: TraceRun['stepsMissing'] }> {
-  // Kept by the journal's size as well: a time written after the Run ended (its last steps settled) is read again.
-  const folder = runFolder(root, run.id), journal = statSync(join(folder, RUN_FILES.steps), { throwIfNoEntry: false });
-  const key = `${root}\0${run.id}\0${journal?.size ?? 0}`, kept = run.ended_at === null ? undefined : endedSteps.get(key);
-  if (kept) return { steps: kept, missing: null };
-  // A Run that kept neither step times nor its conditions has no times to read.
-  if (!journal && !existsSync(join(folder, RUN_FILES.conditions)))
-    return { steps: null, missing: 'missing-step-times' };
-  const index = await readRunStepIndex(root, run.id);
-  if (!index) return { steps: null, missing: 'provider-unsupported' };
+type TraceStepRead = { steps: TraceStep[] | null; missing: TraceRun['stepsMissing']; tests: TestObservation[] };
+const endedSteps = new Kept<string, TraceStepRead>(512);
+
+/** Reuse the projection after a Run ends. Its last step times may still be written as the Run settles. */
+async function traceSteps(root: string, run: RunRecord, canReadStepEvidence: boolean): Promise<TraceStepRead> {
+  if (run.started_at === null || run.state === 'joined') return { steps: [], missing: null, tests: [] };
+  const folder = runFolder(root, run.id);
+  const journal = statSync(join(folder, RUN_FILES.steps), { throwIfNoEntry: false });
+  const hasTimes = journal !== undefined || existsSync(join(folder, RUN_FILES.conditions));
+  if (!hasTimes && !canReadStepEvidence) return { steps: null, missing: 'missing-step-times', tests: [] };
+
+  const key = `${root}\0${run.id}\0${journal?.size ?? 0}\0${canReadStepEvidence}`;
+  const keep = run.ended_at !== null;
+  const cached = keep ? endedSteps.get(key) : undefined;
+  if (cached) return cached;
+
+  const index = hasTimes ? await runStepIndexOf(root, run) : await readSummaryStepIndex(root, run);
+  if (!index) return { steps: null, missing: 'provider-unsupported', tests: [] };
+  const tests = canReadStepEvidence ? testObservations(summaryObservations(index)) : [];
   const steps: TraceStep[] = [];
-  for (let from = 0, total = 1; from < total; from += RUN_STEPS_PAGE_LIMIT) {
-    const page = index.range(from, RUN_STEPS_PAGE_LIMIT);
-    total = page.total;
-    for (const step of page.steps) steps.push({ n: step.n, id: step.id, tool: step.tool, kind: step.kind, line: step.text,
+  if (hasTimes) for (const { entry: step, evidence } of index.observations()) {
+    steps.push({ n: step.n, id: step.id, tool: step.tool, kind: step.kind, line: step.text,
       fingerprint: step.fingerprint && `${step.fingerprint.line}\0${step.fingerprint.bodyDigest ?? ''}`,
       from: step.startedAt === null ? null : Date.parse(step.startedAt), to: step.endedAt === null ? null : Date.parse(step.endedAt),
       state: step.state, source: step.startSource, inside: step.parentId, subagentSteps: step.subagentSteps,
-      output: step.output?.whole ? step.output.digest : null, more: step.more });
+      output: step.output?.whole ? step.output.digest : null, outputChars: step.output?.chars ?? evidence?.chars ?? 0, more: step.more });
   }
-  const timed = timedSteps(steps);
-  if (!timed) return { steps: null, missing: 'missing-step-times' };
-  if (run.ended_at !== null) endedSteps.set(key, steps);
-  return { steps, missing: null };
+  const missing = !hasTimes ? 'missing-step-times' : timedSteps(steps) ? null : 'missing-step-times';
+  const result: TraceStepRead = { steps: missing === null ? steps : null, missing, tests };
+  if (keep) endedSteps.set(key, result);
+  return result;
 }
 
-async function traceRun(root: string, record: RunRecord): Promise<TraceRun> {
+async function traceRun(root: string, record: RunRecord, tallySince: number | null): Promise<TraceRun> {
   const values = record.launch.values as Record<string, unknown>, text = (key: string) => typeof values[key] === 'string' ? values[key] as string : null;
   const time = (value: string | null) => value === null ? null : Date.parse(value);
-  const { steps, missing } = record.started_at === null || record.state === 'joined' ? { steps: [], missing: null } : await stepsOf(root, record);
+  const folder = runFolder(root, record.id);
+  const { summary, canReadStepEvidence } = readRunSummaryFacts(root, record, tallySince);
+  const { steps, missing, tests } = await traceSteps(root, record, canReadStepEvidence);
   return { id: record.id, task: record.task, placement: record.placementId, role: record.role === 'owner' ? 'owner' : 'member',
     agent: record.agent, model: text('model'), effort: text('effort'), state: record.state, reason: record.reason,
     request: record.requestId, supersededBy: record.supersededBy ?? null,
     created: Date.parse(record.created_at), started: time(record.started_at), ended: time(record.ended_at),
-    compactions: (record.compactions ?? []).map(item => ({ at: Date.parse(item.at), beforeTokens: item.beforeTokens, afterTokens: item.afterTokens })),
-    steps, stepsMissing: missing, conditions: readConditions(runFolder(root, record.id)), stopped: stoppedCommands(runFolder(root, record.id)) };
+    compactions: (record.compactions ?? []).map(({ at, windowTokens: _window, ...kept }) => ({ ...kept, at: Date.parse(at) })),
+    summary: { ...summary, tests },
+    steps, stepsMissing: missing, conditions: readConditions(folder), stopped: stoppedCommands(folder) };
 }
 
 /**
@@ -141,6 +151,7 @@ function versionOf(tasks: readonly TraceTask[], runs: readonly TraceRun[]) {
   for (const task of tasks) hash.update(`${task.id}:${task.log.length}:${task.log.at(-1)?.id ?? ''}\n`);
   for (const run of runs) {
     hash.update(`${run.id}:${run.state}:${run.ended ?? ''}:${run.stepsMissing ?? ''}:${run.compactions.length}:${run.stopped.length}:${run.conditions ? 1 : 0}\n`);
+    hash.update(JSON.stringify(run.summary));
     // Every step's times and state: one step ending while another runs is a new version too.
     for (const step of run.steps ?? []) hash.update(`${step.n}:${step.from ?? ''}:${step.to ?? ''}:${step.state}\n`);
   }
@@ -154,20 +165,19 @@ function versionOf(tasks: readonly TraceTask[], runs: readonly TraceRun[]) {
 export async function readTimelineRecords(root: string, task: string, scope: AnalysisTraceScope, activity: readonly Activity[] = [],
   now = Date.now()): Promise<TraceRecords> {
   const store = new ControlStore(root, { busyTimeoutMs: 10_000 }, true);
-  let family: TaskRow[], logs: Map<string, TaskLog[]>, runs: RunRecord[], requests: Map<string, TraceRequest>, valueFields: Map<string, string[]>, directionLogs: Set<string>;
+  let family: TaskRow[], logs: Map<string, TaskLog[]>, runs: RunRecord[], requests: Map<string, TraceRequest>, valueChanges: Map<string, TraceValueChange>, refs: ReturnType<typeof deliverableRefs>;
   try {
-    ({ family, logs, runs, requests, valueFields, directionLogs } = store.read(db => {
+    ({ family, logs, runs, requests, valueChanges, refs } = store.read(db => {
       const family = familyOf(db, task), ids = family.map(row => row.id);
-      const valueFields = new Map<string, string[]>();
-      const directionLogs = new Set<string>(), catalog = readFieldCatalog(db);
+      const valueChanges = new Map<string, TraceValueChange>(), catalog = readFieldCatalog(db);
       for (const change of readValueChanges(db, { tasks: family.map(row => row.internal) })) {
-        const fields = valueFields.get(change.changeLog) ?? [];
-        fields.push(change.id);
-        valueFields.set(change.changeLog, fields);
+        const update = valueChanges.get(change.changeLog) ?? { fields: [], direction: false };
+        update.fields.push(change.id);
         const definition = catalog.get(change.id);
-        if (definition && directionChanged(definition, change.before, change.after)) directionLogs.add(change.changeLog);
+        update.direction ||= definition !== undefined && directionChanged(definition, change.before, change.after);
+        valueChanges.set(change.changeLog, update);
       }
-      return { family, valueFields, directionLogs, logs: taskLogsOf(db, family.map(row => row.internal)), requests: requestsOf(db, ids),
+      return { family, valueChanges, refs: deliverableRefs(db, family.map(row => row.internal)), logs: taskLogsOf(db, family.map(row => row.internal)), requests: requestsOf(db, ids),
         runs: db.prepare('SELECT record FROM runs WHERE task_id IN (SELECT value FROM json_each(?)) ORDER BY id')
           .all(JSON.stringify(ids)).map(row => JSON.parse(String(row.record)) as RunRecord) };
     }));
@@ -175,8 +185,22 @@ export async function readTimelineRecords(root: string, task: string, scope: Ana
   const tasks: TraceTask[] = family.map(row => ({ id: row.id, parent: row.parent, title: row.title, created: Date.parse(row.created),
     log: logs.get(row.internal) ?? [] }));
   const traced: TraceRun[] = [];
-  for (const record of runs) traced.push(await traceRun(root, record));
-  return { root: task, project: family[0]!.project, scope, tasks, runs: traced, requests, valueFields, directionLogs, rootState: family[0]!.state,
+  const since = readTallyScope(root);
+  for (const record of runs) traced.push(await traceRun(root, record, since));
+  const deliverables = joinDeliverables(root, refs.filter(ref => scope === 'subtree' || ref.task === task), tasks, traced);
+  const deliveredFiles = new Map<string, Set<string>>();
+  for (const item of deliverables) {
+    if (item.match !== 'file') continue;
+    const path = fileReference(root, item.task, item.ref);
+    if (!path) continue;
+    for (const run of item.runs) {
+      const files = deliveredFiles.get(run) ?? new Set<string>();
+      files.add(path);
+      deliveredFiles.set(run, files);
+    }
+  }
+  return { root: task, project: family[0]!.project, scope, tasks, runs: traced, requests, valueChanges,
+    deliverables, deliveredFiles, rootState: family[0]!.state,
     activity, version: versionOf(tasks, traced), now };
 }
 
@@ -231,8 +255,13 @@ export async function readTrace(root: string, input: AnalysisTraceInput, activit
         }) },
       conditions: { known: runs.filter(run => run.conditions).map(run => run.id), unknown: runs.filter(run => !run.conditions).map(run => run.id) },
       values: { recordedFrom: null },
+      summaries: {
+        known: runs.filter(run => run.summary.state === 'complete').map(run => run.id),
+        partial: runs.filter(run => run.summary.state === 'partial').map(run => run.id),
+        unknown: runs.filter(run => run.summary.state === 'pending' || run.summary.state === 'unsupported').map(run => run.id),
+      },
     },
-    lanes: lanesListed,
+    lanes: lanesListed, deliverables: [...records.deliverables],
     spans: page.flatMap(item => 'span' in item ? [item.span] : []), marks: page.flatMap(item => 'mark' in item ? [item.mark] : []),
     breakdown: breakdown(records, window, segments(records, window)), time, waits,
     total: items.length, cursor: end < items.length ? `${selector}.${records.version}.${end}` : null,

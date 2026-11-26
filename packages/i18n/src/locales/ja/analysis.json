@@ -219,6 +219,8 @@
     "change": "条件の変更",
     "command-stopped": "コマンドを上限で打ち切り",
     "compacted": "会話の圧縮",
+    "test": "試験コマンド",
+    "produced": "コミット・PR・紐づいた成果物",
     "instruction": "指示",
     "moved": "移動",
     "question-withdrawn": "問いの取り下げ",
@@ -271,6 +273,9 @@
     "repeated-failure": "同じ失敗の繰り返し",
     "repeated-question": "同じ問いの繰り返し",
     "rework": "やり直し",
+    "large-output": "大きなツール出力",
+    "same-test-same-commit": "同じ作業ツリーでの試験の繰り返し",
+    "outputChars": "{{count, number}}文字",
     "same-result": "同じ結果の読み直し"
   },
   "same": "±0",

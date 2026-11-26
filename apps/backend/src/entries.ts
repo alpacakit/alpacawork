@@ -1,3 +1,4 @@
+import { readRunSummary } from './analysis/run-summary-read.js';
 import { managedInstallation } from './installation/setup.js';
 import { localCaller } from '@alpacawork/contract/access-boundaries';
 import { controlTaskHead } from './control/task-dto.js';
@@ -523,6 +524,13 @@ export const taskCommands = {
     run: async (root, input, context) => {
       authorizeRead(root, context, { name: 'task.read' }, readControl(root, db => runTask(root, db, input.run)));
       return readConditionsView(root, input.run);
+    },
+    readThread: () => true,
+  },
+  'run/summary': {
+    run: async (root, input, context) => {
+      authorizeRead(root, context, { name: 'task.read' }, readControl(root, db => runTask(root, db, input.run)));
+      return readRunSummary(root, input.run);
     },
     readThread: () => true,
   },

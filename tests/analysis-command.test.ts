@@ -18,6 +18,7 @@ import { setAnalysisSlice } from '@alpacawork/backend/test-dist/analysis/slices.
 import { ControlTaskCommands } from '@alpacawork/backend/test-dist/control/task-commands.js';
 import { TaskReportService } from '@alpacawork/backend/test-dist/control/report.js';
 import { ControlTaskStore } from '@alpacawork/backend/test-dist/control/task-store.js';
+import { noOutputs, noProduced } from '@alpacawork/backend/test-dist/runs/step-evidence.js';
 import { TALLY_VERSION } from '@alpacawork/backend/test-dist/agents/adapters/tally.js';
 import { patchTask } from '../e2e/fixture/task-state.ts';
 import { inertFixtureLaunch } from './helpers/agent-stub.ts';
@@ -30,6 +31,7 @@ const project = 'P' + 1;
 const actor = { kind: 'human' } as const;
 const instant = (second: number) => new Date(Date.UTC(2026, 8, 25, 0, 0, second)).toISOString();
 const tallySince = instant(0);
+const emptyEvidence = () => ({ outputs: noOutputs(), produced: noProduced(), basis: [] });
 const link = 'https://github.com/fictional/app/pull/1';
 
 function setup(root: string) {
@@ -97,7 +99,7 @@ function setup(root: string) {
   const crossing = runFolder(root, 'R2');
   mkdirSync(crossing, { recursive: true });
   writeFileSync(join(crossing, RUN_FILES.tally), JSON.stringify({
-    v: TALLY_VERSION, provider: 'fixture', model: null, tools: { crossing: 1 }, mcp: {}, skills: {},
+    ...emptyEvidence(), v: TALLY_VERSION, provider: 'fixture', model: null, tools: { crossing: 1 }, mcp: {}, skills: {},
     subagentTools: 0, state: 'complete',
   }));
   const recent = runFolder(root, 'R4');
@@ -109,7 +111,7 @@ function setup(root: string) {
   const cached = runFolder(root, 'R3');
   mkdirSync(cached, { recursive: true });
   writeFileSync(join(cached, RUN_FILES.tally), JSON.stringify({
-    v: TALLY_VERSION, provider: 'fixture', model: 'example-v1', tools: { image_view: 2, read: 1 },
+    ...emptyEvidence(), v: TALLY_VERSION, provider: 'fixture', model: 'example-v1', tools: { image_view: 2, read: 1 },
     mcp: { 'fixture:notes': 2, 'fixture:search': 1 }, skills: { one: { call: 1, read: 0 }, two: { call: 0, read: 1 } },
     subagentTools: 0, state: 'complete',
   }));
@@ -185,7 +187,7 @@ test('analysis commands share selection, contribution and tally rules over a sma
       assert.equal(daily.accepted.value.leadMedianMs, (medians[0]! + medians[1]!) / 2);
       assert.deepEqual(daily.series.points.find(point => point.from === '2026-09-24')?.accepted,
         { leadMedianMs: null, submits: 0, questions: 0, prs: 0, time: { review: 0, answer: 0, ai: 0, other: 0 },
-          waits: { away: 0, otherTasks: 0, thisTask: 0 }, answerItems: { total: 0, choice: 0, recommended: 0, recommendable: 0, other: 0, stop: 0, unmatched: 0 }, instructions: { total: 0, unclassifiedInstructions: 0, taken: [], causes: [], aspects: [], by: { user: { taken: [], causes: [], aspects: [] }, ai: { taken: [], causes: [], aspects: [] } } }, questionsReplaced: 0, noQuestions: 0, passedNoQuestions: 0,
+          waits: { away: 0, otherTasks: 0, thisTask: 0 }, answerItems: { total: 0, choice: 0, recommended: 0, recommendable: 0, other: 0, stop: 0, unmatched: 0 }, decisions: { total: 0, unclassifiedInstructions: 0, taken: [], causes: [], aspects: [], by: { user: { taken: [], causes: [], aspects: [] }, ai: { taken: [], causes: [], aspects: [] } } }, questionsReplaced: 0, noQuestions: 0, passedNoQuestions: 0,
           rounds: { first: { ms: 0, tokens: 0 }, later: { ms: 0, tokens: 0 } } });
       assert.equal(tasks.grass.finished.reduce((a, b) => a + b, 0), 2);
       for (const set of ['passed', 'reworked', 'stopped', 'doneUnaccepted', 'accepted', 'finished'] as const)
@@ -469,7 +471,7 @@ test('analysis commands share selection, contribution and tally rules over a sma
         const before = (await reader.tasks({ ...params, by }, actor)).breakdown!.rows.find(row => row.model?.name === 'unknown')!;
         assert.equal(before.finished, 1);
         t.after(() => { reader.updateTallies([['R2', null]]); });
-        const tally = { v: TALLY_VERSION, provider: 'fixture', model: 'example-default', tools: {}, mcp: {}, skills: {},
+        const tally = { ...emptyEvidence(), v: TALLY_VERSION, provider: 'fixture', model: 'example-default', tools: {}, mcp: {}, skills: {},
           subagentTools: 0, state: 'complete' } as const;
         reader.updateTallies([['R2', tally]]);
         const rows = (await reader.tasks({ ...params, by }, actor)).breakdown!.rows;

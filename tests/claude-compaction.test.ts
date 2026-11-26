@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { OutputActivityReader } from '@alpacawork/backend/test-dist/runs/activity.js';
 import { AGENT_RUNTIME_ADAPTERS } from '@alpacawork/backend/test-dist/agents/registry.js';
 
 const session = 's1', compaction = '22222222-2222-4222-8222-222222222222', instruction = '33333333-3333-4333-8333-333333333333';
@@ -36,6 +37,17 @@ test('a compact boundary proves the compaction, and the Run still replies to its
     lifecycle(instruction, 'started'), said('OTTER'), result('OTTER'), lifecycle(instruction, 'completed')]);
   assert.deepEqual(observed.compaction, { state: 'compacted', message: null });
   assert.deepEqual(observed.outcome, { state: 'succeeded', session, result: 'OTTER' });
+  const folder = mkdtempSync(join(tmpdir(), 'claude-compaction-live-'));
+  try {
+    const rows = [{ type: 'system', subtype: 'compact_boundary', session_id: session, compact_metadata: {
+      trigger: 'auto', pre_tokens: 28_000, post_tokens: 8700, duration_ms: 1234, cumulative_dropped_tokens: 19_300, messages_summarized: 12,
+    } }];
+    writeFileSync(join(folder, 'stdout.log'), rows.map(row => JSON.stringify(row) + '\n').join(''));
+    const compactions: unknown[] = [];
+    new OutputActivityReader(claude, undefined, undefined, item => compactions.push(item)).poll(folder);
+    assert.deepEqual(compactions, [{ automatic: true, beforeTokens: 28_000, afterTokens: 8700,
+      durationMs: 1234, cumulativeDroppedTokens: 19_300, messagesSummarized: 12 }]);
+  } finally { rmSync(folder, { recursive: true, force: true }); }
 });
 
 test('a compaction Claude declines fails with its own words, and the instruction still runs', () => {

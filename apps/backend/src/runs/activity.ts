@@ -1,7 +1,7 @@
 /** The manager owns this rebuildable projection; stdout.log remains its source. */
 import { RUN_FILES, RUN_NOTE_LIMIT, RUN_STEP_LIMIT, RUN_TOOL_ID_LIMIT, RUN_TOOL_NAME_LIMIT,
   clipRunText, runActivitySchema, type RunActivity, type RunStep } from '@alpacawork/contract/run';
-import { mergeContext, type AgentContext, type ContextUpdate } from '@alpacawork/contract/agent-context';
+import { mergeContext, type AgentContext, type ContextUpdate, type CompactionObservation } from '@alpacawork/contract/agent-context';
 import { optionalRunFile, readRunFile, writeRunFile } from './files.js';
 import { INLINE_MARKDOWN_LINK } from '@alpacawork/contract';
 import { JsonlReader, STEP_LINE_LIMIT } from './readers/jsonl.js';
@@ -126,7 +126,7 @@ export class OutputActivityReader {
    */
   constructor(private readonly adapter: AgentAdapter, private readonly now = () => Date.now(),
     private readonly reported: (update: ContextUpdate) => void = () => {},
-    private readonly compacted: (fill: { beforeTokens: number | null; afterTokens: number | null }) => void = () => {}) {}
+    private readonly compacted: (fill: CompactionObservation, at: string) => void = () => {}, private readonly cwd?: string) {}
 
   private readonly work = new WorkActivity();
   // The same lines the index of steps reads (STEP_LINE_LIMIT), so the steps counted here are the steps it lists.
@@ -140,17 +140,17 @@ export class OutputActivityReader {
   private journal: StepJournal | null = null;
 
   poll(folder: string): void {
-    this.journal ??= new StepJournal(folder);
+    this.journal ??= new StepJournal(folder, this.cwd);
     this.lines.read(folder, (value, line) => this.accept(value, line), 8 * 1024 * 1024);
     this.work.advance(this.now());
     this.flush(folder);
   }
 
   finish(folder: string, state: Settled = 'failed'): void {
-    this.journal ??= new StepJournal(folder);
+    this.journal ??= new StepJournal(folder, this.cwd);
     try {
-      this.lines.read(folder, (value, line) => this.accept(value, line));
-      this.lines.finish((value, line) => this.accept(value, line));
+      this.lines.read(folder, (value, line) => this.accept(value, line, false));
+      this.lines.finish((value, line) => this.accept(value, line, false));
       this.tellCompaction();
     } finally {
       const read = new Date(this.now()).toISOString();
@@ -161,10 +161,10 @@ export class OutputActivityReader {
   }
 
   /** A compaction whose fill after it is not known yet: told with the next fill read, or without one when the Run ends. */
-  private pendingCompaction: { beforeTokens: number | null; afterTokens: number | null } | null = null;
+  private pendingCompaction: { fill: CompactionObservation; at: string } | null = null;
   private tellCompaction(afterTokens: number | null = null): void {
     if (!this.pendingCompaction) return;
-    this.compacted({ ...this.pendingCompaction, afterTokens });
+    this.compacted({ ...this.pendingCompaction.fill, afterTokens }, this.pendingCompaction.at);
     this.pendingCompaction = null;
   }
 
@@ -173,7 +173,7 @@ export class OutputActivityReader {
     this.work.reset(state);
   }
 
-  private accept(value: unknown, line: number): void {
+  private accept(value: unknown, line: number, live = true): void {
     const received = new Date(this.now()).toISOString();
     const update = this.adapter.context(value);
     if (update) {
@@ -181,9 +181,9 @@ export class OutputActivityReader {
       // call, whose fill is the compacted conversation's; one the Run ends before is told without it (finish).
       if (update.compacted) {
         this.tellCompaction();
-        const fill = { beforeTokens: update.compactedFrom ?? this.context?.usedTokens ?? null, afterTokens: update.usedTokens ?? null };
-        if (fill.afterTokens === null) this.pendingCompaction = fill;
-        else this.compacted(fill);
+        const fill = { beforeTokens: update.compactedFrom ?? this.context?.usedTokens ?? null, afterTokens: update.usedTokens ?? null, ...update.compactionDetails };
+        if (fill.afterTokens === null) this.pendingCompaction = { fill, at: received };
+        else this.compacted(fill, received);
       } else if (this.pendingCompaction && update.usedTokens != null) this.tellCompaction(update.usedTokens);
       this.context = mergeContext(this.context, update, received);
       if (update.windowTokens !== undefined) this.reported(update);
@@ -192,7 +192,7 @@ export class OutputActivityReader {
       this.dirty = true;
     }
     for (const event of this.adapter.activity(value, received)) {
-      this.journal?.observe(event, line, liveStepTime(event, received));
+      this.journal?.observe(event, line, liveStepTime(event, received), live);
       const name = this.work.observe(event);
       const text = words(event.text);
       const note = text ? { at: event.at, text } : this.latest?.note ?? null;

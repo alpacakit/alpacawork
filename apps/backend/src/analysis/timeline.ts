@@ -1,3 +1,7 @@
+import type { AnalysisDeliverable } from '@alpacawork/contract/analysis';
+import type { RunCompaction } from '@alpacawork/contract/run';
+import type { RunSummary } from '@alpacawork/contract/run-summary';
+import type { TestObservation } from '../runs/step-evidence.js';
 import { adoptedReview, reviewAdoptions } from '../control/action-reasons.js';
 /**
  * One task's timeline (analysis trace) and the situation at one instant (analysis at), built from the records as they
@@ -28,26 +32,31 @@ export type TraceStep = { n: number; tool: string; kind: string; line: string; f
   subagentSteps: number;
   /** A digest of what came back when the whole of it was kept; null when it was cut or not seen, so it compares with nothing. */
   output: string | null;
+  outputChars?: number;
   /** How many lines what it ran has after its first (`line`): a script or heredoc whose body is not read here. */
   more: number };
 export type StepsMissing = AnalysisStepsMissing;
+export type TraceSummary = Pick<RunSummary, 'state' | 'basis' | 'outputs' | 'produced'> & { tests: TestObservation[] };
 export type TraceRun = {
   id: string; task: string; placement: string; role: 'owner' | 'member'; agent: string; model: string | null;
   effort: string | null; state: string; reason: string | null; request: string; supersededBy: string | null;
   created: number; started: number | null; ended: number | null;
-  compactions: readonly { at: number; beforeTokens: number | null; afterTokens: number | null }[];
+  compactions: readonly (Omit<RunCompaction, 'at' | 'windowTokens'> & { at: number })[];
+  summary: TraceSummary;
   /** Null when the Run has no step times (any step without its start), for `stepsMissing`. */
   steps: readonly TraceStep[] | null; stepsMissing: StepsMissing | null;
   conditions: RunConditions | null;
   stopped: readonly { at: number; seconds: number; signal: string }[];
 };
 export type TraceTask = { id: string; parent: string | null; title: string; created: number; log: readonly TaskLog[] };
+export type TraceValueChange = { fields: string[]; direction: boolean };
 export type TraceRecords = {
   root: string; project: string; scope: AnalysisTraceScope;
   /** The root first, then every task under it: the breakdown, the waits and the findings read them all whatever the scope. */
   tasks: readonly TraceTask[]; runs: readonly TraceRun[]; requests: ReadonlyMap<string, TraceRequest>;
-  valueFields?: ReadonlyMap<string, readonly string[]>;
-  directionLogs?: ReadonlySet<string>;
+  valueChanges: ReadonlyMap<string, TraceValueChange>;
+  deliverables: readonly AnalysisDeliverable[];
+  deliveredFiles: ReadonlyMap<string, ReadonlySet<string>>;
   rootState: TaskBaseState;
   /** The user's actions on every task, in time order (AnalysisFacts.activity), to split the waits by where the user was. */
   activity: readonly Activity[];
@@ -348,7 +357,7 @@ export function spans(records: TraceRecords): AnalysisSpan[] {
     if (run.started === null || run.state === 'joined') continue;
     const taken = takenFor(run);
     result.push({ id: `run:${run.id}`, lane, kind: 'run', from: iso(run.started), to: end(run.ended), run: run.id,
-      state: run.state, reason: run.reason, model: run.model, effort: run.effort, steps: run.steps ? 'recorded' : 'not-recorded', ...(taken && { taken }) });
+      state: run.state, reason: run.reason, model: run.model, effort: run.effort, steps: run.steps ? 'recorded' : 'not-recorded', basis: run.summary.basis, ...(taken && { taken }) });
     thinkingIntervals(run, records.now).forEach((gap, index) => result.push({ id: `thinking:${run.id}.${index}`, lane, kind: 'thinking',
       from: iso(gap.from), to: run.ended === null && gap.to === records.now ? null : iso(gap.to), run: run.id }));
     for (const step of run.steps ?? []) if (step.from !== null)
@@ -405,17 +414,35 @@ export function marks(records: TraceRecords): AnalysisMark[] {
           placed: entry.reason?.placed ?? null, taken: entry.reason?.taken ?? null });
       else if (entry.kind === 'moved') result.push({ ...base, kind: 'moved', log: entry.id });
       const trigger = entry.reason?.trigger ?? null;
-      const fields = records.valueFields?.get(entry.id) ?? trigger?.fields ?? [];
+      const { fields, direction } = records.valueChanges.get(entry.id) ?? { fields: [], direction: false };
       if (fields.length || entry.kind === 'body_updated' && entry.changedFields?.some(field => field === 'values' || field === 'body'))
         result.push({ ...base, id: `values:${entry.id}`, kind: 'values-changed', log: entry.id, fields: [...fields],
-          trigger, direction: trigger?.code !== 'refine' && (records.directionLogs?.has(entry.id) ?? trigger !== null) });
+          trigger, direction: trigger?.code !== 'refine' && direction });
     }
   }
   for (const run of records.runs) {
     if (!shown.has(run.task)) continue;
     const lane = agentLane(run.placement);
-    run.compactions.forEach((compaction, index) => result.push({ id: `compacted:${run.id}.${index}`, lane, kind: 'compacted',
-      at: iso(compaction.at), run: run.id, beforeTokens: compaction.beforeTokens, afterTokens: compaction.afterTokens }));
+    run.compactions.forEach(({ at, ...compaction }, index) => result.push({ id: `compacted:${run.id}.${index}`, lane, kind: 'compacted',
+      ...compaction, at: iso(at), run: run.id }));
+    if (run.started !== null) {
+      const base = { lane, run: run.id };
+      for (const { test, at } of run.summary.tests)
+        result.push({ ...base, ...test, id: `test:${run.id}.${test.step}`, kind: 'test',
+          at: iso(at ?? run.started), atSource: at === null ? 'run-start' : 'step' });
+      const { commits, files, prs } = run.summary.produced;
+      const produced = [
+        ...commits.map(item => ({ step: item.step, what: 'commit' as const, ref: item.sha })),
+        ...files.filter(item => records.deliveredFiles.get(run.id)?.has(item.path)).map(item => ({ step: item.step, what: 'file' as const, ref: item.path })),
+        ...prs.map(item => ({ step: item.step, what: item.action === 'created' ? 'pr-created' as const : 'pr-merged' as const, ref: item.url })),
+      ];
+      const steps = new Map(run.steps?.map(step => [step.n, step]));
+      produced.forEach((item, index) => {
+        const step = steps.get(item.step), at = step?.to ?? step?.from ?? null;
+        result.push({ ...base, ...item, id: `produced:${run.id}.${item.step}.${index}`, kind: 'produced',
+          at: iso(at ?? run.started!), atSource: at === null ? 'run-start' : 'step' });
+      });
+    }
     run.stopped.forEach((stop, index) => result.push({ id: `command-stopped:${run.id}.${index}`, lane, kind: 'command-stopped',
       at: iso(stop.at), run: run.id, seconds: stop.seconds, signal: stop.signal }));
   }
@@ -452,7 +479,7 @@ export function situationAt(records: TraceRecords, at: number): Omit<AnalysisAtV
       const after = top.find(step => step.from! > at) ?? null;
       return { run: run.id, task: run.task, role: run.role, agent: run.agent, model: run.model, effort: run.effort, since: iso(run.started!),
         request: request && { id: request.id, by: request.by, purpose: request.purpose, at: iso(request.at), firstLine: request.firstLine },
-        steps: run.steps ? 'recorded' as const : 'not-recorded' as const, current: current.map(stepAt),
+        steps: run.steps ? 'recorded' as const : 'not-recorded' as const, basis: run.summary.basis, current: current.map(stepAt),
         before: before && stepAt(before), after: after && stepAt(after) };
     });
   const queued = records.runs.filter(run => run.created <= at && at < (run.started ?? run.ended ?? Infinity))

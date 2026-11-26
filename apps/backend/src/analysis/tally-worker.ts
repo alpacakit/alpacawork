@@ -1,64 +1,56 @@
-import { closeSync, constants, fstatSync, lstatSync, openSync, readFileSync } from 'node:fs';
+import { lstatSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { parentPort, workerData } from 'node:worker_threads';
 import { hasCode } from '@alpacawork/core';
 import { RUN_FILES, runFolder, runNumber } from '@alpacawork/contract/run';
 import { runIdSchema } from '@alpacawork/contract';
 import { readControl } from '../control/task-store.js';
-import { supportsTally, TallyParser, tallySchema, type Tally } from '../agents/adapters/tally.js';
-import { JsonlReader } from '../runs/readers/jsonl.js';
+import { supportsTally, TallyParser, type Tally } from '../agents/adapters/tally.js';
+import { RunStepIndex } from '../runs/run-steps.js';
+import { runtimeAdapter } from '../agents/registry.js';
+import { memberBasis, noOutputs, noProduced, stepTotals } from '../runs/step-evidence.js';
+import { JsonlReader, STEP_LINE_LIMIT } from '../runs/readers/jsonl.js';
 import { writeRunFile } from '../runs/files.js';
-import { tallyEligible } from './tally-scope.js';
+import { tallyEligible, TALLY_STDOUT_BYTES } from './tally-scope.js';
+import { ordinaryFile, readRunTally } from './tally-file.js';
 
-const MAX_STDOUT = 128 * 1024 * 1024;
-const MAX_TALLY = 8 * 1024 * 1024;
 const BATCH_SIZE = 32;
 const { root, tallySince } = workerData as { root: string; tallySince: number };
 const port = parentPort!;
-type TallyRun = { id: string; provider: string; adapter: string; session: string | null };
+type TallyRun = { id: string; provider: string; adapter: string; session: string | null; cwd: string; memberReply: string | null };
 const runSource = `SELECT 'R' || id AS id, json_extract(record,'$.agent') AS provider,
-  json_extract(record,'$.launch.adapter') AS adapter, session_id AS session
+  json_extract(record,'$.launch.adapter') AS adapter, session_id AS session, json_extract(record,'$.cwd') AS cwd,
+  CASE WHEN json_extract(record,'$.role')='worker' AND result_state='present' THEN substr(result,-2048) END AS memberReply
   FROM runs WHERE ${tallyEligible}`;
 const pending = new Set<string>(), done = new Set<string>();
 let history: TallyRun[] = [], recent: TallyRun[] = [], running = false, stopped = false;
 
-function ordinaryFile<T>(path: string, read: (fd: number, size: number) => T): T {
-  const fd = openSync(path, constants.O_RDONLY | constants.O_NONBLOCK | constants.O_NOFOLLOW);
-  try {
-    const stat = fstatSync(fd);
-    if (!stat.isFile()) throw new Error('Expected a regular Run file');
-    return read(fd, stat.size);
-  } finally { closeSync(fd); }
-}
-
-function tally({ id, provider, adapter, session }: TallyRun): Tally | undefined {
+function tally({ id, provider, adapter, session, cwd, memberReply }: TallyRun): Tally | undefined {
   const folder = runFolder(root, id);
   if (!lstatSync(dirname(folder)).isDirectory() || !lstatSync(folder).isDirectory()) return;
-  const output = join(folder, RUN_FILES.tally);
-  try {
-    const existing = ordinaryFile(output, (fd, size) => size <= MAX_TALLY
-      ? tallySchema.safeParse(JSON.parse(readFileSync(fd, 'utf8'))) : null);
-    if (existing?.success) return existing.data;
-  } catch (error) {
-    if (!hasCode(error, 'ENOENT') && !hasCode(error, 'ELOOP') && !(error instanceof SyntaxError)) throw error;
-  }
+  const existing = readRunTally(folder);
+  if (existing) return existing;
 
-  const parser = new TallyParser(adapter, provider, session);
+  const parser = new TallyParser(adapter, provider, session), reader = runtimeAdapter(adapter);
+  const steps = reader && new RunStepIndex(folder, reader, cwd, false);
   let state: Tally['state'] = 'unsupported';
   if (supportsTally(adapter)) {
     try {
       state = ordinaryFile(join(folder, RUN_FILES.stdout), (fd, size) => {
         if (!size) return 'unsupported';
-        const lines = new JsonlReader(), observe = (value: unknown) => parser.observe(value);
-        lines.readFd(fd, observe, MAX_STDOUT);
-        if (size <= MAX_STDOUT) lines.finish(observe);
-        return size > MAX_STDOUT || lines.rejection ? 'partial' : 'complete';
+        const lines = new JsonlReader(() => steps?.unreadable(), STEP_LINE_LIMIT);
+        const observe = (value: unknown, line: number) => { parser.observe(value); steps?.observeRow(value, line); };
+        lines.readFd(fd, observe, TALLY_STDOUT_BYTES);
+        if (size <= TALLY_STDOUT_BYTES) lines.finish(observe);
+        return size > TALLY_STDOUT_BYTES || lines.rejection ? 'partial' : 'complete';
       });
     } catch (error) {
       if (!hasCode(error, 'ENOENT') && !hasCode(error, 'ELOOP')) throw error;
     }
   }
-  const result = parser.finish(state);
+  const totals = steps ? stepTotals(steps.observations()) : { outputs: noOutputs(), produced: noProduced(), truncated: false };
+  const result = parser.finish(state === 'complete' && totals.truncated ? 'partial' : state,
+    { outputs: totals.outputs, produced: totals.produced, basis: memberBasis(memberReply ?? '') });
   writeRunFile(folder, RUN_FILES.tally, JSON.stringify(result));
   return result;
 }

@@ -7,6 +7,17 @@ import { z } from 'zod';
 
 const tokens = z.number().int().nonnegative().safe();
 const limit = tokens.positive();
+export const compactionMetrics = {
+  durationMs: tokens.optional(),
+  cumulativeDroppedTokens: tokens.optional(),
+  messagesSummarized: tokens.optional(),
+};
+export const compactionObservationSchema = z.strictObject({
+  beforeTokens: tokens.nullable(), afterTokens: tokens.nullable(),
+  /** When reported, an automatic provider event cannot complete a requested compaction. */
+  automatic: z.boolean().optional(), ...compactionMetrics,
+});
+export type CompactionObservation = z.infer<typeof compactionObservationSchema>;
 /**
  * How full a Run's conversation is, as its agent last said. Its window belongs to the model, not to the Run: an adapter
  * reports it in its updates, and the model's own record keeps it (resolveContextLimits).
@@ -24,7 +35,8 @@ export type AgentContext = z.infer<typeof agentContextSchema>;
  * conversation was before it when the agent says so (`compactedFrom`; else the last fill read stands for it). A field
  * an observation leaves out keeps its last value.
  */
-export const contextUpdateSchema = agentContextSchema.omit({ observedAt: true }).extend({ windowTokens: limit, compactedFrom: tokens }).partial().strict();
+export const contextUpdateSchema = agentContextSchema.omit({ observedAt: true }).extend({ windowTokens: limit, compactedFrom: tokens,
+  compactionDetails: compactionObservationSchema.omit({ beforeTokens: true, afterTokens: true }) }).partial().strict();
 export type ContextUpdate = z.infer<typeof contextUpdateSchema>;
 
 /** The latest fill after one more observation (the window is the model's: see resolveContextLimits). */

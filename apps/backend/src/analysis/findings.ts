@@ -11,7 +11,7 @@ import { questionsOf } from '@alpacawork/raw/questions';
 import { prLinks, questionKind, taskOutcome, userQuestions } from './rules.js';
 import { iso, segments, unionMs, type Interval, type TraceRecords, type TraceRun, type TraceStep } from './timeline.js';
 
-export type Threshold = { value: number; unit: 'minutes' | 'count' };
+export type Threshold = { value: number; unit: 'minutes' | 'count' | 'chars' };
 /** The default threshold of each rule; null for a rule that finds every case. */
 export const DEFAULT_THRESHOLDS: Readonly<Record<AnalysisFindingRule, Threshold | null>> = {
   'long-wait': { value: 30, unit: 'minutes' },
@@ -24,6 +24,8 @@ export const DEFAULT_THRESHOLDS: Readonly<Record<AnalysisFindingRule, Threshold 
   'queue-wait': { value: 5, unit: 'minutes' },
   'failed-run': null,
   rework: null,
+  'large-output': { value: 40_000, unit: 'chars' },
+  'same-test-same-commit': { value: 2, unit: 'count' },
   idle: { value: 15, unit: 'minutes' },
 };
 /** Rules that read step times: with no Run of the scope holding them, they cannot find anything and say so. */
@@ -245,6 +247,37 @@ const rules: Record<AnalysisFindingRule, Rule> = {
    * and an instruction given in place of answering a question asking to take a result. Its time runs until the task the
    * record is on next puts a result to the user (waits for review, or asks to take it) or is done.
    */
+  'large-output': (records, _window, threshold) => records.runs.flatMap(run => {
+    if (run.started === null || !['complete', 'partial'].includes(run.summary.state)) return [];
+    const entries = run.steps?.map(step => ({ step: step.n, at: step.to ?? step.from, chars: step.outputChars ?? 0 })) ??
+      run.summary.outputs.largest.map(item => ({ ...item, at: null }));
+    return entries.filter(item => item.chars >= limitOf(threshold)).map(item => ({
+      rule: 'large-output', anchor: `${run.id}.${item.step}`, at: item.at ?? run.started!, durationMs: 0,
+      lane: agentLane(run), count: item.chars, source: item.at === null ? 'inferred' : 'recorded',
+      evidence: [{ run: run.id, step: item.step }],
+    }));
+  }),
+  'same-test-same-commit': (records, _window, threshold) => {
+    const groups = new Map<string, Map<string, { run: TraceRun; step: number; at: number; timed: boolean }>>();
+    for (const run of records.runs) {
+      if (run.started === null) continue;
+      for (const { test, at, digest } of run.summary.tests) {
+        const knownDirectory = test.dirSource === 'tool' || test.dirSource === 'command';
+        if (!knownDirectory || test.commitSource !== 'observed' || !test.commit || test.state === 'unknown' ||
+            test.dirty === null || (test.dirty && !test.diffDigest)) continue;
+        const key = JSON.stringify([digest, test.commit, test.diffDigest ?? null]);
+        const group = groups.get(key) ?? new Map();
+        if (!group.has(run.id)) group.set(run.id, { run, step: test.step, at: at ?? run.started, timed: at !== null });
+        groups.set(key, group);
+      }
+    }
+    return [...groups.values()].filter(group => group.size >= Math.max(2, limitOf(threshold))).map(group => {
+      const matches = [...group.values()].sort((a, b) => a.at - b.at), first = matches[0]!;
+      return { rule: 'same-test-same-commit', anchor: `${first.run.id}.${first.step}`, at: first.at, durationMs: 0,
+        lane: agentLane(first.run), count: group.size, source: first.timed ? 'recorded' : 'inferred',
+        evidence: matches.slice(0, EVIDENCE_STEPS).map(({ run, step }) => ({ run: run.id, step })) };
+    });
+  },
   rework: (records, window) => {
     const [root, ...below] = records.tasks, own = userQuestions(root!.log);
     const questions = [...own, ...below.flatMap(task => userQuestions(task.log))];

@@ -13,6 +13,7 @@ import { RUN_FILES, RUN_STEP_TEXT_LIMIT, RUN_TOOL_ID_LIMIT, clipRunText, stepJou
   type StepFingerprint, type StepJournalEntry, type StepOutput, type StepTimeSource } from '@alpacawork/contract/run';
 import { hasCode } from '@alpacawork/core';
 import type { ActivityEvent } from './activity-events.js';
+import { checkoutAt, rawInputDigest, shellInput } from './shell-evidence.js';
 import { stepInputDocument } from '../agents/adapters/activity.js';
 
 const short = (text: string) => createHash('sha256').update(text).digest('hex').slice(0, 16);
@@ -36,6 +37,12 @@ export function stepFingerprint(input: string): StepFingerprint | null {
   if (!text) return null;
   const newline = text.indexOf('\n'), first = newline === -1 ? text : text.slice(0, newline);
   return { line: clipRunText(replaced(first), RUN_STEP_TEXT_LIMIT), bodyDigest: newline === -1 ? null : short(`${replaced(first)}\n${replaced(text.slice(newline + 1), true)}`) };
+}
+
+/** Use the complete script when available, or the retained tool input when the bridge cut it. */
+export function stepEventFingerprint(event: ActivityEvent, script: string | null | undefined): StepFingerprint | null {
+  const input = script || ((event.call ? stepInputDocument(event.call) : undefined) ?? event.input?.text ?? event.detail?.text ?? '');
+  return stepFingerprint(input);
 }
 
 /** What came back, as a size and a digest; `whole` false when the agent cut it, so the digest covers its start only. */
@@ -105,14 +112,14 @@ export class StepJournal {
   private held: Map<string, StepTime> | null = null;
   private failed = false;
 
-  constructor(private readonly folder: string) {}
+  constructor(private readonly folder: string, private readonly cwd?: string) {}
 
   /**
    * One adapter event read from output line `line`. `timeOf` gives the time to write for the start or end of the step
    * (named by the line that started it and its ID); null follows the step without writing that time. Gives the line
    * that names the step, or null for no step.
    */
-  observe(event: ActivityEvent, line: number, timeOf: StepTimeOf): number | null {
+  observe(event: ActivityEvent, line: number, timeOf: StepTimeOf, live = true): number | null {
     if (this.failed) return null;
     const { kind, id } = event;
     // A turn's end or an error notice settles what is open, as the index of steps reads it: the same ID starts a new
@@ -135,11 +142,16 @@ export class StepJournal {
       // A step is one the index of steps lists: it has a tool name.
       if (typeof event.toolName !== 'string' || !event.toolName) return null;
       this.open.set(id, line);
-      const document = event.call ? stepInputDocument(event.call) : undefined;
       const at = timeOf('start', line, id);
-      if (at) this.append({ event: 'start', line, id, ...at,
-        fingerprint: stepFingerprint(document ?? event.input?.text ?? event.detail?.text ?? ''),
+      if (at && !this.heldNames().has(key('start', line, id))) {
+        const rawDigest = rawInputDigest(event, this.cwd);
+        const shell = shellInput(event.call, String(event.stepTool ?? event.toolName), event.input);
+        const head = this.cwd === undefined || !shell ? undefined : live && kind === 'tool_start' ? checkoutAt(this.cwd, shell) : null;
+        this.append({ event: 'start', line, id, ...at,
+        ...(rawDigest !== undefined && { rawDigest }), ...(head !== undefined && { head }),
+        fingerprint: stepEventFingerprint(event, shell?.script),
         parentId: typeof event.parent === 'string' && event.parent && event.parent.length <= RUN_TOOL_ID_LIMIT ? event.parent : null });
+      }
       if (kind === 'tool_start') return line;
     }
     const opened = this.open.get(id)!;
