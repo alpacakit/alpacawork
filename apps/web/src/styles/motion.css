@@ -56,6 +56,10 @@
            over --motion-base out, both ways (lib/motion.ts `reshape`). Only a clip moves: nothing is laid out on the way
    Light    what moves on its own moves only what the compositor draws (transform, translate, scale, opacity, clip-path),
            so it goes on smoothly while script runs and lays nothing out each frame; a size is set once, where it lands
+   Entrance the list coming back in the analysis's place: the headings and rows in sight come in from the top in turn,
+           all started within slow; each title rises by shift over base, out, as its strip uncovers its time from left
+           to right over slow ×2, out (a clip). Only on that change of face, once, before the list is first painted;
+           reduced motion only fades them (features/tree/list-entrance.ts)
    Edge note a time strip's note at its edge (Not started · … since) rides with the strip while it scrolls or is held; once it rests
            it glides to the edge over slow out, or, out of sight, comes in from its side by shift-far, fading in
            (features/tree/time-line.tsx useEdgeRest)
