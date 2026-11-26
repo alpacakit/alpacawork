@@ -68,9 +68,11 @@ export function AnalysisView({ place, beside }: { place: AnalysisPlace; beside: 
   const step = (direction: -1 | 1) => { const to = direction < 0 ? earlier : later; if (to) show({ span: to, list: null, card: null }); };
   const canEarlier = !!earlier, canLater = !!later;
 
-  // The page scrolls as the list does, under the bar and clear of what stands at the screen's foot (--list-foot).
+  // The page scrolls as the list does, under the bar and clear of what stands at the screen's foot (--list-foot). It
+  // scrolls down only: everything on it fits its width (the calendar scrolls sideways on its own), and what reaches a
+  // little past its edges unseen (the tabs' wider press area at its right) must not let it slide sideways.
   return <><div ref={setRoot} data-list-scroll {...UNDER_BAR}
-    className="relative min-h-75 flex-1 basis-0 overflow-auto overscroll-contain scroll-pb-(--list-foot) pb-(--list-foot) narrow:min-h-67.5">
+    className="relative min-h-75 flex-1 basis-0 overflow-x-hidden overflow-y-auto overscroll-contain scroll-pb-(--list-foot) pb-(--list-foot) narrow:min-h-67.5">
     <div className="pb-12"><BarRoom />
     <div className="flex flex-wrap items-center gap-x-6 gap-y-2 pt-1 pb-8">
       <Seg label={t("look.label")} value={place.look} onChange={look => { useChoices.getState().choose({ all: false, grow: useChoices.getState().grow + 1 }); show({ look }); }}
