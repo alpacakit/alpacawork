@@ -156,9 +156,8 @@ export class RunStore {
   conversationHead(placementId: string, exceptRequestId?: string): RunRecord | null {
     return this.at(() => this.reads.conversationHead(placementId, exceptRequestId));
   }
-  coordinatorRuns(conversationId: string): CoordinatorRunRecord[] { return this.at(() => this.reads.coordinatorRuns(conversationId)); }
-  coordinatorHead(conversationId: string, exceptRequestId?: string): CoordinatorRunRecord | null {
-    return this.at(() => this.reads.coordinatorHead(conversationId, exceptRequestId));
+  coordinatorHead(conversationId: string): CoordinatorRunRecord | null {
+    return this.at(() => this.reads.coordinatorHead(conversationId));
   }
   /** A Task's Run and its placement: the server reads a Run credential with it. A coordinator Run has no credential. */
   credentialOf(id: RunId): { run: RunRecord; placement: StoredPlacement | null } | null {
@@ -192,7 +191,7 @@ export class RunStore {
       finally { life.end(); }
     });
   }
-  readForSettle(conversationId?: string): RuntimeRunRecord[] { return this.at(() => this.storeReads.forSettle(conversationId)); }
+  readForSettle(): RuntimeRunRecord[] { return this.at(() => this.storeReads.forSettle()); }
   /** A read at a read point of its own. */
   private at<T>(read: () => T): T { return this.transaction('BEGIN', read); }
   /** Callbacks are synchronous and transaction handles expire when they return. */

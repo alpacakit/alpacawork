@@ -28,7 +28,8 @@ import { agentEnvironment } from '../runs/env.js';
 import { StopDeliveryOwner, coordinatorCwd } from '../runs/execution-control.js';
 import { createCoordinatorReadState } from '../receiver/person-state.js';
 import { assertSkillInvocations, coordinatorSkills } from './skills.js';
-import { activeCoordinatorRuns, coordinatorLaunchFor, coordinatorReplyLanguage, coordinatorTurnNumber, prepareCoordinatorStart } from './continuation.js';
+import { coordinatorInputText, coordinatorLaunchFor, coordinatorReplyLanguage, coordinatorTurnNumber, prepareCoordinatorStart } from './continuation.js';
+import { activeCoordinatorRuns, visible } from './requests.js';
 import { coordinatorBoundary, coordinatorResetMemo, pendingCoordinatorReset, replayCoordinatorReset, reserveCoordinatorReset } from './resets.js';
 import { assertManagedSkillsVersion } from './managed-skills-version.js';
 import { admittedMessageDigest, completedAnswer, coordinatorBusy, failedRun, handovers, historyPage, messageStatus, recentReadableIds, view, type Conversation } from './conversation-view.js';
@@ -104,7 +105,7 @@ export class CoordinatorConversation {
     const limits = settings.ok ? settings.config.limits : DEFAULT_LIMITS;
     const ended = pendingCoordinatorReset(db, conversation.id) ? null : db.prepare(`SELECT r.record FROM requests q
       JOIN runs r ON r.id=(${currentRequestRun('q.id')}) WHERE q.conversation_id=?
-      AND q.coordinator_turn_no IS NOT NULL AND q.delivery_state <> 'aborted' AND q.coordinator_turn_no>=?
+      AND ${visible} AND q.coordinator_turn_no>=?
       AND r.state IN ('succeeded','failed','cancelled') ORDER BY q.coordinator_turn_no DESC LIMIT 1`)
       .get(conversation.id, coordinatorBoundary(db, conversation.id));
     const run = ended ? coordinatorRunRecordSchema.parse(JSON.parse(String(ended.record))) : null;
@@ -219,7 +220,7 @@ export class CoordinatorConversation {
     if (next.row === null) throw next.error;
     const { launch, continued } = next, agent = next.row.agent;
     const captured = { text: input.text, language: coordinatorReplyLanguage(this.root) };
-    const text = [captured.language, captured.text].filter(Boolean).join('\n');
+    const text = coordinatorInputText(captured);
     if (input.message.skills?.length) {
       assertSkillInvocations(launch.adapter, input.body, input.message.skills);
       assertManagedSkillsVersion(input.message.skills);

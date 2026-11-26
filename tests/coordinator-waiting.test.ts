@@ -1,3 +1,4 @@
+import { coordinatorRunFor } from './helpers/coordinator-run.ts';
 import { fixtureAgentSetting } from './helpers/agent-stub.ts';
 import { stringify } from 'yaml';
 import { managerScript } from '@alpacawork/backend/test-dist/runs/scheduler.js';
@@ -11,7 +12,7 @@ import { join } from 'node:path';
 import { RunStore, laneAhead } from '@alpacawork/runs';
 import type { CoordinatorRunRecord } from '@alpacawork/contract/run';
 import { CoordinatorConversation } from '@alpacawork/backend/test-dist/coordinator/conversation.js';
-import { reserveAttempt, blockedInvocations, queuedInputReservations } from '@alpacawork/backend/test-dist/runs/execution-control.js';
+import { reserveAttempt } from '@alpacawork/backend/test-dist/runs/execution-control.js';
 import { initializeControlFixture } from './helpers/control-fixture.ts';
 // The fixture never starts a process, so the admission supplies the session.
 const config = stringify({ agents: { "fake": fixtureAgentSetting('claude') } });
@@ -22,7 +23,7 @@ function fixture(t: TestContext) {
   const store = new RunStore(root, { busyTimeoutMs: 1000 });
   t.after(() => { store.close(); rmSync(root, { recursive: true, force: true }); });
   const ask = () => { const request = randomUUID(); conversation.ask({ conversationId: id, id: request, text: request, attachments: [] }); return request; };
-  const run = (request: string, tx?: import("@alpacawork/runs").RunTransaction) => (tx ? tx.coordinatorRuns(id) : store.coordinatorRuns(id)).find(run => run.requestId === request)!;
+  const run = (request: string, tx?: import("@alpacawork/runs").RunTransaction) => coordinatorRunFor(store, request, tx);
   const running = (request: string) => store.write(tx => tx.update({ ...run(request, tx), state: 'running', started_at: new Date().toISOString() }));
   return { root, conversation, id, store, ask, run, running, read: () => conversation.read() };
 }
@@ -103,15 +104,8 @@ test('the conversation snapshot retains shared-session holds without reading unr
     db.prepare("UPDATE run_inputs SET state='uncertain' WHERE instruction_run_no=1000").run();
     tx.update({ ...own, session: shared.session });
   });
-  const scoped = f.store.readForSettle(f.id), global = f.store.readForSettle();
-  assert.deepEqual(scoped.map(run => run.id), global.map(run => run.id));
-  const blocked = blockedInvocations(f.store, scoped.map(run => run.id));
-  assert.deepEqual(laneAhead(scoped, f.run(message), blocked, queuedInputReservations(f.store, scoped.map(run => run.id))), { kind: 'delivery', run: shared.id });
-  assert.deepEqual(queuedInputReservations(f.store, scoped.map(run => run.id)), queuedInputReservations(f.store));
-  assert.deepEqual(queuedInputReservations(f.store, []), new Set());
   assert.equal(f.read().turns[0]!.waiting, true);
   f.store.write(tx => tx.update({ ...f.run(message, tx), session: null }));
-  assert.deepEqual(f.store.readForSettle(f.id).map(run => run.id), [own.id]);
   assert.equal(f.read().turns[0]!.waiting, false);
 });
 test('a failed message is sent again once: the server marks it, keeps its ID readable, and refuses a second copy', t => {
@@ -128,7 +122,7 @@ test('a failed message is sent again once: the server marks it, keeps its ID rea
   fail(second, 'cancelled');
   const third = again(second);
   assert.deepEqual(f.read().turns.map(turn => [turn.id, turn.status, turn.sentAgain ?? false, turn.seen]), [[first, 'failed', true, false], [second, 'failed', true, true], [third, 'queued', false, false]]);
-  assert.equal(f.store.coordinatorRuns(f.id).filter(run => run.state === 'queued').length, 1);
+  assert.equal(f.read().turns.filter(turn => turn.status === 'queued').length, 1);
   // One that answers after all, as a Run back from review does, is not hidden.
   f.store.write(tx => tx.finish({ ...f.run(first, tx), state: 'succeeded', reason: null, ended_at: new Date().toISOString() }, { state: 'present', text: 'Late answer' }));
   assert.equal(f.read().turns.find(turn => turn.id === first)!.sentAgain, undefined);

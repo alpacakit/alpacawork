@@ -401,6 +401,8 @@ test('a waiting message starts on the newly configured adapter with one memo and
   assert.equal(get.code, 0, get.stderr);
   assert.deepEqual(JSON.parse(get.stdout), memo);
   assert.notEqual((await cliRun(h.url(), ['coordinator', 'memo', 'get'])).code, 0, 'an outside caller cannot read the memo');
+  assert.notEqual((await cliRun(h.url(), ['coordinator', 'memo', 'set', '--text-file', '-'], {}, 'Outside text')).code, 0,
+    'an outside caller cannot replace the memo');
   const resetInput = { conversationId, opId: crypto.randomUUID() };
   const busy = await h.post('/api/coordinator/reset', resetInput);
   assert.equal(busy.status, 409);

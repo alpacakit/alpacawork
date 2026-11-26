@@ -1,3 +1,4 @@
+import { coordinatorRunFor } from './helpers/coordinator-run.ts';
 import { fixtureAgentSetting } from './helpers/agent-stub.ts';
 import { stringify } from 'yaml';
 import { test, type TestContext } from 'node:test';
@@ -95,14 +96,14 @@ test('an invalid batch commits nothing; unfinished, joined and withdrawn request
   assert.deepEqual(h.state(), before); assert.deepEqual(h.seen(), []);
   const joined = await h.ask(), store = new RunStore(h.root, { busyTimeoutMs: 1000 });
   try {
-    const head = store.coordinatorRuns(h.id).find(run => run.requestId === done)!;
-    const run = store.coordinatorRuns(h.id).find(run => run.requestId === joined)!;
+    const head = coordinatorRunFor(store, done);
+    const run = coordinatorRunFor(store, joined);
     store.write(tx => tx.update({ ...run, state: 'joined', into: head.id, ended_at: new Date().toISOString() }));
   } finally { store.close(); }
   await assert.rejects(h.conversation.markSeen(h.id, [joined]), { code: PROBLEM_CODE.invalidInput });
   const provisional = await h.ask(), reviewing = new RunStore(h.root, { busyTimeoutMs: 1000 });
   try {
-    const run = reviewing.coordinatorRuns(h.id).find(run => run.requestId === provisional)!;
+    const run = coordinatorRunFor(reviewing, provisional);
     reviewing.write(tx => {
       const running = { ...run, state: 'running' as const, started_at: new Date().toISOString() };
       tx.update(running);

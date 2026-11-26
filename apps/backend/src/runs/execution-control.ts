@@ -1,7 +1,7 @@
-import { activeCoordinatorRuns, coordinatorLaunchFor, coordinatorTurnNumber } from '../coordinator/continuation.js';
-import { pendingCoordinatorReset } from '../coordinator/resets.js';
+import { coordinatorInputSession } from '../coordinator/continuation.js';
+import { activeCoordinatorRuns } from '../coordinator/requests.js';
 import { readAgentsSettings } from '../agents-settings.js';
-import { continuationSession } from './session-continuation.js';
+import { taskInputSession } from './session-continuation.js';
 import { existsSync } from 'node:fs';
 import { controlSchemaState, inspectDatabaseHistory, inTransaction, touch } from '@alpacawork/db';
 import { startDecision } from '../control/task-start-facts.js';
@@ -193,15 +193,10 @@ export function planInputs(store: RunStore): void {
         // own and holds back no later one.
         let session: RuntimeRunRecord['session'];
         if (run.role === 'coordinator' && next.role === 'coordinator') {
-          if (run.agent !== next.agent || run.launch.adapter !== next.launch.adapter ||
-              !isDeepStrictEqual(run.launch.values, next.launch.values)) continue;
           const settings = readAgentsSettings(store.root);
-          if (!settings.ok || pendingCoordinatorReset(store.connection, run.conversationId)) continue;
-          const decision = coordinatorLaunchFor(store.connection, settings.config, run.conversationId,
-            coordinatorTurnNumber(store.connection, next.requestId), next.launch.path);
-          if (decision.kind !== 'resume' || decision.continued.id !== run.id || !isDeepStrictEqual(run.launch.values, decision.launch.values)) continue;
-          session = run.session;
-        } else session = continuationSession(runs, next, { kind: 'input', working: run });
+          if (!settings.ok) continue;
+          session = coordinatorInputSession(store.connection, settings.config, run, next);
+        } else session = taskInputSession(runs, next, run);
         if (next.stop_requested || !session || !compatibleFallbacks(store.connection, run, next)) { if (next.role === 'coordinator') continue; break; }
         const promptRow = store.connection.prepare('SELECT prompt FROM runs WHERE id=?').get(runNumber(next.id));
         const prompt = promptRow ? String(promptRow.prompt) : null;

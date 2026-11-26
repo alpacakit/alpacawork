@@ -1,3 +1,4 @@
+import { coordinatorRunFor } from './helpers/coordinator-run.ts';
 import { fixtureAgentSetting } from './helpers/agent-stub.ts';
 import { stringify } from 'yaml';
 import { managerScript } from '@alpacawork/backend/test-dist/runs/scheduler.js';
@@ -23,7 +24,7 @@ function fixture(t: TestContext) {
   t.after(() => { store.close(); rmSync(root, { recursive: true, force: true }); });
   const ask = (id = randomUUID(), text = 'words') => conversation.ask({ conversationId: cid, id, text, attachments: [] });
   const rows = () => db.prepare('SELECT * FROM requests WHERE conversation_id = ? ORDER BY rowid').all(cid);
-  const run = (id: string, tx?: import('@alpacawork/runs').RunTransaction) => (tx ? tx.coordinatorRuns(cid) : store.coordinatorRuns(cid)).find(run => run.requestId === id)!;
+  const run = (id: string, tx?: import('@alpacawork/runs').RunTransaction) => coordinatorRunFor(store, id, tx);
   return { root, conversation, cid, store, db, ask, rows, run };
 }
 const reason = (kind: string) => (error: any) => error.reason?.kind === kind;

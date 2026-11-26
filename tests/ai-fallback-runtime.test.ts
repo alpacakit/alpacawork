@@ -274,7 +274,9 @@ test('a queued coordinator message follows the replacement conversation using th
 
     // The next request goes back to the primary after its recorded window ends.
     h.store.write(tx => {
-      const expired = tx.coordinatorRuns(conversationId).find(run => run.requestId === first && run.state === 'failed')!;
+      const initial = h.store.connection.prepare('SELECT id FROM runs WHERE request_id=? AND attempt=0').get(first);
+      const expired = tx.runtimeGet(`R${initial?.id}`);
+      assert.ok(expired?.role === 'coordinator' && expired.state === 'failed');
       tx.update({ ...expired, availability: { ...expired.availability!, resetsAt: '2000-01-01T00:00:00Z' } });
     });
     assert.equal(conversation.read().nextLaunch?.agent, 'claude');

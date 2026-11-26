@@ -6,9 +6,9 @@ import { PROTOCOL_LIMITS } from '@alpacawork/contract/run-protocol';
 import { runNumber, type CoordinatorRunRecord, type RuntimeRunRecord, type RunRecord } from '@alpacawork/contract/run';
 import { Problem } from '@alpacawork/core';
 import { compareRequestOrder, currentRequestRun, type RunStore, type RunTransaction } from '@alpacawork/runs';
-import { assignedSession, launchIfResumable, launchSnapshot, readAgentsSettings, type AgentsSettings } from '../agents-settings.js';
+import { assignedSession, coordinatorLaunchSnapshot, launchIfResumable, launchSnapshot, readAgentsSettings, type AgentsSettings } from '../agents-settings.js';
 import { deliveredMessages } from '../coordinator/messages.js';
-import { coordinatorInput, coordinatorNextLaunch, coordinatorTurnNumber, prepareCoordinatorStart } from '../coordinator/continuation.js';
+import { coordinatorInput, coordinatorTurnNumber, prepareCoordinatorStart } from '../coordinator/continuation.js';
 import { queuedStart } from './execution-control.js';
 import { appliedSessionValues, isConversationAgent } from './session-continuation.js';
 import type { EndObservation } from './result-observation.js';
@@ -178,8 +178,13 @@ function reserveCoordinatorFallback(store: RunStore, tx: RunTransaction, run: Co
   if (prompt === undefined) return;
   for (let attempt = (run.attempt ?? 0) + 1; attempt < rows.length; attempt++) {
     const row = rows[attempt]!;
-    const next = coordinatorNextLaunch(config, [], run.launch.path, { rows: [row] });
-    if (next.kind !== 'start' || !isDeepStrictEqual(next.launch.values, row.values)) continue;
+    let next;
+    try { next = coordinatorLaunchSnapshot(config, row.agent, 'start', run.launch.path, row.values); }
+    catch (error) {
+      if (error instanceof Problem) continue;
+      throw error;
+    }
+    if (!next.ok || !isDeepStrictEqual(next.launch.values, row.values)) continue;
     return tx.createCoordinatorRun({ requestId: run.requestId, attempt, firstRunId: run.firstRunId ?? run.id,
       agent: row.agent, resumes: null, session: assignedSession(next.launch, row.agent), cwd: run.cwd, launch: next.launch,
       conversationId: run.conversationId, message: run.message }, prompt).id;

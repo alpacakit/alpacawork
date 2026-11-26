@@ -547,25 +547,11 @@ test('a coordinator Run and its message stay out of every Task-side read; only t
   } finally { store.close(); }
 });
 
-test('the conversation\'s Runs leave out withdrawn messages and its head joined Runs too; a message is fixed with its Run', () => {
+test('a coordinator message is fixed with its Run', () => {
   const conversationId = openConversation();
   const store = open();
   try {
-    const [working, withdrawn, joined, latest] = store.write(tx => {
-      const working = message(tx, conversationId);
-      tx.update({ ...working, state: 'running', started_at: time });
-      const withdrawn = message(tx, conversationId);
-      tx.abortRequest(withdrawn, withdrawn.requestId);
-      const joined = message(tx, conversationId);
-      tx.update({ ...joined, state: 'joined', into: working.id, ended_at: time });
-      return [working, withdrawn, joined, message(tx, conversationId)];
-    });
-    assert.equal(store.runtimeGet(withdrawn.id)?.state, 'cancelled');
-    assert.deepEqual(store.coordinatorRuns(conversationId).map(run => run.id), [working.id, joined.id, latest.id]);
-    assert.equal(store.coordinatorHead(conversationId)?.id, latest.id);
-    assert.equal(store.coordinatorHead(conversationId, latest.requestId)?.id, working.id);
-    assert.equal(store.write(tx => tx.coordinatorHead(conversationId, latest.requestId))?.id, working.id);
-    assert.deepEqual(store.coordinatorRuns(randomUUID()), []);
+    const latest = store.write(tx => message(tx, conversationId));
     // What the screen sent and the conversation are the Run's creation fields.
     for (const change of [{ message: { ...latest.message, context: firstTask } }, { conversationId: randomUUID() }])
       assert.throws(() => store.write(tx => tx.update({ ...latest, ...change })), { code: 'conflict' }, JSON.stringify(change));

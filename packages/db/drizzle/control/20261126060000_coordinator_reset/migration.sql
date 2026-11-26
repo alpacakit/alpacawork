@@ -28,9 +28,6 @@ ALTER TABLE coordinator_conversations DROP COLUMN warm_request_id;
 CREATE UNIQUE INDEX coordinator_request_turn_no ON requests(conversation_id,coordinator_turn_no)
   WHERE coordinator_turn_no IS NOT NULL;
 --> statement-breakpoint
-CREATE INDEX coordinator_visible_turns ON requests(conversation_id,coordinator_turn_no)
-  WHERE coordinator_turn_no IS NOT NULL AND delivery_state <> 'aborted';
---> statement-breakpoint
 UPDATE coordinator_conversations SET visible_turns=(
   SELECT count(*) FROM requests q WHERE q.conversation_id=coordinator_conversations.id
     AND q.coordinator_turn_no IS NOT NULL AND q.delivery_state <> 'aborted'
@@ -76,6 +73,9 @@ CREATE INDEX coordinator_active_runs ON runs(conversation_id,id)
 CREATE INDEX coordinator_rate_limit_runs ON runs(conversation_id,
   coalesce(unixepoch(json_extract(record,'$.availability.resetsAt'),'subsec'),unixepoch(json_extract(record,'$.ended_at'),'subsec')+3600))
   WHERE conversation_id IS NOT NULL AND state='failed' AND json_extract(record,'$.availability') IS NOT NULL;
+--> statement-breakpoint
+CREATE INDEX coordinator_successful_runs ON runs(conversation_id,unixepoch(json_extract(record,'$.started_at'),'subsec'))
+  WHERE conversation_id IS NOT NULL AND state='succeeded';
 --> statement-breakpoint
 CREATE INDEX coordinator_retry_runs ON runs(conversation_id,json_extract(record,'$.message.retryOf'))
   WHERE conversation_id IS NOT NULL AND json_extract(record,'$.message.retryOf') IS NOT NULL;

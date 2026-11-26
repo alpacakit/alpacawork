@@ -16,7 +16,7 @@ import { readRunFailure } from '../runs/error-cause.js';
 import { readRunActivity } from '../runs/activity.js';
 import { deliveredMessages, messageCarrier, resultsOf } from './messages.js';
 import { replyView } from './reply.js';
-import { activeCoordinatorRuns } from './continuation.js';
+import { activeCoordinatorRuns, visible } from './requests.js';
 import { coordinatorResetsFor, pendingCoordinatorReset } from './resets.js';
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 
@@ -88,7 +88,6 @@ export function readable(turn: CoordinatorTurn): boolean {
   return (turn.status === 'succeeded' || turn.status === 'failed') && turn.answeredAt !== null;
 }
 
-const visible = "q.coordinator_turn_no IS NOT NULL AND q.delivery_state <> 'aborted'";
 const requestColumns = 'q.id,q.body,q.submitted_at,q.reply_to,q.coordinator_turn_no,q.coordinator_files_expired_at';
 type Row = Record<string, unknown>;
 type TurnRow = Row & { id: string; coordinator_turn_no: number };

@@ -1,3 +1,4 @@
+import { coordinatorRunFor } from './helpers/coordinator-run.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
@@ -160,7 +161,7 @@ test('seeded real operations cover writers and every committed row change has it
   const messageId = randomUUID();
   await step('coordinator message', () => coordinator.ask({ id: messageId, conversationId: conversation.id,
     text: 'Inspect the synthetic task', attachments: [], tasks: [second.id] }));
-  const messageRun = runs.coordinatorRuns(conversation.id).find(run => run.requestId === messageId)!;
+  const messageRun = coordinatorRunFor(runs, messageId);
   await step('link explicit recipients', () => control.write(db => linkMessage(db, messageRun)));
   await step('record refusal after a rolled-back mutation', () => {
     assert.throws(() => control.write(db => {

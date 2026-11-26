@@ -6,7 +6,6 @@ import { authorize, type Caller } from '../control/authorize.js';
 import { deliveredMessages } from './messages.js';
 
 function memoForCaller(db: DatabaseSync, caller: Caller) {
-  authorize(db, caller, { name: 'coordinator.memo' }, { task: null, quote: null });
   if (caller.kind !== 'coordinator' || caller.source !== 'screen') throw new Error('Expected a screen coordinator');
   const row = db.prepare(`SELECT c.id,c.memo_text,c.memo_updated_at,c.memo_through_turn_no FROM coordinator_conversations c
     JOIN runs r ON r.conversation_id=c.id
@@ -18,9 +17,11 @@ function memoForCaller(db: DatabaseSync, caller: Caller) {
 }
 
 export function readCoordinatorMemo(db: DatabaseSync, caller: Caller) {
+  authorize(db, caller, { name: 'coordinator.memo' }, { task: null, quote: null });
   return memoForCaller(db, caller).memo;
 }
 
+/** The command router has authorized the write; both paths scope the memo to the running screen session. */
 export function setCoordinatorMemo(db: DatabaseSync, caller: Caller, text: string, now = new Date().toISOString()) {
   const { caller: screen, memo, through: previous } = memoForCaller(db, caller);
   if (memo?.text === text) return memo;

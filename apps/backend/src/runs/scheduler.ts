@@ -4,12 +4,12 @@ import { releaseAdmission } from '../release/journal.js';
 /** One transaction owns liveness and slot decisions; spawning follows commit. */
 import { closeSync, constants, existsSync, statSync, writeSync, mkdirSync } from 'node:fs';
 import { setTimeout as delay } from 'node:timers/promises';
-import { hasCode, platform, Problem, tryLock } from '@alpacawork/core';
+import { hasCode, platform, tryLock } from '@alpacawork/core';
 import { RUN_FILES, runNumber, type RunRecord, type RuntimeRunRecord } from '@alpacawork/contract/run';
 import { DELIVERY_STATE } from '@alpacawork/contract/control';
 import { taskBaseStateSchema, type RunId } from '@alpacawork/contract/fields';
 import { RunStore, compareRequestOrder, conversationInUse, isEnded, usesSlot, laneAhead, type RunTransaction } from '@alpacawork/runs';
-import { assignedSession, readAgentsSettings, type AgentsSettingsResult } from '../agents-settings.js';
+import { readAgentsSettings, type AgentsSettingsResult } from '../agents-settings.js';
 import { failedDeliveryBlocked, seatFailed, seatRunBefore } from '../control/wake.js';
 import { agentEnvironment } from './env.js';
 import { processUnit } from './launch-agent.js';
@@ -25,9 +25,7 @@ import { RunReviewState } from './reviews.js';
 import { dirname, join } from 'node:path';
 import { releaseForEntry } from '@alpacawork/core';
 import { settleCompaction } from './compactions.js';
-import { coordinatorInput, coordinatorLaunchFor, coordinatorTurnNumber, prepareCoordinatorStart } from '../coordinator/continuation.js';
-import { reserveCoordinatorReset, startCoordinatorReset } from '../coordinator/resets.js';
-import { assertSkillInvocations } from '../coordinator/skills.js';
+import { bindCoordinatorLaunch } from '../coordinator/continuation.js';
 
 interface SettleSummary { launched: RunId[]; lost: RunId[]; closed: RunId[]; failed: RunId[]; skipped: { run: RunId; reason: string }[] }
 export interface RunLaunch { id: RunId; lockFd: number; attemptId?: string; releaseLock?: () => void }
@@ -208,39 +206,18 @@ export function decide(tx: RunTransaction, context: SettleContext): SettleSummar
       held = tryLock(fd);
       if (!held) continue;
       if (run.role === 'coordinator' && (run.attempt ?? 0) === 0) {
-        const db = store.connection;
-        const turn = coordinatorTurnNumber(db, run.requestId);
-        const next = coordinatorLaunchFor(db, settings.config, run.conversationId, turn, run.launch.path);
-        if (next.kind === 'unavailable') {
-          result.skipped.push({ run: run.id, reason: next.error.message });
+        const binding = bindCoordinatorLaunch(store.connection, tx, settings.config, run, runs);
+        if (binding.kind === 'waiting') continue;
+        if (binding.kind === 'skipped') {
+          result.skipped.push({ run: run.id, reason: binding.reason });
           continue;
         }
-        const session = next.continued ? next.continued.session : assignedSession(next.launch, next.row.agent);
-        if (session && conversationInUse(runs, session.id)) continue;
-        const current = coordinatorInput(db, run.requestId);
-        const prompt = next.kind === 'start' ? prepareCoordinatorStart(db, run.conversationId, turn, [current])
-          : [current.language, current.text].filter(Boolean).join('\n');
-        if (prompt === undefined) {
+        if (binding.kind === 'failed') {
           tx.update({ ...run, state: 'failed', reason: 'launch', ended_at: new Date().toISOString() });
           result.failed.push(run.id);
           continue;
         }
-        if (run.message.skills?.length) {
-          const row = db.prepare('SELECT body FROM requests WHERE id=?').get(run.requestId);
-          try { assertSkillInvocations(next.launch.adapter, String(row?.body), run.message.skills); }
-          catch (error) {
-            if (!(error instanceof Problem)) throw error;
-            tx.update({ ...run, state: 'failed', reason: 'launch', ended_at: new Date().toISOString() });
-            result.failed.push(run.id);
-            continue;
-          }
-        }
-        run = { ...run, agent: next.row.agent, launch: next.launch, resumes: next.continued?.id ?? null, session };
-        tx.rebindQueued(run, { aiStack: [next.row, ...next.following], prompt });
-        if (next.kind === 'start' && next.reset) {
-          const reset = reserveCoordinatorReset(db, run.conversationId, next.reset, new Date().toISOString());
-          startCoordinatorReset(db, reset, run);
-        }
+        run = binding.run;
       }
       // Register ownership before any later operation can throw.
       const attempt = reserveAttempt(store, tx, run, managerScript, limits);

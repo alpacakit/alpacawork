@@ -1,3 +1,4 @@
+import { coordinatorRunFor } from './helpers/coordinator-run.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
@@ -33,7 +34,7 @@ test('each coordinator input snapshots the saved reply language at admission, le
   f.config({ first: claude() });
   const settings = createPersonSettings(f.root), store = new RunStore(f.root, { busyTimeoutMs: 1000 });
   t.after(() => store.close());
-  const prompt = (id: string) => store.getText(store.coordinatorRuns(f.conversation.id).find(run => run.requestId === id)!.id)!.prompt!;
+  const prompt = (id: string) => store.getText(coordinatorRunFor(store, id).id)!.prompt!;
   const send = () => {
     const input = { conversationId: f.conversation.id, id: randomUUID(), text: 'Synthetic message', attachments: [] };
     f.owner.ask(input);
@@ -150,12 +151,12 @@ test('switching back after a failed launch starts again in the selected profile'
   const store = new RunStore(root, { busyTimeoutMs: 1000 });
   t.after(() => store.close());
   const end = (requestId: string, state: 'succeeded' | 'failed') => store.write(tx => {
-    const run = tx.coordinatorRuns(conversation.id).find(each => each.requestId === requestId)!;
+    const run = coordinatorRunFor(store, requestId, tx);
     tx.update({ ...run, state: 'running', started_at: new Date().toISOString() });
-    tx.finish({ ...tx.coordinatorRuns(conversation.id).find(each => each.id === run.id)!, state, ended_at: new Date().toISOString(),
+    tx.finish({ ...run, state, ended_at: new Date().toISOString(),
       reason: state === 'failed' ? 'exit' : null }, state === 'failed' ? { state: 'missing', text: null } : { state: 'present', text: 'Synthetic answer' });
   });
-  const lastRequest = () => store.coordinatorRuns(conversation.id).at(-1)!;
+  const lastRequest = () => store.coordinatorHead(conversation.id)!;
   ask();
   const answered = lastRequest();
   end(answered.requestId, 'succeeded');
