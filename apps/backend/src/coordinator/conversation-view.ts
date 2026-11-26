@@ -95,14 +95,21 @@ function turnRows(rows: Row[]): TurnRow[] { return rows as TurnRow[]; }
 
 function coordinatorLane(db: DatabaseSync, store: RunStore, conversation: string, active: readonly CoordinatorRunRecord[]) {
   const sessions = active.flatMap(run => run.session ? [run.session.id] : []);
-  const candidates = db.prepare(`SELECT r.id FROM (
-    SELECT run_no FROM run_attempts WHERE diagnostic IS NOT NULL
+  const scope = [conversation, JSON.stringify(sessions)] as const;
+  const diagnosed = 'a.run_no=r.id AND a.diagnostic IS NOT NULL';
+  const candidates = db.prepare(`SELECT r.id FROM runs r INDEXED BY runs_conversation
+    CROSS JOIN run_attempts a INDEXED BY coordinator_delivery_diagnostics
+    WHERE r.conversation_id=? AND ${diagnosed}
     UNION
-    SELECT a.run_no FROM run_inputs i INDEXED BY coordinator_delivery_inputs CROSS JOIN run_attempts a
-      WHERE i.state IN ('reserved','attempted','uncertain') AND a.attempt_id=i.attempt_id
-  ) pending CROSS JOIN runs r
-  WHERE r.id=pending.run_no AND (r.conversation_id=? OR r.session_id IN (SELECT value FROM json_each(?)))`)
-    .all(conversation, JSON.stringify(sessions)).map(row => `R${row.id}`);
+    SELECT r.id FROM runs r INDEXED BY runs_session
+    CROSS JOIN run_attempts a INDEXED BY coordinator_delivery_diagnostics
+    WHERE r.session_id IN (SELECT value FROM json_each(?)) AND ${diagnosed}
+    UNION
+    SELECT r.id FROM run_inputs i INDEXED BY coordinator_delivery_inputs
+    CROSS JOIN run_attempts a CROSS JOIN runs r
+    WHERE i.state IN ('reserved','attempted','uncertain') AND a.attempt_id=i.attempt_id
+      AND r.id=a.run_no AND (r.conversation_id=? OR r.session_id IN (SELECT value FROM json_each(?)))
+    `).all(...scope, ...scope).map(row => `R${row.id}`);
   const activeIds = active.map(run => run.id);
   const blocked = blockedInvocations(store, candidates);
   const lane: RuntimeRunRecord[] = [...active];
