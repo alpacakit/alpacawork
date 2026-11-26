@@ -23,7 +23,7 @@ test('coordinator steps and words survive quiet in the index and clear on Run en
   write('task.new');
   let current = await stream.index();
   for (let i = 0; i < 15 && current.coordinatorWork?.name !== 'task.new'; i++) current = await stream.index();
-  const identity = { conversation: run.conversation, turn: run.requestId, run: run.id };
+  const identity = { context: null, conversation: run.conversation, turn: run.requestId, run: run.id };
   assert.deepEqual(current.coordinatorWork, { ...identity, name: 'task.new', count: 1, steps: [], stepEvents: 0, stepsStarted: 0, words: null });
   assert.deepEqual(current.person.coordinator, revision, 'activity is independent of conversation read markers');
   write('task.update');

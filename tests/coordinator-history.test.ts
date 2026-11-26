@@ -93,7 +93,7 @@ test('the stopped migration keeps old requests and runs while numbering only rea
     const names = readdirSync(root).sort();
     const candidate = names.find(name => name.endsWith('_coordinator_reset'))!;
     db.exec('PRAGMA foreign_keys=OFF');
-    db.function('alpacawork_data_migration', () => 0); // The old schema is empty until the coordinator fixtures below.
+    db.function('alpacawork_data_migration', (_name) => 0); // The old schema is empty until the coordinator fixtures below.
     for (const name of names.filter(name => name < candidate))
       db.exec(readFileSync(new URL(`${name}/migration.sql`, root), 'utf8'));
     db.exec('PRAGMA foreign_keys=ON');

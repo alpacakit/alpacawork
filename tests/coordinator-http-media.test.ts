@@ -297,8 +297,11 @@ test('both attachment folders expire only after the turn is old and behind a sta
     assert.equal(file?.state, 'ready');
     return file.name;
   };
-  await send(first);
-  const retained = (id: string) => ['attachments', 'answers'].map(area => join(h.root, '.alpacawork', 'coordinator', conversationId, area, id, 'note.txt'));
+  const answerName = await send(first);
+  const retained = (id: string, name = answerName) => {
+    const folder = join(h.root, '.alpacawork', 'coordinator', conversationId);
+    return [join(folder, 'attachments', id, 'note.txt'), join(folder, 'answers', id, name)];
+  };
   const owner = new CoordinatorConversation(h.root);
   const future = Date.now() + 31 * 86400_000;
   owner.sweepAttachments(future);

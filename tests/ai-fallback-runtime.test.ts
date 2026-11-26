@@ -272,6 +272,18 @@ test('a queued coordinator message follows the replacement conversation using th
     assert.equal(following?.session?.id, h.store.runtimeGet(active.id)?.session?.id);
     assert.equal(conversation.read().nextLaunch?.agent, 'codex');
 
+    // The next request goes back to the primary after its recorded window ends.
+    h.store.write(tx => {
+      const expired = h.store.read().find(run => run.requestId === first && run.state === 'failed')!;
+      tx.update({ ...expired, availability: { ...expired.availability!, resetsAt: '2000-01-01T00:00:00Z' } });
+    });
+    assert.equal(conversation.read().nextLaunch?.agent, 'claude');
+    const recovered = randomUUID();
+    send(recovered, { output: 'Primary reply' });
+    await until(() => conversation.read().turns.some(turn => turn.id === recovered && turn.status === 'succeeded'), 'primary replies again');
+    assert.equal(h.store.read().find(run => run.requestId === recovered)?.agent, 'claude');
+    assert.equal(conversation.read().resets.at(-1)?.reason.kind, 'another_ai');
+
     const later = randomUUID();
     writeFileSync(join(h.root, 'config.yaml'), stringify({ ...h.config,
       agents: { ...h.config.agents, retry: h.config.agents.claude, replacement: h.config.agents.codex },
