@@ -41,8 +41,8 @@ function readPalette(box: HTMLElement): CardPalette {
   });
   return { bg: bg!, ink: ink!, muted: muted!, line: line!, grass: grass as CardPalette["grass"] };
 }
-/** Text widths, and where their first glyph begins, in the card's font, by the page's own measure. */
-function measurer(font: string): Pick<CardLook, "measure" | "bearing"> {
+/** Text widths, and where their glyphs are drawn, in the card's font, by the page's own measure. */
+function measurer(font: string): Pick<CardLook, "measure" | "ink"> {
   const context = document.createElement("canvas").getContext("2d");
   const read = (words: string, size: number, weight: number) => {
     if (!context) return null;
@@ -51,7 +51,10 @@ function measurer(font: string): Pick<CardLook, "measure" | "bearing"> {
   };
   return {
     measure: (words, size, weight) => read(words, size, weight)?.width ?? words.length * size * 0.6,
-    bearing: (words, size, weight) => -(read(words, size, weight)?.actualBoundingBoxLeft ?? 0),
+    ink: (words, size, weight) => {
+      const metrics = read(words, size, weight);
+      return { left: -(metrics?.actualBoundingBoxLeft ?? 0), ascent: metrics?.actualBoundingBoxAscent ?? size * 0.72, descent: metrics?.actualBoundingBoxDescent ?? 0 };
+    },
   };
 }
 

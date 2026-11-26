@@ -66,7 +66,7 @@ test("the card holds only what it is given, and a long model name stays inside i
   const facts = cardFacts(now(tasks), now(tasks), now(usage))!;
   const width = (words: string, size: number) => words.length * size * 0.6;
   const look: CardLook = { palette: { bg: "#000000", ink: "#ffffff", muted: "#cccccc", line: "#333333", grass: ["#111111", "#222222", "#333333", "#444444", "#555555"] },
-    font: "sans-serif", icon: "data:image/png;base64,", measure: width, bearing: () => 0 };
+    font: "sans-serif", icon: "data:image/png;base64,", measure: width, ink: () => ({ left: 0, ascent: 0, descent: 0 }) };
   const input = cardInput(facts, { ...CARD_DEFAULT, hero: "finished" });
   const svg = drawCard(input, look);
   for (const out of [svg, cardWords(input), cardFileName(facts)]) expect(out).not.toMatch(/Secret|P9|opus\(|T\d/);
