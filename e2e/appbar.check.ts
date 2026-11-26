@@ -69,4 +69,22 @@ test.describe("phone", () => {
     await touch(page, [[{ x, y }], [{ x, y: y + 80 }], [{ x, y: y + 160 }], [{ x, y: y + 240 }]]);
     await expect(sheet).toHaveCount(0);
   });
+
+  // Every divider in the limits sheet stands as far below the words over it, the closing note's included, whichever agent is last.
+  test("the limits sheet keeps one space above each divider", async ({ page, runtime }) => {
+    const observedAt = new Date().toISOString();
+    const ok = (adapter: string) => ({ adapter, state: "ok", account: null, observedAt,
+      windows: [{ kind: "weekly", minutes: 10_080, model: null, usedPercent: 30, resetsAt: null }] });
+    const pi = { adapter: "pi", state: "unsupported", account: null, observedAt: null, windows: [] };
+    await page.route("**/api/limits*", route => route.fulfill({ json: { stack: [{ adapter: "claude", model: null }], agents: [ok("claude"), ok("codex"), pi] } }));
+    await page.goto(runtime.origin);
+    await page.locator("header [data-limits-trigger]").tap();
+    const gaps = await page.locator("[data-limits-menu]").evaluate(menu => {
+      const blocks = [...menu.querySelectorAll("[data-limit-agent]")];
+      const below = (block: Element) => block.lastElementChild!.getBoundingClientRect().bottom;
+      const dividers = [...blocks.slice(1), menu.querySelector(":scope > p")!];
+      return dividers.map((divider, at) => Math.round(divider.getBoundingClientRect().top - below(blocks[at]!)));
+    });
+    expect(new Set(gaps).size, `space above each divider: ${gaps}`).toBe(1);
+  });
 });

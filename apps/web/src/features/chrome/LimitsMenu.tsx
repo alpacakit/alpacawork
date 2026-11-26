@@ -138,8 +138,9 @@ export function LimitsMenu({ folded = false }: { folded?: boolean }) {
             <Icon name="reload" className={cn("size-3.5", refreshing && "animate-spin")} /></Button>
         </span></span>}>
       <div data-limits-menu lang={i18n.language} className="pt-2">
-        {agents.map(agent => <AgentBlock key={agent.adapter} agent={agent} stack={limits.data!.stack} now={now}
-          shown={agent.adapter === shown.agent.adapter ? shownWindow : null} />)}
+        {/* The agents in a box of their own, so the last of them is last here and ends without the space above a divider. */}
+        <div>{agents.map(agent => <AgentBlock key={agent.adapter} agent={agent} stack={limits.data!.stack} now={now}
+          shown={agent.adapter === shown.agent.adapter ? shownWindow : null} />)}</div>
         {/* What decides the agent the bar shows, when another reads as free: the stack's order with the figures, not the figures alone. */}
         <p className="m-0 mt-4 border-t border-line pt-3 text-xs text-pretty text-muted">
           {t("limits.place.note", { title: t("panels:agentSettings.aiStack.title") })}</p>
