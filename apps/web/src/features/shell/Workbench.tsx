@@ -101,6 +101,8 @@ export function Workbench() {
   const analysis = useViewStore(state => state.analysis);
   const place = useDeferredValue(useListPlace());
   const ready = useFrameSelector((data) => data !== null);
+  const navigationReady = useViewStore(state => state.navigationReady);
+  const regionReady = ready && navigationReady;
   useEffect(() => { if (ready) later(() => void loadAnalysisLayers().catch(() => {})); }, [ready]);
   const readerOpen = useReaderOpen();
   const full = useViewStore((state) => state.readerFull);
@@ -159,9 +161,9 @@ export function Workbench() {
           The list and app bar give it their width down to the list's least (readerListReservation) before it overlaps them. */}
       <main id="main" className={cn("@container flex min-h-0 w-full flex-1 flex-col px-6 pb-3 narrow:px-3 narrow:pb-6",
           docked && "pr-[calc(var(--window-reserve)+36px)]")}>
-        {/* Until the first index the list's place (its skeleton) starts under the bar too. */}
-        {!ready && <BarRoom />}
-        <IndexRegions skeleton={<>
+        {/* The first index also resolves the initial URL. Keep the skeleton until the face is known. */}
+        {!regionReady && <BarRoom />}
+        <IndexRegions ready={regionReady} skeleton={<>
           <RegionSkeleton shape="time" />
           {readerOpen && (mode === "sheet"
             ? <div className="fixed inset-x-0 bottom-0 z-(--layer-reader) h-[67dvh]"><RegionSkeleton shape="reader" className={readerBox(mode)} /></div>
@@ -239,8 +241,7 @@ function PageFrame({ docked, viewing, barHeight, barHidden, children }: {
  * What waits for the first index, under `Loadable`'s timing (a query that is pending until the index comes). It stays
  * the skeleton while the feed cannot reach the server: the progress line says so, and reconnects when it gives up.
  */
-function IndexRegions({ skeleton, children }: { skeleton: ReactNode; children: () => ReactNode }) {
-  const ready = useFrameSelector((data) => data !== null);
+function IndexRegions({ ready, skeleton, children }: { ready: boolean; skeleton: ReactNode; children: () => ReactNode }) {
   return <Loadable query={{ data: ready || undefined, isPending: true, isError: false, isFetching: true, error: null, refetch: () => {} }}
     skeleton={skeleton} empty={null} unwrapped>{children}</Loadable>;
 }

@@ -5,7 +5,7 @@ import { AnalysisLayers } from "../src/features/analysis/AnalysisLayers";
 import { useState } from "react";
 import { ChartHead, PointerTip, Rule, RuleCard, Rules } from "../src/features/analysis/parts";
 import { BarChart, ChartGroup, changesByBin, Parts, Row } from "../src/features/analysis/rows";
-import { afterEach, beforeAll, expect, test, vi } from "vitest";
+import { afterEach, beforeAll, expect, onTestFinished, test, vi } from "vitest";
 import { i18n, startI18n } from "@alpacawork/i18n";
 import { TodayMarks } from "../src/features/analysis/FaceSwitch";
 import { FaceSkeleton } from "../src/features/analysis/FaceSkeleton";
@@ -344,22 +344,39 @@ test("a list's next page stands as rows while it is read, and one that could not
   view.unmount();
 });
 
-test("the parts' number columns are measured again only when their words change, not on every drawing", () => {
+test("the parts' number columns are measured again as their words or the group's width change", () => {
   const bins = [{ from: "2026-11-01", to: "2026-11-01", complete: true }, { from: "2026-11-02", to: "2026-11-02", complete: true }];
   const rows = [{ name: "終わったタスク", total: (at: number) => `${at}` }];
   const read = vi.spyOn(Element.prototype, "getBoundingClientRect");
+  let observeWidth: ((width: number) => void) | undefined;
+  const Resize = globalThis.ResizeObserver;
+  onTestFinished(() => { globalThis.ResizeObserver = Resize; });
+  globalThis.ResizeObserver = class {
+    constructor(private changed: ResizeObserverCallback) {}
+    observe(target: Element) {
+      if (target.querySelector("[data-part-col]")) observeWidth = width =>
+        this.changed([{ target, contentRect: { width } } as ResizeObserverEntry], this as unknown as ResizeObserver);
+    }
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
   const measured = () => read.mock.contexts.filter(cell => (cell as HTMLElement).dataset?.partCol).length;
   const group = (value: string) => <ChartGroup bins={bins} span={{ from: "2026-11-01", to: "2026-11-02" }} today="2026-11-30" bucket="day" rows={rows} open={() => {}}>
     <Row row={0} left={<Parts items={[{ color: "", name: "手直しなし", value }]} />}>
       <BarChart row={0} height="h-16" scale={{ top: 4, label: "4" }} values={at => [["", at + 1]]} /></Row>
   </ChartGroup>;
   const view = render(group("3件"));
+  observeWidth!(400);
   const first = measured();
   expect(first).toBeGreaterThan(0);
   view.rerender(group("3件"));
+  observeWidth!(400);
   expect(measured()).toBe(first);
-  view.rerender(group("12件"));
+  observeWidth!(500);
   expect(measured()).toBeGreaterThan(first);
+  const resized = measured();
+  view.rerender(group("12件"));
+  expect(measured()).toBeGreaterThan(resized);
   read.mockRestore();
   view.unmount();
 });
@@ -379,6 +396,7 @@ test("the face's stand-in asks the server for nothing, so the face's own answer 
   vi.stubGlobal("fetch", async (input: RequestInfo | URL) => { asked.push(String(input)); return new Response("{}", { status: 200 }); });
   for (const look of ["tasks", "usage"] as const) {
     const view = render(<TestWorkspace data={screenData()}><FaceSkeleton look={look} span={{ period: "7d" }} bucket="day" /></TestWorkspace>);
+    await vi.waitFor(() => expect(view.container.querySelector("[data-face-skeleton]")).not.toBeNull());
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 50)); });
     view.unmount();
   }

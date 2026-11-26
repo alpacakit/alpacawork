@@ -55,8 +55,11 @@ export function TabMarker({ current }: { current: string }) {
     };
     const place = (slide: boolean) => {
       const next = row.querySelector<HTMLElement>(current);
-      self.hidden = !next;
-      if (!next) { shown = null; return; }
+      if (!next) {
+        if (!self.hidden) self.hidden = true;
+        shown = null;
+        return;
+      }
       // The whole box: a tab that only grows taller (a row of larger tabs on a phone) or moves down a line is placed again.
       const to = { x: next.offsetLeft, y: next.offsetTop, width: next.offsetWidth, height: next.offsetHeight }, y = to.y;
       if (shown === next && to.x === at.x && to.y === at.y && to.width === at.width && to.height === at.height) return;
@@ -67,23 +70,28 @@ export function TabMarker({ current }: { current: string }) {
       self.style.width = `${to.width}px`;
       self.style.height = `${to.height}px`;
       self.style.transform = `translate(${to.x}px, ${y}px)`;
+      if (self.hidden) self.hidden = false;
       if (from && to.width) sliding = self.animate([
         { transform: `translate(${from.x}px, ${y}px) scaleX(${from.width / to.width})` },
         { transform: `translate(${to.x}px, ${y}px)` },
       ], { duration: duration("base"), easing: easing("out") });
     };
     const sized = sizeObserver(row, () => place(false));
-    const watch = () => { sized.disconnect(); sized.observe(row); for (const child of row.children) sized.observe(child); };
+    const watch = () => {
+      sized.disconnect();
+      sized.observe(row);
+      for (const child of row.children) if (child !== self) sized.observe(child);
+    };
     const changed = new MutationObserver((records) => {
       if (records.some(record => record.type === "childList")) watch();
       place(true);
     });
     changed.observe(row, { subtree: true, childList: true, attributes: true, attributeFilter: ["aria-current", "aria-selected"] });
+    // The first resize observation already has a laid-out row, before it is painted.
     watch();
-    place(false);
     return () => { changed.disconnect(); sized.disconnect(); sliding?.cancel(); };
   }, [current]);
-  return <span ref={marker} aria-hidden data-tab-marker className="pointer-events-none absolute top-0 left-0 origin-left rounded-md bg-tab-shown" />;
+  return <span ref={marker} hidden aria-hidden data-tab-marker className="pointer-events-none absolute top-0 left-0 origin-left rounded-md bg-tab-shown" />;
 }
 
 /** shadcn's Tabs (Radix), drawn as the row above. */

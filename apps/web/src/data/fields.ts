@@ -20,9 +20,9 @@ const schemaKey = (root: string, task: string) => ["schema", root, task] as cons
  * (the same definitions the server checks with), the app's defaults until they are read. Read again when this page
  * saves a definition or a schema.
  */
-export function useFieldCatalog() {
+export function useFieldCatalog(enabled = true) {
   const root = useWorkspaceInfo(info => info.root);
-  const query = useQuery({ queryKey: fieldsKey(root), enabled: !!root, staleTime: 30_000,
+  const query = useQuery({ queryKey: fieldsKey(root), enabled: !!root && enabled, staleTime: 30_000,
     queryFn: ({ signal }) => api.request(commandRoute("field/list"), fieldListResultSchema, signal) });
   const fields = query.data?.fields;
   // Until the workspace's definitions are read, the app's own defaults stand for them (the server checks every write).

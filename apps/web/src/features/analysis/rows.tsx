@@ -296,17 +296,28 @@ export function ChartGroup({ bins, span, today, bucket, rows, open, changes = NO
     return () => { removeEventListener("scroll", close, true); removeEventListener("pointerdown", away, true); };
   }, [pointed, narrow]);
   const self = useRef<HTMLDivElement>(null);
-  // The parts' number columns, as wide as the widest of the group (Parts): measured when the group is drawn with other
-  // words in them (no state of its own, so a day pointed at changes nothing), and as its width or type changes.
-  useLayoutEffect(() => { if (self.current) measureParts(self.current); });
+  // The first resize observation has the group's layout. Later commits also measure when they change the words in
+  // the number columns, even if the group's size stays the same.
+  useLayoutEffect(() => {
+    const root = self.current;
+    if (root && measuredParts.has(root)) measureParts(root);
+  });
   useLayoutEffect(() => {
     const root = self.current;
     if (!root) return;
-    const watch = new ResizeObserver(() => measureParts(root, true));
+    let width: number | undefined;
+    const watch = new ResizeObserver(([entry]) => {
+      const next = entry!.contentRect.width;
+      // Growing or replacing the charts can change the group's height without affecting the number columns.
+      if (next === width) return;
+      width = next;
+      measureParts(root, true);
+    });
     watch.observe(root);
-    // Type that arrives after the first drawing makes the same words wider or narrower.
+    // Only type still loading can change the widths already measured during the first drawing.
     let live = true;
-    void document.fonts?.ready.then(() => { if (live) measureParts(root, true); });
+    if (document.fonts?.status === "loading")
+      void document.fonts.ready.then(() => { if (live) measureParts(root, true); });
     return () => { live = false; watch.disconnect(); };
   }, []);
   const chartOf = (row: number) => self.current?.querySelector<HTMLElement>(`[data-row="${row}"] [data-chart-row]`) ?? null;

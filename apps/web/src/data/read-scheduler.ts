@@ -3,7 +3,7 @@ import { admitsRead, captureReadBoundary, readIndex, readMarker, readQuery, read
 import { assessRead, onReadEvent, resources } from './resources';
 import { useConnection } from './connection';
 import { withinProject } from '@/domain/tasks';
-import { useViewStore } from '@/state/view-store';
+import { gathering, useViewStore } from '@/state/view-store';
 
 type Query = QueryRecord<any, any, any, any>;
 /**
@@ -91,18 +91,34 @@ export function startReadScheduler(client: QueryClient, host: Window = window): 
     pointed(id) { want(viewKey(id), 'pointed'); void pump(); },
     stop() { stopped = true; wanted.clear(); },
   };
+  // The home list can suggest reads only after navigation has chosen to show it. Reads requested by the
+  // reader, a pointed link, or a raised version have their own lifetime.
+  const homeProject = (view: ReturnType<typeof useViewStore.getState>) =>
+    view.navigationReady && !view.analysis && !gathering(view) ? view.project : undefined;
+  const wantHomeTurns = () => {
+    const project = homeProject(useViewStore.getState());
+    if (project === undefined) return;
+    const index = readIndex(client);
+    if (!index) return;
+    const list = { byId: new Map(index.tasks.map(row => [row.id, row])), projects: index.projects };
+    for (const row of index.home) {
+      if (row.section !== 'review' || !withinProject(row.taskId, project, list)) continue;
+      for (const key of [viewKey(row.taskId), historyKey(row.taskId)]) if (readQuery(client, key)?.state.data === undefined) want(key, 'turn');
+    }
+  };
+  const stopView = useViewStore.subscribe((view, before) => {
+    if (homeProject(view) === homeProject(before)) return;
+    for (const [key, queued] of wanted) if (queued.intent === 'turn') wanted.delete(key);
+    wantHomeTurns();
+    void pump();
+  });
   // A held read whose required version rose, and that no reader shows now, is read again ahead of its reader.
   const stopLive = onReadEvent(client, event => {
     if (event.kind === 'clear') { wanted.clear(); return; }
     if (event.kind !== 'live') return;
     const index = readIndex(client);
     if (!index) return;
-    // The user's turn, in the project in view: a row nothing is held of is read ahead, view and newest History.
-    const list = { byId: new Map(index.tasks.map(row => [row.id, row])), projects: index.projects }, project = useViewStore.getState().project;
-    for (const row of index.home) {
-      if (row.section !== 'review' || !withinProject(row.taskId, project, list)) continue;
-      for (const key of [viewKey(row.taskId), historyKey(row.taskId)]) if (readQuery(client, key)?.state.data === undefined) want(key, 'turn');
-    }
+    wantHomeTurns();
     for (const query of client.getQueryCache().getAll()) {
       const kind = query.queryKey[0];
       if (kind !== 'task' && kind !== 'task-history' || query.queryKey[1] !== index.root || query.state.data === undefined) continue;
@@ -124,7 +140,7 @@ export function startReadScheduler(client: QueryClient, host: Window = window): 
   const stopConnection = useConnection.subscribe(resume);
   schedulers.set(client, scheduler);
   return () => {
-    scheduler.stop(); stopLive(); stopCache(); stopConnection(); host.document.removeEventListener('visibilitychange', resume);
+    scheduler.stop(); stopLive(); stopView(); stopCache(); stopConnection(); host.document.removeEventListener('visibilitychange', resume);
     if (schedulers.get(client) === scheduler) schedulers.delete(client);
   };
 }
