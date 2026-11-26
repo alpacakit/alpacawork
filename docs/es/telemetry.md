@@ -19,7 +19,7 @@ El informe incluye lo siguiente:
 
 Los tipos de operación son solo nombres definidos de antemano. Nunca se incluye el texto que escribiste ni los títulos de las tareas. La escala, la velocidad de la pantalla y el número de fallos se envían como rangos aproximados, como `10-19`.
 
-El ID de este PC es un UUID aleatorio (versión 4), creado con un generador aleatorio criptográficamente seguro la primera vez que eliges enviar. No se genera a partir de nombres, cuentas ni datos del PC o del usuario. Sirve para contar cuántos días seguidos se usa el mismo PC y para poder eliminar después los datos enviados. Si dejas de enviar y vuelves a empezar, o eliminas los datos enviados, se usa el mismo ID; nunca se vuelve a crear. Se guarda para cada cuenta de usuario del PC (por defecto, en `~/.config/alpacawork/telemetry.json`).
+El ID de este PC es un UUID aleatorio (versión 4), creado con un generador aleatorio criptográficamente seguro la primera vez que eliges enviar. No se genera a partir de nombres, cuentas ni datos del PC o del usuario. Sirve para contar cuántos días seguidos se usa el mismo PC y para poder eliminar después los datos enviados. Si dejas de enviar y vuelves a empezar, o eliminas los datos enviados, se usa el mismo ID, mientras se conserve el archivo que lo guarda. Hay un ID por cada cuenta de usuario del PC (por defecto, en `~/.config/alpacawork/telemetry.json`).
 
 Puedes ver el informe real tal como se enviará (“Ver lo que se envía”, más abajo).
 
@@ -30,7 +30,7 @@ Puedes ver el informe real tal como se enviará (“Ver lo que se envía”, má
 - Los nombres del PC y del usuario, y las direcciones de correo electrónico
 - El texto de los errores (solo se cuenta cuántas veces ocurren)
 - Los nombres de los modelos de IA y la cantidad de tokens
-- Nada de los archivos de otras herramientas, como su configuración o sus credenciales (los datos de uso no los leen)
+- El contenido de los archivos de otras herramientas, como su configuración o sus credenciales (los datos de uso no los leen)
 
 Las direcciones IP no se incluyen en el informe, y el receptor tampoco las conserva. Sin embargo, Cloudflare, que aloja el receptor, las procesa en tránsito ([política de privacidad de Cloudflare](https://www.cloudflare.com/es-es/privacypolicy/)).
 
@@ -53,7 +53,7 @@ Mientras la variable de entorno `ALPACAWORK_TELEMETRY_DISABLED=1` o `DO_NOT_TRAC
 - Pantalla: con “Ver lo que se envía”, debajo del interruptor de datos de uso en Configuración → General, puedes ver el borrador de hoy, los informes pendientes y las solicitudes que hace alpacawork. Cada intento muestra el destino, el contenido exacto y el resultado si se conoce. También aparecen los reintentos y las solicitudes de eliminación hechas desde la aplicación.
 - Comando: `alpacawork telemetry show` muestra el mismo historial y la lista de nombres y valores que se pueden enviar.
 
-Cada intento se registra antes del envío, y solo se envía lo registrado, así que el historial muestra exactamente lo que salió del PC. El registro queda en este PC durante 13 semanas, aunque desactives el envío o solicites la eliminación de datos en el receptor. Si no se pudo registrar la respuesta, el historial muestra que se desconoce el resultado.
+Cada intento se registra antes del envío, y solo se envía lo registrado, así que el historial muestra exactamente el destino y el contenido que se enviaron. El registro queda en este PC durante 13 semanas, aunque desactives el envío o solicites la eliminación de datos en el receptor. Si no se pudo registrar la respuesta, el historial muestra que se desconoce el resultado.
 
 Los comandos `alpacawork telemetry` solo funcionan cuando una persona los escribe desde una terminal en este PC.
 
