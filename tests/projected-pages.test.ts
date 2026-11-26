@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { applyTimelinePatch, taskProjectedPageSchema, taskProjectedSearchSchema, taskTimelineLanesSchema, taskProjectedTimelineAxisSchema,
-  timelineEventOrder, type TaskTimelineLaneDTO } from '@alpacawork/contract/control';
+  timelineEventOrder, timelineLogOf, type TaskTimelineLaneDTO } from '@alpacawork/contract/control';
 import { Problem } from '@alpacawork/core';
 import { ProjectedPages } from '@alpacawork/backend/test-dist/receiver/index-pages.js';
 import { at, bundle, entry, FakeRecords, frame, pv, emptyAggregate } from './helpers/projection-read-fixture.ts';
@@ -152,6 +152,6 @@ test('screens holding one row over several ranges are each sent only what change
 });
 
 test('records of one time keep the order they had before strips were patched (IDs compared as text is compared)', () => {
-  const events = ['A', 'a'].map(id => ({ kind: 'log' as const, taskId: 'T1', entry: entry(id, 1) }));
+  const events = ['A', 'a'].map(id => ({ kind: 'log' as const, taskId: 'T1', entry: entry(id, 1) as unknown as ReturnType<typeof timelineLogOf> }));
   assert.deepEqual(events.sort(timelineEventOrder).map(event => event.entry.id), ['a', 'A']);
 });
