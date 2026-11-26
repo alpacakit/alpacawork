@@ -44,7 +44,7 @@ If you update to a version that adds a kind of information to what is sent, or c
 
 In some cases, such as when alpacawork runs in CI or inside a container, nothing is sent even if you chose to send. The switch then can't be changed, and the reason appears under it.
 
-Nothing is sent either while the environment variable `ALPACAWORK_TELEMETRY_DISABLED=1` or `DO_NOT_TRACK=1` is set for the server. However, once you remove it, any unsent data from the past 7 days is sent. Also, environment variables set in a terminal don't reach the server that starts automatically. To make sure sending stops, use the screen or the command.
+Nothing is sent either while the environment variable `ALPACAWORK_TELEMETRY_DISABLED=1` or `DO_NOT_TRACK=1` is set for the server. The days the server ran with it are not sent after you remove it, either. Also, environment variables set in a terminal don't reach the server that starts automatically. To make sure sending stops, use the screen or the command.
 
 ## See what is sent
 
