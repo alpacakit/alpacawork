@@ -1,6 +1,6 @@
 import { parse, stringify } from 'yaml';
 /** Real coordinator HTTP core cases; independent private fixtures. */
-import { coordinatorSnapshotSchema, coordinatorMessageResponseSchema, coordinatorResetResponseSchema } from '@alpacawork/contract/coordinator';
+import { coordinatorSnapshotSchema, coordinatorMessageResponseSchema, coordinatorMessageDigest, coordinatorResetResponseSchema } from '@alpacawork/contract/coordinator';
 import { AGENT_ADAPTERS, optionsBase } from '@alpacawork/contract/agent-adapters';
 import { stopGroup } from './helpers/process-groups.ts';
 import { cliRun, httpStatus } from './helpers/http-cli.ts';
@@ -30,7 +30,8 @@ test('message admission records its Request and Run and publishes the updated co
   try {
     const response = await h.post('/api/coordinator/messages', input);
     assert.equal(response.status, 200);
-    const accepted = (coordinatorMessageResponseSchema.parse(await response.json()).conversation);
+    const { conversation: accepted, message } = coordinatorMessageResponseSchema.parse(await response.json());
+    assert.deepEqual(message, { id, status: 'queued', inputDigest: coordinatorMessageDigest(input) });
     assert.equal(accepted.turns.find(turn => turn.id === id)?.status, 'queued', 'serve answers with the admitted message; the Run layer starts it');
     const [stored, ...rest] = h.records(conversation.id);
     assert.deepEqual(rest, []);

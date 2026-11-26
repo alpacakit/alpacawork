@@ -177,8 +177,8 @@ export function roundsOf(unit: Unit, now: number): Round[] {
 
 /**
  * The user's messages to the coordinator (all of them, or those named), each with the Tasks it acts on or names (none
- * when it names none): one action per Task, at the time the message was sent, by message. The warm-up message a
- * conversation opens with is not the user's, nor is a cancellation recorded before a message was sent (it has no words).
+ * when it names none): one action per Task, at the time the message was sent, by message. Cancellations recorded
+ * before admission have no message to count.
  */
 function coordinatorMessages(db: DatabaseSync, ids?: readonly string[]) {
   const sql = `SELECT q.id, q.submitted_at AS at, t.external_id AS task FROM requests q

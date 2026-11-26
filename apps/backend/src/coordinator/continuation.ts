@@ -31,6 +31,20 @@ function blockedUntil(run: CoordinatorRunRecord): number {
     Date.parse(run.ended_at ?? run.started_at ?? '') + UNKNOWN_LIMIT_MS;
 }
 
+function resetReason(config: AgentsSettings, rows: readonly AiRow[], head: CoordinatorRunRecord,
+  selected: AiRow, same: boolean): CoordinatorResetReason {
+  const from = rowOf(head), to = selected;
+  if (same) return { kind: 'unresumable', from, to };
+  const previous = aiLaunchIdentity(config, from);
+  const previousIndex = rows.findIndex(row => row.agent === from.agent &&
+    compileAgentSetting(row.agent, config.agents[row.agent]).adapter === head.launch.adapter &&
+    sameAiLaunch(previous, aiLaunchIdentity(config, row)));
+  const selectedIndex = rows.indexOf(selected);
+  if (previousIndex === 0 && selectedIndex > 0) return { kind: 'fallback', from, to };
+  if (previousIndex > 0 && selectedIndex === 0) return { kind: 'recovered', from, to };
+  return { kind: 'another_ai', from, to };
+}
+
 /** The only decision about which coordinator invocation can take the next input. */
 export function coordinatorNextLaunch(config: AgentsSettings, runs: readonly CoordinatorRunRecord[],
   path = process.env.PATH ?? '', options: { now?: number; reset?: CoordinatorResetReason | null; rows?: readonly AiRow[];
@@ -66,10 +80,7 @@ export function coordinatorNextLaunch(config: AgentsSettings, runs: readonly Coo
             (error.reason?.kind !== 'selection_required' && error.reason?.kind !== 'new_conversation_required')) throw error;
         }
       }
-      const reset = options.reset ?? (head && {
-        kind: !same ? 'another_ai' : head.state === 'failed' ? 'recovered' : 'unresumable',
-        from: rowOf(head), to: row,
-      } satisfies CoordinatorResetReason);
+      const reset = options.reset ?? (head && resetReason(config, rows, head, row, same));
       return { kind: 'start' as const, row, launch: start.launch,
         appliedValues: start.appliedValues, continued: null, following, reset };
     } catch (error) {

@@ -22,7 +22,6 @@ for (const phone of [false]) test(`observed work reaches folded and open convers
   page.on('request', request => { if (request.method() === 'GET' && new URL(request.url()).pathname === '/api/coordinator') reads++; });
   await open(page, runtime);
   await writeCoordinator(page);
-  // The work shown is the send's own; the background warm-up it would otherwise wait behind has its own lifetime.
   await readyCoordinator(page, runtime);
   await page.keyboard.insertText('Show the observed work');
   await page.locator('[data-ask-send]').click();

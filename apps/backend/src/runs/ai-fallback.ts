@@ -178,7 +178,7 @@ function reserveCoordinatorFallback(store: RunStore, tx: RunTransaction, run: Co
   if (prompt === undefined) return;
   for (let attempt = (run.attempt ?? 0) + 1; attempt < rows.length; attempt++) {
     const row = rows[attempt]!;
-    const next = coordinatorNextLaunch(config, [], run.launch.path, { rows: [row], reset: { kind: 'fallback' } });
+    const next = coordinatorNextLaunch(config, [], run.launch.path, { rows: [row] });
     if (next.kind !== 'start' || !isDeepStrictEqual(next.launch.values, row.values)) continue;
     return tx.createCoordinatorRun({ requestId: run.requestId, attempt, firstRunId: run.firstRunId ?? run.id,
       agent: row.agent, resumes: null, session: assignedSession(next.launch, row.agent), cwd: run.cwd, launch: next.launch,

@@ -6,7 +6,8 @@ import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { stringify } from 'yaml';
 import { RunStore } from '@alpacawork/runs';
-import { coordinatorMessageStatusSchema, coordinatorSnapshotSchema, coordinatorTurnsPageSchema } from '@alpacawork/contract/coordinator';
+import { coordinatorMessageDigest, coordinatorMessageResponseSchema, coordinatorMessageStatusSchema,
+  coordinatorSnapshotSchema, coordinatorTurnsPageSchema } from '@alpacawork/contract/coordinator';
 import { CoordinatorConversation } from '@alpacawork/backend/test-dist/coordinator/conversation.js';
 import { startServer } from '@alpacawork/backend/test-dist/receiver/server.js';
 import { createOriginal, copyWorkspace, profiles, removeWorkspace } from '../scripts/dev-fixtures/fixture.ts';
@@ -24,7 +25,8 @@ test('coordinator HTTP bounds a thousand turns and acknowledges an answer pushed
     const owner = new CoordinatorConversation(root), conversationId = owner.read().id;
     await owner.seedSeen();
     const ids = Array.from({ length: 1000 }, () => crypto.randomUUID());
-    owner.ask({ conversationId, id: ids[0]!, text: 'Seed synthetic turn', attachments: [] });
+    const originalMessage = { conversationId, id: ids[0]!, text: 'Seed synthetic turn', attachments: [], tasks: ['T5', 'T2'] };
+    owner.ask(originalMessage);
     const store = new RunStore(root, { busyTimeoutMs: 1000 });
     try {
       const { agent, launch, cwd, message } = store.coordinatorHead(conversationId)!;
@@ -60,23 +62,38 @@ test('coordinator HTTP bounds a thousand turns and acknowledges an answer pushed
       const page = async (query: string) => coordinatorTurnsPageSchema.parse(await get(`/api/coordinator/turns?conversationId=${conversationId}&${query}`));
       const older = await page(`before=${first.earlier!.before}`);
       assert.deepEqual(older.turns.map(turn => turn.id), ids.slice(930, 980));
+      assert.ok(older.turns.every(turn => turn.seen));
+      const boundary = await page(`around=${ids[980]}`);
+      assert.equal(boundary.turns.at(-2)?.seen, true);
+      assert.equal(boundary.turns.at(-1)?.seen, false, 'the recent reply remains unread');
       const previous = await page(`before=${older.more}`);
       assert.deepEqual(previous.turns.map(turn => turn.id), ids.slice(880, 930));
       const around = await page(`around=${ids[3]}`);
       assert.deepEqual(around.turns.map(turn => turn.id), ids.slice(0, 4));
       assert.equal(around.more, null);
-      for (const [id, status] of [[ids[0]!, 'succeeded'], [withdrawn, 'withdrawn'], [crypto.randomUUID(), 'missing']]) {
-        assert.deepEqual(coordinatorMessageStatusSchema.parse(await get(`/api/coordinator/messages/${id}/status`)), { id, status });
-      }
-      const sendRead = (seen: string[]) => fetch(new URL('/api/coordinator/read', server.url), {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ conversationId, seen }),
+      const status = async (id: string) => coordinatorMessageStatusSchema.parse(await get(`/api/coordinator/messages/${id}/status`));
+      assert.deepEqual(await status(withdrawn), { id: withdrawn, status: 'withdrawn' });
+      const missing = crypto.randomUUID();
+      assert.deepEqual(await status(missing), { id: missing, status: 'missing' });
+      const receipt = await status(originalMessage.id);
+      assert.deepEqual(receipt, { id: originalMessage.id, status: 'succeeded', inputDigest: coordinatorMessageDigest(originalMessage) });
+
+      const post = (path: string, input: unknown) => fetch(new URL(path, server.url), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input),
       });
+      const replay = await post('/api/coordinator/messages', { ...originalMessage, tasks: ['T2', 'T5', 'T5'] });
+      assert.equal(replay.status, 200);
+      const replayed = coordinatorMessageResponseSchema.parse(await replay.json());
+      assert.deepEqual(replayed.message, receipt);
+      assert.ok(!replayed.conversation.turns.some(turn => turn.id === originalMessage.id));
+      assert.equal((await post('/api/coordinator/messages', { ...originalMessage, tasks: ['T2'] })).status, 409);
+      const sendRead = (seen: string[]) => post('/api/coordinator/read', { conversationId, seen });
       const confirmed = await sendRead([ids[0]!, ids.at(-1)!]);
       assert.equal(confirmed.status, 200);
       assert.deepEqual(new Set((await confirmed.json()).seen), new Set([ids[0], ids.at(-1)]));
       const changed = coordinatorSnapshotSchema.parse(await get('/api/coordinator')).conversation;
       assert.equal(changed.turns.at(-1)!.seen, true);
-      assert.equal((await page(`around=${ids[0]}`)).turns[0]!.seen, false);
+      assert.equal((await page(`around=${ids[0]}`)).turns[0]!.seen, true);
       assert.equal((await sendRead([withdrawn])).status, 400);
     } finally { await server.close(); }
   } finally {

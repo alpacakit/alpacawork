@@ -9,7 +9,8 @@ const emit = value => process.stdout.write(JSON.stringify(value) + '\n');
 emit({ type: 'thread.started', thread_id: 'synthetic-process-session' });
 emit({ type: 'input.taken', id: input.id });
 const finish = () => { writeFileSync(outputAt, 'continued after command timeout'); emit({ type: 'turn.completed' }); process.exit(0); };
-const plan = JSON.parse(input.text);
+// The plan is the fixture message at the end of the coordinator startup prompt.
+const plan = JSON.parse(input.text.trimEnd().split('\n').at(-1));
 const resident = spawn(process.execPath, ['-e', 'setInterval(()=>{},1000)'], { stdio: 'ignore' });
 const command = spawn('/bin/bash', ['-c', "trap '' TERM; sleep 30 & wait"], { detached: true, stdio: 'ignore' });
 const short = spawn('/bin/bash', ['-c', 'sleep 0.1'], { detached: true, stdio: 'ignore' });

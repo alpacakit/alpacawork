@@ -137,7 +137,7 @@ function trialRows(db: DatabaseSync, ids: readonly string[]) {
 }
 
 function draw(db: DatabaseSync, store: RunStore, conversation: string, requests: readonly TurnRow[],
-  seen: ReadonlySet<string>, active: readonly CoordinatorRunRecord[],
+  seen: (request: TurnRow) => boolean, active: readonly CoordinatorRunRecord[],
   { lane, blocked, reservations }: ReturnType<typeof coordinatorLane>): CoordinatorTurn[] {
   const trials = new Map<string, { run: CoordinatorRunRecord; row: Row }[]>();
   for (const row of trialRows(db, requests.map(request => request.id))) {
@@ -180,7 +180,7 @@ function draw(db: DatabaseSync, store: RunStore, conversation: string, requests:
       ...(failure ? { failure } : {}),
       ...(typeof request.reply_to === 'string' ? { replyTo: replyView(db, conversation, request.reply_to) } : {}),
       ...(again ? { sentAgain: true as const } : {}), ...(workedBy ? { workedBy } : {}),
-      seen: readable(turn) && (again || seen.has(run.requestId)) };
+      seen: readable(turn) && (again || seen(request)) };
   });
 }
 
@@ -210,7 +210,7 @@ export function view(db: DatabaseSync, store: RunStore, conversation: Conversati
   if (pending) resets.push(pending);
   const lane = coordinatorLane(db, store, id, active);
   return { id, busy: !!laneAhead(lane.lane, { role: 'coordinator', conversationId: id }, lane.blocked, lane.reservations),
-    turns: draw(db, store, id, requests, seen, active, lane), earlier, resets };
+    turns: draw(db, store, id, requests, request => seen.has(request.id), active, lane), earlier, resets };
 }
 
 export function historyPage(db: DatabaseSync, store: RunStore, conversation: string,
@@ -224,7 +224,9 @@ export function historyPage(db: DatabaseSync, store: RunStore, conversation: str
   const more = requests.length > COORDINATOR_HISTORY_PAGE;
   const page = requests.slice(0, COORDINATOR_HISTORY_PAGE).reverse();
   const active = activeCoordinatorRuns(db, conversation);
-  return { turns: draw(db, store, conversation, page, seen, active, coordinatorLane(db, store, conversation, active)),
+  const recentStart = recent(db, conversation)[0]?.coordinator_turn_no ?? 0;
+  const hasRead = (request: TurnRow) => request.coordinator_turn_no < recentStart || seen.has(request.id);
+  return { turns: draw(db, store, conversation, page, hasRead, active, coordinatorLane(db, store, conversation, active)),
     resets: coordinatorResetsFor(db, conversation, page.map(turn => turn.id)), more: more ? page[0]!.id : null };
 }
 

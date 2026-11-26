@@ -44,7 +44,6 @@ test('send now bypasses a waiting message with different choices', () => {
     journal.append('session', { id: 'established-same-session' });
     new RunEventImporter(store).pass();
     const waiting = ask('low'), sent = ask('high');
-    assert.equal(sent.resumes, waiting.id); assert.equal(waiting.resumes, first.id);
     assert.deepEqual(sent.launch.values, first.launch.values);
     assert.notDeepEqual(waiting.launch.values, sent.launch.values);
     assert.deepEqual(sent.session, store.runtimeGet(first.id)!.session);

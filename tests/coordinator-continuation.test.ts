@@ -21,6 +21,7 @@ test('the next coordinator turn follows the saved order and the latest observed 
     launch: { adapter: 'claude', values: row.values }, ...(cause ? { availability: { cause } } : {}),
   }) as CoordinatorRunRecord;
   const limited = run(1, first, 'session_limit'), resumed = run(2, second);
+  const failed = { ...run(2, first), state: 'failed' } as const;
   const priorEffort = run(3, { agent: 'second', values: { model: 'two', effort: 'low' } });
   const withoutEffort = { ...agents, second: { ...setting, params: { model: ['one', 'two'] },
     options: { base: optionsBase('claude'), start: '--model {model} --session-id {session}', resume: '--model {model} --resume {session}' } } };
@@ -33,35 +34,46 @@ test('the next coordinator turn follows the saved order and the latest observed 
   const high = { agent: first.agent, values: { model: 'one', effort: 'high' } };
   const cases = [
     { name: 'new conversation', rows: [first, second, last], runs: [], selected: first, continued: null, following: [second, last] },
+    { name: 'leaving the limited primary for a spare', rows: [first, second, last], runs: [limited],
+      selected: second, continued: null, following: [last], reset: 'fallback' },
+    { name: 'returning from a spare when the primary limit clears', rows: [first, second, last], runs: [limited, resumed],
+      selected: first, continued: null, following: [second, last], reset: 'recovered', now: 3_602_000 },
+    { name: 'the same AI cannot resume after ordinary failure', rows: [first, second], runs: [failed],
+      selected: first, continued: null, following: [second], reset: 'unresumable' },
     { name: 'current fallback', rows: [first, second, last], runs: [limited, resumed], selected: second, continued: resumed, following: [last] },
-    { name: 'new row above the exhausted one', rows: [last, first, second], runs: [limited, resumed], selected: last, continued: null, following: [second] },
-    { name: 'moving an untried row first', rows: [last, second], runs: [resumed], selected: last, continued: null, following: [second] },
-    { name: 'new values for the same agent', rows: [revised, last], runs: [resumed], selected: revised, continued: null, following: [last], modelArg: 'one' },
+    { name: 'new row above the exhausted one', rows: [last, first, second], runs: [limited, resumed], selected: last, continued: null, following: [second], reset: 'recovered' },
+    { name: 'moving an untried row first', rows: [last, second], runs: [resumed], selected: last, continued: null, following: [second], reset: 'recovered' },
+    { name: 'new values for the same agent', rows: [revised, last], runs: [resumed], selected: revised, continued: null, following: [last], modelArg: 'one', reset: 'another_ai' },
     { name: 'a changed model that resume cannot pass starts a new session', profiles: startModelOnly, rows: [noEffort, last],
-      runs: [run(3, oldModel)], selected: noEffort, continued: null, following: [last], modelArg: 'two' },
+      runs: [run(3, oldModel)], selected: noEffort, continued: null, following: [last], modelArg: 'two', reset: 'another_ai' },
     { name: 'resume can keep the same model without an option for it', profiles: startModelOnly, rows: [noEffort, last],
       runs: [run(2, noEffort)], selected: noEffort, continued: run(2, noEffort), following: [last] },
     { name: 'a duplicate exhausted row with a different suppressed value', profiles: suppressedEffort,
       rows: [low, second, high], runs: [run(1, low, 'session_limit'), resumed], selected: second, continued: resumed, following: [] },
     { name: 'reordering equivalent rows does not retry an exhausted launch', profiles: suppressedEffort,
       rows: [high, second, low], runs: [run(1, low, 'session_limit'), resumed], selected: second, continued: resumed, following: [] },
-    { name: 'all rows exhausted', rows: [first, second], runs: [limited, run(4, second, 'model_capacity')], selected: first, continued: null, following: [second] },
+    { name: 'all rows exhausted', rows: [first, second], runs: [limited, run(4, second, 'model_capacity')], selected: first, continued: null, following: [second], reset: 'recovered' },
     { name: 'a more recent success clears a recorded limit', rows: [first, second], runs: [limited, run(5, first)], selected: first, continued: run(5, first), following: [second] },
     { name: 'an exhausted row and an unavailable current agent are skipped', rows: [first, unavailable, last],
-      runs: [limited, run(2, unavailable)], selected: last, continued: null, following: [] },
+      runs: [limited, run(2, unavailable)], selected: last, continued: null, following: [], reset: 'another_ai' },
+    { name: 'the primary cannot launch', rows: [unavailable, second], runs: [run(1, unavailable)],
+      selected: second, continued: null, following: [], reset: 'fallback' },
+    { name: 'replacing an AI that is no longer in the stack', rows: [first, last], runs: [resumed],
+      selected: first, continued: null, following: [last], reset: 'another_ai' },
     { name: 'removed effort starts a new session on the same agent', profiles: withoutEffort, rows: [noEffort, last],
-      runs: [priorEffort], selected: noEffort, continued: null, following: [last] },
+      runs: [priorEffort], selected: noEffort, continued: null, following: [last], reset: 'unresumable' },
     { name: 'empty stack', rows: [], runs: [resumed], selected: null, continued: null, following: [] },
   ];
-  for (const { name, profiles, rows, runs, selected, continued, following, modelArg } of cases) {
+  for (const { name, profiles, rows, runs, selected, continued, following, modelArg, reset, now = 60_000 } of cases) {
     const settings = parseAgentsSettings(stringify({ agents: profiles ?? agents, aiStack: [task], coordinatorAiStack: rows }, { aliasDuplicateObjects: false }));
-    const next = coordinatorNextLaunch(settings, runs, '/bin', { now: 60_000 });
+    const next = coordinatorNextLaunch(settings, runs, '/bin', { now });
     assert.deepEqual(next.row, selected, name);
     if (next.row === null) {
       assert.equal(next.error.reason?.kind, 'no_configured_agents', name);
       continue;
     }
     assert.deepEqual(next.continued, continued, name);
+    assert.equal(next.kind === 'start' ? next.reset?.kind : undefined, reset, name);
     assert.deepEqual(next.launch.values, selected?.values, name);
     assert.deepEqual(next.following, following, name);
     if (modelArg) {

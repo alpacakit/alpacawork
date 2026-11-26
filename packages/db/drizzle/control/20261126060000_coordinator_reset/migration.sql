@@ -25,7 +25,7 @@ UPDATE runs SET record=json_remove(record,'$.restartArgv')
 --> statement-breakpoint
 ALTER TABLE coordinator_conversations DROP COLUMN warm_request_id;
 --> statement-breakpoint
-CREATE UNIQUE INDEX coordinator_turns ON requests(conversation_id,coordinator_turn_no)
+CREATE UNIQUE INDEX coordinator_request_turn_no ON requests(conversation_id,coordinator_turn_no)
   WHERE coordinator_turn_no IS NOT NULL;
 --> statement-breakpoint
 CREATE INDEX coordinator_visible_turns ON requests(conversation_id,coordinator_turn_no)

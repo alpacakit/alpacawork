@@ -1,8 +1,8 @@
 /** How the coordinator's own surfaces move: its queue grown out of its button and folded back into it (folded,
  * and over the conversation), and the conversation maximized and back (a computer only), on the real app.
  * node --import ./e2e/guard-loader.mjs e2e/perf/surface-motion.ts <output.json> [--throttle 4] [--rounds 3] [--film] [--profile]
- * The conversation is a fixed 12 answered and 3 queued turns (its GET and warm-up answered here); the list and the reader
- * are the isolated e2e serve. The instrument is motion-probe.ts. Every serve and browser is closed here, with an expiry.
+ * The conversation GET returns a fixed 12 answered and 3 queued turns. The list and reader use the isolated e2e serve.
+ * The instrument is motion-probe.ts. Every serve and browser is closed here, with an expiry.
  */
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
