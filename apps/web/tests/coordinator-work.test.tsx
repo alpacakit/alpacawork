@@ -23,7 +23,7 @@ test('every place shows one paced work name and the seconds since sending: held 
   useConnection.setState({ offline: false });
   const base = screenData();
   const at = (work: Partial<NonNullable<typeof base.info.coordinatorWork>> | null, rev = base.info.rev) => ({ ...base, info: { ...base.info, rev,
-    coordinatorWork: work && { conversation: 'conversation', turn: turn.id, run: 'R1', name: 'command' as const, count: 1, steps: [], stepEvents: 0, stepsStarted: 0, words: null, ...work } } });
+    coordinatorWork: work && { conversation: 'conversation', turn: turn.id, run: 'R1', name: 'command' as const, count: 1, steps: [], stepEvents: 0, stepsStarted: 0, words: null, context: null, ...work } } });
   function RunWork() {
     const text = useActivityText();
     return <span data-testid="run">{text({ at: turn.at, kind: 'output', toolName: null, note: null, context: null, steps: [],

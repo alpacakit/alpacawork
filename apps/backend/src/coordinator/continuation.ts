@@ -84,7 +84,7 @@ export function coordinatorNextLaunch(config: AgentsSettings, runs: readonly Coo
 const records = (rows: { record?: unknown }[]) => rows.map(row => coordinatorRunRecordSchema.parse(JSON.parse(String(row.record))));
 
 export function activeCoordinatorRuns(db: DatabaseSync, conversation: string): CoordinatorRunRecord[] {
-  return db.prepare(`SELECT r.record FROM runs r JOIN requests q ON q.id=r.request_id
+  return db.prepare(`SELECT r.record FROM runs r INDEXED BY coordinator_active_runs JOIN requests q ON q.id=r.request_id
     WHERE r.conversation_id=? AND r.conversation_id IS NOT NULL AND r.state IN ('queued','running','needs_review')
     AND q.coordinator_turn_no IS NOT NULL AND q.delivery_state <> 'aborted' ORDER BY r.id`)
     .all(conversation).map(row => coordinatorRunRecordSchema.parse(JSON.parse(String(row.record))));
@@ -101,7 +101,7 @@ export function coordinatorLaunchFor(db: DatabaseSync, config: AgentsSettings, c
       AND r.state NOT IN ('joined','queued','cancelled') ORDER BY q.coordinator_turn_no DESC LIMIT 1`)
     .all(conversation, boundary, before ?? Number.MAX_SAFE_INTEGER))[0] ?? null;
   const now = Date.now();
-  const failures = records(db.prepare(`SELECT r.record FROM runs r
+  const failures = records(db.prepare(`SELECT r.record FROM runs r INDEXED BY coordinator_rate_limit_runs
     WHERE r.conversation_id=? AND r.conversation_id IS NOT NULL AND r.state='failed'
       AND json_extract(r.record,'$.availability') IS NOT NULL
       AND coalesce(unixepoch(json_extract(r.record,'$.availability.resetsAt'),'subsec'),

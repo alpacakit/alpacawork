@@ -99,10 +99,10 @@ function coordinatorLane(db: DatabaseSync, store: RunStore, conversation: string
   const candidates = db.prepare(`SELECT r.id FROM (
     SELECT run_no FROM run_attempts WHERE diagnostic IS NOT NULL
     UNION
-    SELECT a.run_no FROM run_inputs i JOIN run_attempts a USING(attempt_id)
-      WHERE i.state IN ('reserved','attempted','uncertain')
-  ) pending JOIN runs r ON r.id=pending.run_no
-  WHERE r.conversation_id=? OR r.session_id IN (SELECT value FROM json_each(?))`)
+    SELECT a.run_no FROM run_inputs i INDEXED BY coordinator_delivery_inputs CROSS JOIN run_attempts a
+      WHERE i.state IN ('reserved','attempted','uncertain') AND a.attempt_id=i.attempt_id
+  ) pending CROSS JOIN runs r
+  WHERE r.id=pending.run_no AND (r.conversation_id=? OR r.session_id IN (SELECT value FROM json_each(?)))`)
     .all(conversation, JSON.stringify(sessions)).map(row => `R${row.id}`);
   const activeIds = active.map(run => run.id);
   const blocked = blockedInvocations(store, candidates);
@@ -128,12 +128,12 @@ function recent(db: DatabaseSync, conversation: string): TurnRow[] {
 }
 
 function trialRows(db: DatabaseSync, ids: readonly string[]) {
-  return db.prepare(`SELECT r.record,r.result,r.result_state,
-    (SELECT carrier.state FROM runs carrier WHERE carrier.id=(${messageCarrier('r.request_id')})) AS carrier_state,
+  return db.prepare(`SELECT trial.record,trial.result,trial.result_state,
+    (SELECT carrier.state FROM runs carrier WHERE carrier.id=(${messageCarrier('trial.request_id')})) AS carrier_state,
     EXISTS(SELECT 1 FROM runs retry
-      WHERE retry.conversation_id=r.conversation_id AND retry.conversation_id IS NOT NULL AND json_extract(retry.record,'$.message.retryOf')=r.request_id
+      WHERE retry.conversation_id=trial.conversation_id AND retry.conversation_id IS NOT NULL AND json_extract(retry.record,'$.message.retryOf')=trial.request_id
       AND EXISTS (SELECT 1 FROM requests rq WHERE rq.id=retry.request_id AND rq.delivery_state <> 'aborted')) AS sent_again
-    FROM json_each(?) scope JOIN runs r ON r.request_id=scope.value ORDER BY r.id`).all(JSON.stringify(ids));
+    FROM json_each(?) scope JOIN runs trial ON trial.request_id=scope.value ORDER BY trial.id`).all(JSON.stringify(ids));
 }
 
 function draw(db: DatabaseSync, store: RunStore, conversation: string, requests: readonly TurnRow[],
