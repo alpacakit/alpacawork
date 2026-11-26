@@ -8,6 +8,7 @@ import { isUnfinished } from '@alpacawork/runs';
 import { endedOwnWork } from './return-rules.js';
 import type { ControlTx } from './task-transition.js';
 import { assertCompactable } from '../runs/compactions.js';
+import { isConversationAgent } from '../runs/session-continuation.js';
 
 /** The checkpoint's mark of a Task's values (kept as `bodyHash`): the digest of their canonical JSON. */
 export const valuesHash = (values: TaskValues) => digest(Buffer.from(canonicalValues(values)));
@@ -140,12 +141,16 @@ export function continuationSessionUnavailable(head: Pick<RunRecord, 'state' | '
   return head.session === null && head.state !== 'queued' && head.state !== 'running';
 }
 export function conversationForRequest(facts: { rotation: Rotation | null; handoff: Handoff | null; resolvesUnknown: boolean;
-  anotherAi: boolean; explicit: 'new' | 'continue' | undefined; head: RunRecord | null; direct: boolean; resumable: boolean }):
+  agent: string; explicit: 'new' | 'continue' | undefined; head: RunRecord | null; direct: boolean;
+  resume: 'available' | 'profile_unavailable' | 'choices_unavailable' }):
   { mode: 'new' | 'continue'; rotationFrom: string | undefined; unsentNew: boolean; newConversation: NewConversation | undefined } {
   const { rotation, handoff, head } = facts;
   const unsentNew = rotation?.receipt === 'not_sent', rotates = !!handoff?.rotate && !rotation?.unknown;
-  const unresumable = !!head && facts.direct && (!hasContinuableSession(head) || !isUnfinished(head) && !facts.resumable);
-  const explicit = facts.anotherAi ? 'new' : facts.explicit;
+  // A Run already in progress can still deliver a session, but it cannot make an incompatible launch choice resumable.
+  const unresumable = !!head && (facts.resume === 'choices_unavailable' ||
+    facts.direct && (!hasContinuableSession(head) || !isUnfinished(head) && facts.resume === 'profile_unavailable'));
+  const anotherAi = !!head && !isConversationAgent(head, facts.agent);
+  const explicit = anotherAi ? 'new' : facts.explicit;
   const mode = unsentNew ? 'new' : explicit ? explicit : rotates || !head || unresumable ? 'new' : 'continue';
   if (mode !== 'new') return { mode, rotationFrom: undefined, unsentNew, newConversation: undefined };
   const rotationFrom = unsentNew || (rotation?.unknown && facts.resolvesUnknown) ? rotation?.run.context?.rotationFrom
@@ -155,7 +160,7 @@ export function conversationForRequest(facts: { rotation: Rotation | null; hando
   const resent = unsentNew || !!rotation?.unknown && facts.resolvesUnknown;
   const carried = resent ? rotation?.run.newConversation ?? (rotationFrom ? { because: 'handoff' as const, report: rotationFrom } : undefined) : undefined;
   const newConversation: NewConversation | undefined = resent && carried ? carried : unsentNew ? undefined
-    : facts.anotherAi ? { because: 'another_ai' } : explicit === 'new' ? { because: 'asked' }
+    : anotherAi ? { because: 'another_ai' } : explicit === 'new' ? { because: 'asked' }
     : rotates ? { because: 'handoff', report: handoff!.id } : !head ? undefined : { because: 'unresumable' };
   return { mode, rotationFrom, unsentNew, newConversation };
 }
