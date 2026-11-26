@@ -119,3 +119,22 @@ test('a window is written only for a model the agent lists, and what ships is fo
   for (const adapter of Object.values(AGENT_ADAPTERS))
     for (const model of Object.keys(adapter.contextDefaults)) assert.ok(adapter.defaultParams.model?.includes(model), `${adapter.id} ${model}`);
 });
+
+test('a compaction whose agent does not say the fill after it is kept with the next fill read, or without one at the end', t => {
+  const folder = mkdtempSync(join(tmpdir(), 'agent-compaction-'));
+  t.after(() => rmSync(folder, { recursive: true, force: true }));
+  const told: { beforeTokens: number | null; afterTokens: number | null }[] = [];
+  const activity = new OutputActivityReader(adapters.codex, undefined, () => {}, fill => told.push(fill));
+  const emit = (...contexts: object[]) => {
+    for (const context of contexts) appendFileSync(join(folder, 'stdout.log'), JSON.stringify({ type: 'context.updated', context }) + '\n');
+    activity.poll(folder);
+  };
+  // Codex compacts on its own and says only that it did; its next model call says the compacted conversation's fill.
+  emit({ usedTokens: 90_087, compacted: false }, { usedTokens: null, compacted: true });
+  assert.deepEqual(told, []);
+  emit({ usedTokens: 31_000, compacted: false });
+  assert.deepEqual(told, [{ beforeTokens: 90_087, afterTokens: 31_000 }]);
+  emit({ usedTokens: 60_000, compacted: false }, { usedTokens: null, compacted: true });
+  activity.finish(folder, 'done');
+  assert.deepEqual(told.at(-1), { beforeTokens: 60_000, afterTokens: null }, 'a Run that ends first keeps it without the fill after');
+});

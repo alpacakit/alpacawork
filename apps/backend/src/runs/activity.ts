@@ -151,12 +151,21 @@ export class OutputActivityReader {
     try {
       this.lines.read(folder, (value, line) => this.accept(value, line));
       this.lines.finish((value, line) => this.accept(value, line));
+      this.tellCompaction();
     } finally {
       const read = new Date(this.now()).toISOString();
       this.journal.settle(state, () => ({ at: read, source: 'observed' }));
       this.resetWork(state);
       this.flush(folder);
     }
+  }
+
+  /** A compaction whose fill after it is not known yet: told with the next fill read, or without one when the Run ends. */
+  private pendingCompaction: { beforeTokens: number | null; afterTokens: number | null } | null = null;
+  private tellCompaction(afterTokens: number | null = null): void {
+    if (!this.pendingCompaction) return;
+    this.compacted({ ...this.pendingCompaction, afterTokens });
+    this.pendingCompaction = null;
   }
 
   private resetWork(state?: Settled): void {
@@ -168,7 +177,14 @@ export class OutputActivityReader {
     const received = new Date(this.now()).toISOString();
     const update = this.adapter.context(value);
     if (update) {
-      if (update.compacted) this.compacted({ beforeTokens: this.context?.usedTokens ?? null, afterTokens: update.usedTokens ?? null });
+      // A compaction is told with the fill after it. An agent that does not say it (Codex) is told at its next model
+      // call, whose fill is the compacted conversation's; one the Run ends before is told without it (finish).
+      if (update.compacted) {
+        this.tellCompaction();
+        const fill = { beforeTokens: this.context?.usedTokens ?? null, afterTokens: update.usedTokens ?? null };
+        if (fill.afterTokens === null) this.pendingCompaction = fill;
+        else this.compacted(fill);
+      } else if (this.pendingCompaction && update.usedTokens != null) this.tellCompaction(update.usedTokens);
       this.context = mergeContext(this.context, update, received);
       if (update.windowTokens !== undefined) this.reported(update);
       // A context-only update leaves the latest work and words in place.
