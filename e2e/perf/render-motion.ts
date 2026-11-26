@@ -23,7 +23,7 @@ type Probe = { phase: Phase; frames: number[]; long: number[]; last: number; ani
 declare global { interface Window { renderMotion: Probe } }
 const output = resolve(process.argv[2] ?? '/tmp/render-motion.json'), counts = process.argv[3] === 'counts';
 mkdirSync(dirname(output), { recursive: true });
-const conversation = coordinatorConversationSchema.parse({ id: 'render-motion', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [],
+const conversation = coordinatorConversationSchema.parse({ id: 'render-motion', nextLaunch: { agent: 'claude', values: {} }, busy: false, earlier: null, resets: [], context: null, autoReset: { tokens: 200_000, percent: 50 },
   turns: [...Array.from({ length: 12 }, (_, i) => ({ id: `turn-${i}`, at: `2026-01-01T00:${String(i).padStart(2, '0')}:00Z`,
     ask: `Measurement request ${i}`, attachments: [], status: 'succeeded', waiting: false, seen: true, error: null, result: null,
 
@@ -44,7 +44,7 @@ try {
     page.on('pageerror', error => console.error('pageerror', error.message));
     await page.clock.setFixedTime(new Date(SAMPLE_NOW));
     await page.route('**/api/coordinator', route => route.fulfill({ json: conversation }));
-    await page.route('**/api/coordinator/warm', route => route.fulfill({ json: conversation }));
+
     await page.addInitScript((count) => {
       const probe: Probe = window.renderMotion = { phase: { commits: 0, renders: 0, byName: {} }, frames: [], long: [], last: 0, animations: [] };
       const frame = (at: number) => { if (probe.last) probe.frames.push(at - probe.last); probe.last = at; requestAnimationFrame(frame); };

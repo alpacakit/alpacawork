@@ -64,8 +64,7 @@ test('the pinned coordinator card sends, resumes, attaches an image and starts o
     await input.press('Meta+Enter');
     await expect(card.locator('[data-ask-answer]')).toHaveCount(1);
     const first = JSON.parse((await card.locator('[data-ask-answer]').first().textContent())!);
-    // Opening the card on a new conversation started it in the background: the first message continues that session.
-    expect(first.mode).toBe('resume'); expect(first.imageBytes).toBe(PNG.length);
+    expect(first.mode).toBe('start'); expect(first.imageBytes).toBe(PNG.length);
     await input.fill('Follow-up question');
     const followUp = coordinatorMessage(page);
     await card.locator('[data-ask-send]').click();
@@ -73,11 +72,10 @@ test('the pinned coordinator card sends, resumes, attaches an image and starts o
     await expect(card.locator('[data-ask-answer]')).toHaveCount(2);
     const second = JSON.parse((await card.locator('[data-ask-answer]').last().textContent())!);
     expect(second.mode).toBe('resume'); expect(second.session).toBe(first.session);
-    // Under the thumb that reads the answer, starting over asks for a second press.
-    await card.locator('[data-coordinator-clear]').click();
-    // It asks over itself, staying where it was pressed.
-    await expect(page.locator('[data-coordinator-clear-ask]')).toHaveText('Click again to clear');
-    await expect(card.locator('[data-coordinator-clear]')).toHaveAttribute('aria-label', 'Click again to clear');
+    await card.locator('[data-coordinator-context]').click();
+    const clear = page.locator('[data-coordinator-clear]');
+    await clear.click();
+    await expect(clear).toHaveAttribute('data-asking', 'true');
     // Empty answers also occur while the old conversation is withdrawn. They do not certify the new editor.
     let releaseClear!: () => void, replyReady = false;
     const clearGate = new Promise<void>(resolve => { releaseClear = resolve; });
@@ -89,7 +87,7 @@ test('the pinned coordinator card sends, resumes, attaches an image and starts o
       await route.continue();
     });
     try {
-      await card.locator('[data-coordinator-clear]').click();
+      await clear.click();
       await expect.poll(() => replyReady).toBe(true);
       await expect(card.locator('[data-ask-answer]')).toHaveCount(0);
       await expect(input).toHaveAttribute('contenteditable', 'false');
@@ -99,7 +97,7 @@ test('the pinned coordinator card sends, resumes, attaches an image and starts o
     await card.locator('[data-ask-send]').click();
     await expect(card.locator('[data-ask-answer]')).toHaveCount(1);
     const third = JSON.parse((await card.locator('[data-ask-answer]').first().textContent())!);
-    expect(third.mode).toBe('resume'); expect(third.session).not.toBe(first.session);
+    expect(third.mode).toBe('start'); expect(third.session).not.toBe(first.session);
 });
 
 test('the coordinator moves into its own window and back, keeping its draft, and its keys and pictures stay there', async ({ page, runtime }) => {

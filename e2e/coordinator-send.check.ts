@@ -51,11 +51,10 @@ async function ready(page: Page, runtime: Parameters<typeof open>[1]) {
   await openCoordinator(page);
   await expect(field(page)).toHaveAttribute('contenteditable', 'true');
   await expect(page.locator('[data-coordinator-card]').getByRole('button', { name: 'Attach', exact: true })).toBeEnabled();
-  // Opening starts the hidden warm-up, and serve counts it as work ahead: until it ends, a send waits in the queue,
-  // with the waiting rows at the thread end. Each case starts from an idle conversation, however slowly the warm-up's process starts.
+  // Each case starts from an idle coordinator conversation.
   await expect.poll(async () => {
     const { conversation } = await (await page.request.get(runtime.origin + '/api/coordinator')).json();
-    return !!conversation && !conversation.busy && conversation.warm !== 'preparing';
+    return !!conversation && !conversation.busy;
   }, { timeout: 30000 }).toBe(true);
 }
 

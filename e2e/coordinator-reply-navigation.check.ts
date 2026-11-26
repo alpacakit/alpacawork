@@ -1,7 +1,7 @@
 
 import { writeFileSync } from 'node:fs';
 import { test as base, expect, open, openCoordinator } from './fixtures.ts';
-import { configureCoordinator, readyCoordinator } from './coordinator-fixture.ts';
+import { configureCoordinator, readyCoordinator, revealReplies } from './coordinator-fixture.ts';
 import { start } from './server.ts';
 
 const test = base.extend({ runtime: async ({}, use) => {
@@ -17,13 +17,14 @@ for (const phone of [false, true]) test.describe(phone ? 'phone reply navigation
 
   if (!phone) test('an unconfirmed queued reply returns to its sent message and cannot jump after acceptance or another disclosure', async ({ page, runtime }) => {
     await open(page, runtime, '?agent=1'); await openCoordinator(page);
-    // The answer replied to is the send's own; the background warm-up it would otherwise wait behind has its own lifetime.
     await readyCoordinator(page, runtime);
     const field = page.locator('[data-one-input]'), send = page.locator('[data-ask-send]');
     await field.fill('answer-from:' + runtime.root + '/answer.md'); await send.click();
     const source = page.locator('[data-coordinator-turn=succeeded]').first(); await expect(source).toBeVisible();
     await field.fill('wait:' + runtime.root + '/gate'); await send.click();
     await expect(page.locator('[data-coordinator-turn=running]')).toBeVisible();
+    await revealReplies(page);
+    if (await source.getAttribute('data-exchange') === 'folded') await source.locator('[data-exchange-toggle]').click();
     await source.locator('[data-reply-answer]').click(); await field.press('End'); await field.pressSequentially('unconfirmed reply');
     let release!: () => void, localId = '';
     const held = new Promise<void>(resolve => { release = resolve; });

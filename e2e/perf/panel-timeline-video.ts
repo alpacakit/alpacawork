@@ -24,7 +24,7 @@ try {
     await page.clock.setFixedTime(new Date(SAMPLE_NOW));
     await page.addInitScript(() => localStorage.setItem('alpacawork.coordinatorExtent', '240'));
     await page.route('**/api/coordinator', route => route.fulfill({ json:conversation }));
-    await page.route('**/api/coordinator/warm', route => route.fulfill({ json:conversation }));
+
     await page.goto(runtime.origin+'/?agent=1&strip=on');
     await page.locator('[data-read="T111"]').first().waitFor();
     await page.waitForTimeout(1200);

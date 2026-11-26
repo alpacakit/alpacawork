@@ -1,5 +1,6 @@
+import { holdCoordinator } from './last-answer-evidence.ts';
 import { commandPost } from "./command-post.ts";
-import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Page } from '@playwright/test';
 import { test, expect, openCoordinator, settleMotion, swipe, visibleReaderContentTop } from './fixtures.ts';
@@ -119,10 +120,10 @@ test('a right swipe sends one of two questions chosen; overlapping H presses adm
 });
 
 test('send response lost (after persistence): same immutable request, one message, no second departure', async ({ page, runtime }) => {
-  // The coordinator only answers: what is sent stays as it is, and its first turn waits while `.warm-hold` exists.
+  // The coordinator only answers. Keep the real invocation pending until checking its receipt.
   const ids = await prepare(page, runtime, { acting: false });
-  const coordinator = join(runtime.root, '.alpacawork', 'coordinator');
-  mkdirSync(coordinator, { recursive: true }); writeFileSync(join(coordinator, '.warm-hold'), 'hold');
+  const fixture = new URL('../tests/fixtures/fake-coordinator-agent.mjs', import.meta.url).pathname;
+  const releaseAI = holdCoordinator(runtime.root, [process.execPath, fixture]);
   // Keep delivery genuinely unknown until the explicit Check; a matching GET now settles admission immediately.
   const unseen = await (await page.request.get(runtime.origin + '/api/coordinator')).json();
   let holdReads = true;
@@ -153,8 +154,8 @@ test('send response lost (after persistence): same immutable request, one messag
     await expect(page.locator(`[data-coordinator-message="${(bodies[0] as { id: string }).id}"]`)).toHaveCount(1);
     expect(bodies.length).toBeLessThanOrEqual(2); for (const body of bodies) expect(body).toEqual(bodies[0]);
     await expect.poll(async () => (await conversation(page, runtime)).turns.length).toBe(1);
-    rmSync(join(coordinator, '.warm-hold'));
+    releaseAI();
     await expect.poll(async () => (await conversation(page, runtime)).turns[0].status, { timeout: 30_000 }).toBe('succeeded');
     await expect(shown(page)).toHaveText(ids[1]!); await expect(page.locator('[data-flying-card]')).toHaveCount(0);
-  } finally { holdReads = false; rmSync(join(coordinator, '.warm-hold'), { force: true }); }
+  } finally { holdReads = false; releaseAI(); }
 });

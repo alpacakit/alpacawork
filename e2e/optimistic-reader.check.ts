@@ -81,10 +81,7 @@ for (const [width, reduced] of [[412, false]] as const)
                     };
                 });
                 await begin(page, runtime, p, q);
-                const warm = page.waitForResponse(r => new URL(r.url()).pathname === '/api/coordinator/warm');
                 await page.locator('[data-coordinator-write]').click();
-                await warm;
-                await expect.poll(async () => (await conversation(page, runtime)).warm, { timeout: 20000 }).toMatch(/^(?:none|ready|failed)$/);
                 const releaseAI = holdCoordinator(runtime.root, fakeCoordinatorArgv);
                 let releaseCheck = () => { }, releasePost = () => { };
                 const checkGate = new Promise<void>(r => releaseCheck = r), postGate = new Promise<void>(r => releasePost = r);
@@ -157,7 +154,6 @@ for (const [width, reduced] of [[412, false]] as const)
                 }
             });
         });
-async function warm(page: any, r: Runtime) { const response = page.waitForResponse((v: any) => new URL(v.url()).pathname === '/api/coordinator/warm'); await openCoordinator(page); await response; await expect.poll(async () => (await conversation(page, r)).warm, { timeout: 20000 }).toMatch(/^(?:none|ready|failed)$/); }
 async function words(page: any, text: string) {
     if (!await page.locator('[data-coordinator-panel]').isVisible())
         await openCoordinator(page);
@@ -223,7 +219,7 @@ for (const width of [412])
             if (width === 412) test('an immediate refusal of any kind restores the same choice and words once, each time', async ({ page, runtime }) => {
                 const p = await project(runtime), q = await task(runtime, p);
                 await begin(page, runtime, p, q);
-                await warm(page, runtime);
+                await openCoordinator(page);
                 await choose(page);
                 await words(page, '補足も残す');
                 const release = holdCoordinator(runtime.root, fakeCoordinatorArgv);
@@ -280,7 +276,7 @@ test.describe('recovery location and gesture lifecycle', () => {
     test.use({ viewport: { width: 412, height: 915 }, hasTouch: true, isMobile: true, locale: 'ja-JP', fixedTime: false });
     test('a refused answer keeps its recipient through Open and resend, preserving the next card’s separate draft', async ({ page, runtime }) => {
         const p = await project(runtime), first = await task(runtime, p), second = await task(runtime, p);
-        await begin(page, runtime, p, first); await warm(page, runtime); await choose(page);
+        await begin(page, runtime, p, first); await openCoordinator(page); await choose(page);
         await words(page, '最初の追記');
         const refusal = await holdRefusedAnswer(page, runtime, first, '最初の追記');
         try {
@@ -327,7 +323,7 @@ test.describe('recovery location and gesture lifecycle', () => {
         const p = await project(runtime), q = await task(runtime, p);
         await record(page);
         await begin(page, runtime, p, q);
-        await warm(page, runtime);
+        await openCoordinator(page);
         await choose(page);
         await words(page, '再読込でも残す');
         const releaseAI = holdCoordinator(runtime.root, fakeCoordinatorArgv), posts: any[] = [];

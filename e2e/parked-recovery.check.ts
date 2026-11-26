@@ -46,7 +46,7 @@ for (const width of [1440]) test.describe(`${width}`, () => {
       questions.set(id, question.id);
     }
     await page.goto(runtime.origin + `/?agent=1&project=${p}&task=${a}`); await expect(shown(page)).toHaveText(a);
-    const warm = page.waitForResponse((v: any) => new URL(v.url()).pathname === '/api/coordinator/warm'); await openCoordinator(page); await warm;
+    await openCoordinator(page);
     await expect.poll(async () => (await conversation(page, runtime)).warm, { timeout: 20_000 }).toMatch(/^(?:none|ready|failed)$/);
     // A's answer and words are refused and taken back by its notice's Open.
     await fold(page); await reader(page).locator('[data-question="1"]').getByRole('button', { name: /A 青/ }).click();

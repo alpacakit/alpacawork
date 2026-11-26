@@ -213,11 +213,11 @@ const attach = async (context: BrowserContext) => {
   await installProbe(page, args.renders);
   if (turns) {
     // A long conversation, always mounted even folded: the synthetic workspace has none. Its answers name Tasks, as real ones do.
-    const conversation = { id: 'front-scenes', nextLaunch: { agent: 'claude', values: {} }, warm: 'none', busy: false, cancelled: [], turns: Array.from({ length: turns }, (_, i) => ({
+    const conversation = { id: 'front-scenes', nextLaunch: { agent: 'claude', values: {} }, busy: false, earlier: null, resets: [], context: null, autoReset: { tokens: 200_000, percent: 50 }, turns: Array.from({ length: turns }, (_, i) => ({
       id: `turn-${i}`, at: new Date(Date.UTC(2026, 9, 1, 0, i)).toISOString(), ask: `Measured request ${i} about T2 and T3`, attachments: [], status: 'succeeded', waiting: false, seen: true, error: null, result: null,
       answer: `### Answer ${i}\nT2 goes on after T3, **checked**.\n\n- First point\n- Second point\n`, answeredAt: new Date(Date.UTC(2026, 9, 1, 0, i, 30)).toISOString() })) };
     await page.route('**/api/coordinator', async route => { const response = await route.fetch(); await route.fulfill({ response, json: { ...await response.json(), conversation } }); });
-    await page.route('**/api/coordinator/warm', route => route.fulfill({ json: conversation }));
+
   }
   const cdp = await context.newCDPSession(page);
   await cdp.send('Performance.enable');
