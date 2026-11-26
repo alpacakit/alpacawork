@@ -19,9 +19,11 @@ import type { Bucket, Group, ListSet, ListValue } from "./contract";
 export type Bin = { from: string; to: string; complete: boolean };
 type Days = { from: string; to: string };
 
-/** The grid's columns: the rows' and the lead numbers'. */
+/** The rows' grid of 12 columns (on a wide page the lead numbers above stand three of them each). */
 export const GRID = "grid grid-cols-12 gap-x-6 narrow:block";
-export const LEFT = "col-span-3", RIGHT = "col-span-9 min-w-0";
+// Where the page is narrower than a wide screen (a window beside it), the left takes a third, so its names and numbers
+// still stand side by side.
+export const LEFT = "col-span-3 col-start-1 @max-5xl:col-span-4 @max-5xl:col-start-1", RIGHT = "col-span-9 col-start-4 min-w-0 @max-5xl:col-span-8 @max-5xl:col-start-5";
 
 /** Four numbers across the top, three columns each; on a phone two by two. */
 export function Leads({ children }: { children: ReactNode }) {
@@ -130,14 +132,14 @@ export function Row({ row, left, children, className }: { row?: number; left: Re
     {/* Each in its own place on the grid, so the day's legend (placed over the left) moves neither. The left holds,
         from the first, the room of the tallest of the span's numbers and every day's legend (each unseen but the one
         shown), so pointing at a day never makes the row taller nor runs it into the next. */}
-    <div className={cn(LEFT, "col-start-1 row-start-1 grid min-w-0")}>
+    <div className={cn(LEFT, "row-start-1 grid min-w-0")}>
       <div className={cn("col-start-1 row-start-1 min-w-0", day !== null && "invisible")}>{left}</div>
       {group && !group.narrow && row !== undefined && group.rows[row] && <LegendRoom say={group.rows[row]!} names={group.names} />}
     </div>
-    {children && <div className={cn(RIGHT, "col-start-4 row-start-1 narrow:mt-3")}>{children}</div>}
+    {children && <div className={cn(RIGHT, "row-start-1 narrow:mt-3")}>{children}</div>}
     {/* After the chart, so the keys go from the chart to its day's parts; drawn over the left's room. Escape there
         lets go of the day and gives the focus to the chart. */}
-    {day !== null && <div className="relative col-span-3 col-start-1 row-start-1 min-w-0"
+    {day !== null && <div className={cn(LEFT, "relative row-start-1 min-w-0")}
       onKeyDown={event => { if (event.key !== "Escape") return; event.preventDefault(); group!.point(null); group!.chartOf(row!)?.focus({ preventScroll: true }); }}>
       <DayLegend say={group!.rows[row!]!} at={day} day={group!.dayName(day)} onList={list => group!.openDay(list)} />
     </div>}
@@ -201,9 +203,11 @@ export type DayList = { set: ListSet; value: ListValue | null; group?: Group | n
 type Box = { left: number; right: number; top: number; bottom: number };
 /** The day pointed at, its row, and (under a finger) the box of the bin pressed, the window's place. */
 type Pointed = { at: number; row: number; box: Box | null };
-/** A change of what Runs ran under (`analysis changes`), on its local day, with what changed in words. */
-export type ChangeMark = { day: string; words: string };
+/** A change of what Runs ran under (`analysis changes`), on its local day, with each thing that changed in words. */
+export type ChangeMark = { day: string; words: string[] };
 type GroupState = { bins: Bin[]; span: Days; bucket: Bucket; rows: RowSay[]; hovered: number | null; narrow: boolean; changes: ChangeMark[];
+  /** The bin whose tasks the open list holds: it stays lit while the list stands beside the charts. */
+  chosen: number | null;
   pointed: Pointed | null; dayName: (at: number) => string; names: string[]; openDay: (list: (bin: Bin) => DayList) => void;
   /** Shows a day (null: none) at once, dropping a day waiting to be shown. */
   point: (at: number | null, row?: number, box?: Box) => void;
@@ -327,6 +331,8 @@ export function ChartGroup({ bins, span, today, bucket, rows, open, changes = []
     if (list) { remember(at, row); close(); open(list); }
   };
   const shown = pointed && bins[pointed.at] && rows[pointed.row] ? pointed : null;
+  const listDays = useViewStore(state => state.analysis?.list?.days ?? null);
+  const chosen = listDays ? bins.findIndex(bin => bin.from === listDays.from && bin.to === listDays.to) : -1;
   // The days' names, made when the days change (not as a day is chosen).
   const { i18n } = useTranslation();
   const names = useMemo(() => bins.map(bin => binName(bin, today)), [bins, today, i18n.language]);
@@ -339,7 +345,7 @@ export function ChartGroup({ bins, span, today, bucket, rows, open, changes = []
   const said = shown ? [dayName(shown.at), rows[shown.row]!.name, rows[shown.row]!.total(shown.at),
     ...(rows[shown.row]!.parts?.(shown.at) ?? []).map(part => `${part.name} ${part.value}`),
     ...rows[shown.row]!.line ? [`${rows[shown.row]!.line!.name} ${rows[shown.row]!.line!.value(shown.at)}`] : []].join(", ") : "";
-  return <GroupContext value={{ bins, span, bucket, rows, changes, hovered: shown?.at ?? null, narrow, pointed: shown, dayName, names, openDay, point, pointSoon, cancel, press, chartOf }}>
+  return <GroupContext value={{ bins, span, bucket, rows, changes, hovered: shown?.at ?? null, chosen: chosen < 0 ? null : chosen, narrow, pointed: shown, dayName, names, openDay, point, pointSoon, cancel, press, chartOf }}>
     {!narrow && <span aria-live="polite" className="sr-only">{said}</span>}
     <div ref={self} className="relative" onMouseLeave={narrow ? undefined : close} onKeyDownCapture={cancel} onFocusCapture={cancel}>
       {!narrow && <Columns layer="back" />}
@@ -383,13 +389,15 @@ function Columns({ layer }: { layer: "back" | "front" }) {
   };
   return <div aria-hidden={layer === "back"} className={cn(GRID, "pointer-events-none absolute inset-x-0 top-6 bottom-6", layer === "front" && "z-1")}>
     {/* Leaving the day columns lets go of the day, unless for the same row (its legend, on the left). */}
-    <div className="col-span-9 col-start-4 grid auto-cols-[minmax(0,1fr)] grid-flow-col" onMouseLeave={layer === "front" ? event => {
+    <div className={cn(RIGHT, "grid auto-cols-[minmax(0,1fr)] grid-flow-col")} onMouseLeave={layer === "front" ? event => {
       group.cancel();
       const row = group.pointed?.row, to = event.relatedTarget;
       if (!(to instanceof Element && row !== undefined && to.closest(`[data-row="${row}"]`))) group.point(null);
     } : undefined}>
       {group.bins.map((bin, at) => layer === "back"
-        ? <i key={bin.from} className={cn("block", group.hovered === at ? "bg-day-band" : lit(bin, group.span) && "bg-span-band")} />
+        // The day whose list is open is boxed, so it stays apart from the day pointed at.
+        ? <i key={bin.from} className={cn("block", group.hovered === at || group.chosen === at ? "bg-day-band" : lit(bin, group.span) && "bg-span-band",
+          group.chosen === at && "outline outline-1 -outline-offset-1 outline-ink/50")} />
         : <span key={bin.from} data-day-column="" className="pointer-events-auto cursor-pointer"
           onMouseMove={event => move(at, under(event.clientX, event.clientY, event.currentTarget).row, { x: event.clientX, y: event.clientY, time: event.timeStamp })}
           onClick={event => { const { row, part } = under(event.clientX, event.clientY, event.currentTarget); if (row >= 0) group.press(at, row, part); }} />)}
@@ -559,7 +567,7 @@ function Frame({ row, scale, lineScale, height, children }: { row: number; scale
       else if (event.key === "Escape" && group.pointed) { event.preventDefault(); group.point(null); }
     },
   };
-  return <div data-chart-row={row} {...keys} className="rounded-xs pt-4 outline-offset-2 focus-visible:outline-2 focus-visible:outline-ink narrow:pt-4.5">
+  return <>{row === 0 && <ChangeStrip />}<div data-chart-row={row} {...keys} className="rounded-xs pt-4 outline-offset-2 focus-visible:outline-2 focus-visible:outline-ink narrow:pt-4.5">
     <div className={cn("relative", height)}>
       <span aria-hidden className="absolute bottom-full start-0 text-xs whitespace-nowrap text-soft">{scale.label}</span>
       {/* The line's scale: only the value its top stands for, as quiet as the bars' (the line is named on the left). */}
@@ -567,24 +575,57 @@ function Frame({ row, scale, lineScale, height, children }: { row: number; scale
       <i aria-hidden className="pointer-events-none absolute inset-x-0 top-0 border-t border-rule" />
       <i aria-hidden className="pointer-events-none absolute inset-x-0 top-1/2 border-t border-rule" />
       <div className="absolute inset-0 border-b border-lit-line">{children}</div>
-      <ChangeLines />
     </div>
-  </div>;
+  </div></>;
 }
 
-/**
- * The changes of what Runs ran under (a skill updated, another model, another version), each a dotted line through the
- * bin of its day, saying what changed: the numbers before and after it read side by side.
- */
-function ChangeLines() {
-  const { bins, changes } = useGroup();
+/** Each bin's changes, every thing that changed said once (agents that took the same change on the same days say it once). */
+export function changesByBin(bins: readonly Bin[], changes: readonly ChangeMark[]): Map<number, string[]> {
   const marks = new Map<number, string[]>();
   for (const change of changes) {
     const at = bins.findIndex(bin => bin.from <= change.day && change.day <= bin.to);
-    if (at >= 0) marks.set(at, [...marks.get(at) ?? [], change.words]);
+    if (at < 0) continue;
+    const words = marks.get(at) ?? [];
+    for (const each of change.words) if (!words.includes(each)) words.push(each);
+    marks.set(at, words);
   }
-  return <>{[...marks].map(([at, words]) => <i key={at} data-change-mark="" style={{ left: `${(at + 0.5) / bins.length * 100}%` }}
-    className="pointer-events-none absolute inset-y-0 block border-s border-dashed border-changed" aria-hidden title={words.join("\n")} />)}</>;
+  return marks;
+}
+
+/** On how many days of the bins something changed. */
+const changeDays = (bins: readonly Bin[], changes: readonly ChangeMark[]) =>
+  new Set(changes.filter(change => bins[0]!.from <= change.day && change.day <= bins.at(-1)!.to).map(change => change.day)).size;
+/**
+ * The changes of what Runs ran under (alpacawork's version, a skill, an instruction file) over the group's first chart,
+ * on their days: a small mark over each bin that has one, and one line of words, saying what changed on the day pointed
+ * at (else on how many days), so the numbers before and after a change are read down the charts below it. The line is
+ * always one line tall, so pointing at a day never moves the charts; where a day's changes do not fit it, they are also
+ * listed whole above it (over the room above the charts, never over the day's bars) while the day is pointed at.
+ */
+function ChangeStrip() {
+  const { t } = useTranslation("analysis");
+  const group = useGroup();
+  const marks = useMemo(() => changesByBin(group.bins, group.changes), [group.bins, group.changes]);
+  const line = useRef<HTMLParagraphElement>(null);
+  const [cut, setCut] = useState(false);
+  const at = group.hovered, words = at === null ? undefined : marks.get(at);
+  useLayoutEffect(() => { setCut(!!words && !!line.current && line.current.scrollWidth > line.current.clientWidth); }, [words]);
+  if (!marks.size) return null;
+  return <div data-change-strip="" className="relative">
+    <p ref={line} className="h-4.5 truncate text-xs text-muted">
+      <span className="me-2 text-soft">{t("change.legend")}</span>
+      {at !== null && words ? <><b className="me-2 font-semibold text-ink">{group.dayName(at)}</b>{words.join(t("sep"))}</>
+        : t("period.days", { count: changeDays(group.bins, group.changes) })}
+    </p>
+    {cut && words && <ul data-change-list="" className="pointer-events-none absolute start-0 bottom-full z-2 mb-1 max-w-full rounded-md border-hairline border-lit-line bg-lit px-2.5 py-1.5 text-xs text-muted shadow-float">
+      {words.map(each => <li key={each} className="[overflow-wrap:anywhere]">{each}</li>)}
+    </ul>}
+    <div aria-hidden className="mt-1 grid h-2 auto-cols-[minmax(0,1fr)] grid-flow-col">
+      {group.bins.map((bin, each) => <span key={bin.from} className="flex items-center justify-center">
+        {marks.has(each) && <i className={cn("block size-1.5 rotate-45 bg-muted transition-transform duration-(--motion-base)", group.hovered === each && "scale-150 bg-ink")} />}
+      </span>)}
+    </div>
+  </div>;
 }
 
 /**
@@ -602,9 +643,9 @@ function Bins({ row, uncounted, partial, children }: { row: number; uncounted?: 
       const edge = off && !(uncounted?.(at + 1) ?? true);
       const look = cn("relative flex h-full flex-col-reverse gap-0.5 opacity-40 transition-opacity duration-(--motion-base) ease-out",
         wide ? "px-[max(min(3px,20%),calc(50%-26px))]" : "px-[clamp(1px,12%,6px)]",
-        lit(bin, group.span) && "opacity-100", group.hovered === at && "opacity-100",
+        lit(bin, group.span) && "opacity-100", (group.hovered === at || group.chosen === at) && "opacity-100",
         // Under a finger the band and the pressed day are drawn in each chart (a phone's rows stack their names between).
-        group.narrow && (group.hovered === at ? "bg-day-band" : lit(bin, group.span) && "bg-span-band"),
+        group.narrow && (group.hovered === at || group.chosen === at ? "bg-day-band" : lit(bin, group.span) && "bg-span-band"),
         (!bin.complete || partial?.(at)) && "outline outline-dashed outline-lit-line -outline-offset-1",
         off && "bg-[repeating-linear-gradient(135deg,var(--rule)_0_1px,transparent_1px_6px)]",
         edge && "border-e border-lit-line");

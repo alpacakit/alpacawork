@@ -92,12 +92,9 @@
   },
   "change": {
     "added": "{{what}} {{name}} adicionado",
-    "agent": "Agente",
-    "effort": "Esforço",
     "fromTo": "{{what}} {{from}} → {{to}}",
     "instruction-file": "Arquivo de instruções",
     "legend": "Mudanças",
-    "model": "Modelo",
     "removed": "{{what}} {{name}} removido",
     "skill": "Skill",
     "updated": "{{what}} {{name}} atualizado",
