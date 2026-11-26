@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { TaskLog } from '@alpacawork/raw/task-log-schema';
-import { analysisListInput, analysisTasksInput, analysisUsageInput } from '@alpacawork/contract/analysis';
+import { analysisChartStart, analysisListInput, analysisTasksInput, analysisUsageInput } from '@alpacawork/contract/analysis';
 import { buckets, calendar, makeHead } from '@alpacawork/backend/test-dist/analysis/calendar.js';
 import { clocks, firstConversations, laterInstructions, launchOf, prLinks, reviewRounds, shareOf, taskOutcome, userQuestions,
   type RunEvidence } from '@alpacawork/backend/test-dist/analysis/rules.js';
@@ -135,6 +135,12 @@ test('periods use civil days, complete calendar buckets, and a minimum share den
   assert.deepEqual(head.period, { from: '2026-03-03', to: '2026-03-09' });
   assert.deepEqual(head.previous, { from: '2026-02-24', to: '2026-03-02' });
   assert.equal(makeHead(null, 'UTC', head.today, head.firstDay, { period: 'all' }).previous, null);
+  // Nothing recorded yet: the chosen span keeps its days (every count zero), and the chart draws all of them.
+  const empty = makeHead(null, 'UTC', '2026-03-09', null, { period: '7d' });
+  assert.deepEqual([empty.firstDay, empty.period, empty.previous], [null, { from: '2026-03-03', to: '2026-03-09' }, null]);
+  assert.equal(analysisChartStart(empty), '2026-03-03');
+  assert.deepEqual(makeHead(null, 'UTC', '2026-03-09', null, { period: 'all' }).period, { from: '2026-03-09', to: '2026-03-09' });
+  assert.equal(analysisChartStart(head), '2026-02-24');
   assert.deepEqual(buckets('2026-02-28', '2026-03-09', 'month'), [
     { from: '2026-02-28', to: '2026-02-28', complete: false },
     { from: '2026-03-01', to: '2026-03-09', complete: false },

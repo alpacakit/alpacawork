@@ -32,9 +32,8 @@ test("a card is drawn only from answers for what is asked now: one still standin
   expect(cardFacts(now(tasks), { data: tasks, current: false }, now(usage))).toBeUndefined();
   expect(cardFacts(now(tasks), now(tasks), null)).toBeUndefined();
   // No record says so at once, without waiting for an answer the card no longer needs (or never asked).
-  const none = { ...tasks, head: { ...tasks.head, firstDay: null, period: null } };
+  const none = { ...tasks, head: { ...tasks.head, firstDay: null } };
   expect(cardFacts(now(none), null, null)).toBeNull();
-  expect(cardFacts(now(tasks), now({ ...tasks, head: { ...tasks.head, period: null } }), null)).toBeNull();
 });
 
 test("a card uses measured totals and the most-used model across efforts", () => {
