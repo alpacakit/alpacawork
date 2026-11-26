@@ -29,6 +29,36 @@ test("opening a share card shows its loading state and starts reading its number
   }
 });
 
+test("in a short window the share card's picture keeps its size when its code arrives and brings a scrollbar", async ({ playwright, launchOptions, runtime }) => {
+  // Scrollbars that take room, as on Windows and most Linux desktops: headless Chromium hides its own.
+  const browser = await playwright.chromium.launch({ ...launchOptions, ignoreDefaultArgs: ["--hide-scrollbars"],
+    args: ["--disable-features=OverlayScrollbar,FluentOverlayScrollbar"] });
+  let releaseCardCode!: () => void;
+  const cardCode = new Promise<void>(resolve => { releaseCardCode = resolve; });
+  try {
+    const page = await browser.newPage({ viewport: { width: 1024, height: 640 }, locale: "en-US", serviceWorkers: "block" });
+    await page.route("**/assets/Layers-*.js", async route => {
+      await cardCode;
+      await route.continue();
+    });
+    await page.goto(`${runtime.origin}/?face=analysis`);
+    await page.getByRole("button", { name: "Make a card", exact: true }).click();
+    const card = page.getByRole("dialog", { name: "Make a card" });
+    const frame = card.getByRole("status", { name: "Loading" }).locator("..");
+    await expect(frame).toBeVisible();
+    await settleMotion(page, card, true);
+    const waiting = (await frame.boundingBox())!;
+    releaseCardCode();
+    const picture = card.getByRole("img", { name: /^Work handed to AI/ });
+    await expect(picture).toBeVisible();
+    const drawn = (await picture.boundingBox())!;
+    expect([drawn.x, drawn.width, drawn.height]).toEqual([waiting.x, waiting.width, waiting.height]);
+  } finally {
+    releaseCardCode();
+    await browser.close();
+  }
+});
+
 test.describe("phone", () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 

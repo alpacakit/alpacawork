@@ -114,7 +114,9 @@ export function AnalysisLayers({ place, project, days }: { place: AnalysisPlace;
         <Button variant="ghost" size="icon" aria-label={t("list.close")} title={t("list.close")} data-layer-focus={back ? undefined : ""}
           onClick={closeLayers}><Icon name="close" /></Button>
       </div>
-      <div ref={cardOpen ? setCardScroll : undefined} data-analysis-layer className="min-h-0 flex-1 overflow-auto px-6 narrow:px-4">
+      {/* The scrollbar's room is kept from the start, so what stands in place while the body loads keeps its width
+          when the body arrives taller than the window and brings the bar. */}
+      <div ref={cardOpen ? setCardScroll : undefined} data-analysis-layer className="min-h-0 flex-1 overflow-auto px-6 [scrollbar-gutter:stable] narrow:px-4">
         <LayerBody place={place} project={project} days={days} content={content} />
       </div>
   </>;
