@@ -89,7 +89,9 @@ test('saved ask reply loss followed by another browser cancellation settles the 
   const beforePost = await (await page.request.get(runtime.origin + '/api/coordinator')).json();
   const reads = new Promise<void>(resolve => { releaseReads = resolve; });
   await page.route('**/api/coordinator', async route => {
-    if (answerOldReads) { await route.fulfill({ json: beforePost }); return; }
+    // The old reads stand for a version of the conversation before this send, not the one serve holds after the other
+    // browser's cancellation (whose words are the same): a version of its own, so that read is still new here.
+    if (answerOldReads) { await route.fulfill({ json: { ...beforePost, revision: 'e'.repeat(64) } }); return; }
     await reads; await route.continue();
   });
   try {

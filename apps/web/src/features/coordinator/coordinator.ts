@@ -9,7 +9,7 @@ import { queryClient } from '@/data/query-client';
 import type { WriteBasis } from '@/data/connection';
 import { notify, recordFailure } from "@/lib/notify";
 import { ownsReaderSend, reconcileReaderSends, dismissRecoveredReaderSends, closeReaderConversation, observeReaderConversation } from './reader-send';
-import { awaitsDrawing, isolateConflicts, outgoing, reconcileOutbox, rejectWithdrawal, beginWithdrawal, confirmStarted, cancelOutgoing, cancelBeforeSend, outgoingKey, resumeQueuedOutgoing, settleInterrupted, useOutbox } from './editor/outbox';
+import { awaitsDrawing, isolateConflicts, outgoing, reconcileOutbox, rejectWithdrawal, beginWithdrawal, confirmStarted, cancelOutgoing, cancelBeforeSend, outgoingKey, isLive, resumeQueuedOutgoing, settleInterrupted, useOutbox } from './editor/outbox';
 import { draftKey, useDraftStore } from '@/features/forms/draft-store';
 import { withdrawalStarted } from './delivery-copy';
 import { clearingConversation } from './press';
@@ -277,13 +277,14 @@ export async function withStatus(conversation: CoordinatorSnapshot['conversation
  * What one message's status says, kept for its conversation (a new conversation starts with none): withdrawn, or taken
  * with the digest of its input. Missing says nothing to keep.
  */
-function learnStatus(conversationId: string, message: CoordinatorMessageResponse['message']) {
-  if (message.status === 'missing') return;
+function learnStatus(conversationId: string, message: CoordinatorMessageResponse['message']): boolean {
+  if (message.status === 'missing') return false;
   const known = useConversationUi.getState().learnt, statuses = known?.conversationId === conversationId ? known.statuses : {};
   const before = statuses[message.id];
   // A withdrawal is final: a status read before it (an older answer arriving late) does not undo it.
-  if (before?.status === 'withdrawn' || before?.status === message.status && ('inputDigest' in before) === ('inputDigest' in message)) return;
+  if (before?.status === 'withdrawn' || before?.status === message.status && ('inputDigest' in before) === ('inputDigest' in message)) return false;
   useConversationUi.setState({ learnt: { conversationId, statuses: { ...statuses, [message.id]: message } } });
+  return true;
 }
 type Taken = 'shown' | 'satisfied' | 'scope-lost';
 function take(received: CoordinatorSnapshot['conversation'], origin: Sending, replace = false, drawable = true): Taken {
@@ -637,21 +638,24 @@ async function askAbsentSends(root: string) {
   const conversation = useConversation.getState().conversation;
   if (!conversation) return;
   const absent = outgoing(useDraftStore.getState().entries, root, conversation.id).filter(item => (item.stage === 'posted' || item.stage === 'accepted')
-    && !statusAsking.has(item.requestId) && !conversation.turns.some(turn => turn.id === item.requestId)
+    && !statusAsking.has(item.requestId) && !isLive(item.key) && !conversation.turns.some(turn => turn.id === item.requestId)
     // Withdrawn is final: its record settles with what is known.
     && !conversation.cancelled.includes(item.requestId));
+  let learnt = false;
   for (const item of absent) {
     statusAsking.add(item.requestId);
-    try { learnStatus(conversation.id, await readCoordinatorMessage(item.requestId)); }
+    try { learnt = learnStatus(conversation.id, await readCoordinatorMessage(item.requestId)) || learnt; }
     catch (error) { recordFailure(error, 'coordinator message status'); return; }
     finally { statusAsking.delete(item.requestId); }
   }
   const now = useConversation.getState();
-  if (absent.length && now.root === root && now.conversation?.id === conversation.id) {
+  // Only what a status newly said can settle anything here.
+  if (learnt && now.root === root && now.conversation?.id === conversation.id) {
     const result = reconcileOutbox(now.conversation, root, currentInputKey());
     for (const id of result.restored) dismissRecoveredReaderSends(id, { root, conversationId: conversation.id });
     reconcileReaderSends(now.conversation, root);
-    // Taken and still at work, yet not in this snapshot: a newer one holds it.
+    // Newly known to be taken and still at work, yet not in this snapshot: a newer one holds it. Asked once per status
+    // learnt, so a snapshot that keeps lacking it waits for the next change rather than reading again and again.
     if (result.undrawn) void useConversation.getState().refresh();
   }
 }
