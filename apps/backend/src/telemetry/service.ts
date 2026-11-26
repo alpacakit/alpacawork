@@ -181,7 +181,12 @@ export class TelemetryService {
   }
   async close(): Promise<void> {
     this.cancellation.abort();
-    try { if (this.gate().state === 'on') this.marks.flush(this.store.read()!.decidedAt); }
+    try {
+      // A server stopped after midnight but before its next pass still marks the new day.
+      const gate = this.gate();
+      if (gate.blockedBy === 'env') this.noteEnvBlocked();
+      if (gate.state === 'on') this.marks.flush(this.store.read()!.decidedAt);
+    }
     catch (error) { this.diagnostic(error); }
   }
 }
