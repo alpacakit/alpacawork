@@ -15,7 +15,7 @@ function layoutTop(element: HTMLElement): number {
   for (let node: HTMLElement | null = element; node; node = node.offsetParent as HTMLElement | null) top += node.offsetTop;
   return top;
 }
-type Position = { update: () => void; end: () => void; retain: () => void; jump: (target: HTMLElement, options: ScrollIntoViewOptions) => void };
+type Position = { update: () => void; end: () => void; retain: () => void; jump: (target: HTMLElement, options: ScrollIntoViewOptions, past?: number) => void };
 const positions = new WeakMap<HTMLElement, Position>();
 const positionOf = (thread: HTMLElement) => {
   const area = thread.closest<HTMLElement>('[data-card-scroll]');
@@ -25,10 +25,13 @@ const positionOf = (thread: HTMLElement) => {
 export function keepThreadPosition(thread: HTMLElement) { positionOf(thread)?.retain(); }
 /** Every explicit send entrance, including resending an old failure, asks the same owner for the latest place. */
 export function scrollThreadToEnd(thread: HTMLElement) { positionOf(thread)?.end(); }
-/** Reply navigation is an explicit position request, even before its native smooth scroll has started. */
-export function scrollThreadTo(thread: HTMLElement, target: HTMLElement, options: ScrollIntoViewOptions) {
+/**
+ * Reply navigation is an explicit position request, even before its native smooth scroll has started. `past`: how much
+ * further down to go than `options` puts it, for a target still unfolding to a height it has not reached yet.
+ */
+export function scrollThreadTo(thread: HTMLElement, target: HTMLElement, options: ScrollIntoViewOptions, past = 0) {
   const owner = positionOf(thread);
-  if (owner) owner.jump(target, options);
+  if (owner) owner.jump(target, options, past);
   else target.scrollIntoView(options);
 }
 
@@ -215,9 +218,14 @@ export function useThreadPosition(body: HTMLElement, host: HTMLElement | null, a
       const room = area.clientHeight - below(body.getBoundingClientRect().bottom);
       if (room > 0) { bottomRoom += room; body.style.paddingBottom = `${bottomRoom}px`; }
       takeOver(); following = false; if (!anchor) findAnchor();
-    }, jump: (target, options) => {
+    }, jump: (target, options, past = 0) => {
       takeOver();
+      const from = area.scrollTop;
       target.scrollIntoView(options);
+      if (past) area.scrollTop += past;
+      // Not asked to scroll smoothly, it still comes into sight by gliding there, on a disclosure's curve: what unfolds
+      // under the target as it goes (a turn's steps) and what is under that then move as one.
+      if (options.behavior !== 'smooth') glideReading(body, area.scrollTop - from, 'in-out');
       remember();
       // Kept where it jumped, not at the end: what is read there is what it keeps.
       following = false; if (!anchor) findAnchor();

@@ -94,7 +94,7 @@ test('a step opens to all it ran and got back, read then, a failed one marked an
 test('a change of any step reads only what changed, keeping how far the list was gone back and the step opened', async () => {
   for (let n = 0; n < 40; n++) server.put(entry(n, `echo ${n}`, { state: n >= 30 ? 'running' : 'done' }));
   function Listed({ signal }: { signal: number }) {
-    return <StepList steps={useRunSteps('R7', true, signal)} />;
+    return <StepList steps={useRunSteps('R7', true, signal)} open />;
   }
   const { rerender } = render(<Listed signal={1} />);
   await waitFor(() => expect(lines()).toHaveLength(12));
@@ -147,9 +147,50 @@ test('a newer generation from any answer reads the list anew: a step still there
   // The opened step's answer is of the newer generation: the list is read again, and the step read once it holds it.
   await waitFor(() => expect(document.querySelector('[data-run-step-input]')?.textContent).toBe('pnpm test --run'));
   expect(server.asked).toContain('R7 latest 12');
-  expect(screen.queryByText('Reading…')).toBeNull();
   expect(document.querySelectorAll('[data-run-step-input]')).toHaveLength(1);
   expect(screen.getByRole('button', { name: /pnpm build/ }).getAttribute('aria-expanded')).toBe('false');
+});
+
+/** Whether, at any point while `act` runs, the opened step showed something other than what it ran (a wait, nothing). */
+async function everNotShown(act: () => void, until: () => boolean): Promise<boolean> {
+  let gap = false;
+  const look = () => { if (!document.querySelector('[data-run-step-input]')) gap = true; };
+  const watch = new MutationObserver(look);
+  watch.observe(document.body, { childList: true, subtree: true, characterData: true });
+  act(); look();
+  await waitFor(() => expect(until()).toBe(true));
+  watch.disconnect();
+  return gap;
+}
+
+test('a step opened again keeps what it ran in sight while it is read again, even after the output was read anew', async () => {
+  server.put(entry(0, 'pnpm test'));
+  render(<AnswerSteps run="R7" />);
+  fireEvent.click(screen.getByRole('button', { name: 'Steps behind this answer' }));
+  const row = await screen.findByRole('button', { name: /pnpm test/ });
+  fireEvent.click(row);
+  await waitFor(() => expect(document.querySelector('[data-run-step-input]')?.textContent).toBe('pnpm test'));
+  fireEvent.click(row);
+  // The server let the Run's index go and read it again: the same step, now of a newer generation.
+  server.generation = 2; server.steps = []; server.version = 0;
+  server.put(entry(0, 'pnpm test --run'));
+  const gap = await everNotShown(() => fireEvent.click(screen.getByRole('button', { name: /pnpm test/ })),
+    () => document.querySelector('[data-run-step-input]')?.textContent === 'pnpm test --run');
+  expect(gap, 'no wait or blank between what it showed and what it shows now').toBe(false);
+});
+
+test('a step read at once opens with what it ran, with no wait drawn first', async () => {
+  server.put(entry(0, 'pnpm lint'));
+  render(<AnswerSteps run="R7" />);
+  fireEvent.click(screen.getByRole('button', { name: 'Steps behind this answer' }));
+  const row = await screen.findByRole('button', { name: /pnpm lint/ });
+  let waited = false;
+  const watch = new MutationObserver(() => { if (document.querySelector('[data-run-step-open] [role=status]') || screen.queryByText(/Reading/)) waited = true; });
+  watch.observe(document.body, { childList: true, subtree: true, characterData: true });
+  fireEvent.click(row);
+  await waitFor(() => expect(document.querySelector('[data-run-step-input]')?.textContent).toBe('pnpm lint'));
+  watch.disconnect();
+  expect(waited).toBe(false);
 });
 
 test('a step no longer found reads the list anew rather than standing on an error', async () => {
@@ -229,7 +270,7 @@ test('a change reaching a long opened list draws again the changed step alone, n
   const read = (value: typeof listed) => ({ run: 'R7', listed: value, failed: false, earlier, again });
   const durations: { actual: number; base: number }[] = [];
   const page = (value: typeof listed) => <Profiler id="list" onRender={(_id, _phase, actual, base) => durations.push({ actual, base })}>
-    <StepList steps={read(value)} /></Profiler>;
+    <StepList steps={read(value)} open /></Profiler>;
   const { rerender } = render(page(listed));
   rerender(page(takeIn(listed, { steps: [{ ...rows[300]!, state: 'failed', changed: 601 }], total: 600, generation: 1 }, { caughtUp: 601 })!));
   const update = durations.at(-1)!;

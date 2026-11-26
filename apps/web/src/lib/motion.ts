@@ -394,16 +394,17 @@ export function moveAcross(element: HTMLElement | null, fromLeft: number) {
 
 /**
  * Reading moved by `by` pixels at once (its scroll position set): what is read glides there from where it stood, on
- * the compositor. A glide still under way goes on from where it is drawn. Nothing moves under reduced motion.
+ * the compositor. A glide still under way goes on from where it is drawn. Nothing moves under reduced motion. `curve`:
+ * the one it glides on, a disclosure's (in-out) where something unfolds with it.
  */
-export function glideReading(element: HTMLElement, by: number) {
+export function glideReading(element: HTMLElement, by: number, curve: Curve = "move") {
   if (!canAnimate(element)) return;
   const moving = element.getAnimations().filter((each) => each.id === "reading-glide");
   const drawn = moving.length ? new DOMMatrixReadOnly(getComputedStyle(element).transform).m42 : 0;
   moving.forEach((each) => each.cancel());
   const from = by + drawn;
   if (reducedMotion() || Math.abs(from) < 1) return;
-  element.animate([{ transform: `translateY(${from}px)` }, { transform: "none" }], { id: "reading-glide", duration: duration("base"), easing: easing("move") });
+  element.animate([{ transform: `translateY(${from}px)` }, { transform: "none" }], { id: "reading-glide", duration: duration("base"), easing: easing(curve) });
 }
 
 /** What a surface looks like, for the one that takes its place: its height and its corners (top left, top right, bottom

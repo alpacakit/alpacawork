@@ -139,6 +139,14 @@ const SHAPES = {
   </ol>,
   // More rows of the list coming (a page scrolled to), in the title column.
   rows: (rows = 2) => <div className="flex flex-col">{Array.from({ length: rows }, (_, row) => <ListRow key={row} row={row} />)}</div>,
+  // A Run's steps in their box: a line each, its mark then what it ran (RunSteps' StepList).
+  runSteps: () => <div className="space-y-2 rounded-md border border-line bg-well px-2.5 py-2.5">
+    {[0, 1, 2].map(row => <div key={row} className="flex items-center gap-1.5"><Bar className="size-2.5 flex-none rounded-full" /><Bar className={cn("h-3", length(row + 1))} /></div>)}
+  </div>,
+  // What one step ran and got back, in its own box (RunSteps' StepRow).
+  runStep: () => <div className="space-y-2 rounded-sm border border-line bg-bg px-2.5 py-2.5">
+    {[0, 1, 2].map(row => <Bar key={row} className={cn("h-3", length(row))} />)}
+  </div>,
   // A written body (a request's text).
   text: () => <div className="space-y-2.5"><Bar className="h-4 w-full" /><Bar className="h-4 w-11/12" /><Bar className="h-4 w-4/6" /></div>,
 };

@@ -147,7 +147,6 @@
       "omittedFiles_one": "e mais {{count}} arquivo",
       "omittedFiles_many": "e mais {{count}} arquivos",
       "omittedFiles_other": "e mais {{count}} arquivos",
-      "reading": "Lendo…",
       "state": {
         "done": "Concluído",
         "failed": "Falhou",

@@ -131,7 +131,7 @@ export function TurnWork({ turn }: { turn: Pick<CoordinatorTurn, 'id' | 'at' | '
         : <><Icon name="code" className="size-3.5 flex-none text-muted group-hover/steps:text-ink" />
           <span className="min-w-0 truncate">{count === undefined ? p('now.step.answered') : p('now.step.answeredCount', { count })}</span>
           <Chevron open={open} /></>}</button>}
-    {open && worked && <StepList steps={steps} className={CHAT_LOG} />}
+    {worked && <StepList steps={steps} open={open} className={CHAT_LOG} />}
   </div></div>;
 }
 /**
@@ -150,6 +150,8 @@ function Chevron({ open }: { open: boolean }) {
 /**
  * The steps are read after the press: once first drawn, the line and the list under it come into sight as one place
  * request, the list's head (the line, then "earlier") first. One that does not fit below where it is starts at the top.
+ * The list unfolds from nothing (DisclosureBody), so where it goes is measured at the height it unfolds to, and it
+ * glides there with the unfolding.
  */
 function useListedInSight(read: unknown, block: RefObject<HTMLElement | null>, top = false) {
   const listed = useRef(false);
@@ -159,9 +161,11 @@ function useListedInSight(read: unknown, block: RefObject<HTMLElement | null>, t
     if (listed.current || !element) return;
     listed.current = true;
     const area = element.closest<HTMLElement>('[data-card-scroll]')?.getBoundingClientRect() ?? { top: 0, bottom: window.innerHeight };
-    const box = element.getBoundingClientRect();
+    const body = element.querySelector<HTMLElement>('[data-disclosure-body]');
+    const grows = body ? Math.max(0, body.scrollHeight - body.getBoundingClientRect().height) : 0;
+    const drawn = element.getBoundingClientRect(), box = { top: drawn.top, bottom: drawn.bottom + grows, height: drawn.height + grows };
     if (box.top < area.top || box.height > area.bottom - area.top || (top && box.bottom > area.bottom)) scrollThreadTo(element, element, { block: 'start' });
-    else if (box.bottom > area.bottom) scrollThreadTo(element, element, { block: 'end' });
+    else if (box.bottom > area.bottom) scrollThreadTo(element, element, { block: 'end' }, grows);
   }, [read, block, top]);
 }
 
