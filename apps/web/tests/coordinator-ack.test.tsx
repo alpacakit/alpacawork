@@ -23,7 +23,7 @@ const root = '/fixture', cid = 'ack-conversation';
 const turn = (id: string, status: CoordinatorTurn['status']): CoordinatorTurn => ({ id, status, ask: id, at: '2026-10-31T15:00:00Z',
   attachments: [], waiting: status === 'queued' || status === 'sending', answer: null, answeredAt: null, error: null, result: null, seen: false });
 const work = turn('working', 'running'), queued = turn('waiting', 'queued');
-const conversation = (turns = [work, queued], cancelled: string[] = []) => ({ id: cid, nextLaunch: { agent: 'fake', values: {} }, ...SERVED, busy: true, turns, cancelled });
+const conversation = (turns = [work, queued], cancelled: string[] = []) => ({ id: cid, nextLaunch: { agent: 'fake', values: {} }, ...SERVED, busy: true, turns, cancelled, admitted: {} });
 const response = (value: unknown) => new Response(snapshotJson(value));
 /** A send's, withdrawal's or send-now's answer: the snapshot and where that message now is. */
 const answer = (value: ReturnType<typeof conversation>, id: string, status?: Parameters<typeof messageJson>[2]) => new Response(messageJson(value, id, status));

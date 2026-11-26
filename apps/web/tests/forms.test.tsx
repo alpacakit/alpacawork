@@ -86,7 +86,7 @@ function withInput(data: ReturnType<typeof screenData>, children: ReactNode, hol
   const asked: CoordinatorMessageInput[] = [];
   const reports: any[] = [], pending: ((result: CoordinatorResult) => void)[] = [];
   let status: CoordinatorConversation["turns"][number]["status"] = "running", result: CoordinatorResult | null = null;
-  const conversation = (): CoordinatorConversation => ({ id: "c1", nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, cancelled: [],
+  const conversation = (): CoordinatorConversation => ({ id: "c1", nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [],
     turns: asked.map((input) => ({ id: input.id, at, ask: input.text, tasks: input.tasks, attachments: input.attachments,
       ...(input.intent ? { intent: input.intent } : {}), status, waiting: status === "queued" || status === "sending", answer: null, seen: false, answeredAt: null, error: null, result })) });
   const json = (value: unknown) => new Response(snapshotJson(value), { status: 200 });

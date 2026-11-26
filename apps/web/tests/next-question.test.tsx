@@ -111,10 +111,10 @@ function serve() {
         ? new Response(snapshotJson({ task: { ...headOf(dto({ id: input.task })), state: input.state }, outcome: { kind: 'recorded' } }))
         : problemResponse('conflict', 'Task changed'))));
     }
-    if (String(url) === '/api/coordinator') return new Response(snapshotJson({ id: 'c1', turns: [], cancelled: [], nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false }));
+    if (String(url) === '/api/coordinator') return new Response(snapshotJson({ id: 'c1', turns: [], admitted: {}, cancelled: [], nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false }));
     return problemResponse('not_found');
   });
-  setConversationState({ conversation: { id: 'c1', turns: [], cancelled: [], nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false }, open: false, expanded: false, error: null });
+  setConversationState({ conversation: { id: 'c1', turns: [], admitted: {}, cancelled: [], nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false }, open: false, expanded: false, error: null });
 }
 const contents = <><Recovery /><TaskActionSlot /><Reader mode="docked" /><CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }} /><Toaster /></>;
 let shownData: ReturnType<typeof screenOf>;
@@ -181,7 +181,7 @@ for (const hook of ['waiting', 'shown'] as const) test(`${hook} reader ignores e
     [{ ...readerTurn(data.tasks[0]!), title: 'Question', kind: 'answer', answer: 'send', expectedWrites: null }]); });
   expect(renders).toBeGreaterThan(initial);
   if (hook === 'waiting') expect(waiting).toEqual([]);
-  act(() => { reconcileOutbox({ id:'c1',nextLaunch: { agent: 'claude', values: {} },...SERVED,busy:false,cancelled:[],turns:[{
+  act(() => { reconcileOutbox({ id:'c1',nextLaunch: { agent: 'claude', values: {} },...SERVED,busy:false,cancelled:[],admitted:{},turns:[{
     id:requestId,at:new Date().toISOString(),ask:'answer',attachments:[],status:'succeeded',waiting:false,
     answer:null,seen:false,answeredAt:null,error:null,result:{writes:[],refused:[]}
   }] },root, null,true); });

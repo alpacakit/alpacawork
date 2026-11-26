@@ -17,7 +17,7 @@ const data = screenData(tree({ tasks: [taskFixture({ id: 'T3', state: 'waiting',
 const { tasks, people } = data;
 const task = tasks[0]!;
 const scope = { root: '/fixture', conversationId: 'c' };
-const snapshot = (id = 'c', cancelled: string[] = [], turns: any[] = []) => ({ id, cancelled, turns, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false });
+const snapshot = (id = 'c', cancelled: string[] = [], turns: any[] = []) => ({ id, cancelled, admitted: {}, turns, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false });
 const queued = { id: 'message', at: '', ask: 'Fix T3', attachments: [], status: 'queued', waiting: true, answer: null, seen: false, answeredAt: null, error: null, result: null };
 /** The Run that answered the message ended, and it wrote on T3 (the review the message answers). */
 const carried = { ...queued, status: 'succeeded', waiting: false, result: { writes: [{ task: 'T3', record: 'L9', kind: 'request_accepted' }], refused: [] } };
@@ -32,7 +32,7 @@ beforeEach(() => {
   useSitting.setState(useSitting.getInitialState());
   useViewStore.getState().openTask(task.id, { reader: true });
   useSitting.setState({ card: { taskId: task.id } });
-  setConversationState({ root: scope.root, conversation: snapshot(), open: false, error: null, withdrawn: null });
+  setConversationState({ root: scope.root, conversation: snapshot(), open: false, error: null, learnt: null });
 });
 afterEach(() => vi.unstubAllGlobals());
 

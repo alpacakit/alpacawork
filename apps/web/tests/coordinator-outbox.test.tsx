@@ -31,7 +31,7 @@ import { WaitingReportActions } from "../src/features/reader/WaitingReportAction
 // The outbox and its projection keep a request in the conversation it
 // was sent to, take a turn for it only as it was sent, and settle it only where a drawn snapshot holds it.
 const root = "/fixture", cid = "old-conversation", key = draftKey(root, "coordinator", cid);
-const conv = (id = cid, turns: any[] = []) => ({ id, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, cancelled: [], turns });
+const conv = (id = cid, turns: any[] = []) => ({ id, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns });
 const values = (text = "", id: string = crypto.randomUUID()) => ({ body: "", doc: JSON.stringify(textDocument(text)), requestId: id });
 const fixed = (text = "sent") => ({ conversationId: cid, text, attachments: [] });
 const sentTurn = (id: string, ask = "sent", status = "running") => ({ id, at: new Date().toISOString(), ask, attachments: [], status, waiting: status === "queued" || status === "sending", answer: null, seen: false, answeredAt: null, error: null, result: null });
@@ -113,6 +113,18 @@ test("a card mounted again while a request is sent still draws it, from the outb
   render(createElement(ShownConversationProvider, null, createElement(Probe)));
   expect(JSON.parse(screen.getByTestId("rows").textContent!)).toMatchObject([{ id, stage: "sending" }]);
   await act(async () => { resolve(); await result; });
+});
+
+test("a send whose answer was lost and whose turn left the recent ones is settled by its own status", async () => {
+  const id = setup(); freeze(root, fixed(), useDraftStore.getState().entries[key]?.values ?? {}, { from: key });
+  const attempt = begin(root, id)!; attempt.check(); attempt.finish();
+  // Twenty newer exchanges since: the read holds none of it; its status says serve took this very input and answered.
+  const taken = conv(cid, [{ ...sentTurn(id, "sent", "succeeded"), answer: "done", answeredAt: new Date().toISOString() }]);
+  vi.stubGlobal("fetch", vi.fn((url: string, init?: RequestInit) => url === "/api/coordinator"
+    ? Promise.resolve(new Response(snapshotJson(conv(cid, [])))) : serving(taken)(url, init)));
+  setConversationState({ conversation: conv(cid, []) });
+  await useConversation.getState().refresh();
+  await waitFor(() => expect(useDraftStore.getState().entries[outgoingKey(root, id)]).toBeUndefined());
 });
 
 test("an accepted answer that loses the race to be drawn keeps the request drawn and asks for a newer read", async () => {

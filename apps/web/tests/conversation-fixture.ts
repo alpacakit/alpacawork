@@ -7,14 +7,15 @@ import { receiveFullIndex } from '../src/data/resources';
 import { indexOf, tree } from './fixtures';
 import { useConnection } from '../src/data/connection';
 import type { ProjectedIndexDTO } from '@alpacawork/contract/control';
+import { coordinatorMessageDigest } from '@alpacawork/contract/coordinator';
 
 /** What every served conversation carries besides its turns: nothing older, no reset, no usage yet, the default reset. */
 export const SERVED: Pick<CoordinatorConversation, 'earlier' | 'resets' | 'context' | 'autoReset'> = { earlier: null, resets: [], context: null, autoReset: { tokens: 200000, percent: 50 } };
 /** A conversation as a test writes it: the page's withdrawals (`cancelled`) are optional and never served. */
-export type FixtureConversation = Omit<CoordinatorConversation, 'cancelled'> & { cancelled?: readonly string[] };
+export type FixtureConversation = Omit<CoordinatorConversation, 'cancelled' | 'admitted'> & { cancelled?: readonly string[]; admitted?: CoordinatorConversation['admitted'] };
 /** Fixtures use the new wire DTO; production accepts no old conversation response. */
 export function conversationSnapshot(fixture: FixtureConversation): CoordinatorSnapshot {
-  const { cancelled: _cancelled, ...served } = fixture;
+  const { cancelled: _cancelled, admitted: _admitted, ...served } = fixture;
   const conversation = JSON.parse(JSON.stringify(Object.assign({ busy: false }, served)));
   const index = readIndex(queryClient);
   return { root: index?.root ?? '/fixture', generation: index?.generation ?? 'a',
@@ -29,16 +30,30 @@ export function snapshotJson(value: unknown) {
  * What serve says of one message in a fixture: `cancelled` stands for the withdrawals serve knows of (a snapshot names
  * none, only a message's own status does), else its turn's status, else missing.
  */
-export function messageStatus(fixture: FixtureConversation, id: string): CoordinatorMessageStatus['status'] {
-  if (fixture.cancelled?.includes(id)) return 'withdrawn';
-  return fixture.turns.find(turn => turn.id === id)?.status ?? 'missing';
+type StatusName = CoordinatorMessageStatus['status'];
+/** The digest serve keeps of a turn's input: the same contract function the outbox checks against. */
+export const turnDigest = (conversationId: string, turn: FixtureConversation['turns'][number]) => coordinatorMessageDigest({
+  conversationId, id: turn.id, text: turn.ask, replyTo: turn.replyTo?.id ?? null, tasks: turn.tasks, skills: turn.skills,
+  attachments: turn.attachments, intent: turn.intent, answers: turn.answers });
+/** A digest of no input this page sent (a status named without its turn). */
+const OTHER_INPUT = '0'.repeat(64);
+/**
+ * Where one message is, as serve says it: withdrawn or missing, or its status with the digest of the input it took
+ * (`status` names one other than the conversation's own).
+ */
+export function messageStatus(fixture: FixtureConversation, id: string, status?: StatusName): CoordinatorMessageStatus {
+  const turn = fixture.turns.find(each => each.id === id);
+  const name = status ?? (fixture.cancelled?.includes(id) ? 'withdrawn' : turn?.status ?? 'missing');
+  if (name === 'withdrawn' || name === 'missing') return { id, status: name };
+  return { id, status: name, inputDigest: turn ? turnDigest(fixture.id, turn) : OTHER_INPUT };
 }
 /** A send's, a withdrawal's or a send-now's answer: the snapshot and where that message is now. */
-export function messageJson(fixture: FixtureConversation, id: string, status = messageStatus(fixture, id)) {
-  return JSON.stringify({ ...conversationSnapshot(fixture), message: { id, status } });
+export function messageJson(fixture: FixtureConversation, id: string, status?: StatusName) {
+  return JSON.stringify({ ...conversationSnapshot(fixture), message: messageStatus(fixture, id, status) });
 }
-/** The answer of GET /api/coordinator/messages/:id/status. */
-export const statusJson = (id: string, status: CoordinatorMessageStatus['status']) => JSON.stringify({ id, status });
+/** The answer of GET /api/coordinator/messages/:id/status: a status, or one named alone (taken with another input). */
+export const statusJson = (id: string, status: StatusName | CoordinatorMessageStatus) =>
+  JSON.stringify(typeof status === 'object' ? status : status === 'withdrawn' || status === 'missing' ? { id, status } : { id, status, inputDigest: OTHER_INPUT });
 const statusUrl = /^\/api\/coordinator\/messages\/([^/]+)\/status$/;
 const messageUrl = /^\/api\/coordinator\/messages(\/withdraw|\/send-now)?$/;
 /**
@@ -66,7 +81,7 @@ export function setConversationState(input: Omit<Partial<ReturnType<typeof useCo
   }
   useConversation.setState(ui);
   // Withdrawals the page learnt belong to the conversation the test ends with.
-  if (conversation === null) { queryClient.removeQueries({ queryKey: ['coordinator'] }); useConversation.setState({ withdrawn: null }); }
+  if (conversation === null) { queryClient.removeQueries({ queryKey: ['coordinator'] }); useConversation.setState({ learnt: null }); }
   else if (conversation) {
     const snapshot = conversationSnapshot(conversation);
     if (!index) throw new Error('Conversation fixture needs its served index');

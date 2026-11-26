@@ -9,7 +9,7 @@ import { draftKey, useDraftStore } from '@/features/forms/draft-store';
 import type { ReaderAdmission } from '@/features/reader/next-question';
 import { deliveryNotice, deliveryNoticeId } from './delivery-notice';
 import { acknowledgeReaderSend, failReaderSend } from './reader-send';
-import { useConversation, readConversationSnapshot, withStatus, withWithdrawn } from './coordinator';
+import { useConversation, readConversationSnapshot, withStatus, withLearnt } from './coordinator';
 import { replyIn, inlines } from './editor/document';
 import { begin, outgoingBlock, outgoingBlockText, deliveryOutcome, isWithdrawn, simpleOutgoing, outgoingKey, refuse as refuseOutgoing } from './editor/outbox';
 import { copyRecoveredFiles } from './editor/recovered-files';
@@ -75,7 +75,7 @@ export function deliverOutgoing({ root, client, surface, draw }: DeliveryPlace, 
         readAfterPost = true;
         const read = (await readConversationSnapshot()).conversation;
         // Not among the open turns, it may have been withdrawn elsewhere: its own status says so.
-        const received = read.turns.some(turn => turn.id === requestId) ? withWithdrawn(read) : await withStatus(read, requestId);
+        const received = read.turns.some(turn => turn.id === requestId) ? withLearnt(read) : await withStatus(read, requestId);
         if (deliveryOutcome(received, requestId, fixed) === 'cancelled') return 'retained';
         if (deliveryOutcome(received, requestId, fixed) === 'accepted')
           return sameSession() && acknowledgeReaderSend(requestId, scope) ? 'retired' : 'retained';

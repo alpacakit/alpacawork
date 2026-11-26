@@ -28,7 +28,7 @@ let onReadEvent: typeof import('../src/data/resources')['onReadEvent'];
 let useConnection: typeof import('../src/data/connection')['useConnection'];
 import { indexOf, tree } from './fixtures';
 import { checkpointFixture } from './checkpoint-fixture';
-import { SERVED } from './conversation-fixture';
+import { messageStatus, SERVED } from './conversation-fixture';
 const { Hono } = createRequire(process.cwd() + '/apps/backend/package.json')('hono');
 const empty = (): ServedConversation => ({ id: 'checkpoint-conversation', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, turns: [] });
 const answered = (): ServedConversation => ({ ...empty(), turns: [{ id: 'reply', at: '2026-10-21T10:00:00Z', ask: 'question', attachments: [],
@@ -53,9 +53,10 @@ async function fixture(conversation: ServedConversation = answered()) {
   const server = new ServerConversation('/fixture'); let current: ServedConversation = conversation, failure = 0;
   vi.spyOn(server, 'read').mockImplementation(() => current);
   vi.spyOn(server, 'ask').mockImplementation(() => current);
-  vi.spyOn(server, 'messageStatus').mockImplementation(id => ({
-    id, status: current.turns.find(turn => turn.id === id)?.status ?? 'missing',
-  }));
+  vi.spyOn(server, 'messageStatus').mockImplementation(id => {
+    const turn = current.turns.find(each => each.id === id);
+    return turn ? { id, status: turn.status, inputDigest: 'f'.repeat(64) } : { id, status: 'missing' as const };
+  });
   vi.spyOn(server, 'clear').mockImplementation(() => { current = { ...empty(), id: 'cleared-conversation' }; return current; });
   vi.spyOn(server, 'withdraw').mockImplementation(() => current); vi.spyOn(server, 'sendNow').mockImplementation(() => current);
   vi.spyOn(server, 'markSeen').mockImplementation(async (_id, seen) => ({ conversationId: current.id, seen: [...seen] }));
@@ -256,7 +257,7 @@ test('scope token rotation excludes a former writer without a new tombstone or q
 
 for (const field of ['root', 'generation'] as const) test(`a POST snapshot from another ${field} ${field === "root" ? "cannot certify acceptance" : "can certify acceptance"} without replacing the current read`, async () => {
   const h = await fixture(), before = coordinatorReadState(queryClient, h.index.root);
-  const fetcher = vi.fn().mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ ...h.snapshot, [field]: 'foreign', message: { id: 'reply', status: 'succeeded' } }))));
+  const fetcher = vi.fn().mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ ...h.snapshot, [field]: 'foreign', message: messageStatus(h.snapshot.conversation, 'reply') }))));
   vi.stubGlobal('fetch', fetcher);
   rememberWriteIdentity(h.index.root, 'reply', 'initial');
   const asking = useConversation.getState().ask({ conversationId: h.snapshot.conversation.id, id: 'reply', text: 'question', attachments: [] });

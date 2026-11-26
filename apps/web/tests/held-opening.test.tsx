@@ -58,7 +58,7 @@ const screenAt = (stage: Stage) => screenData(servedAt(stage));
 function serve() {
   const sent: {task:string;state:string}[] = [];
   let stage: Stage = 'asked';
-  const conversation = (): CoordinatorConversation => ({ id: 'c1', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, cancelled: [], turns: [] });
+  const conversation = (): CoordinatorConversation => ({ id: 'c1', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns: [] });
   const json = (value: unknown) => new Response(snapshotJson(value), { status: 200 });
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, init) => {
     const path = String(url);

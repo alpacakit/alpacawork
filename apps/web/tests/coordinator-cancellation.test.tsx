@@ -20,7 +20,7 @@ const root = '/fixture', cid = 'cancel-conversation', key = draftKey(root, 'coor
 const values = (text = '', requestId: string = crypto.randomUUID()) => ({ doc: JSON.stringify(textDocument(text)), requestId });
 const fixed = (text = 'words') => ({ conversationId: cid, text, agent: 'claude', attachments: [] });
 const turn = (id: string, ask = 'words') => ({ id, ask, at: '2026-10-28T08:00:00Z', attachments: [], status: 'queued' as const, waiting: false, seen: false, answer: null, answeredAt: null, error: null, result: null });
-const conv = (turns: ReturnType<typeof turn>[] = [], cancelled: string[] = []) => ({ id: cid, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, turns, cancelled });
+const conv = (turns: ReturnType<typeof turn>[] = [], cancelled: string[] = []) => ({ id: cid, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, turns, cancelled, admitted: {} });
 type Conv = ReturnType<typeof conv>;
 /** Serve's answer; a conversation answer keeps the conversation it holds, so a message request's answer can name its message. */
 const reply = (value: unknown, status = 200) => Object.assign(new Response(snapshotJson(value), { status }), { held: value as Conv });

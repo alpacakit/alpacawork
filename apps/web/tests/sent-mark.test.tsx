@@ -11,7 +11,7 @@ const item = (over: Partial<Outgoing> = {}): Outgoing => ({ key: 'k', requestId:
   fixed: { conversationId: 'c', text: 'fix it', tasks: ['T4'], attachments: [] }, files: [], ...over });
 type Turn = CoordinatorConversation['turns'][number];
 const conversation = (turn: Partial<Turn> | null, cancelled: string[] = []) =>
-  ({ id: 'c', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, cancelled,
+  ({ id: 'c', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, cancelled, admitted: {},
     turns: turn ? [{ id: 'm0', at: '2026-10-29T03:00:01.000Z', tasks: ['T4'], status: 'running', result: null, ...turn }] : [] }) as CoordinatorConversation;
 const PRESS = '2026-10-29T02:00:00.000Z';
 const row = (over: { since?: string; status?: string } = {}) => ({

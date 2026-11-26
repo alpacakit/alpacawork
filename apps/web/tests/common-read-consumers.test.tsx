@@ -9,7 +9,7 @@ import { readIndex, readQuery, getReadProof, recordReadProof, refuseRead, cutRea
 import { usePersonalSettings } from '../src/data/personal-settings';
 import { useConversation } from '../src/features/coordinator/coordinator';
 import { readDemandPending, readDemandReady } from '../src/data/read-demand';
-import { conversationSnapshot, SERVED } from './conversation-fixture';
+import { conversationSnapshot, messageStatus, SERVED } from './conversation-fixture';
 import { createNoticeStore } from '../src/data/notice-store';
 import { NOTICE_VERSION } from '../src/data/notice-model';
 import { useConnection } from '../src/data/connection';
@@ -146,12 +146,12 @@ test('rejecting an older receipt does not cancel a newer explicit retry on the s
 test('explicit conversation refresh waits for the common live anchor and its own acquired empty read', async () => {
   useConversation.setState(useConversation.getInitialState(), true);
   useConversation.setState({ root: '/fixture' });
-  const snapshot = conversationSnapshot({ id: 'anchored', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, cancelled: [], turns: [] });
+  const snapshot = conversationSnapshot({ id: 'anchored', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns: [] });
   const held = readIndex(queryClient)!, index = { ...held, person: { ...held.person, coordinator: { id: snapshot.conversation.id, revision: snapshot.revision } } };
   receiveFullIndex(queryClient, index); cutReadScope(queryClient);
   const fetcher = vi.spyOn(globalThis, 'fetch').mockImplementation(async url => String(url).endsWith('/workspace/live') ? json(index) : json(snapshot));
   await useConversation.getState().refresh();
-  expect(useConversation.getState().conversation).toEqual({ ...snapshot.conversation, cancelled: [] });
+  expect(useConversation.getState().conversation).toEqual({ ...snapshot.conversation, admitted: {}, cancelled: [] });
   expect(fetcher.mock.calls.map(([url]) => String(url))).toEqual(['/api/workspace/live', '/api/coordinator']);
 });
 
@@ -159,12 +159,12 @@ for (const order of ['index-before-receipt', 'receipt-before-index'] as const) t
   useConversation.setState(useConversation.getInitialState(), true);
   const index = readIndex(queryClient)!, root = index.root;
   useConversation.setState({ root, open: true });
-  const conversation = { id: 'replacement-session', nextLaunch: { agent: 'fake', values: {} }, ...SERVED, busy: true, cancelled: [], turns: [{
+  const conversation = { id: 'replacement-session', nextLaunch: { agent: 'fake', values: {} }, ...SERVED, busy: true, admitted: {}, cancelled: [], turns: [{
     id: 'request', at: '2026-10-27T09:00:00Z', ask: 'wait', attachments: [], status: 'queued' as const,
     waiting: false, answer: '', answeredAt: null, seen: false, error: null, result: null,
   }] };
   const empty = conversationSnapshot({ ...conversation, busy: false, turns: [] });
-  const queued = conversationSnapshot(conversation), accepted = { ...queued, message: { id: 'request', status: 'queued' } };
+  const queued = conversationSnapshot(conversation), accepted = { ...queued, message: messageStatus(conversation, 'request') };
   const running = conversationSnapshot({ ...conversation, turns: conversation.turns.map(turn => ({ ...turn, status: 'running' as const })) });
   receiveFullIndex(queryClient, { ...index, rev: index.rev + 1, person: { ...index.person, coordinator: { id: conversation.id, revision: empty.revision } } });
   const old = deferred<Response>(), receipt = deferred<Response>(), replacement = deferred<Response>();

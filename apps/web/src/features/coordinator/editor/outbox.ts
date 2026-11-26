@@ -9,7 +9,7 @@ import { countUse } from '@/features/telemetry/count';
 import { expectedTaskWrites, readerResult, readerSubmissionKey, readerSubmissionSchema, readerTurn, sameReaderTurn, type ReaderSubmission } from '@/features/reader/submission';
 import { create } from 'zustand';
 import { z } from 'zod';
-import { coordinatorAnswersSchema, coordinatorAnswersInputSchema, coordinatorIntentSchema } from '@alpacawork/contract/coordinator';
+import { coordinatorAnswersSchema, coordinatorAnswersInputSchema, coordinatorIntentSchema, coordinatorMessageDigest } from '@alpacawork/contract/coordinator';
 import { commitDrafts, draftStorageUnavailable, draftIdentity, draftKey, restoredDraftKeys, useDraftStore, type DraftEntry } from '@/features/forms/draft-store';
 import type { CoordinatorConversation } from '@/data/coordinator';
 import type { Task } from '@/data/types';
@@ -628,6 +628,10 @@ export const hasSubmission = (conversation: CoordinatorConversation, requestId: 
 export function deliveryOutcome(conversation: CoordinatorConversation | null | undefined, requestId: string, fixed: Fixed, last: 'ask' | 'withdraw' = 'ask'): 'accepted' | 'cancelled' | 'conflict' | 'unknown' {
   if (conversation?.id !== fixed.conversationId) return 'unknown';
   if (conversation.cancelled.includes(requestId)) return 'cancelled';
+  // Serve's own status of the message, which holds whether or not its turn is among the recent ones: the digest of the
+  // input it took, the same as this request's or not (withdraw names only the ID).
+  const admitted = conversation.admitted[requestId];
+  if (admitted !== undefined) return last === 'withdraw' || admitted.digest === coordinatorMessageDigest({ ...fixed, id: requestId }) ? 'accepted' : 'conflict';
   // Ask fixes its content; withdraw names only the ID, including a row admitted by another page.
   if ((last === 'withdraw' && conversation.turns.some(turn => turn.id === requestId)) || hasSubmission(conversation, requestId, fixed)) return 'accepted';
   return conversation.turns.some(turn => turn.id === requestId) ? 'conflict' : 'unknown';
@@ -761,8 +765,10 @@ export function reconcileOutbox(conversation: CoordinatorConversation, root: str
   for (const item of outgoing(state.entries, root, conversation.id)) {
     if (item.stage === 'refused') continue;
     const turn = conversation.turns.find(each => each.id === item.requestId);
-    const cancelled = deliveryOutcome(conversation, item.requestId, item.fixed, item.last) === 'cancelled';
-    if (!turn && !cancelled) continue;
+    const outcome = deliveryOutcome(conversation, item.requestId, item.fixed, item.last), cancelled = outcome === 'cancelled';
+    // Out of the recent turns once its work ended, its own status settles it as its turn would; one still at work is
+    // among them, so a snapshot without it is older and settles nothing.
+    if (!turn && !cancelled && !(outcome === 'accepted' && conversation.admitted[item.requestId]?.ended)) continue;
     // A queued turn proves admission, but cannot settle an unanswered withdrawal still allowed to arrive.
     if (awaitsWithdrawal(item) && turn?.status === 'queued' && !cancelled) continue;
     if (turn && recordAdmission(entries, item.key)) changed = true;

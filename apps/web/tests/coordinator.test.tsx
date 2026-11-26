@@ -18,7 +18,7 @@ import { setAutoSwipe } from "../src/features/reader/next-question";
 import * as messageTimes from '../src/features/coordinator/message-time';
 import { useDialogStore } from '../src/state/dialog-store';
 
-const empty = { id: "conversation-1", nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, cancelled: [], turns: [] };
+const empty = { id: "conversation-1", nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns: [] };
 const turn = { id: "turn-1", at: new Date().toISOString(), ask: "T13 ?", tasks: ["T13"],
   attachments: [], status: "running", waiting: false, answer: null, seen: false, answeredAt: null, error: null, result: null };
 /** The fetches a test answers; the skills catalog is answered for the AI the conversation goes to. */
@@ -201,13 +201,13 @@ test("clear replaces the conversation and ignores a stale read", async () => {
   let release!: (value: Response) => void;
   const stale = new Promise<Response>(resolve => { release = resolve; });
   vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(reply({ ...empty, turns: [turn] }))
-    .mockReturnValueOnce(stale).mockResolvedValueOnce(reply({ id: "conversation-2", nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, cancelled: [], turns: [] })));
+    .mockReturnValueOnce(stale).mockResolvedValueOnce(reply({ id: "conversation-2", nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns: [] })));
   await useConversation.getState().refresh();
   const pending = useConversation.getState().refresh();
   await useConversation.getState().clear();
   release(reply({ ...empty, turns: [turn] }));
   await pending;
-  expect(useConversation.getState().conversation).toEqual({ id: "conversation-2", nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, cancelled: [], turns: [] });
+  expect(useConversation.getState().conversation).toEqual({ id: "conversation-2", nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns: [] });
 });
 
 test("an empty conversation greets with four examples, and nothing of it once it has a message", async () => {

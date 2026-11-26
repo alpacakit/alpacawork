@@ -11,7 +11,7 @@ const reply = (id: string, seen = false): CoordinatorTurn => ({ id, at: "", ask:
 let observed: ReturnType<typeof vi.fn<(ids: readonly string[]) => void>>, flushed: ReturnType<typeof vi.fn<(keepalive?: boolean) => void>>;
 let visibility: DocumentVisibilityState;
 function Harness() { useConversationReading(document, "fixture", "conversation"); return null; }
-const conversation = (turns: CoordinatorTurn[]) => ({ id: "conversation", nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, cancelled: [], turns });
+const conversation = (turns: CoordinatorTurn[]) => ({ id: "conversation", nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns });
 const read = () => observed.mock.calls.flatMap(call => call[0]);
 const touch = (type = "pointerdown") => act(() => { document.dispatchEvent(new Event(type)); });
 // Mounted folded, then opened by a press: the opening is the first action.

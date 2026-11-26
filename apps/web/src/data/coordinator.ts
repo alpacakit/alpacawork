@@ -10,10 +10,13 @@ export type { CoordinatorTurn, CoordinatorReset, CoordinatorResetReason, Coordin
 /** One server snapshot of the conversation: its recent turns, the resets among them and the coordinator's usage. */
 export type CoordinatorSnapshot = z.infer<typeof coordinatorResetSnapshotSchema>;
 /**
- * The conversation as this page holds it: serve's, with the messages this page has learnt were withdrawn (`cancelled`:
- * a send's or a withdrawal's answer, or a status check, said so; serve's snapshot names none).
+ * The conversation as this page holds it: serve's, with what this page has learnt of single messages from their own
+ * status (a send's, a withdrawal's or a send-now's answer, or a status check), which a snapshot of recent turns may not
+ * hold: those withdrawn (`cancelled`), and those serve took (`admitted`): the digest of the input it took, and whether
+ * the message's work has ended (one still at work is among the recent turns).
  */
-export type CoordinatorConversation = CoordinatorSnapshot['conversation'] & { cancelled: readonly string[] };
+export type CoordinatorConversation = CoordinatorSnapshot['conversation'] & { cancelled: readonly string[];
+  admitted: Readonly<Record<string, { digest: string; ended: boolean }>> };
 export type CoordinatorMessageResponse = z.infer<typeof coordinatorMessageResponseSchema>;
 
 const api = createApi();

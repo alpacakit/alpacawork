@@ -19,7 +19,7 @@ import { TestWorkspace } from './fixtures';
 
 const turn = (extra: Partial<CoordinatorTurn> = {}): CoordinatorTurn => ({ id: 'first', at: new Date().toISOString(), ask: 'One instruction',
   attachments: [], status: 'queued', waiting: false, answer: null, answeredAt: null, seen: false, error: null, result: null, ...extra });
-const conversation = (turns: CoordinatorTurn[] = [], busy = false) => ({ id: 'waiting-test', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy, cancelled: [], turns });
+const conversation = (turns: CoordinatorTurn[] = [], busy = false) => ({ id: 'waiting-test', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy, admitted: {}, cancelled: [], turns });
 function Surface() {
   const turns = useConversation(state => state.conversation?.turns ?? []);
   const expanded = useConversation(state => state.expanded);
@@ -79,7 +79,7 @@ test.each([false, true])('only blocked accepted turns are queued; removing the p
   expect(row.querySelector('[data-exchange-toggle]')).toBeNull();
   expect(document.querySelectorAll('[data-coordinator-queue-button]')).toHaveLength(expanded ? 0 : 1);
   expect(document.querySelector('[data-coordinator-queue-over]')).toBeNull();
-  act(() => setConversationState({ conversation: { ...conversation([{ ...next, waiting: false }], true), cancelled: ['first'] } }));
+  act(() => setConversationState({ conversation: { ...conversation([{ ...next, waiting: false }], true), admitted: {}, cancelled: ['first'] } }));
   expect(document.querySelector('[data-coordinator-queue-button], [data-coordinator-queue-over]')).toBeNull();
   expect(document.querySelectorAll('[data-coordinator-turn]')).toHaveLength(1);
   expect(screen.getAllByText('Next instruction', { exact: true })).toHaveLength(1);
@@ -309,7 +309,7 @@ test('an earlier cancelled recovery row precedes later server waiting words, eve
   // admission restores it into that input instead.
   const current = useDraftStore.getState().entries[key]!.values;
   updateDraft(key, { values: { ...current, doc: JSON.stringify(textDocument('Newer unsent words')), phase: 'composing' } });
-  const snapshot = { ...conversation([work, turn({ id: second, ask: 'Later waiting', waiting: true })], true), cancelled: [first] };
+  const snapshot = { ...conversation([work, turn({ id: second, ask: 'Later waiting', waiting: true })], true), admitted: {}, cancelled: [first] };
   reconcileOutbox(snapshot, root, key);
   setConversationState({ conversation: snapshot });
   render(<Surface />);

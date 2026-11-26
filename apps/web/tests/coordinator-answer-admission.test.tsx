@@ -15,7 +15,7 @@ import { setConversationState, snapshotJson, messageJson, SERVED } from './conve
 import { TestWorkspace, tree, dto, screenData, decideItem, questionFixture } from './fixtures';
 
 const cid = 'fixed-answer-admission';
-const conversation = (turns: any[] = []) => ({ id: cid, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, cancelled: [], turns });
+const conversation = (turns: any[] = []) => ({ id: cid, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns });
 const doc = (question: string) => ({ type: 'doc', content: [{ type: 'paragraph', content: [
   { type: 'answerLabel', attrs: { task: 'T1', question, n: '1', name: 'Yes', answer: '1-Yes' } },
 ] }] });

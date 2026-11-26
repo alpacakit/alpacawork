@@ -10,7 +10,7 @@ import { observed } from '../src/features/coordinator/editor/lifecycle';
 import { setConversationState, SERVED } from './conversation-fixture';
 
 const root = '/fixture', cid = 'answer-context', key = draftKey(root, 'coordinator', cid);
-const conversation = (turns: any[] = []) => ({ id: cid, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, cancelled: [], turns });
+const conversation = (turns: any[] = []) => ({ id: cid, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns });
 beforeAll(async () => { await startI18n(); await i18n.changeLanguage('en'); });
 beforeEach(() => {
   useDraftStore.setState({ entries: {}, unavailable: false });

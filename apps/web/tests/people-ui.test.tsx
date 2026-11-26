@@ -301,7 +301,7 @@ test("a refused Run close can be sent again only after the latest Run is read", 
   vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
     if (String(url) === "/api/commands/run/stop" && init?.method === "POST")
       return ++writes === 1 ? problemResponse("conflict", "Changed")
-        : json({ cancelled: [], stop_requested: ["R1"] });
+        : json({ admitted: {}, cancelled: [], stop_requested: ["R1"] });
     if (String(url) === "/api/workspace/live") return json(indexOf(tree({ ...canonical, runs: canonical.runs.map(run => run.id === "R1" ? { ...run, state: "needs_review" as const } : run) }), 2));
     return problemResponse("not_found", "Unknown");
   });

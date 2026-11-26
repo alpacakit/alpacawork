@@ -45,7 +45,8 @@ export type GalleryImage = SliderImage & { reportKey: string };
 
 /** A managed file's display contract, independent of the Task or conversation that owns it. */
 /** `src` is a managed file's address (a Task's or the coordinator's), `href` where its name leads on this screen. */
-export type MarkdownFile = { path: string; name: string; src: string | null; href: string | null; size: number; readable?: false };
+/** A published file a body names. `removed`: it was there and has been cleaned away (said so, with nothing to open). */
+export type MarkdownFile = { path: string; name: string; src: string | null; href: string | null; size: number; readable?: false; removed?: true };
 
 /** One body owns opening; the feed can supply its wider gallery and URL identity. */
 const MarkdownGallery = createContext<{
@@ -487,6 +488,7 @@ function InlineMarkdown({ content, html: block, task, onFollow, sourceFile, repo
   /** Where a written link leads, a Markdown one or an HTML one alike; `label` empty shows the address's own name. */
   const linkTo = (href: string, label: ReactNode): ReactNode => {
     const published = files?.find(file => file.path === href);
+    if (published?.removed) return <Removed name={typeof label === "string" && label ? label : published.name} path={href} />;
     if (published) return published.href ? <a href={published.href} target="_blank" rel="noreferrer noopener">{label || published.name}</a>
         : <span className="text-muted" title={href}>{t("files.unavailable", { name: typeof label === "string" && label ? label : published.name })}</span>;
     // A heading of the same text: scrolled to in place, the screen's own address kept.
@@ -524,6 +526,7 @@ function InlineMarkdown({ content, html: block, task, onFollow, sourceFile, repo
     if (image) {
       const target = imageTarget(href, task, root, sourceFile, report, files);
       if (!target) return <span>{node.label}</span>;
+      if (!("kind" in target) && target.removed) return <Removed name={node.label || target.name} path={href} />;
       return "kind" in target ? place(target, node.label, true, mediaId)
         : <MarkdownMedia file={target} alt={node.label} inline={mediaBlockSpace === undefined} space={mediaBlockSpace}
           variant={variant} mediaId={mediaId} galleryReportKey={galleryReportKey} />;
@@ -673,4 +676,10 @@ function split(
   }
   between(text.length);
   return nodes;
+}
+
+/** A published file cleaned away: its name, said to be removed, in the words' place. */
+function Removed({ name, path }: { name: string; path: string }) {
+  const { t } = useTranslation("reader");
+  return <span data-file-removed className="text-muted" title={path}>{t("files.removed", { name })}</span>;
 }

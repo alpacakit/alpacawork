@@ -21,10 +21,14 @@ export const messageMedia = (turn: Files): SliderImage[] => {
   });
   return media;
 };
-/** An answer's files as its body draws them: one not ready, or removed with the old files, keeps its link's words, with nothing to open. */
+/**
+ * An answer's files as its body draws them: one not ready keeps its link's words, with nothing to open; one cleaned away
+ * with the old files says it was removed, as a message's own files do.
+ */
 export const answerBodyFiles = (turn: Pick<CoordinatorTurn, "id" | "answerFiles" | "filesExpired">) => turn.answerFiles?.map(file => {
   const url = file.state === "ready" && !turn.filesExpired ? coordinatorFileUrl(turn.id, file.name, "answers") : null;
-  return { path: file.href, name: file.state === "ready" ? file.name : file.href, size: file.state === "ready" ? file.size : 0, src: url, href: url };
+  return { path: file.href, name: file.state === "ready" ? file.name : file.href, size: file.state === "ready" ? file.size : 0, src: url, href: url,
+    ...turn.filesExpired ? { removed: true as const } : {} };
 });
 export type OpenMessageImages = ReturnType<typeof useImageViewer>["open"];
 

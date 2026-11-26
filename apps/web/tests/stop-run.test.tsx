@@ -26,7 +26,7 @@ const response = (value: unknown, status = 200) => new Response(JSON.stringify(v
 test("stop settles with the server's answer; the stopped record arrives with the feed", async () => {
   const before = run("R1", { state: "running", endedAt: null });
   const data = screenData(tree({ runs: [before] }));
-  vi.spyOn(globalThis, "fetch").mockResolvedValue(response({ cancelled: [], stop_requested: ["R1"] }));
+  vi.spyOn(globalThis, "fetch").mockResolvedValue(response({ admitted: {}, cancelled: [], stop_requested: ["R1"] }));
   const hook = renderHook(() => useStopRun(), { wrapper: ({ children }) => <TestWorkspace data={data}>{children}</TestWorkspace> });
   await act(async () => { await hook.result.current.mutateAsync(before); });
   expect(fetch).toHaveBeenCalledOnce();

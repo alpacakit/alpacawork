@@ -13,7 +13,7 @@ import { textDocument, taskLabel } from '../src/features/coordinator/editor/docu
 import { TestWorkspace, dto, screenData, tree, narrowScreen, at } from './fixtures';
 import * as reads from '../src/state/read-store';
 const flush = async () => act(async () => { await new Promise(resolve => setTimeout(resolve, 25)); });
-const conversation = {id:'audit',nextLaunch: { agent: 'claude', values: {} },...SERVED, busy: false,cancelled: [],turns:[]};
+const conversation = {id:'audit',nextLaunch: { agent: 'claude', values: {} },...SERVED, busy: false,admitted: {}, cancelled: [],turns:[]};
 const f = (name:string) => ({name,size:10,at,revision:'r1'});
 let mobile:ReturnType<typeof narrowScreen>;
 beforeAll(async () => { startI18n(); await i18n.changeLanguage('en'); });

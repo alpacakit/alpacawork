@@ -9,6 +9,8 @@ import { rememberWriteIdentity } from "../src/data/write-identity";
 import type { CoordinatorReset, CoordinatorTurn } from "../src/data/coordinator";
 import { screenData, TestWorkspace, tree, dto } from "./fixtures";
 import { SERVED, setConversationState, snapshotJson } from "./conversation-fixture";
+import { coordinatorMessageDigest } from "@alpacawork/contract/coordinator";
+import { deliveryOutcome } from "../src/features/coordinator/editor/outbox";
 
 const at = (minute: number) => new Date(Date.UTC(2026, 10, 1, 6, minute)).toISOString();
 const answered = (id: string, minute: number): CoordinatorTurn => ({ id, at: at(minute), ask: `ask ${id}`, attachments: [], status: "succeeded",
@@ -69,7 +71,7 @@ test("the memo a reset handed over is read when its line asks for it", async () 
   expect(document.querySelector("[data-coordinator-reset-memo-text]")?.textContent).toContain("メモの後の発言も AI に渡しています。");
 });
 
-test("older turns are counted while folded, and read a page at a time once opened, each once", async () => {
+test("older turns are counted while folded, opening reads their first page, and each further page once", async () => {
   const older = Array.from({ length: 3 }, (_, index) => answered(`old-${index}`, index));
   const pages: Record<string, { turns: CoordinatorTurn[]; more: string | null }> = {
     "old-2": { turns: [older[1]!, older[2]!], more: "old-1" }, "old-1": { turns: [older[0]!, older[1]!], more: null } };
@@ -84,8 +86,6 @@ test("older turns are counted while folded, and read a page at a time once opene
   // Counted whole: the older exchanges here and the 3 not read yet.
   expect(Number(/(\d+)件/.exec(thread().querySelector("[data-earlier]")?.textContent ?? "")?.[1])).toBeGreaterThanOrEqual(3);
   fireEvent.click(thread().querySelector("[data-earlier] button")!);
-  expect(order()).toEqual(["more", "a", "b"]);
-  fireEvent.click(thread().querySelector("[data-earlier-more] button")!);
   await waitFor(() => expect(order()).toEqual(["more", "old-1", "old-2", "a", "b"]));
   fireEvent.click(thread().querySelector("[data-earlier-more] button")!);
   // The first turn is here: nothing more to read, and the page that overlapped added nothing twice.
@@ -104,4 +104,46 @@ test("reset waits for the answer at work; clearing still takes a second press", 
   fireEvent.click(document.querySelector("[data-coordinator-clear]")!);
   expect(document.querySelector("[data-coordinator-clear]")?.textContent).toContain("もう一度で消去");
   expect(fetcher.mock.calls.filter(([url]) => String(url).startsWith("/api/coordinator/clear"))).toHaveLength(0);
+});
+
+test("a message sent into an answer stays under it when the answer comes back on an older page", async () => {
+  // The snapshot starts at the message sent into "old" (its first turn); "old" itself is read back.
+  const into = { ...answered("joined", 2), status: "joined" as const, into: "old", answer: null, answeredAt: null };
+  const conversation = { ...empty, earlier: { count: 1, before: "joined" }, turns: [into, answered("a", 10)] };
+  vi.stubGlobal("fetch", vi.fn(async (url: string) => url.startsWith("/api/coordinator/turns?")
+    ? new Response(JSON.stringify({ turns: [answered("old", 1)], resets: [], more: null }), { status: 200 }) : json(conversation)));
+  setConversationState({ open: true, expanded: true, read: true, conversation });
+  card();
+  fireEvent.click(thread().querySelector("[data-earlier] button")!);
+  await waitFor(() => expect(order()).toEqual(["old", "a"]));
+  const old = thread().querySelector<HTMLElement>("[data-coordinator-message=old]")!;
+  if (old.dataset.exchange === "folded") fireEvent.click(old.querySelector("[data-exchange-toggle]")!);
+  expect(thread().querySelector("[data-coordinator-message=old]")?.textContent).toContain("ask joined");
+});
+
+test("an answer's own file cleaned away with the old files says it was removed", () => {
+  const conversation = { ...empty, turns: [{ ...answered("a", 1), answer: "Report: [report.pdf](report.pdf)", filesExpired: true as const,
+    answerFiles: [{ href: "report.pdf", state: "ready" as const, name: "report.pdf", size: 10 }] }] };
+  vi.stubGlobal("fetch", vi.fn(async () => json(conversation)));
+  setConversationState({ open: true, expanded: true, read: true, conversation });
+  card();
+  expect(thread().querySelector("[data-file-removed]")?.textContent).toBe("ファイルは削除済み: report.pdf");
+});
+
+test("the read marks kept are those of the turns served now: older ones count as read without being held", async () => {
+  const conversation = { ...empty, turns: [answered("a", 1)] };
+  vi.stubGlobal("fetch", vi.fn(async () => json(conversation)));
+  setConversationState({ open: true, read: true, conversation });
+  useConversation.setState({ seen: new Set(["pushed-out", "a"]) });
+  await useConversation.getState().refresh();
+  expect([...useConversation.getState().seen]).toEqual(["a"]);
+});
+
+test("a send whose turn is no longer among the recent ones is settled by serve's digest of the input it took", () => {
+  const fixed = { conversationId: "conversation-1", text: "words", tasks: ["T2", "T1"], attachments: [] };
+  const taken = coordinatorMessageDigest({ ...fixed, id: "m" });
+  const seen = (admitted: Record<string, { digest: string; ended: boolean }>) => ({ ...empty, cancelled: [], admitted });
+  expect(deliveryOutcome(seen({}), "m", fixed)).toBe("unknown");
+  expect(deliveryOutcome(seen({ m: { digest: taken, ended: true } }), "m", fixed)).toBe("accepted");
+  expect(deliveryOutcome(seen({ m: { digest: coordinatorMessageDigest({ ...fixed, text: "other words", id: "m" }), ended: true } }), "m", fixed)).toBe("conflict");
 });

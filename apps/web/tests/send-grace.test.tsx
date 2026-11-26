@@ -268,7 +268,7 @@ function showQueuedConversation() {
   const view = render(<TestWorkspace><ShownConversationProvider><CoordinatorThread turns={[]} retry={() => {}} /><Toaster /></ShownConversationProvider></TestWorkspace>);
   // No server in this fixture; opening the recovered input may refresh its conversation.
   act(() => setConversationState({ root, open: true, expanded: true, refresh: async () => {}, conversation: {
-    id: 'C1', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, cancelled: [], turns: [],
+    id: 'C1', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns: [],
   } }));
   return view;
 }
@@ -313,7 +313,7 @@ test('inline undo of a card send retains its terminal identity across reload and
   fireEvent.click(document.querySelector('[data-coordinator-cancel-unsent]')!);
   expect(document.querySelector('[data-coordinator-cancel-unsent]')).toBeNull();
   useDraftStore.setState(readDrafts());
-  const conversation = { id: 'C1', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, turns: [], cancelled: [] };
+  const conversation = { id: 'C1', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, turns: [], admitted: {}, cancelled: [] };
   expect(beginWithdrawal(root, id, conversation)).toBeNull();
   expect(begin(root, id)).toBeNull();
   expect(useUndoOffers.getState().offers.some(offer => offer.id === id)).toBe(false);

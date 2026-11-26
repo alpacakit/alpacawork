@@ -106,6 +106,7 @@
     "otherIn": "{{folder}} 文件夹中的其他",
     "otherMedia": "其他媒体",
     "path": "路径",
+    "removed": "文件已删除：{{name}}",
     "unavailable": "无法显示文件：{{name}}",
     "videos": "视频",
     "work": "工作文件"

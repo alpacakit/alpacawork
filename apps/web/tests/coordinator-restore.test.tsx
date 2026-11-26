@@ -26,7 +26,7 @@ import { messageJson, serving } from './conversation-fixture';
 const serve = (fixture: Parameters<typeof serving>[0]) => (url: RequestInfo | URL, init?: RequestInit) => serving(fixture)(String(url), init);
 const root = '/coordinator-restore', conversationId = 'same-conversation', restored = '1f347e6d-caba-4994-aa45-a9cf99182996';
 const fixed = { conversationId, text: 'frozen words', attachments: [] };
-const conversation = { id: conversationId, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, cancelled: [], turns: [] };
+const conversation = { id: conversationId, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns: [] };
 function live(restoreId: string) { receiveFullIndex(queryClient, { ...indexOf(tree({ root })), restoreId, generation: restoreId }); useConnection.setState({ state: 'live', offline: false }); }
 function admitted(id = crypto.randomUUID()) {
   const from = draftKey(root, 'coordinator', conversationId), values = { requestId: id, doc: JSON.stringify(textDocument(fixed.text)) };
@@ -121,7 +121,7 @@ test.each(['normal', 'queued', 'restored', 'unproven'] as const)('explicit cance
   if (kind === 'restored') act(() => { const index = readIndex(queryClient)!; receiveFullIndex(queryClient, { ...index, rev: index.rev + 1, restoreId: restored }); });
   const pinKey = 'alpacawork-write-identity:' + JSON.stringify([root, id]);
   if (kind === 'unproven') sessionStorage.removeItem(pinKey);
-  const fetcher = vi.spyOn(globalThis, 'fetch').mockImplementation(serve({ ...conversation, cancelled: [id] }));
+  const fetcher = vi.spyOn(globalThis, 'fetch').mockImplementation(serve({ ...conversation, admitted: {}, cancelled: [id] }));
   const notices = vi.spyOn(notify, 'success');
   if (kind === 'queued') {
     const entries = useDraftStore.getState().entries, [key, entry] = Object.entries(entries).find(([, x]) => x.values.requestId === id && x.values.stage)!;
@@ -152,16 +152,16 @@ test.each(['en', 'ja'] as const)('kept cancellation rows and folded words preser
   try {
     for (const kind of ['normal', 'queued', 'restored', 'unproven'] as const) {
       queryClient.clear(); live('initial'); useDraftStore.setState({ unavailable: false, entries: {} });
-      setConversationState({ root, conversation: { ...conversation, cancelled: [], ...SERVED }, open: true, expanded: true });
+      setConversationState({ root, conversation: { ...conversation, admitted: {}, cancelled: [], ...SERVED }, open: true, expanded: true });
       const id = admitted(), input = draftKey(root, 'coordinator', conversationId);
       const editing = useDraftStore.getState().entries[input]!;
       useDraftStore.setState({ entries: { ...useDraftStore.getState().entries,
         [input]: { ...editing, values: edited(editing.values, () => textDocument('Other input'))!.values } } });
-      if (kind === 'restored') { live(restored); setConversationState({ root, conversation: { ...conversation, cancelled: [], ...SERVED } }); }
+      if (kind === 'restored') { live(restored); setConversationState({ root, conversation: { ...conversation, admitted: {}, cancelled: [], ...SERVED } }); }
       const pinKey = 'alpacawork-write-identity:' + JSON.stringify([root, id]);
       if (kind === 'unproven') sessionStorage.removeItem(pinKey);
       const beforePin = sessionStorage.getItem(pinKey);
-      const fetcher = vi.spyOn(globalThis, 'fetch').mockImplementation(serve({ ...conversation, cancelled: [id] }));
+      const fetcher = vi.spyOn(globalThis, 'fetch').mockImplementation(serve({ ...conversation, admitted: {}, cancelled: [id] }));
       const notices = vi.spyOn(notify, 'success');
       if (kind === 'queued') {
         const entries = useDraftStore.getState().entries, [key, entry] = Object.entries(entries).find(([, x]) => x.values.requestId === id && x.values.stage)!;

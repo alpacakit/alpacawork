@@ -14,7 +14,7 @@ import { queryClient } from '../src/data/query-client';
 import { notify, useToasts } from '../src/lib/notify';
 import { TestWorkspace, screenData, taskFixture, tree, viewsOf } from './fixtures';
 
-export const conversation = { id: 'migration-conversation', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, cancelled: [], turns: [] };
+export const conversation = { id: 'migration-conversation', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns: [] };
 export const first = { id: 'T285', title: 'Retained first' }, second = { id: 'T253', title: 'Retained second' };
 export const value = () => tree({ tasks: [taskFixture({ ...first, state: 'done' }), taskFixture(second)] });
 export const field = () => screen.getByRole('textbox') as HTMLElement & { editor: Editor };

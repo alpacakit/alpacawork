@@ -72,10 +72,10 @@ type View = {
   /** How many requests this page has sent (ask: from the input, or sent again): the conversation goes to its end. */
   asked: number;
   /**
-   * The messages this page has learnt were withdrawn, in their conversation: serve's snapshot names none, so a send's
-   * or a withdrawal's answer, or a status check, says so (`learnWithdrawn`), and the conversation carries them.
+   * Single messages' statuses this page has learnt, in their conversation (learnStatus): a snapshot holds recent turns
+   * only and names no withdrawal, so the conversation carries what these say (withLearnt).
    */
-  withdrawn: { conversationId: string; ids: readonly string[] } | null;
+  learnt: { conversationId: string; statuses: Readonly<Record<string, CoordinatorMessageResponse['message']>> } | null;
   /** The last read failed: said by its toast (READ_FAILURE) until a read succeeds. */
   error: string | null;
   /** Closing the input folds the conversation too. */
@@ -260,9 +260,12 @@ async function withdraw(root: string, conversation: CoordinatorConversation, mes
     throw error;
   } finally { withdrawal.finish(); }
 }
-/** Serve's conversation with the withdrawals this page knows of in it. */
-export function withWithdrawn(conversation: CoordinatorSnapshot['conversation'], known = useConversationUi.getState().withdrawn): CoordinatorConversation {
-  return { ...conversation, cancelled: known?.conversationId === conversation.id ? known.ids : [] };
+/** Serve's conversation with what this page has learnt of its messages: those withdrawn, and the inputs serve took. */
+export function withLearnt(conversation: CoordinatorSnapshot['conversation'], known = useConversationUi.getState().learnt): CoordinatorConversation {
+  const statuses = known?.conversationId === conversation.id ? Object.values(known.statuses) : [];
+  return { ...conversation, cancelled: statuses.flatMap(status => status.status === 'withdrawn' ? [status.id] : []),
+    admitted: Object.fromEntries(statuses.flatMap(status => 'inputDigest' in status
+      ? [[status.id, { digest: status.inputDigest, ended: !['queued', 'sending', 'running'].includes(status.status) }]] : [])) };
 }
 /**
  * One sent message's status read from serve, for a send whose answer was lost: what it says is kept (learnStatus), and
@@ -270,17 +273,23 @@ export function withWithdrawn(conversation: CoordinatorSnapshot['conversation'],
  */
 export async function withStatus(conversation: CoordinatorSnapshot['conversation'], id: string): Promise<CoordinatorConversation> {
   learnStatus(conversation.id, await readCoordinatorMessage(id));
-  return withWithdrawn(conversation);
+  return withLearnt(conversation);
 }
-/** What one message's status says: withdrawn is kept for its conversation (a new conversation starts with none). */
+/**
+ * What one message's status says, kept for its conversation (a new conversation starts with none): withdrawn, or taken
+ * with the digest of its input. Missing says nothing to keep.
+ */
 function learnStatus(conversationId: string, message: CoordinatorMessageResponse['message']) {
-  if (message.status !== 'withdrawn') return;
-  const known = useConversationUi.getState().withdrawn, ids = known?.conversationId === conversationId ? known.ids : [];
-  if (!ids.includes(message.id)) useConversationUi.setState({ withdrawn: { conversationId, ids: [...ids, message.id] } });
+  if (message.status === 'missing') return;
+  const known = useConversationUi.getState().learnt, statuses = known?.conversationId === conversationId ? known.statuses : {};
+  const before = statuses[message.id];
+  // A withdrawal is final: a status read before it (an older answer arriving late) does not undo it.
+  if (before?.status === 'withdrawn' || before?.status === message.status && ('inputDigest' in before) === ('inputDigest' in message)) return;
+  useConversationUi.setState({ learnt: { conversationId, statuses: { ...statuses, [message.id]: message } } });
 }
 type Taken = 'shown' | 'satisfied' | 'scope-lost';
 function take(received: CoordinatorSnapshot['conversation'], origin: Sending, replace = false, drawable = true): Taken {
-  const next = withWithdrawn(received);
+  const next = withLearnt(received);
   const conflict = i18n.t('ui:coordinatorCard.conflict');
   // Facts are received even when this snapshot loses the display race; a turn under a sent request's ID with other
   // words is not a fact about that request.
@@ -322,7 +331,9 @@ function draw(next: CoordinatorConversation, origin: Sending, replace: boolean):
 
 function receive(next: CoordinatorConversation, request: number) {
   const state = useConversation.getState();
-  const seen = new Set(state.conversation?.id === next.id ? state.seen : []);
+  // Held for the turns served now only: older ones count as read (serve's rule), so the set never outgrows the range.
+  const served = new Set(next.turns.map(turn => turn.id));
+  const seen = new Set(state.conversation?.id === next.id ? [...state.seen].filter(id => served.has(id)) : []);
   for (const turn of next.turns) if (turn.seen) seen.add(turn.id);
 
   const previous = useConversation.getState().conversation;
@@ -343,7 +354,7 @@ const useConversationUi = create<Ui>((set) => {
   const get = () => useConversation.getState();
   return ({
   root: '', opening: null,
-  seen: new Set(), pendingSeen: new Set(), seenError: null, open: false, expanded: false, focusRequested: false, written: 0, engaged: false, listen: false, wanted: false, asked: 0, withdrawn: null, error: null,
+  seen: new Set(), pendingSeen: new Set(), seenError: null, open: false, expanded: false, focusRequested: false, written: 0, engaged: false, listen: false, wanted: false, asked: 0, learnt: null, error: null,
   observeSeen: ids => {
     if (isAgentView() || readScope(queryClient)?.restored) return;
     const state = get(), valid = new Set(state.conversation?.turns.filter(hasAnswer).map(turn => turn.id));
@@ -442,7 +453,7 @@ function conversationView(): View {
   const data = coordinatorReadState(queryClient, root).snapshot?.conversation ?? null;
   const trying = !!query && query.state.fetchStatus !== 'idle';
   if (projected?.ui === ui && projected.root === root && projected.data === data && projected.trying === trying) return projected.view;
-  const known = data && withWithdrawn(data, ui.withdrawn);
+  const known = data && withLearnt(data, ui.learnt);
   const conversation = known && known.turns.some(turn => !turn.seen && ui.seen.has(turn.id))
     ? { ...known, turns: known.turns.map(turn => ui.seen.has(turn.id) && !turn.seen ? { ...turn, seen: true } : turn) } : known;
   const view: View = { ...ui, root, conversation, read: allRead(conversation), trying };
@@ -614,7 +625,8 @@ async function askAbsentSends(root: string) {
   const conversation = useConversation.getState().conversation;
   if (!conversation) return;
   const absent = outgoing(useDraftStore.getState().entries, root, conversation.id).filter(item => (item.stage === 'posted' || item.stage === 'accepted')
-    && !statusAsked.has(item.requestId) && !conversation.turns.some(turn => turn.id === item.requestId) && !conversation.cancelled.includes(item.requestId));
+    && !statusAsked.has(item.requestId) && !conversation.turns.some(turn => turn.id === item.requestId) && !conversation.cancelled.includes(item.requestId)
+    && !(item.requestId in conversation.admitted));
   for (const item of absent) {
     statusAsked.add(item.requestId);
     try { learnStatus(conversation.id, await readCoordinatorMessage(item.requestId)); }

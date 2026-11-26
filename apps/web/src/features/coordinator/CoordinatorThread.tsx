@@ -180,10 +180,16 @@ export const CoordinatorThread = memo(function CoordinatorThread({ turns: recent
   // Turns older than the snapshot's come before its own, read a page at a time once the history is open.
   const earlier = useEarlierHistory(conversation);
   const shown = useShownConversation(recent);
-  // The older turns have all ended: each is a row of the thread, or joined to one.
-  const older = useMemo(() => partitionTurns(earlier.turns), [earlier.turns]);
-  const work = useMemo(() => older.thread.length ? [...older.thread, ...shown.thread] : shown.thread, [older, shown.thread]);
-  const turns = useMemo(() => earlier.turns.length ? [...earlier.turns, ...recent] : recent, [earlier.turns, recent]);
+  // Older turns read back join the snapshot's by ID first, then the whole is grouped once: a message sent into another
+  // across the snapshot's first turn stands under it whichever page each came on.
+  const turns = useMemo(() => {
+    if (!earlier.turns.length) return recent;
+    const here = new Set(recent.map(turn => turn.id));
+    return [...earlier.turns.filter(turn => !here.has(turn.id)), ...recent];
+  }, [earlier.turns, recent]);
+  const grouped = useMemo(() => turns === recent ? null : partitionTurns(turns), [turns, recent]);
+  const work = grouped?.thread ?? shown.thread;
+  const joinedTo = grouped?.joined ?? shown.joined;
   const taken = useConversation(state => state.opening);
   const scope = useConversation(state => state.conversation?.id);
   // The store's opening (coordinator.ts owns when it is taken); drawn outside one, as an opening of what is here would be.
@@ -247,7 +253,7 @@ export const CoordinatorThread = memo(function CoordinatorThread({ turns: recent
     // Hidden history has no row yet: build its labels and messages only when it is opened.
     if (at < start && !earlierOpen) return null;
     const open = turn.waiting || (hand.get(turn.id) ?? at >= start);
-    const joined = shown.joined.get(turn.id) ?? older.joined.get(turn.id) ?? [];
+    const joined = joinedTo.get(turn.id) ?? [];
     const mark = <TimelineMark kind={turn.status === "running" ? "start" : turn.status === "failed" ? "error" : "request"}
       tone={turn.status === "running" ? "working" : turn.status === "failed" ? "error" : "quiet"} />;
     // Said in words, not an arrow: an arrow on the conversation is what closes it (its ∨ at the top right). Taller than
@@ -286,7 +292,7 @@ export const CoordinatorThread = memo(function CoordinatorThread({ turns: recent
   return <>
     <ol ref={thread} data-action-focus-scope tabIndex={-1} data-coordinator-thread className={cn("relative m-0 list-none px-3 pt-1 pb-2 [overflow-wrap:anywhere] [--gutter:--spacing(6)] [--rail:7px] before:absolute before:top-5 before:bottom-5 before:left-[calc(--spacing(3)+var(--rail))] before:w-px before:bg-rule", empty && "before:hidden")}>
       {empty && <ConversationStart />}
-      {hidden > 0 && !earlierOpen && <EarlierRow count={hidden} reveal={() => toggle(EARLIER, true)} />}
+      {hidden > 0 && !earlierOpen && <EarlierRow count={hidden} reveal={() => { toggle(EARLIER, true); if (earlier.unread) void earlier.readMore(); }} />}
       {earlierOpen && earlier.more && <ReadOlder reading={earlier.reading} failed={earlier.failed} read={readOlder} />}
       {rows}
       {!shown.tail.length && resetLines(null)}

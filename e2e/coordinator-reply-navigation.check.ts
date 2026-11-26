@@ -96,6 +96,12 @@ for (const phone of [false, true]) test.describe(phone ? 'phone reply navigation
     await origin.locator('[data-reply-answer]').click(); await field.press('End'); await field.pressSequentially('reply after reset');
     await send.click();
     await expect.poll(async () => (await snapshot()).turns.find(turn => turn.replyTo?.id === source!.id)?.status, { timeout: 30_000 }).toBe('succeeded');
+    // From the reply sent, read afresh: its label leads back to the original answer, read back from the older pages.
+    const reply = (await snapshot()).turns.find(turn => turn.replyTo?.id === source!.id)!;
+    await page.reload(); await openCoordinator(page);
+    await page.locator(`[data-coordinator-message="${reply.id}"] [data-label=reply] [aria-haspopup]`).click();
+    await page.getByRole('button', { name: 'Go to the original reply', exact: true }).click();
+    await expect(page.locator(`[data-coordinator-message="${source!.id}"] [data-ask-answer][data-reply-flash]`)).toBeInViewport({ timeout: 15_000 });
     await field.fill('usage:90000'); await send.click();
     await expect(ring).not.toHaveText('—', { timeout: 30_000 });
   });

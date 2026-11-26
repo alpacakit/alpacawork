@@ -106,6 +106,7 @@
     "otherIn": "{{folder}} フォルダのその他",
     "otherMedia": "その他の画像・動画・音声",
     "path": "場所",
+    "removed": "ファイルは削除済み: {{name}}",
     "unavailable": "ファイルを表示できません: {{name}}",
     "videos": "動画",
     "work": "作業ファイル"
