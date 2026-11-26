@@ -7,7 +7,9 @@ import { ReadFailure, ReadNote } from "@/components/ui/loadable";
 import { useOfflineShown } from "@/data/reach";
 import { RegionSkeleton } from "@/components/ui/skeleton";
 import { Icon } from "@/components/ui/icon";
+import { Caret, DisclosureSummary } from "@/components/ui/caret";
 import { subscribeStep } from "@/state/history-step";
+import { useNarrow } from "@/state/view-store";
 import { comparison, parts, type Kind } from "./format";
 import type { AnalysisModel } from "@alpacawork/contract/analysis";
 import type { Bucket } from "./contract";
@@ -142,22 +144,31 @@ export function ChartHead() {
 }
 /** Where the counting rules stand, by the id of their heading. */
 const RULES = "analysis-rules";
-/** Brings the counting rules into view and gives their heading the focus (read out, and the keys go on from there). */
+/** Brings the counting rules into view, open, and gives their heading the focus (read out, and the keys go on from there). */
 function toRules() {
   const heading = document.getElementById(RULES);
+  const folded = heading?.closest("details");
+  if (folded) folded.open = true;
   heading?.scrollIntoView({ block: "start", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   heading?.focus({ preventScroll: true });
 }
 /**
- * How the numbers are counted, always open under the breakdown: a heading, then cards of rules that belong together, in
- * the order the rows show them (three across, two on a narrower page, one on a phone). Each card is a list of names and
- * what each counts.
+ * How the numbers are counted, under the breakdown: a heading, then cards of rules that belong together, in the order
+ * the rows show them (three across, two on a narrower page, one on a phone). Each card is a list of names and what each
+ * counts. Open on a computer; on a phone, where the cards run to screens of their own, folded under the heading until
+ * it (or the way down to it at the charts' head) is pressed.
  */
 export function Rules({ children }: { children: ReactNode }) {
   const { t } = useTranslation("analysis");
+  const narrow = useNarrow();
+  const heading = <h2 id={RULES} tabIndex={-1} className="scroll-mt-[calc(var(--bar-h)+1.5rem)] text-heading font-semibold outline-none">{t("tasks.howCounted")}</h2>;
+  const cards = <div className="mt-4 grid grid-cols-3 items-start gap-6 @max-5xl:grid-cols-2 narrow:grid-cols-1 narrow:gap-3">{children}</div>;
   return <section aria-labelledby={RULES} className="mt-16 narrow:mt-12">
-    <h2 id={RULES} tabIndex={-1} className="mb-4 scroll-mt-[calc(var(--bar-h)+1.5rem)] text-heading font-semibold outline-none">{t("tasks.howCounted")}</h2>
-    <div className="grid grid-cols-3 items-start gap-6 @max-5xl:grid-cols-2 narrow:grid-cols-1 narrow:gap-3">{children}</div>
+    {narrow
+      ? <details className="group/rules">
+        <DisclosureSummary className="min-h-11 gap-2"><Caret className="group-open/rules:rotate-90" />{heading}</DisclosureSummary>
+        {cards}</details>
+      : <>{heading}{cards}</>}
   </section>;
 }
 /** A card of rules that belong together: each name over what it counts. */

@@ -35,9 +35,10 @@ import { readerEdgeHeld, readerWidth, fitReaderWidth, MIN_DOCK_VIEWPORT_WIDTH, R
 import { VIEW_BESIDE_WIDTH } from "@/features/reader/viewer/viewer-layout";
 import { Reader, readerBox, type ReaderMode } from "@/features/reader/Reader";
 import { DialogHost } from "./DialogHost";
-import { barVars, UNDER_BAR, useBar, useBarAutoHide } from "@/state/bar";
+import { barVars, useBar, useBarAutoHide } from "@/state/bar";
 import { AWAY, Bar, BarRoom } from "@/features/chrome/Bar";
 import { CoordinatorCard, useCoordinatorShortcut } from "@/features/coordinator/CoordinatorCard";
+import { ListScroll } from "./ListScroll";
 import { GuideBalloon } from "@/features/guide/Guide";
 
 const subscribeViewport = (notify: () => void) => {
@@ -49,10 +50,6 @@ const subscribeReaderGeometry = (notify: () => void) => {
   return () => { stopWidth(); stopViewport(); };
 };
 const canFitDock = () => innerWidth >= MIN_DOCK_VIEWPORT_WIDTH;
-/** The analysis's charts keep at least this much beside a window at the page's right (its 24px left and the 36px gap aside). */
-const ANALYSIS_LEAST_WIDTH = 680;
-const analysisFitsBeside = () =>
-  innerWidth - readerListReservation(fitReaderWidth(readerWidth.get(), innerWidth), innerWidth) - 24 - 36 >= ANALYSIS_LEAST_WIDTH;
 const viewportWidth = () => innerWidth;
 const readerOverlaps = () => {
   const width = fitReaderWidth(readerWidth.get(), innerWidth);
@@ -116,20 +113,20 @@ export function Workbench() {
   // Below the room needed for both columns, the reader covers the list instead.
   const fitsDock = useSyncExternalStore(subscribeViewport, canFitDock, canFitDock);
   const canDock = !narrow && fitsDock;
-  // On a phone the task is a sheet from the bottom over the list, which stays in reach until the sheet is pulled whole.
-  const mode: ReaderMode = narrow ? "sheet" : !canDock || readerFull ? "overlay" : "docked";
-  const sheetWhole = useViewStore((state) => state.reader.whole === true);
-  // What a number of the analysis opens (its list, the share card) stands where the docked reader stands, and the page
-  // gives it the same room: the charts narrow beside it and stay in reach, never under it.
+  // What a number of the analysis opens (its list, the share card) is the window the reader is: it stands where the
+  // reader stands, by the same rules (beside the charts as the reader beside the list, full when the reader is, over
+  // the page where there is no room, a sheet on a phone), and a task opened from it is the reader in its place.
   const analysisShown = analysis && !(place === "lookup" && project) ? analysis : null;
+  const layerOpen = !readerOpen && !!analysisShown && analysisSurfaces(analysisShown).length > 0;
+  const windowFull = readerFull || layerOpen && full;
+  // On a phone the task is a sheet from the bottom over the list, which stays in reach until the sheet is pulled whole.
+  const mode: ReaderMode = narrow ? "sheet" : !canDock || windowFull ? "overlay" : "docked";
+  const sheetWhole = useViewStore((state) => state.reader.whole === true);
   // The list drawn in the analysis's place just now comes in, as the analysis does in the list's (TimeTree `entering`).
   const analysisWas = useRef(false);
   const leavingAnalysis = analysisWas.current && !analysisShown;
   useEffect(() => { analysisWas.current = !!analysisShown; });
-  // Where the charts would be left too narrow to read, it stands over them instead, as on a narrower screen.
-  const analysisBeside = useSyncExternalStore(subscribeReaderGeometry, analysisFitsBeside, analysisFitsBeside) && canDock;
-  const layerBeside = !!analysisShown && analysisBeside && analysisSurfaces(analysisShown).length > 0;
-  const docked = readerOpen ? mode === "docked" : layerBeside;
+  const docked = (readerOpen || layerOpen) && mode === "docked";
   // While it stands there, the list and its bar are out of reach at once, and out of sight once the reader has moved
   // over them (the page's data-panel-moving: lib/motion.ts moveAcross), kept as they were for its closing.
   const listAway = docked && viewing;
@@ -172,8 +169,8 @@ export function Workbench() {
         </>}>{() => <>
           <div inert={covered || listAway} className={cn("contents", listAway && AWAY)}>
             {/* The analysis face stands in the list's place whatever the list would show (a search ends as it opens). */}
-            {analysisShown ? <AnalysisView place={analysisShown} beside={analysisBeside} />
-              : place === "search" ? <div data-list-scroll {...UNDER_BAR} className="relative min-h-75 flex-1 basis-0 overflow-auto overscroll-contain scroll-pb-(--list-foot) pb-(--list-foot) narrow:min-h-67.5"><BarRoom /><SearchResults /></div>
+            {analysisShown ? <AnalysisView place={analysisShown} mode={mode} canDock={canDock} />
+              : place === "search" ? <ListScroll room><BarRoom /><SearchResults /></ListScroll>
               : place === "lookup" && project ? <div className="flex min-h-75 flex-1 flex-col narrow:min-h-67.5"><BarRoom /><AwaitedLookup address={project} placement="list" reason={{ kind: "scope_lookup_unavailable" }} skeleton={<RegionSkeleton shape="time" />} /></div>
               : place === "no-projects" ? <div className="flex-1"><BarRoom /><NoProjects onOpenArchive={() => openSettings("projects")} onCreateProject={() => useDialogStore.getState().openProject()} /></div>
               : <TimeTree entering={leavingAnalysis} />}
@@ -224,7 +221,8 @@ function PageFrame({ docked, viewing, barHeight, barHidden, children }: {
   const laidOut = useRef(width);
   if (!held) laidOut.current = width;
   useLayoutEffect(() => {
-    const reader = document.querySelector<HTMLElement>('aside[data-reader-mode="docked"]');
+    // The window being resized: the docked reader, or else what a number of the analysis opens beside its charts.
+    const reader = document.querySelector<HTMLElement>('aside[data-reader-mode="docked"]') ?? document.querySelector<HTMLElement>('aside[data-analysis-panel="docked"]');
     if (held && reader) reader.style.width = `${width}px`;
     return () => { reader?.style.removeProperty("width"); };
   }, [held, width, docked]);

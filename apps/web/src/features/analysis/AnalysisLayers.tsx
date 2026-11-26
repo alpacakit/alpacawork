@@ -5,10 +5,12 @@ import { Icon } from "@/components/ui/icon";
 import { ReadFailure } from "@/components/ui/loadable";
 import { RegionSkeleton } from "@/components/ui/skeleton";
 import { PhoneSheet } from "@/features/coordinator/PhoneSheet";
-import { useScreenHeight } from "@/features/reader/TaskSheet";
+import { keepFocusInside, useScreenHeight } from "@/features/reader/TaskSheet";
 import { failedAddress } from "@/lib/failed-address";
 import { giveFocusBack, openerChain } from "@/lib/focus-return";
 import { cn } from "@/lib/utils";
+import { windowBox, WindowWidthHandle } from "@/features/shell/docked-window";
+import type { ReaderMode } from "@/features/reader/Reader";
 import { closeAnalysisLayer } from "@/state/history-step";
 import { readerShows, useNarrow, useViewStore } from "@/state/view-store";
 import { CardPreview, CardSkeleton } from "./CardPreview";
@@ -57,14 +59,15 @@ function CardLayer({ place, project, part, waitFrom }: {
 /**
  * What a number opens: the list of the tasks behind it; or the share card. A task opened from the list is the reader over
  * the face (the same window as on the list of tasks), and the list waits under it, out of sight, until the reader closes.
- * Where the docked reader can stand (`beside`), it stands there, as wide as the room the page gives the reader (Workbench,
- * `--window-reserve`): the charts stay whole and in reach beside it, so another day or number opens in its place, and the
- * focus stays where it is (it moves into the window when the window first opens). Where it cannot, it is
- * over the page, which a press behind it closes; on a phone a sheet from the bottom. × closes every layer; the list's
- * way back and Back close one.
+ * It is the reader's window, placed by the page as the reader is (Workbench, `mode`): docked, it stands as wide as the
+ * reader would, its edge resizing it (and the reader with it) up to the whole screen, and the charts narrow beside it as
+ * the list does, so another day or number opens in its place and the focus stays where it is (it moves into the window
+ * when the window first opens). Where there is no room beside the charts, or the window was made full, it covers the
+ * page as the reader does; on a phone it is a sheet from the bottom. × closes every layer; the list's way back and Back
+ * close one.
  */
-export function AnalysisLayers({ place, project, days, beside }: {
-  place: AnalysisPlace; project: string | null; days: { from: string; to: string } | null; beside: boolean;
+export function AnalysisLayers({ place, project, days, mode, canDock }: {
+  place: AnalysisPlace; project: string | null; days: { from: string; to: string } | null; mode: ReaderMode; canDock: boolean;
 }) {
   const { t } = useTranslation("analysis");
   const narrow = useNarrow();
@@ -85,7 +88,7 @@ export function AnalysisLayers({ place, project, days, beside }: {
   const depth = analysisSurfaces(place).length;
   const content = useLayerContent();
   const reading = useViewStore(state => readerShows(state) !== null);
-  // Back to the layer under it, where there is one; × and a press behind close them all.
+  // Back to the layer under it, where there is one; × closes them all.
   const back = depth > 1;
   useEffect(() => {
     if (!depth || reading) return;
@@ -99,7 +102,7 @@ export function AnalysisLayers({ place, project, days, beside }: {
   useEffect(() => {
     const first = !shown.current;
     shown.current = depth > 0;
-    if (depth > 0 && (first || !beside)) surface.current?.querySelector<HTMLElement>("[data-layer-focus]")?.focus({ preventScroll: true });
+    if (depth > 0 && (first || mode !== "docked")) surface.current?.querySelector<HTMLElement>("[data-layer-focus]")?.focus({ preventScroll: true });
   }, [place.list, place.card, phoneCard]);
   // As every window does: what had the focus when the first layer opened gets it back when the last one closes (a
   // chart and its legend give it back to themselves, ChartGroup).
@@ -131,8 +134,6 @@ export function AnalysisLayers({ place, project, days, beside }: {
   </>;
   // Under the reader the layers keep their place (and the list its scroll), out of sight and reach.
   return <div className={reading ? "hidden" : "contents"}>
-    {/* Over the page, a press behind the window closes it; the bar stays in reach above it (its faces, the project, settings). */}
-    {!beside && <div aria-hidden className="fixed inset-x-0 top-(--bar-h) bottom-0 z-(--layer-reader)" onClick={closeLayers} />}
     <PointerTip root={surfaceBox} />
     {phoneCard
       ? <PhoneSheet ref={setSurface} role="dialog" aria-label={label} label={t("card.resize")}
@@ -140,10 +141,11 @@ export function AnalysisLayers({ place, project, days, beside }: {
           className="z-(--layer-reader) animate-sheet rounded-t-pane border-t-hairline border-lit-line bg-lit shadow-float">
           {contents}
         </PhoneSheet>
-      : <aside ref={setSurface} role="dialog" data-analysis-panel={narrow ? undefined : ""} aria-label={label}
-          className={cn("fixed z-(--layer-reader) flex flex-col border-hairline border-lit-line bg-lit shadow-float",
-            narrow ? "inset-x-0 top-[18%] bottom-0 animate-sheet rounded-t-pane before:absolute before:top-1.5 before:left-1/2 before:-ms-4.5 before:h-1 before:w-9 before:rounded-xs before:bg-lit-line"
-              : cn("top-window right-window bottom-window animate-side rounded-pane", beside ? "w-(--window-reserve)" : "w-[min(548px,calc(100%-24px))]"))}>
+      : <aside ref={setSurface} role="dialog" data-analysis-panel={narrow ? undefined : mode} data-window={narrow ? undefined : ""} aria-label={label}
+          onKeyDown={mode === "overlay" ? keepFocusInside : undefined}
+          className={narrow ? "fixed inset-x-0 top-[18%] bottom-0 z-(--layer-reader) flex animate-sheet flex-col rounded-t-pane border-hairline border-lit-line bg-lit shadow-float before:absolute before:top-1.5 before:left-1/2 before:-ms-4.5 before:h-1 before:w-9 before:rounded-xs before:bg-lit-line"
+            : cn(windowBox(mode === "overlay" ? "overlay" : "docked"), "animate-side")}>
+          {canDock && <WindowWidthHandle label={t("list.resize")} />}
           {contents}
         </aside>}
   </div>;

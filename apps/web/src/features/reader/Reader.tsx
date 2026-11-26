@@ -6,7 +6,7 @@ import { useAnswerCueLifetime } from "./answer-cue";
 import { ReaderSwipe } from './swipe-answer';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
-import { ResizeEdge } from "@/components/ui/resize-edge";
+import { windowBox, WindowWidthHandle } from "@/features/shell/docked-window";
 import { closeReaderStep, isTurnSequenceNavigation } from "@/state/history-step";
 import { ReaderPeopleContext, useHomeList, useReaderPeople, useReadState, useTaskDetail, useReaderTask, useWorkspaceInfo } from "@/data/queries";
 import type { Task, TaskDetail } from "@/data/types";
@@ -17,7 +17,7 @@ import { failureCause, titleTurn } from "@/domain/lead";
 import { OpeningForm, focusOpeningForm, useOpeningFocus } from "@/lib/opening-focus";
 import { useDialogStore, type OpenInput } from "@/state/dialog-store";
 import { readerOpenedByPress, readerShows, useNarrow, useViewStore } from "@/state/view-store";
-import { draggedReaderWidth, holdReaderEdge, maxDockedReaderWidth, readerWidthBeside, windowMargin } from "@/state/screen-settings";
+import { readerWidthBeside, windowMargin } from "@/state/screen-settings";
 import { VIEW_BESIDE_WIDTH } from "./viewer/viewer-layout";
 import { ResponsibleSection } from "@/features/forms/ResponsibleInputs";
 import { MoveSection } from "@/features/forms/MoveInputs";
@@ -211,6 +211,7 @@ export function Reader({ mode, overlapping = false, canDock = mode === "docked" 
       ref={box}
       aria-label={t("reader.label")}
       data-reader-mode={mode}
+      data-window=""
       data-held={task.state === "held" || undefined}
       data-reader-over-list={mode !== "docked" || overlapping ? "" : undefined}
       // Whole on a phone, as the overlay, it keeps the keyboard.
@@ -220,7 +221,7 @@ export function Reader({ mode, overlapping = false, canDock = mode === "docked" 
       <EmptyDeck taskId={task.id} />
       {/* The completed card covers this whole region: keep its DOM and layout, but expose only the visible surface. */}
       <div className="contents" inert={completed} aria-hidden={completed || undefined}>
-      {canDock && <WidthHandle label={t("reader.resize")} taskId={task.id} />}
+      {canDock && <ReaderWidthHandle label={t("reader.resize")} taskId={task.id} />}
       <div ref={readArea} className="reader-reading relative flex min-h-0 flex-1 flex-col">
         <div ref={headerLayer} data-reader-header="shown" data-input-view={task.id} className="reader-heading relative flex-none bg-lit">
           <StandingGrip />{header}
@@ -300,9 +301,9 @@ function AwaitedSurface({ address, mode, canDock }: { address: string; mode: Rea
   const { t } = useTranslation("reader");
   const sheet = useSheetControl();
   const offline = useConnection((state) => state.offline);
-  return <aside aria-label={t("reader.label")} data-reader-mode={mode} data-reader-awaiting={address}
+  return <aside aria-label={t("reader.label")} data-reader-mode={mode} data-window="" data-reader-awaiting={address}
     onKeyDown={mode === "overlay" || sheet?.whole ? keepFocusInside : undefined} className={readerBox(mode)}>
-    {canDock && <WidthHandle label={t("reader.resize")} taskId={null} />}
+    {canDock && <ReaderWidthHandle label={t("reader.resize")} taskId={null} />}
     <StandingGrip />
     <header {...sheet?.grip} className={`${readerHeadBox(mode)} border-rule`}>
       <div data-reader-head-row className="flex min-w-0 items-center justify-end text-xs text-muted">
@@ -358,44 +359,14 @@ function ReaderMoves({ box, mode }: { box: RefObject<HTMLElement | null>; mode: 
  */
 export function readerBox(mode: ReaderMode) {
   if (mode === "sheet") return `group/reader ${SHEET_SURFACE}`;
-  return mode === "overlay"
-    ? "group/reader fixed inset-0 z-(--layer-reader) flex flex-col overflow-hidden bg-lit"
-    : `group/reader fixed top-window right-window bottom-window z-(--layer-reader) flex w-(--window-fit) min-w-0 flex-col overflow-hidden rounded-pane border-hairline border-lit-line bg-lit shadow-float in-data-view-beside:right-auto in-data-view-beside:left-window`;
+  return mode === "overlay" ? `group/reader ${windowBox(mode)}`
+    : `group/reader ${windowBox(mode)} in-data-view-beside:right-auto in-data-view-beside:left-window`;
 }
 
-/**
- * The window's inner edge: its left one over the list, dragging resizes it over the list, enters full width past the
- * limit, and stays available there so the same drag can bring the window back; the gap right of it while a diff stands
- * beside it (readerBox), toward the diff. Arrow keys move it 24px; a double press gives the default width back.
- */
-function WidthHandle({ label, taskId }: { label: string; taskId: string | null }) {
-  const full = useViewStore((state) => state.readerFull);
-  const setWidth = useViewStore((state) => state.setReaderWidth);
-  // While a diff or a file stands beside it, it widens only as far as leaves that its place, and that width is the one
-  // kept: closing the diff gives back the reader as it was drawn, not as far as the pointer went.
+/** The reader's edge: while a diff or a file stands beside it, it widens only as far as leaves that its place. */
+function ReaderWidthHandle({ label, taskId }: { label: string; taskId: string | null }) {
   const viewing = useViewStore((state) => state.view !== null);
-  const set = (width: Parameters<typeof setWidth>[0]) =>
-    setWidth(viewing && typeof width === "number" ? Math.min(width, readerWidthBeside(innerWidth, VIEW_BESIDE_WIDTH)) : width);
-  // A change by the keys or a double press is the person's too, as one held for that change alone.
-  const once = (width: Parameters<typeof setWidth>[0]) => { holdReaderEdge(true); set(width); holdReaderEdge(false); };
-  // The edge's side is the page's (data-view-beside), read as it is used: on the right, it is the window's left edge
-  // mirrored, so a drag and the arrows widen the window toward where the edge goes.
-  const right = () => document.querySelector("[data-view-beside]") !== null;
-  // On the right it stands in the gap between the reader and the diff, fixed on the screen, so it covers neither's
-  // scrollbar (a fixed box is not clipped by the reader's frame).
-  return <ResizeEdge label={label} data-reader-width data-input-view={taskId ?? undefined}
-    className="in-data-view-beside:fixed in-data-view-beside:inset-y-window in-data-view-beside:left-[calc(var(--window-fit)+var(--spacing-window))] in-data-view-beside:w-window"
-    onPointer={(clientX) => set(draggedReaderWidth(right() ? innerWidth - clientX : clientX, innerWidth))} onHold={holdReaderEdge}
-    onReset={() => once(null)}
-    onStep={(sign, edge) => {
-      if (full) {
-        if (sign > 0) once(maxDockedReaderWidth(innerWidth));
-        return;
-      }
-      // The reader owns the width; the handle can sit inside a display:contents surface.
-      const next = edge.closest<HTMLElement>('[data-reader-mode]')!.offsetWidth + (right() ? sign : -sign) * 24;
-      once(draggedReaderWidth(innerWidth - windowMargin() - next, innerWidth));
-    }} />;
+  return <WindowWidthHandle label={label} taskId={taskId} widest={viewing ? viewport => readerWidthBeside(viewport, VIEW_BESIDE_WIDTH) : undefined} />;
 }
 
 /**

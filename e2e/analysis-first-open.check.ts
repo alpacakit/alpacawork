@@ -112,15 +112,55 @@ test("the share card keeps room at its foot for the coordinator only where the c
     const box = (selector: string) => document.querySelector(selector)!.getBoundingClientRect();
     const input = box("[data-coordinator-card] :is([data-coordinator-capsule], [data-composer-frame])");
     const panel = box("[data-analysis-panel]"), body = box("[data-analysis-layer]");
-    return { inputRight: input.right, inputTop: input.top, panelLeft: panel.left, panelBottom: panel.bottom, bodyBottom: body.bottom };
+    return { inputLeft: input.left, inputRight: input.right, inputTop: input.top, panelLeft: panel.left, panelBottom: panel.bottom, bodyBottom: body.bottom };
   });
   // Beside it: what scrolls goes on to the card's foot.
   const beside = await edges();
   expect(beside.inputRight).toBeLessThanOrEqual(beside.panelLeft);
   expect(beside.panelBottom - beside.bodyBottom).toBeLessThan(24);
-  // Too narrow for both: the input stands over the card, and what scrolls ends above it.
+  // Too narrow for both: the card covers the page as the details window does, the input stands over it at its usual
+  // width (not squeezed left of a window that starts at the screen's edge), and what scrolls ends above it.
   await page.setViewportSize({ width: 760, height: 540 });
-  await expect.poll(async () => { const over = await edges(); return over.inputRight > over.panelLeft && over.bodyBottom <= over.inputTop; }).toBe(true);
+  await expect.poll(async () => { const over = await edges(); return over.inputRight > over.panelLeft && over.inputRight - over.inputLeft > 400 && over.bodyBottom <= over.inputTop; }).toBe(true);
+});
+
+test("the analysis keeps its scrollbar's room beside its charts, not over them", async ({ page, runtime }) => {
+  await page.goto(`${runtime.origin}/?face=analysis`);
+  const face = page.locator("[data-list-scroll]");
+  await expect(face.locator("[data-answer] [data-row]").first()).toBeVisible();
+  // A scrollbar drawn over what scrolls (a Mac's) stands in the scroller's last 12px: nothing of the face is there.
+  const room = await face.evaluate(node => node.getBoundingClientRect().left + node.clientWidth - node.querySelector("[data-answer]")!.getBoundingClientRect().right);
+  expect(room).toBeGreaterThanOrEqual(12);
+});
+
+test("the analysis's window is resized by its edge as the details window is, and past its limit takes the screen", async ({ page, runtime }) => {
+  await page.setViewportSize({ width: 1600, height: 900 });
+  await page.goto(`${runtime.origin}/?face=analysis`);
+  // The card stands in the window a number's tasks open in.
+  await page.getByRole("button", { name: "Share", exact: true }).click();
+  const panel = page.locator("aside[data-analysis-panel]");
+  await expect(panel).toBeVisible();
+  await settleMotion(page, panel);
+  const width = async () => Math.round((await panel.boundingBox())!.width);
+  const start = await width(), from = (await panel.locator("[data-window-width]").boundingBox())!;
+  const drag = async (to: number) => {
+    const edge = (await panel.locator("[data-window-width]").boundingBox())!;
+    await page.mouse.move(edge.x + edge.width / 2, edge.y + 200);
+    await page.mouse.down();
+    await page.mouse.move(to, edge.y + 200, { steps: 6 });
+    await page.mouse.up();
+  };
+  await drag(from.x + from.width / 2 - 80);
+  // It widens as far as the pointer went, and the charts are laid out again beside it.
+  await expect.poll(width).toBeGreaterThan(start + 60);
+  expect(await width()).toBeLessThan(start + 100);
+  await expect.poll(async () => {
+    const charts = (await page.locator("[data-chart-row]").first().boundingBox())!;
+    return charts.x + charts.width <= (await panel.boundingBox())!.x;
+  }).toBe(true);
+  // Far past the limit it takes the whole screen, as the details window does.
+  await drag(20);
+  await expect.poll(width).toBe(1600);
 });
 
 test.describe("phone", () => {

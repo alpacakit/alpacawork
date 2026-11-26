@@ -216,7 +216,8 @@
     "more_other": "Mostrar {{count}} más",
     "outcome": "Resultado",
     "task": "Tarea",
-    "usedTitle": "{{name}}"
+    "usedTitle": "{{name}}",
+    "resize": "Ancho (flechas izquierda y derecha)"
   },
   "look": {
     "label": "Vista",

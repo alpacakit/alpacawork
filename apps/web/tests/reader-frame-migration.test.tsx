@@ -17,7 +17,7 @@ for (const mode of ['docked', 'sheet'] as const) test(`a ${mode} reader waiting 
     render(<TestWorkspace><Reader mode={mode} /></TestWorkspace>);
     expect(document.querySelector('[data-reader-awaiting="T999"]')).toBeTruthy();
     expect(document.querySelectorAll('[data-reader-grow]')).toHaveLength(1);
-    if (mode === 'docked') expect(document.querySelectorAll('[data-reader-width]')).toHaveLength(1);
+    if (mode === 'docked') expect(document.querySelectorAll('[data-window-width]')).toHaveLength(1);
   } finally { narrow.restore(); }
 });
 

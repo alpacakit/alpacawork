@@ -198,7 +198,8 @@
     "more_other": "残り {{count}}件を表示",
     "outcome": "結果",
     "task": "タスク",
-    "usedTitle": "{{name}}のタスク"
+    "usedTitle": "{{name}}のタスク",
+    "resize": "幅（左右の矢印キーで変える）"
   },
   "look": {
     "label": "表示",

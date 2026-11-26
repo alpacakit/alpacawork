@@ -16,7 +16,7 @@ test("a full detail URL opens across the desktop and follows browser navigation"
   await reader(page).getByRole("button", { name: "Restore details width" }).click();
   await expect.poll(() => widthParam(page)).toBeNull();
   await expect(reader(page)).toHaveAttribute("data-reader-mode", "docked");
-  await reader(page).locator("[data-reader-width]").focus();
+  await reader(page).locator("[data-window-width]").focus();
   await page.keyboard.press("ArrowLeft");
   await expect.poll(() => widthParam(page)).toBeNull();
   await reader(page).getByRole("button", { name: "Show details full screen" }).click();

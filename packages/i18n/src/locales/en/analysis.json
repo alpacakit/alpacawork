@@ -207,7 +207,8 @@
     "more_other": "Show {{count}} more",
     "outcome": "Outcome",
     "task": "Task",
-    "usedTitle": "{{name}}"
+    "usedTitle": "{{name}}",
+    "resize": "Width (left and right arrow keys)"
   },
   "look": {
     "label": "View",
