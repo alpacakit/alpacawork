@@ -12,7 +12,7 @@ import { tokenTotal, type TasksView, type UsageCounts, type UsageView } from "./
 import type { Span } from "./place";
 import { useBreakdown, useNear } from "./data";
 import { useViewStore } from "@/state/view-store";
-import { nameParts, type NamePart } from "./series";
+import { CallsControls, callsSay, useCalls } from "./Calls";
 import { LaunchControls, launchesParts, launchesSay, useLaunches, type LaunchAnswers } from "./Launches";
 
 type Days = { from: string; to: string };
@@ -70,6 +70,7 @@ export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days
 
   const points = view.series.points, today = view.head.today;
   const launches = useLaunches(points, view, series, span, bucket, live);
+  const calls = useCalls(points, span, bucket, live);
   const taskPoints = tasks?.series.points.length === points.length ? tasks.series.points : null;
   // Amounts a bin: the token total (output, input and cache), run time and launches; and the finished tasks they went to.
   // The launches are the series' (under its filter) where they stand on the same bins, the use's otherwise.
@@ -94,7 +95,11 @@ export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days
   const scales = {
     finished: useScale(spanMost(points, days, finishedOn), 1, unitWord("tasks"), true),
     tokens: useScale(...scaleArgs("tokens")), runMs: useScale(...scaleArgs("runMs")), launches: useScale(...scaleArgs("launches")),
+    calls: useScale(spanMost(points, days, i => calls.series?.[i]?.calls ?? 0), 1, unitWord("times"), true),
   };
+  // Skills, tools and MCP are counted from a day on: a span wholly before it has no record of them.
+  const callsBefore = !calls.since || days.to < calls.since;
+  const callsSince = calls.since ? points.findIndex(point => point.to >= calls.since!) : -1;
   const lineLabel = useLineLabel();
   const overlay = (key: Amount) => { const values = perFinished(key), top = lineTop(values, steady, inSpan);
     return { values, top, label: lineLabel(kinds[key] as "tokens" | "hours" | "times", top), faint: (i: number) => !steady(i) }; };
@@ -118,6 +123,8 @@ export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days
     launchesSay(launches, t("usage.launches"), launches.shownFiltered ? undefined : perLine("launches"), launches.shownFiltered ? undefined
       : i => [{ color: "", name: t("usage.newConversations"), value: format("conversations", points[i]!.counts.newConversations),
         list: points[i]!.counts.newConversations ? onBin("used", "newConversations") : undefined }], i => points[i]!.counts.launches),
+
+    callsSay(calls, t("chart.notCounted")),
   ];
   // The span's amounts per finished task on the left, against the span before.
   const spanPer = (value: number, base: number | undefined) => base ? value / base : null;
@@ -180,7 +187,23 @@ export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days
           <BarChart row={first + 2} height="h-30 narrow:h-24" scale={scales.launches} tone={launches.ready ? undefined : "working"} grow overlay={overlays?.launches}
             values={i => launches.ready ? launches.parts(i).map(({ part, value }, at) => [part.color, value, at] as [string, number, number]) : [["", amount.launches(i)]]} />
         </div>
-        <DayAxis />
+      </Row>
+      <Row row={first + 3} left={<>
+        <div className={cn("transition-opacity duration-(--motion-base)", !calls.current && "opacity-50")}>
+          {callsBefore ? <><RowName>{calls.name}</RowName><p className="mt-1 text-soft">{t("usage.none")}</p></>
+            : <Num className="" label={calls.name} kind="times" value={calls.total} previous={null} length={length}
+              onOpen={() => open({ set: "used", value: "calls", group: calls.by, member: null })} />}
+        </div>
+        <CallsControls calls={calls} />
+        <div className={cn("transition-opacity duration-(--motion-base)", !calls.current && "opacity-50")}><Parts items={calls.spanParts(open)} /></div>
+      </>}>
+        {/* Each bin's count stacked by name, the most counted at the foot; the days before counting began hatched. */}
+        <div className={cn("transition-opacity duration-(--motion-base)", !calls.current && "opacity-50")}>
+          <BarChart row={first + 3} height="h-30 narrow:h-24" scale={scales.calls} uncounted={i => !calls.series || calls.series[i] === null}
+            partial={i => !!calls.since && points[i]!.from < calls.since && points[i]!.to >= calls.since}
+            values={i => calls.parts(i).map(({ part, value }, at) => [part.color, value, at] as [string, number, number])} />
+        </div>
+        <DayAxis strong={callsSince >= 0 && calls.since ? { at: callsSince, day: calls.since } : null} />
       </Row>
     </div>
   </ChartGroup>;
@@ -239,7 +262,7 @@ function Breakdown({ view, span, root, group, days, open, choose }: {
   const steps = Object.fromEntries(tokenKeys.map(key => [key, tokenColumn(rows.map(row => tokenRead[key](row.counts)))])) as Record<typeof tokenKeys[number], ReturnType<typeof tokenColumn>>;
   const tokenHead = (key: typeof tokenKeys[number]) => steps[key].unit ? t("table.head", { name: t(`usage.${key}`), unit: steps[key].unit }) : t(`usage.${key}`);
   // The model and the AI kind lead with the tokens, the use's first number above; the rest lead with their own count.
-  const columns = by === "skill" ? [head(t("usage.launches"), "times"), head(t("usage.tasks"), "tasks")]
+  const columns = by === "skill" ? [head(t("usage.skillUses"), "times"), head(t("usage.tasks"), "tasks")]
     : counted ? [head(t("usage.calls"), "times"), head(t("usage.launches"), "times"), head(t("usage.tasks"), "tasks")]
       : [...tokenKeys.map(tokenHead), head(t("usage.launches"), "times"), head(t("usage.runMs"), "hours"),
         head(t("usage.newConversations"), "conversations"), head(t("usage.tasks"), "tasks")];
@@ -248,54 +271,17 @@ function Breakdown({ view, span, root, group, days, open, choose }: {
     const launches = cell("times", c.launches, () => open({ set: "used", value: "launches", ...member(row.key) }));
     const tokenCell = (key: typeof tokenKeys[number]) => { const value = tokenRead[key](c);
       return { text: steps[key].write(value), open: value ? () => open({ set: "used", value: key, ...member(row.key) }) : undefined }; };
-    const cells = by === "skill" ? [launches, tasks]
+    const cells = by === "skill" ? [cell("times", row.calls ?? 0, () => open({ set: "used", value: "calls", ...member(row.key) })), tasks]
       : counted ? [cell("times", row.calls ?? 0, () => open({ set: "used", value: "calls", ...member(row.key) })), launches, tasks]
         : [...tokenKeys.map(tokenCell), ...(["launches", "runMs", "newConversations"] as const).map(key =>
           cell(VALUES[key].kind, VALUES[key].read(c), () => open({ set: "used", value: key, ...member(row.key) }))), tasks];
-    return { key: row.key, name: rowName(row, t("tasks.noAgent")), bar: by === "skill" ? c.launches : counted ? row.calls ?? 0 : tokens(c), cells };
+    return { key: row.key, name: rowName(row, t("tasks.noAgent")), bar: counted ? row.calls ?? 0 : tokens(c), cells };
   });
-  const name = by === "skill" ? t("usage.skillUses") : t("usage.calls");
-  const series = breakdown?.series ?? null, points = view.series.points;
-  const scale = useScale(spanMost(points, days, i => series?.[i]?.calls ?? 0), 1, unitWord("times"), true);
-  const sinceAt = since ? points.findIndex(point => point.to >= since) : -1;
-  // Each bin stacked by name, the most counted at the foot, in the colours the span's parts on the left take.
-  const { parts, partOf, binParts } = nameParts(breakdown?.groups ?? []);
-  const partName = (part: NamePart, names: number) => part.key === null ? t("usage.otherNames", { count: names }) : part.label;
-  const onBin = (at: number) => series?.[at] ? binParts(series[at]!.counts) : [];
-  const share = (value: number, all: number) => all ? `${Math.round(value / all * 100)}%` : "";
-  const spanSums = parts.map(() => 0), spanNames = parts.map(() => 0);
-  for (const row of rows) { const part = partOf(row.key); if (part !== undefined && row.calls) { spanSums[part]! += row.calls; spanNames[part]!++; } }
-  const spanAll = breakdown?.counted ? breakdown.counted.value.calls : 0;
-  const spanParts = parts.flatMap((part, at) => spanSums[at]! > 0 ? [{
-    color: part.color, name: partName(part, spanNames[at]!), value: <b className="font-semibold tabular-nums">{format("times", spanSums[at]!)}</b>,
-    share: share(spanSums[at]!, spanAll),
-    onOpen: part.key === null ? undefined : () => open({ set: "used", value: "calls", group: by, member: part.key }),
-  }] : []);
-  const chart = counted && since && series && series.length === points.length && <ChartGroup bins={points} span={days} today={view.head.today} bucket={bucket}
-    rows={[{ name, total: i => series[i] ? format("times", series[i]!.calls) : t("chart.notCounted"),
-      parts: i => onBin(i).map(({ part, value, names }) => ({ color: part.color, name: partName(part, names), value: format("times", value),
-        share: share(value, series[i]!.calls),
-        list: part.key === null ? undefined : (bin: { from: string; to: string }) => ({ set: "used" as const, value: "calls" as const, group: by, member: part.key, from: bin.from, to: bin.to }) })),
-      // A bin before counting began has no tasks to open.
-      list: (bin, at) => series[at] === null ? null : { set: "used", value: "calls", group: by, member: null, from: bin.from, to: bin.to } }]}
-    open={list => open({ set: list.set, value: list.value, group: list.group ?? null, member: list.member ?? null, days: { from: list.from, to: list.to } })}>
-    <Row row={0} className="mb-2" left={before ? <><RowName>{name}</RowName><p className="mt-1 text-soft">{t("usage.none")}</p></>
-      : <><Num className="" label={name} kind="times" value={breakdown?.counted ? breakdown.counted.value.calls : 0}
-        previous={breakdown?.counted?.previous ? breakdown.counted.previous.calls : null} length={daysBetween(days.from, days.to)}
-        onOpen={() => open({ set: "used", value: "calls", group: by, member: null })} />
-        <Parts items={spanParts} /></>}>
-      <BarChart row={0} height="h-30 narrow:h-24" scale={scale} uncounted={i => series[i] === null}
-        partial={i => points[i]!.from < since && points[i]!.to >= since}
-        values={i => onBin(i).map(({ part, value }, at) => [part.color, value, at] as [string, number, number])} />
-      <DayAxis strong={sinceAt >= 0 ? { at: sinceAt, day: since } : null} />
-    </Row>
-  </ChartGroup>;
   return <div ref={near}><Section title={t("breakdown.title")} aside={<Seg label={t("breakdown.title")} value={group} onChange={next => choose(next as UsageGroup)}
     items={(["model", "agent", "skill", "tool", "mcp"] as const).map(key => [key, t(`usage.by.${key}`)] as const)} />}>
     <ReadPart set={breakdownSet} skeleton={<RegionSkeleton shape="analysisRows" />}>{() => <>
-      {chart}
-      {counted && since === null ? <p className="text-soft">{t("usage.none")}</p>
-        : !before && <BreakdownTable tone="working" id={`usage-${group}`} head={t(`usage.heads.${group}`)} columns={columns} rows={table} />}
+      {before ? <p className="text-soft">{t("usage.none")}</p>
+        : <BreakdownTable tone="working" id={`usage-${group}`} head={t(`usage.heads.${group}`)} columns={columns} rows={table} />}
     </>}</ReadPart>
   </Section></div>;
 }

@@ -416,6 +416,7 @@
     "cache": "キャッシュ",
     "cacheWithin": "うちキャッシュ {{value}}",
     "calls": "呼び出し",
+    "callsWhat": "数えるもの",
     "effortNone": "記録なし",
     "heads": {
       "agent": "AI の種類",
@@ -431,6 +432,7 @@
     "launchEffort": "effort",
     "launches": "起動",
     "launchModel": "モデル",
+    "mcpCalls": "MCP の呼び出し",
     "newConversations": "新しい会話",
     "none": "記録なし",
     "otherNames_other": "ほかの {{count}} 種",
@@ -439,7 +441,8 @@
     "runMs": "実行時間",
     "skillUses": "スキルを使った回数",
     "tasks": "関わったタスク",
-    "tokens": "トークン"
+    "tokens": "トークン",
+    "toolCalls": "ツールの呼び出し"
   },
   "waits": {
     "away": "不在",

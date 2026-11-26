@@ -452,6 +452,7 @@
     "cache": "Caché",
     "cacheWithin": "De ellos, caché {{value}}",
     "calls": "Llamadas",
+    "callsWhat": "Qué contar",
     "effortNone": "Sin registrar",
     "heads": {
       "agent": "Agente",
@@ -467,6 +468,7 @@
     "launchEffort": "Esfuerzo",
     "launches": "Arranques",
     "launchModel": "Modelo",
+    "mcpCalls": "Llamadas a MCP",
     "newConversations": "Conversaciones nuevas",
     "none": "Sin registros",
     "otherNames_one": "{{count}} otro",
@@ -476,7 +478,8 @@
     "runMs": "Tiempo de ejecución",
     "skillUses": "Usos de skills",
     "tasks": "Tareas implicadas",
-    "tokens": "Tokens"
+    "tokens": "Tokens",
+    "toolCalls": "Llamadas a herramientas"
   },
   "waits": {
     "away": "Ausente",

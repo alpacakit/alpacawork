@@ -416,6 +416,7 @@
     "cache": "缓存",
     "cacheWithin": "其中缓存 {{value}}",
     "calls": "调用",
+    "callsWhat": "统计对象",
     "effortNone": "未记录",
     "heads": {
       "agent": "AI 种类",
@@ -431,6 +432,7 @@
     "launchEffort": "effort",
     "launches": "启动",
     "launchModel": "模型",
+    "mcpCalls": "MCP 调用",
     "newConversations": "新会话",
     "none": "无记录",
     "otherNames_other": "其他 {{count}} 种",
@@ -439,7 +441,8 @@
     "runMs": "运行时间",
     "skillUses": "使用技能的次数",
     "tasks": "涉及的任务",
-    "tokens": "令牌"
+    "tokens": "令牌",
+    "toolCalls": "工具调用"
   },
   "waits": {
     "away": "不在",

@@ -20,10 +20,15 @@ import { NO_FILTER, type LaunchFilter, type SeriesBy } from "./series";
  */
 export type TaskGroup = "model" | "agent" | "project";
 export type UsageGroup = "model" | "agent" | "skill" | "tool" | "mcp";
-/** `launchBy`, `launchFilter`: what the launches chart is coloured by, and the model and effort it is filtered to. */
-type Choices = { bucket: Bucket; taskGroup: TaskGroup; usageGroup: UsageGroup; all: boolean; grow: number; launchBy: SeriesBy; launchFilter: LaunchFilter };
+/** What the calls row of the use counts. */
+export type CallsBy = "skill" | "tool" | "mcp";
+/**
+ * `launchBy`, `launchFilter`: what the launches chart is coloured by, and the model and effort it is filtered to.
+ * `callsBy`: whether the calls row counts skills, tools or MCP.
+ */
+type Choices = { bucket: Bucket; taskGroup: TaskGroup; usageGroup: UsageGroup; all: boolean; grow: number; launchBy: SeriesBy; launchFilter: LaunchFilter; callsBy: CallsBy };
 export const useChoices = create<Choices & { choose: (next: Partial<Choices>) => void }>((set) => ({
-  bucket: "day", taskGroup: "model", usageGroup: "model", all: false, grow: 0, launchBy: "model", launchFilter: NO_FILTER,
+  bucket: "day", taskGroup: "model", usageGroup: "model", all: false, grow: 0, launchBy: "model", launchFilter: NO_FILTER, callsBy: "skill",
   choose: (next) => set(next),
 }));
 
