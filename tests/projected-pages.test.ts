@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { applyTimelinePatch, taskProjectedPageSchema, taskProjectedSearchSchema, taskTimelineLanesSchema, taskProjectedTimelineAxisSchema,
-  timelineItemKey, type TaskTimelineLaneDTO } from '@alpacawork/contract/control';
+  type TaskTimelineLaneDTO } from '@alpacawork/contract/control';
 import { Problem } from '@alpacawork/core';
 import { ProjectedPages } from '@alpacawork/backend/test-dist/receiver/index-pages.js';
 import { at, bundle, entry, FakeRecords, frame, pv, emptyAggregate } from './helpers/projection-read-fixture.ts';
@@ -101,13 +101,14 @@ test('a row the server does not read is left out of strips and the axis, never f
   assert.equal(axis.earliest, Date.parse(at(1)));
 });
 
-/** A strip as drawn: its items whatever their order, without the server's name for it. */
+/** A strip as drawn: its events in order, its other items whatever their order, without the server's name for it. */
 const drawn = ({ token: _token, ...lane }: TaskTimelineLaneDTO) => ({ ...lane,
-  events: [...lane.events].sort((a, b) => timelineItemKey.event(a).localeCompare(timelineItemKey.event(b))),
   belowRuns: [...lane.belowRuns].sort(), placements: [...lane.placements].sort((a, b) => a.id.localeCompare(b.id)) });
 
 test('a row read again with the strip it holds, of this range or another, is sent only what changed; made whole it is the strip read afresh', () => {
-  const log = Array.from({ length: 40 }, (_, index) => entry(`L${index + 1}`, index + 1));
+  // Records of one time, caused at different times: their order is the strip's, however it was put together.
+  const log = [...Array.from({ length: 40 }, (_, index) => entry(`L${index + 1}`, index + 1)),
+    entry('S1', 50, { causeAt: at(45) }), entry('S2', 50, { causeAt: at(30), toState: 'waiting' })];
   const project = bundle('P1'), task = bundle('T1', 'P1', log);
   const first = frame(new FakeRecords([project, task]), { requiredPv: { view: {}, history: {}, page: {}, search: {}, timeline: { T1: pv(1) } } });
   const reads = new ProjectedPages(), query = { lanes: 'T1', from: at(0), to: at(100) };
@@ -116,6 +117,9 @@ test('a row read again with the strip it holds, of this range or another, is sen
   const held = applyTimelinePatch(null, whole!);
   const added = { ...task, task: { ...task.task, meta: { ...task.task.meta, log: [...log, entry('L41', 41)] } } };
   const latest = frame(new FakeRecords([project, added], pv(2)), { requiredPv: { ...first.requiredPv, timeline: { T1: pv(2) } } });
+  const narrow = applyTimelinePatch(null, reads.timeline(first, { ...query, from: at(40) }).lanes[0]!);
+  const [widened] = reads.timeline(first, { ...query, bases: `T1:${narrow.token}` }).lanes;
+  assert.deepEqual(drawn(applyTimelinePatch(narrow, widened!)), drawn(held), 'a wider range laid on a narrower one keeps the one order');
   for (const range of [query, { ...query, from: at(20) }]) {
     const [patch] = taskTimelineLanesSchema.parse(reads.timeline(latest, { ...range, bases: `T1:${held.token}` })).lanes;
     assert.equal(patch!.base, held.token);
@@ -124,7 +128,7 @@ test('a row read again with the strip it holds, of this range or another, is sen
     if (range === query) assert.ok(patch!.events.length <= 2 && patch!.drop.length === 0, 'one new record is sent as itself, not the whole strip');
     else assert.ok(patch!.drop.length >= 19, 'what a narrower range leaves out is dropped');
   }
-  const [unknown] = reads.timeline(latest, { ...query, bases: 'T1:gone.1' }).lanes;
+  const [unknown] = reads.timeline(latest, { ...query, bases: 'T1:not-kept' }).lanes;
   assert.equal(unknown!.base, null, 'a strip no longer kept is answered whole');
   assert.throws(() => applyTimelinePatch({ ...held, token: 'other' }, { ...unknown!, base: held.token }), 'a patch is never laid on another strip');
 });

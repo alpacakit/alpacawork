@@ -1,11 +1,12 @@
 /** Pages, scoped search and timeline reads from a published frame. */
+import { randomBytes } from 'node:crypto';
 import { valuesText, historyEventKey, joinBusy, reportDisplay, reportMark, runSpan, timeMarkAt, timelineLogOf,
   timelineNoteOf, timelinePlacementOf, timelineRunOf, type LayoutRecord, type TaskValues } from '@alpacawork/contract';
 import { isFinished } from '@alpacawork/contract/branch';
 import { closedPageScope, finishedBy, standingRecord, type ControlRunDTO, type PlacementDTO, type TaskPageRowDTO, type TaskTimelineAxisDTO,
   type TaskProjectedPageDTO, type TaskProjectedSearchDTO, type TaskTimelineLaneDTO, type TaskTimelineLanesDTO, type TaskProjectedTimelineAxisDTO,
   type ProjectionResourceKind, type ProjectionVersion, type ControlTreeDTO, type TaskRowDTO, type TaskTimelineLanePatchDTO,
-  diffTimelineItems } from '@alpacawork/contract/control';
+  diffTimelineItems, timelineEventOrder } from '@alpacawork/contract/control';
 import { byMoved } from '@alpacawork/contract/moved';
 import { PROBLEM_CODE, Problem } from '@alpacawork/core';
 import { lineWithText, matchesTaskText } from '../control/task-views.js';
@@ -79,12 +80,12 @@ type TimelineLane = Omit<TaskTimelineLaneDTO, 'row' | 'generation' | 'sourcePv' 
  */
 export function timelineLanes(state: PageReadState, lanes: readonly string[], from: number, to: number): Map<string, TimelineLane> {
   const tasks = new Map(current(state).tasks.map(task => [task.id, task]));
-  const result = new Map<string, TimelineLane & { stamped: { at: number; id: string; value: TimelineEvent }[] }>();
+  const result = new Map<string, TimelineLane>();
   for (const id of lanes) {
     const row = state.rows.get(id)?.value, task = tasks.get(id);
     if (!row || !task) continue;
     const prior = [...row.stateLog].reverse().find(log => log.toState !== null && Date.parse(log.at) < from);
-    const stamped: { at: number; id: string; value: TimelineEvent }[] = [];
+    const events: TimelineEvent[] = [];
     // The notes are the Task's History events; a note made from a log entry comes with that entry.
     const logs = new Map(task.log.map(log => [log.id, log]));
     const notes = eventsFor(state, task).map(event => ({ ...event, at: timeMarkAt(event, logs) })).filter(event => {
@@ -100,13 +101,13 @@ export function timelineLanes(state: PageReadState, lanes: readonly string[], fr
     for (const event of notes) {
       const note = timelineNoteOf(event);
       if (!shown.has(historyEventKey(event))) note.displayed = false;
-      stamped.push({ at: Date.parse(event.at), id: `${id}:note:${event.kind}:${event.id}`, value: { kind: 'note', taskId: id, event: note } });
+      events.push({ kind: 'note', taskId: id, event: note });
     }
     for (const entry of row.stateLog) {
       const at = Date.parse(entry.causeAt ?? entry.at);
-      if (at >= from && at <= to) stamped.push({ at, id: `${id}:log:${entry.id}`, value: { kind: 'log', taskId: id, entry: timelineLogOf(entry) } });
+      if (at >= from && at <= to) events.push({ kind: 'log', taskId: id, entry: timelineLogOf(entry) });
     }
-    result.set(id, { lane: id, anchor: prior && !isFinished(prior.toState) ? timelineLogOf(prior) : null, events: [], belowRuns: [], placements: [], stamped });
+    result.set(id, { lane: id, anchor: prior && !isFinished(prior.toState) ? timelineLogOf(prior) : null, events, belowRuns: [], placements: [] });
   }
   const lanesAbove = lanesAboveFor(state, new Set(result.keys()));
   for (const { value: run } of state.runs.values()) {
@@ -114,18 +115,17 @@ export function timelineLanes(state: PageReadState, lanes: readonly string[], fr
     const created = Date.parse(run.createdAt), started = run.startedAt ? Date.parse(run.startedAt) : created;
     const ended = run.endedAt ? Date.parse(run.endedAt) : Number.POSITIVE_INFINITY;
     if (own && (created >= from && created <= to || started <= to && ended >= from))
-      own.stamped.push({ at: Math.max(from, Math.min(started, to)), id: `${run.taskId}:run:${run.id}`,
-        value: { kind: 'run', taskId: run.taskId, run: timelineRunOf(run) } });
+      own.events.push({ kind: 'run', taskId: run.taskId, run: timelineRunOf(run) });
     const span = runSpan(run, null);
     if (!span || span.to === null || span.from > to || span.to < from) continue;
     for (const lane of lanesAbove(run.taskId)) result.get(lane)!.belowRuns.push([run.id, span.from, span.to]);
   }
   for (const lane of result.values()) {
-    lane.events = lane.stamped.sort((a, b) => a.at - b.at || a.id.localeCompare(b.id)).map(item => item.value);
+    lane.events.sort(timelineEventOrder);
     const placementIds = new Set(lane.events.flatMap(event => event.kind === 'run' ? [event.run.placementId] : []));
     lane.placements = [...state.placements.values()].map(item => item.value).filter(item => placementIds.has(item.id)).map(item => timelinePlacementOf(item));
   }
-  return new Map([...result].map(([id, { stamped: _stamped, ...lane }]) => [id, lane]));
+  return result;
 }
 
 /** The aggregate is the sole owner of descendant facts; both closed pages and time/search rows add them here. */
@@ -163,8 +163,6 @@ export class ProjectedPages {
    */
   private readonly sent = new Map<string, TaskTimelineLaneDTO>();
   private readonly sentOf = new Map<string, string[]>();
-  /** Strips made so far: with the generation's head, a token no strip of an earlier server run can have had. */
-  private made = 0;
   /** Each item's text, written once per item object: a strip kept for its version shares its items with the next. */
   private readonly texts = new WeakMap<object, string>();
 
@@ -297,11 +295,16 @@ export class ProjectedPages {
   }
 
   private keep(value: TaskTimelineLaneDTO): void {
-    const tokens = (this.sentOf.get(value.lane) ?? []).filter(token => token !== value.token && this.sent.has(token));
+    const tokens = (this.sentOf.get(value.lane) ?? []).filter(token => token !== value.token);
     tokens.push(value.token);
     for (const token of tokens.splice(0, Math.max(0, tokens.length - SENT_PER_ROW))) this.sent.delete(token);
     this.sent.delete(value.token); this.sent.set(value.token, value); this.sentOf.set(value.lane, tokens);
-    while (this.sent.size > SENT_STRIPS) this.sent.delete(this.sent.keys().next().value!);
+    while (this.sent.size > SENT_STRIPS) {
+      const [token, { lane }] = this.sent.entries().next().value!;
+      this.sent.delete(token);
+      const left = this.sentOf.get(lane)?.filter(kept => kept !== token) ?? [];
+      if (left.length) this.sentOf.set(lane, left); else this.sentOf.delete(lane);
+    }
   }
 
   /** What `value` changes in the strip the reader holds (`base`), or the whole strip when that one is no longer kept. */
@@ -338,7 +341,7 @@ export class ProjectedPages {
     if (missing.length) for (const [id, lane] of timelineLanes(this.readState(frame, missing), missing, from, to)) {
       // The row as the list holds it: what its current state is drawn from (a held row has derived facts, readsRow). Its
       // chronology is the strip's own events.
-      const value = { ...lane, row: liveRow(frame.derived(id)!.row), token: `${frame.generation.slice(0, 8)}.${(++this.made).toString(36)}`, generation: frame.generation, sourcePv: frame.pv };
+      const value = { ...lane, row: liveRow(frame.derived(id)!.row), token: randomBytes(12).toString('base64url'), generation: frame.generation, sourcePv: frame.pv };
       values.set(id, value);
       this.lanes.set(key(id), { lane: id, version: lanesVersion(frame, [id]), value });
     }

@@ -131,7 +131,7 @@ export const resources = {
     queryFn: ({ client, queryKey, signal }) => readTimeline(client, queryKey, [lane], async () => {
       // A strip read again waits out the gap from its last arrival (lane-batch).
       const own = readQuery(client, queryKey)?.state;
-      const held = heldLane(client, root, lane);
+      const held = own?.data as TaskTimelineLaneDTO | undefined ?? heldLane(client, root, lane);
       const patch = await readTimelineLane(lane, from, to, signal, own?.data === undefined ? 0 : own.dataUpdatedAt + LANE_READ_GAP, held?.token ?? null);
       return applyTimelinePatch(patch.base === null ? null : held ?? null, patch);
     }),
@@ -492,8 +492,8 @@ export function admitResourceRead(client: QueryClient, started: ReturnType<typeo
   return true;
 }
 /**
- * The newest strip this list holds for a row, of any range: the server compares item by item, so what another range
- * adds, leaves out or shows otherwise comes as changes like any other.
+ * The newest strip this list holds for a row, of any range, for a range not held yet: the server compares item by
+ * item, so what another range adds, leaves out or shows otherwise comes as changes like any other.
  */
 function heldLane(client: QueryClient, root: string, lane: string): TaskTimelineLaneDTO | undefined {
   return client.getQueryCache().findAll({ queryKey: ['task-timeline', root, 'lane', lane] })

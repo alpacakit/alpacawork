@@ -990,6 +990,17 @@ export const timelineItemKey = {
   below: ([run]: TaskTimelineLaneDTO['belowRuns'][number]) => `below:${run}`,
   placement: (placement: TaskTimelineLaneDTO['placements'][number]) => `placement:${placement.id}`,
 };
+/** When an event of a strip happened: a log entry when its cause was, a note at its mark, a Run when it started. */
+const timelineEventAt = (event: TimelineEvent) => Date.parse(event.kind === 'log' ? event.entry.causeAt ?? event.entry.at
+  : event.kind === 'note' ? event.event.at : event.run.startedAt ?? event.run.createdAt);
+/**
+ * The one order of a strip's events, whoever puts them together (the server making it, the screen laying a patch on
+ * it): the screen keeps that order among records of the same time.
+ */
+export const timelineEventOrder = (a: TimelineEvent, b: TimelineEvent) => {
+  const key = [timelineItemKey.event(a), timelineItemKey.event(b)];
+  return timelineEventAt(a) - timelineEventAt(b) || (key[0]! < key[1]! ? -1 : key[0]! > key[1]! ? 1 : 0);
+};
 type TimelineItem = TimelineEvent | TaskTimelineLaneDTO['belowRuns'][number] | TaskTimelineLaneDTO['placements'][number];
 const keyedItems = (lane: TimelineItems): (readonly [string, TimelineItem])[] => [
   ...lane.events.map(item => [timelineItemKey.event(item), item] as const),
@@ -998,7 +1009,8 @@ const keyedItems = (lane: TimelineItems): (readonly [string, TimelineItem])[] =>
 ];
 /**
  * What `next` changes in `base`: the items of `next` that are new or differ, and the keys of the items `next` no longer
- * has. `text` writes an item out to compare it (a reader may keep each item's text). Lists hold no meaning in their order.
+ * has. `text` writes an item out to compare it (a reader may keep each item's text). Items are found by key; the order of
+ * events is timelineEventOrder's.
  */
 export function diffTimelineItems(base: TimelineItems, next: TimelineItems, text: (item: object) => string = item => JSON.stringify(item)): TimelineItems & { drop: string[] } {
   const before = new Map<string, TimelineItem>(keyedItems(base)), changed: TimelineItems = { events: [], belowRuns: [], placements: [] };
@@ -1012,7 +1024,7 @@ export function diffTimelineItems(base: TimelineItems, next: TimelineItems, text
   }
   return { ...changed, drop: [...before.keys()] };
 }
-/** A strip as sent made whole again on the strip it was made against (`held`, named by its `base`). */
+/** A strip as sent made whole again on the strip it was made against (`held`, named by its `base`), in its one order. */
 export function applyTimelinePatch(held: TaskTimelineLaneDTO | null, patch: TaskTimelineLanePatchDTO): TaskTimelineLaneDTO {
   const { base, drop, ...lane } = patch;
   if (base === null) return lane;
@@ -1020,7 +1032,7 @@ export function applyTimelinePatch(held: TaskTimelineLaneDTO | null, patch: Task
   const gone = new Set(drop), put = new Set(keyedItems(patch).map(([key]) => key));
   const kept = <T,>(items: readonly T[], key: (item: T) => string, added: readonly T[]) =>
     [...items.filter(item => !gone.has(key(item)) && !put.has(key(item))), ...added];
-  return { ...lane, events: kept(held.events, timelineItemKey.event, patch.events),
+  return { ...lane, events: kept(held.events, timelineItemKey.event, patch.events).sort(timelineEventOrder),
     belowRuns: kept(held.belowRuns, timelineItemKey.below, patch.belowRuns),
     placements: kept(held.placements, timelineItemKey.placement, patch.placements) };
 }
