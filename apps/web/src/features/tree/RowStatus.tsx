@@ -1,10 +1,10 @@
 import { OrderTipBody, useOrderWord, useWaitedWord } from "@/features/reader/StartOrder";
 import { tokenText } from "@/domain/tokens";
 import { useViewStore } from "@/state/view-store";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Icon } from "@/components/ui/icon";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { TimeTipPopover } from "./time-tip";
 import type { Task } from "@/data/types";
 import { AGENT_SLOT, NarrowTokenSpeed, TIME_SLOT } from "./token-speed";
 import { useNarrow } from "@/state/view-store";
@@ -168,10 +168,9 @@ function workWords(ms: number, t: T) {
 
 /**
  * A row's time said short ("6m", a flag and "14:30"); a press, Enter or Space opens what it means in words, as the reader
- * says it. It is its own press, over the row's (z-1, never inside it), so it never opens the task too, and its hit area
+ * says it (TimeTipPopover). It is its own press, over the row's (z-1, never inside it), so it never opens the task too, and its hit area
  * reaches past its words (before:), up to the row's top and 1px under them, never into the title's line, so a press on
- * the title, even at its top edge, opens the task (e2e/row-time-tip.check.ts). While it is open a press anywhere else only closes it (modal), as do Esc, Back
- * (Popover, with the page's step, as every surface open for a moment), a turn of the wheel and a swipe.
+ * the title, even at its top edge, opens the task (e2e/row-time-tip.check.ts).
  */
 function TimeTip({ shown, mark, heading, long, body, className, data }: {
   shown: string;
@@ -183,28 +182,16 @@ function TimeTip({ shown, mark, heading, long, body, className, data }: {
   heading: string | null;
   long: string; className?: string; data: Record<`data-${string}`, string>;
 }) {
-  const [open, setOpen] = useState(false);
-  useEffect(() => {
-    if (!open) return;
-    const close = () => setOpen(false);
-    // A touch press outside closes it on its click (Radix), which a swipe never sends: the swipe closes it as it moves.
-    for (const type of ["wheel", "touchmove"]) window.addEventListener(type, close, { passive: true });
-    return () => { for (const type of ["wheel", "touchmove"]) window.removeEventListener(type, close); };
-  }, [open]);
   // A word its long words only repeat ("Queued") has nothing to open.
   if (!heading && long === shown) return <span {...data} className={cn("flex-none whitespace-nowrap tabular-nums", className)}>{shown}</span>;
-  return <Popover open={open} onOpenChange={setOpen} modal>
-    <PopoverTrigger {...data} aria-label={heading ? `${heading}: ${long}` : long}
+  return <TimeTipPopover heading={heading} body={body ?? <p>{long}</p>}>
+    <button type="button" {...data} aria-label={heading ? `${heading}: ${long}` : long}
       className={cn("relative z-1 flex-none cursor-pointer rounded-sm whitespace-nowrap tabular-nums decoration-dotted underline-offset-3 outline-none",
         "before:absolute before:-inset-x-1 before:-top-2 before:-bottom-px before:content-[''] hover:underline focus-visible:ring-2 focus-visible:ring-ink/40 data-[state=open]:underline",
         className)}>
       {mark}{shown}
-    </PopoverTrigger>
-    <PopoverContent data-time-tip align="end" side="bottom" className="w-auto max-w-72 px-3 py-2 text-sm">
-      {heading && <p className="text-xs font-medium text-muted">{heading}</p>}
-      {typeof body === "function" ? body(() => setOpen(false)) : body ?? <p>{long}</p>}
-    </PopoverContent>
-  </Popover>;
+    </button>
+  </TimeTipPopover>;
 }
 
 /** A warning beside the time, in ink, unless the status already says it. Cut before the title. */

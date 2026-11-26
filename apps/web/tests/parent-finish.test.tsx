@@ -68,7 +68,9 @@ const list = (specs: Spec[], people: People = {}) => render(<TestWorkspace data=
 const cardSays = (specs: Spec[], people: People = {}) => {
   const { container } = list(specs, people);
   const words = container.querySelector('[data-row="T1"] svg[data-time-strip] text');
-  return { short: words?.lastChild?.textContent ?? "", long: words?.querySelector("title")?.textContent ?? "" };
+  // What its press says, as a reader hears it after the tip's heading.
+  const heard = container.querySelector('[data-row="T1"] svg[data-time-strip] [data-future-tip]')?.getAttribute("aria-label") ?? "";
+  return { short: words?.lastChild?.textContent ?? "", long: heard.replace(/^Report estimate: /, "") };
 };
 const parent = (spec: Partial<Spec> = {}): Spec => ({ id: "T1", state: "doing", ...spec });
 const kid = (id: string, spec: Partial<Spec> = {}): Spec => ({ id, parentId: "T1", ...spec });
@@ -183,7 +185,16 @@ test("a parent's future band says its children's end, or a not-before time", () 
   const rows = (specs: Spec[]) => list(specs);
   rows([parent(), kid("T11", { estimate: 40 }), kid("T12", { estimate: 90 })]);
   expect(document.querySelector('[data-row="T1"] svg[data-time-strip] [data-future-label]')?.lastChild?.textContent).toBe(clock(90));
-  expect(document.querySelector('[data-row="T1"] svg[data-time-strip] [data-future-label] title')?.textContent).toContain(`Expected report ${clock(90)}`);
+  // A press on the band's words opens what they mean, as the row's other times do, and does not open the task.
+  fireEvent.click(document.querySelector('[data-row="T1"] svg[data-time-strip] [data-future-tip]')!);
+  expect(document.querySelector("[data-time-tip]")?.textContent).toContain(`Expected report ${clock(90)}`);
+  expect(useViewStore.getState().reader.open).toBe(false);
+  fireEvent.keyDown(document.querySelector("[data-time-tip]")!, { key: "Escape" });
+  expect(document.querySelector("[data-time-tip]")).toBeNull();
+  // A keyboard opens it too.
+  fireEvent.keyDown(document.querySelector('[data-row="T1"] svg[data-time-strip] [data-future-tip]')!, { key: "Enter" });
+  expect(document.querySelector("[data-time-tip]")).not.toBeNull();
+  expect(useViewStore.getState().reader.open).toBe(false);
   expect(document.querySelector('[data-row="T1"] [data-row-meta]')).toBeNull();
   expect(document.querySelector('[data-row="T1"] [data-read]')?.textContent).not.toContain("Report estimate");
   cleanup();
