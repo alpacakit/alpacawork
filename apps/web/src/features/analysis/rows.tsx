@@ -600,7 +600,7 @@ const changeDays = (bins: readonly Bin[], changes: readonly ChangeMark[]) =>
  * on their days: a small mark over each bin that has one, and one line of words, saying what changed on the day pointed
  * at (else on how many days), so the numbers before and after a change are read down the charts below it. The line is
  * always one line tall, so pointing at a day never moves the charts; where a day's changes do not fit it, they are also
- * listed whole under it, over the chart's top, while the day is pointed at.
+ * listed whole above it (over the room above the charts, never over the day's bars) while the day is pointed at.
  */
 function ChangeStrip() {
   const { t } = useTranslation("analysis");
@@ -617,7 +617,7 @@ function ChangeStrip() {
       {at !== null && words ? <><b className="me-2 font-semibold text-ink">{group.dayName(at)}</b>{words.join(t("sep"))}</>
         : t("period.days", { count: changeDays(group.bins, group.changes) })}
     </p>
-    {cut && words && <ul data-change-list="" className="pointer-events-none absolute start-0 top-full z-2 mt-1 max-w-full rounded-md border-hairline border-lit-line bg-lit px-2.5 py-1.5 text-xs text-muted shadow-float">
+    {cut && words && <ul data-change-list="" className="pointer-events-none absolute start-0 bottom-full z-2 mb-1 max-w-full rounded-md border-hairline border-lit-line bg-lit px-2.5 py-1.5 text-xs text-muted shadow-float">
       {words.map(each => <li key={each} className="[overflow-wrap:anywhere]">{each}</li>)}
     </ul>}
     <div aria-hidden className="mt-1 grid h-2 auto-cols-[minmax(0,1fr)] grid-flow-col">
