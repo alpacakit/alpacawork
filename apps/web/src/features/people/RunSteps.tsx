@@ -5,7 +5,6 @@ import { readRunStep, readRunSteps } from "@/data/run-steps";
 import { ApiError } from "@/data/client";
 import { Message } from "@/components/ui/message";
 import { cn } from "@/lib/utils";
-import { commandLine } from "@/domain/step-line";
 
 /* Hallmark · component: an agent's work line and its steps · genre: modern-minimal · theme: the app's own tokens (ink,
  * soft, muted, error, working, line) · states: folded (one line: the moving mark and the agent's words for its step,
@@ -50,8 +49,8 @@ const sameLine = (a: { line: Line }, b: { line: Line }) => a.line.tool === b.lin
   a.line.about === b.line.about && a.line.text === b.line.text && a.line.more === b.line.more;
 /**
  * A step on one line, the same in the chat and the detail: the agent's own words for it when it gave them, alone, as
- * what it does reads before how; else what it ran, a command after `$` (its plain leading `cd` left off) and any other
- * tool after its name, with how many lines follow. Opened, the step shows what it ran in full. Drawn again only when
+ * what it does reads before how; else what it ran as its preview starts, a command after `$` and any other tool after
+ * its name, with how many lines follow. Opened, the step shows what it ran in full. Drawn again only when
  * what it says changes, not each time the activity it comes from is read anew.
  */
 const LineWords = memo(function LineWords({ line }: { line: Line }) {
@@ -62,7 +61,7 @@ const LineWords = memo(function LineWords({ line }: { line: Line }) {
     {command ? <span aria-hidden className="flex-none font-mono text-muted">$</span> : <span className={TOOL}>{toolName(line.tool)}</span>}
     {atEnd(line.kind)
       ? <span dir="rtl" className={cn(ONE_LINE, TARGET, "text-left")}><bdi>{line.text}</bdi></span>
-      : <span dir="auto" className={cn(ONE_LINE, TARGET)}>{command ? commandLine(line.text) : line.text}</span>}
+      : <span dir="auto" className={cn(ONE_LINE, TARGET)}>{line.text}</span>}
     {line.more > 0 && <span className="flex-none text-muted">{t("now.step.moreLines", { count: line.more })}</span>}
   </>;
 }, sameLine);
