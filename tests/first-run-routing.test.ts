@@ -92,3 +92,52 @@ test('an unreadable setup record opens the setup, which says so, without changin
     assert.equal((await fetch(new URL('/welcome', app.url), { redirect: 'manual' })).status, 200);
   } finally { await app.close(); }
 });
+
+test('the skills list responds while GitHub waits, and the latest endpoint returns unknown versions at its deadline', { timeout: 10_000 }, async t => {
+  const root = join(isolatedArea(t), 'existing');
+  await initializeWorkspace(root, [], { firstRun: false });
+  const fetchLocal = globalThis.fetch;
+  const deadline = new AbortController();
+  let resolveStarted!: () => void;
+  const started = { promise: new Promise<void>(resolve => { resolveStarted = resolve; }), resolve: () => resolveStarted() };
+  const calls: { url: URL; signal: AbortSignal | null | undefined }[] = [];
+  t.mock.method(globalThis, 'fetch', (url: URL, options?: RequestInit) => {
+    const signal = options?.signal;
+    calls.push({ url, signal });
+    if (calls.length === 2) started.resolve();
+    return new Promise<Response>((_resolve, reject) => {
+      deadline.signal.addEventListener('abort', () => reject(deadline.signal.reason), { once: true });
+    });
+  });
+
+  const app = await startServer(root, 0);
+  try {
+    const timeouts: number[] = [];
+    t.mock.method(AbortSignal, 'timeout', (milliseconds: number) => {
+      timeouts.push(milliseconds);
+      return deadline.signal;
+    });
+    const get = (path: string) => fetchLocal(new URL(path, app.url), { signal: t.signal });
+    const latest = get('/api/skills/latest');
+    try {
+      await Promise.race([started.promise, latest.then(() => assert.fail('Latest returned before GitHub requests were pending'))]);
+      const listed = await get('/api/skills');
+      assert.equal(listed.status, 200);
+      const status = await listed.json();
+      assert.equal(status.skills.find((skill: { name: string }) => skill.name === 'doyourjob').installed, false);
+      assert.deepEqual(calls.map(call => call.url.searchParams.get('path')).sort(), ['skills/askmeclearly', 'skills/doyourjob']);
+      assert.ok(calls.every(call => call.signal === deadline.signal));
+      assert.ok(timeouts.length > 0 && timeouts.every(milliseconds => milliseconds > 0 && milliseconds <= 5000));
+
+      deadline.abort(new DOMException('GitHub request timed out', 'TimeoutError'));
+      const response = await latest;
+      assert.equal(response.status, 200);
+      assert.deepEqual(await response.json(), { skills: [
+        { name: 'askmeclearly', latestAt: null }, { name: 'doyourjob', latestAt: null },
+      ] });
+    } finally {
+      deadline.abort();
+      await latest.catch(() => {});
+    }
+  } finally { await app.close(); }
+});

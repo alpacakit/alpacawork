@@ -88,6 +88,7 @@ export function piUsage(value: unknown) {
 }
 export class PiRuntime implements Runtime {
   private readonly options: Options;
+  private readonly measuredResponses = new Set<string>();
   private child: ChildProcessWithoutNullStreams | null = null;
   private ended: Promise<void> = Promise.resolve();
   private closing: Promise<void> | null = null;
@@ -250,7 +251,19 @@ export class PiRuntime implements Runtime {
       if (text !== null) { const execution = this.execution(); execution.observations.push(text); this.correlate(execution); }
     }
     if (row.type === 'message_start' && message.role === 'assistant') this.execution().assistant = null;
-    if (row.type === 'message_end' && message.role === 'assistant') this.execution().assistant = message;
+    if (row.type === 'message_end' && message.role === 'assistant') {
+      const execution = this.execution();
+      // A failed or aborted response can carry the provider adapter's initial, empty usage.
+      const completed = message.stopReason !== 'error' && message.stopReason !== 'aborted';
+      const tokens = completed ? callTokens(object(message.usage).output) : null;
+      const response = typeof message.responseId === 'string' ? message.responseId : null;
+      // Without a provider ID, message_start establishes the next call by clearing the prior reply.
+      if (tokens !== null && (response ? !this.measuredResponses.has(response) : execution.assistant === null)) {
+        if (response) this.measuredResponses.add(response);
+        this.io.emit({ type: 'model.output', tokens });
+      }
+      execution.assistant = message;
+    }
     const context = piContext(row);
     if (context) this.io.emit({ type: 'context.updated', context });
     if (row.type === 'tool_execution_start') {

@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm, useFormState, type ControllerRenderProps, type DefaultValues, type FieldErrors,
@@ -10,6 +10,7 @@ import { Field, FieldError } from "@/components/ui/field";
 import { ApiError, retryOf } from "@/data/client";
 import { notify, recordFailure } from "@/lib/notify";
 import { describeProblem, isAppFailure, issueText } from "./problem-text";
+import { useReloadHolds } from "@/features/update/update-state";
 
 export type ServerForm<T extends FieldValues> = UseFormReturn<T> & {
   save: () => Promise<boolean>;
@@ -44,6 +45,10 @@ export function useServerForm<T extends FieldValues>({ schema, defaultValues, su
   };
   const form = useForm<T>({ resolver, defaultValues,
     mode: "onSubmit", reValidateMode: "onChange" });
+  // What is typed and not saved lives only in this page: it holds the page from loading a new version by itself.
+  const holdKey = useId(), hold = useReloadHolds((state) => state.hold);
+  const { isDirty } = useFormState({ control: form.control });
+  useEffect(() => { hold(holdKey, isDirty); return () => hold(holdKey, false); }, [isDirty]);
   const [blocked, setBlocked] = useState(false);
   const blockedRef = useRef(false);
   const save = async () => {

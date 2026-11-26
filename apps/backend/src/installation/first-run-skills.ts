@@ -3,7 +3,7 @@ import { defaultUiLocale } from '@alpacawork/core/ui-language';
 import { randomUUID } from 'node:crypto';
 import { mkdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { SKILL_OFFERS, skillInstallRequestSchema, type SkillJob, type SkillName, type SkillStatus, type SkillsResponse } from '@alpacawork/contract';
+import { REPOSITORY_SKILL_OFFERS, SKILL_OFFERS, skillInstallRequestSchema, type SkillJob, type SkillName, type SkillStatus, type SkillsResponse } from '@alpacawork/contract';
 import { Problem, PROBLEM_CODE, parseInput, redactSecrets, hasCode } from '@alpacawork/core';
 import { serverText, type ServerLocale } from '@alpacawork/i18n/server';
 import { BUNDLED_SKILL_NAMES, InstalledSkillsStore } from '@alpacawork/core/installed-skills';
@@ -13,14 +13,16 @@ import { ManagedSkillsWriter } from './skills.js';
 import { inspectAgentSkillLinks, syncAgentSkillLinks } from './agent-skill-links.js';
 import { detectSetupAgents } from './setup-ai.js';
 import { FirstRunCommandFailure, runFirstRunCommand, type FirstRunCommand } from './first-run-command.js';
+import { InstalledRepositorySkillVersions, RepositorySkillVersions } from './repository-skill-versions.js';
 
 const SKILLS_PACKAGE = 'skills@1.8.1';
 const sourceUrl = (repo: string) => `https://github.com/${repo}.git`;
-export function skillInstallCommand(raw: unknown): string[] {
+export function skillInstallCommand(raw: unknown, sha?: string): string[] {
   const { names } = parseInput(skillInstallRequestSchema, { names: [raw] });
-  const offer = SKILL_OFFERS.find(offer => offer.name === names[0])!;
-  if (offer.from.kind !== 'repo') throw new Problem(PROBLEM_CODE.invalidInput, 'This skill is bundled');
-  return ['--yes', SKILLS_PACKAGE, 'add', sourceUrl(offer.from.repo), '--global', '--agent', 'codex', '--skill', offer.name, '--yes'];
+  const offer = REPOSITORY_SKILL_OFFERS.find(offer => offer.name === names[0]);
+  if (!offer) throw new Problem(PROBLEM_CODE.invalidInput, 'This skill is bundled');
+  const source = sourceUrl(offer.from.repo) + (sha ? `#${sha}` : '');
+  return ['--yes', SKILLS_PACKAGE, 'add', source, '--global', '--agent', 'codex', '--skill', offer.name, '--yes', '--json'];
 }
 export class FirstRunSkills {
   private job: SkillJob | null = null;
@@ -29,9 +31,14 @@ export class FirstRunSkills {
   private readonly abort = new AbortController();
   readonly root: string;
   private readonly env: NodeJS.ProcessEnv;
-  constructor(private readonly input: { env?: NodeJS.ProcessEnv; release?: string; run?: FirstRunCommand; locale?: () => ServerLocale } = {}) {
+  private readonly repositoryVersions: RepositorySkillVersions;
+  private readonly installedVersions: InstalledRepositorySkillVersions;
+  constructor(private readonly input: { env?: NodeJS.ProcessEnv; release?: string; run?: FirstRunCommand;
+    fetchCommit?: typeof fetch; locale?: () => ServerLocale } = {}) {
     this.env = { ...input.env ?? process.env, GIT_TERMINAL_PROMPT: '0', DISABLE_TELEMETRY: '1', DO_NOT_TRACK: '1' };
     this.root = installationSkillsRoot(this.env);
+    this.repositoryVersions = new RepositorySkillVersions(input.fetchCommit);
+    this.installedVersions = new InstalledRepositorySkillVersions(this.root);
   }
   private installed(name: SkillName) {
     try { return !!statSync(join(this.root, name, 'SKILL.md'), { throwIfNoEntry: false })?.isFile(); }
@@ -44,10 +51,16 @@ export class FirstRunSkills {
       : links.every(link => link.action === 'keep') ? 'ok' : 'missing';
   }
   async status(): Promise<SkillsResponse> {
-    return { skills: SKILL_OFFERS.map(offer => ({ name: offer.name, installed: this.installed(offer.name),
-      available: offer.from.kind === 'bundled' ? statSync(join(this.input.release ?? appRoot(import.meta.url), 'skills', offer.name, 'SKILL.md'), { throwIfNoEntry: false })?.isFile() ? 'yes' : 'no' : 'unknown',
-      claudeLink: this.linkStatus(offer.name) })), place: this.root, job: this.job ? structuredClone(this.job) : null };
+    const versions = this.installedVersions.read();
+    const skills = SKILL_OFFERS.map(({ name, from }): SkillStatus => {
+      const installed = this.installed(name);
+      return { name, installed, installedAt: installed && from.kind === 'repo' ? versions[name] ?? null : null,
+        available: from.kind === 'bundled' ? statSync(join(this.input.release ?? appRoot(import.meta.url), 'skills', name, 'SKILL.md'), { throwIfNoEntry: false })?.isFile() ? 'yes' : 'no' : 'unknown',
+        claudeLink: this.linkStatus(name) };
+    });
+    return { skills, place: this.root, job: this.job ? structuredClone(this.job) : null };
   }
+  latest() { return this.repositoryVersions.latest(); }
   install(raw: unknown, opId?: string): { job: SkillJob } {
     const { names } = parseInput(skillInstallRequestSchema, raw);
     if (opId && this.request?.opId === opId && this.job) {
@@ -79,7 +92,15 @@ export class FirstRunSkills {
           if (this.linkStatus(name) === 'conflict') {
             job.items[at] = { name, state: 'failed', reason: 'link_conflict', detail: 'The Claude Code skill path contains other content. It was preserved.' }; continue;
           }
-          if (!this.installed(name)) {
+          const repository = REPOSITORY_SKILL_OFFERS.find(offer => offer.name === name);
+          if (repository) {
+            const revision = await this.repositoryVersions.refresh(repository);
+            if (this.abort.signal.aborted) throw new FirstRunCommandFailure('timeout');
+            // A stopped installer may have replaced some files. Do not publish the old date for those files.
+            if (this.installedVersions.read()[repository.name]) this.installedVersions.record(repository.name, null);
+            await (this.input.run ?? runFirstRunCommand)('npx', skillInstallCommand(name, revision?.sha), { env: this.env, signal: this.abort.signal, timeout: 90_000 });
+            if (this.installed(name)) this.installedVersions.record(repository.name, revision?.date ?? null);
+          } else if (!this.installed(name)) {
             // An offer this release carries is copied from it, after the alpacawork skill it adds to.
             const bundled = BUNDLED_SKILL_NAMES.find(each => each === name);
             if (bundled && (!session.current?.receipt.skills.some(skill => skill.name === 'alpacawork') ||
@@ -89,9 +110,6 @@ export class FirstRunSkills {
             }
             if (bundled) await new ManagedSkillsWriter({ root: this.root }).install({ version: 2,
               operationId: randomUUID(), release: this.input.release ?? appRoot(import.meta.url), intent: { place: [bundled], remove: [] } }, session);
-            else {
-              await (this.input.run ?? runFirstRunCommand)('npx', skillInstallCommand(name), { env: this.env, signal: this.abort.signal, timeout: 90_000 });
-            }
           }
           if (!this.installed(name)) throw new Error('The installer did not place the selected skill files. Try again or deselect this skill.');
           syncAgentSkillLinks(this.root, { place: [name], remove: [] }, detectSetupAgents(this.env.HOME!, this.env));

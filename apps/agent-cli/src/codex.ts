@@ -74,6 +74,7 @@ export class CodexRuntime implements Runtime {
   private endedTurns = new Set<string>();
   private lastMessage = '';
   private usage: AgentUsage | null = null;
+  private previousOutput: number | null;
   private turnCount = 0;
   private lastFailed = false;
   private closing = false;
@@ -81,6 +82,7 @@ export class CodexRuntime implements Runtime {
 
   constructor(args: string[], private readonly io: RuntimeIO, private readonly command: string) {
     this.options = withUsage(USAGE, () => parseOptions(args));
+    this.previousOutput = this.options.resume === null ? 0 : null;
   }
 
   idle(): boolean { return this.turnId === null; }
@@ -128,6 +130,8 @@ export class CodexRuntime implements Runtime {
     }
     if (original) process.stderr.write('alpacawork-agent: resuming the existing conversation in its original Codex home\n');
     const thread = { model: this.options.model, sandbox: this.options.sandbox, approvalPolicy: 'never', cwd: process.cwd() };
+    // The restored token count may share the same stdout chunk as the resume response.
+    if (this.options.resume !== null) this.threadId = this.options.resume;
     const opened = this.options.resume === null ? await this.request('thread/start', thread)
       : await this.request('thread/resume', { ...thread, threadId: this.options.resume });
     if (this.options.resume && opened.thread.id !== this.options.resume) throw new Error('Codex resumed a different thread than requested');
@@ -230,6 +234,13 @@ export class CodexRuntime implements Runtime {
       this.io.emit({ type: message.method === 'item/started' ? 'item.started' : 'item.completed', item: boundaryItem(snake(String(item.type)), item) });
     } else if (message.method === 'thread/tokenUsage/updated') {
       this.usage = codexUsage(params.tokenUsage?.total);
+      const total = callTokens(params.tokenUsage?.total?.outputTokens);
+      if (total !== null) {
+        const previous = this.previousOutput;
+        this.previousOutput = total;
+        if (this.turnId !== null && !this.compaction && previous !== null && total > previous)
+          this.io.emit({ type: 'model.output', tokens: total - previous });
+      }
       const context = codexContext(params.tokenUsage);
       if (context) this.io.emit({ type: 'context.updated', context });
     } else if (message.method === 'turn/completed') {

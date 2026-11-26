@@ -61,8 +61,8 @@ export const AGENT_ADAPTERS: Readonly<{ [Id in BuiltinAdapterId]: AdapterDescrip
     prefix: ['claude'], fixedEnv: ['CLAUDE_CONFIG_DIR'], defaultEnv: ['ANTHROPIC_API_KEY'],
     system: { start: ['session'], resume: ['session'] },
     options: {
-      start: '[--model {model}] [--effort {effort}] -p --session-id {session} --input-format stream-json --output-format stream-json --verbose --permission-mode bypassPermissions --permission-prompts none',
-      resume: '[--model {model}] [--effort {effort}] -p --resume {session} --input-format stream-json --output-format stream-json --verbose --permission-mode bypassPermissions --permission-prompts none',
+      start: '[--model {model}] [--effort {effort}] -p --session-id {session} --input-format stream-json --output-format stream-json --verbose --include-partial-messages --permission-mode bypassPermissions --permission-prompts none',
+      resume: '[--model {model}] [--effort {effort}] -p --resume {session} --input-format stream-json --output-format stream-json --verbose --include-partial-messages --permission-mode bypassPermissions --permission-prompts none',
     }, referenceUrl: 'https://code.claude.com/docs/en/cli-reference',
   },
   codex: bridge('codex', {

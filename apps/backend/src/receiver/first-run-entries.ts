@@ -2,7 +2,7 @@
 import { codecs, defineEntry, defineEntryEndpoint, defineEntryNode, defineParameter, required } from '@alpacakit/channels';
 import { bindHttpEntry } from '@alpacakit/channels/http';
 import { z } from 'zod';
-import { firstRunRequestSchema, firstRunResponseSchema, skillsResponseSchema, skillInstallResponseSchema } from '@alpacawork/contract';
+import { firstRunRequestSchema, firstRunResponseSchema, skillsResponseSchema, skillsLatestResponseSchema, skillInstallResponseSchema } from '@alpacawork/contract';
 import { Problem, PROBLEM_CODE, parseInput } from '@alpacawork/core';
 import { SCREEN, withAct } from '../entries.js';
 import type { Context } from './entries.js';
@@ -24,7 +24,12 @@ export const firstRunNodes = [
   ] }),
   defineEntryNode({ name: 'skills', description: 'Offered skills and installation progress', endpoints: [
     screenEndpoint('skills', 'GET', [], async (_input, context) => skillsResponseSchema.parse(await need(context.skills).status())),
-  ], children: [defineEntryNode({ name: 'install', description: 'Install selected offered skills', endpoints: [
-    screenEndpoint('install', 'POST', ['names'], (input, context) => skillInstallResponseSchema.parse(need(context.skills).install(input, context.opId))),
-  ] })] }),
+  ], children: [
+    defineEntryNode({ name: 'install', description: 'Install selected offered skills', endpoints: [
+      screenEndpoint('install', 'POST', ['names'], (input, context) => skillInstallResponseSchema.parse(need(context.skills).install(input, context.opId))),
+    ] }),
+    defineEntryNode({ name: 'latest', description: 'Latest versions of offered repository skills', endpoints: [
+      screenEndpoint('latest', 'GET', [], async (_input, context) => skillsLatestResponseSchema.parse(await need(context.skills).latest())),
+    ] }),
+  ] }),
 ];

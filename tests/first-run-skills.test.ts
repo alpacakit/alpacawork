@@ -20,7 +20,8 @@ async function fixture(t) {
   }
   t.after(() => rmSync(base, { recursive: true, force: true }));
   await seedSetupSkill(home, release);
-  return { base, home, release, root: join(home, '.agents/skills'), env: { HOME: home, PATH: '' } };
+  return { base, home, release, root: join(home, '.agents/skills'), env: { HOME: home, PATH: '' },
+    fetchCommit: async () => new Response(null, { status: 503 }) };
 }
 async function settled(service: FirstRunSkills) {
   for (let at = 0; at < 400; at++) { const result = await service.status(); if (result.job?.finished) return result; await delay(5); }
@@ -36,7 +37,7 @@ test('unknown and duplicate skill names start no processes and preserve the setu
   assert.throws(() => skillInstallCommand('unknown'), { status: 400 });
   assert.deepEqual(calls, []);
   assert.deepEqual(new InstalledSkillsStore(f.root).read()!.receipt.skills.map(item => item.name), ['alpacawork']);
-  assert.deepEqual(skillInstallCommand('doyourjob'), ['--yes', 'skills@1.8.1', 'add', 'https://github.com/alpacakit/pocket-skills.git', '--global', '--agent', 'codex', '--skill', 'doyourjob', '--yes']);
+  assert.deepEqual(skillInstallCommand('doyourjob'), ['--yes', 'skills@1.8.1', 'add', 'https://github.com/alpacakit/pocket-skills.git', '--global', '--agent', 'codex', '--skill', 'doyourjob', '--yes', '--json']);
 });
 
 test('selected bundled and repository skills share the update lock; private skills stay outside the managed receipt', async t => {
@@ -67,9 +68,6 @@ test('selected bundled and repository skills share the update lock; private skil
   const receipt = new InstalledSkillsStore(f.root).read()!.receipt;
   assert.deepEqual(receipt.skills.map(item => item.name), ['alpacawork', 'alpacawork-betterquality']);
   assert.equal(result.skills.find(item => item.name === 'doyourjob')?.claudeLink, 'ok');
-  const count = calls.filter(cmd => cmd === 'npx').length;
-  service.install({ names: ['doyourjob'] }); await settled(service);
-  assert.equal(calls.filter(cmd => cmd === 'npx').length, count, 'installed selections are not overwritten');
 });
 
 test('a conflicting Claude link is preserved and returned as a failed selected row', async t => {
@@ -136,18 +134,17 @@ test('listing skills never starts commands, including concurrent reads during an
 });
 
 
-test('a Claude skills folder linked to the shared root already exposes installed skills', async t => {
+test('a Claude skills folder linked to the shared root exposes the reinstalled skill', async t => {
   const f = await fixture(t); mkdirSync(join(f.root, 'doyourjob'), { recursive: true });
-  writeFileSync(join(f.root, 'doyourjob/SKILL.md'), 'existing');
+  const skill = join(f.root, 'doyourjob/SKILL.md');
+  writeFileSync(skill, 'existing');
   mkdirSync(join(f.home, '.claude')); symlinkSync(f.root, join(f.home, '.claude/skills'), 'dir');
-  let calls = 0;
-  const service = new FirstRunSkills({ ...f, run: async () => { calls++; return ''; } });
+  const service = new FirstRunSkills({ ...f, run: async () => { writeFileSync(skill, 'updated'); return ''; } });
   t.after(() => service.close());
   assert.equal((await service.status()).skills.find(skill => skill.name === 'doyourjob')?.claudeLink, 'ok');
   service.install({ names: ['doyourjob'] });
   assert.equal((await settled(service)).job?.items[0]?.state, 'done');
-  assert.equal(calls, 0);
-  assert.equal(readFileSync(join(f.root, 'doyourjob/SKILL.md'), 'utf8'), 'existing');
+  assert.equal(readFileSync(join(f.home, '.claude/skills/doyourjob/SKILL.md'), 'utf8'), 'updated');
 });
 
 

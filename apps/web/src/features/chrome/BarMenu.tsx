@@ -6,9 +6,8 @@ import { Icon } from "@/components/ui/icon";
 import { menuRow } from "@/components/ui/menu-rows";
 import { Switch } from "@/components/ui/switch";
 import { FaceSwitch } from "@/features/analysis/FaceSwitch";
-import { UpdateMark, useGearLabel } from "@/features/update/UpdateView";
+import { UpdateMark, useGearLabel, useOpenSettingsFromGear } from "@/features/update/UpdateView";
 import { countUse } from "@/features/telemetry/count";
-import { useDialogStore } from "@/state/dialog-store";
 import { useTimeView } from "@/state/time-view";
 import { useNarrow } from "@/state/view-store";
 import { cn } from "@/lib/utils";
@@ -30,6 +29,7 @@ export function BarMenu({ open, onOpenChange, present }: { open: boolean; onOpen
   const narrow = useNarrow();
   const strips = useTimeView(state => state.strips);
   const gearLabel = useGearLabel();
+  const openSettings = useOpenSettingsFromGear();
   const { presence, short } = usePresenceWords();
   const [presenceOpen, setPresenceOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -71,7 +71,7 @@ export function BarMenu({ open, onOpenChange, present }: { open: boolean; onOpen
           {row("presence", <PresenceGlyph state={presence.state} />, t("presence.menuLabel"), () => then(() => setPresenceOpen(true)),
             <span className="flex flex-none items-center gap-1 text-sm text-soft">{short}<Icon name="right" className="size-4" /></span>)}
           {row("settings", <span className="relative inline-flex"><Icon name="settings" className="size-4" /><UpdateMark /></span>,
-            t("appBar.settings"), () => then(() => useDialogStore.getState().open("settings")), undefined, gearLabel)}
+            t("appBar.settings"), () => then(openSettings), undefined, gearLabel)}
         </div>
       </DialogContent>
     </Dialog>}

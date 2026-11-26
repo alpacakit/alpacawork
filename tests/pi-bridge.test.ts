@@ -24,6 +24,16 @@ function setup(t: TestContext, mode = 'normal', fixture = 'fake-pi.mjs') {
  });
  return { area, calls, start, release: () => writeFileSync(release, '') };
 }
+test('Pi live output counts each assistant call once before the turn totals', async t => {
+ const h = setup(t, 'output-ledger'), bridge = h.start();
+ bridge.send('one', 'synthetic input');
+ await bridge.until(rows => rows.some(row => row.type === 'turn.completed'));
+ bridge.child.stdin.end();
+ assert.equal(await bridge.exited, 0, bridge.stderr());
+ const events = bridge.events().filter(row => ['model.output', 'turn.completed'].includes(row.type));
+ assert.deepEqual(events.map(row => row.type === 'model.output' ? row.tokens : row.usage?.counters.output), [4, 99999, 7]);
+});
+
 test('Pi new/resume preserves complete session, provider/model with slashes, off versus default, final text and stats totals', async t => {
  const h = setup(t), model = 'openrouter/openai/synthetic-model';
  const b = h.start(['--model', model, '--thinking', 'off']); b.send('one', 'literal synthetic input');

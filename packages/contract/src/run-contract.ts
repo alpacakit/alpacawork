@@ -31,6 +31,8 @@ export { stepJournalEntrySchema, stepTimeSourceSchema, stepFingerprintSchema, st
   type StepJournalEntry, type StepTimeSource, type StepFingerprint, type StepOutput } from './work-contract.js';
 export { clipRunText, previewRunLine, previewToolInput, toolInputText, toolInputDocument, toolInputParts, inputDocument, fullRunText, toolResultText, toolArgumentText, type InputParts } from './work-preview.js';
 import { runWorkSchema, runStepsSchema, RUN_NOTE_LIMIT, RUN_TOOL_NAME_LIMIT } from './work-contract.js';
+import { runOutputSchema } from './run-output.js';
+export { runOutputSpeed, OUTPUT_WINDOW_SECONDS, type RunOutput, type RunOutputSpeed } from './run-output.js';
 export const runActivitySchema = z.object({
   at: z.iso.datetime({ offset: true }), kind: runActivityKindSchema,
   toolName: z.string().max(RUN_TOOL_NAME_LIMIT).nullable(),
@@ -38,6 +40,8 @@ export const runActivitySchema = z.object({
   note: z.object({ at: z.iso.datetime({ offset: true }), text: z.string().min(1).max(RUN_NOTE_LIMIT) }).strict().nullable(),
   /** How full the conversation is, as its agent last said; null before it has said. */
   context: agentContextSchema.nullable(),
+  /** Recent measured output. Absent until the agent has reported a usable count. */
+  output: runOutputSchema.optional(),
   steps: runStepsSchema,
   /**
    * How many times a step of this Run has started or ended so far, every step counted, not only the latest kept in

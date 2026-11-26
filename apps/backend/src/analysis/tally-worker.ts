@@ -38,7 +38,7 @@ function tally({ id, provider, adapter, session, cwd, memberReply }: TallyRun): 
     try {
       state = ordinaryFile(join(folder, RUN_FILES.stdout), (fd, size) => {
         if (!size) return 'unsupported';
-        const lines = new JsonlReader(() => steps?.unreadable(), STEP_LINE_LIMIT);
+        const lines = new JsonlReader(() => steps?.unreadable(), STEP_LINE_LIMIT, reader?.skipOutputLine);
         const observe = (value: unknown, line: number) => { parser.observe(value); steps?.observeRow(value, line); };
         lines.readFd(fd, observe, TALLY_STDOUT_BYTES);
         if (size <= TALLY_STDOUT_BYTES) lines.finish(observe);

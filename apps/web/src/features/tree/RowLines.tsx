@@ -5,7 +5,7 @@ import { Icon } from "@/components/ui/icon";
 import { CapStrut } from "@/components/ui/text-mark";
 import { TONE, useTaskLook } from "@/components/ui/tone";
 import type { PeopleIndex } from "@/domain/people";
-import { ReportTime, RowKindWord, RunningRuns, StatusNotes, StatusTime, WaitedNote } from "./RowStatus";
+import { ReportTime, RowKindWord, RunningRuns, StatusNotes, StatusTime, TimeSlot, WaitedNote } from "./RowStatus";
 import { RowProjectTile } from "./RowProjectTile";
 import { SentArc, SentWord } from "./SentArc";
 import { cn } from "@/lib/utils";
@@ -75,7 +75,7 @@ export function RowLines({ task, people, lifted, counts, title, unread }: {
           one size; the working time alone takes a colour. */}
       <ReportTime task={task} people={people} />
       <RunningRuns task={task} />
-      <StatusTime task={task} />
+      <TimeSlot task={task}><StatusTime task={task} /></TimeSlot>
     </span>
   </div>;
 }

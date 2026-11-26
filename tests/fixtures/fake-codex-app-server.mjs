@@ -48,7 +48,8 @@ async function run(id, plan) {
       result: { content: [], structuredContent: deep } } });
   }
   notify('item/completed', { item: { type: 'agentMessage', id: `m-${id}`, text: `reply ${id}`, phase: 'final_answer' } });
-  if (!plan.noUsage) notify('thread/tokenUsage/updated', { tokenUsage: { total: { inputTokens: 10 * turns, cachedInputTokens: 4, cacheWriteInputTokens: 1, outputTokens: 2, reasoningOutputTokens: 0 } } });
+  if (!plan.noUsage) for (const outputTokens of plan.outputTotals ?? [2])
+    notify('thread/tokenUsage/updated', { tokenUsage: { total: { inputTokens: 10 * turns, cachedInputTokens: 4, cacheWriteInputTokens: 1, outputTokens, reasoningOutputTokens: 0 } } });
   // `fail`: true, or Codex's own error kind (codexErrorInfo) to report with the failure.
   notify('turn/completed', { turn: plan.fail ? { id, status: 'failed', error: { message: 'fake failure', ...typeof plan.fail === 'string' ? { codexErrorInfo: plan.fail } : {} } } : { id, status: 'completed' } });
   turn = null;
@@ -71,7 +72,12 @@ createInterface({ input: process.stdin }).on('line', line => {
   else if (method === 'config/read') reply({ config: JSON.parse(process.env.FAKE_CODEX_CONFIG ?? '{}') });
   else if (method === 'account/read') reply({ account: process.env.FAKE_CODEX_NO_ACCOUNT ? null : { type: 'chatgpt' } });
   else if (method === 'thread/start') { thread = 'thread-new'; reply({ thread: { id: thread } }); }
-  else if (method === 'thread/resume') { thread = params.threadId; reply({ thread: { id: thread } }); }
+  else if (method === 'thread/resume') {
+    thread = params.threadId;
+    reply({ thread: { id: thread } });
+    if (process.env.FAKE_CODEX_RESTORED_OUTPUT)
+      notify('thread/tokenUsage/updated', { tokenUsage: { total: { outputTokens: Number(process.env.FAKE_CODEX_RESTORED_OUTPUT) } } });
+  }
   else if (method === 'thread/compact/start') {
     reply({});
     const id = 'turn-compact', failure = process.env.FAKE_CODEX_COMPACT_FAIL;

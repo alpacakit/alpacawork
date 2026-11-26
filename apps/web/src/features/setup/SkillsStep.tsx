@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
-import { Trans, useTranslation } from "react-i18next";
+import { useTranslation } from "react-i18next";
 import { SKILL_OFFERS, canSelectSkill, type SkillJob, type SkillName } from "@alpacawork/contract";
 import { Button } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field";
 import { ReadFailure } from "@/components/ui/loadable";
+import { RegionSkeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { notify } from "@/lib/notify";
 import { problemText } from "@/features/forms/problem-text";
 import { useSkillInstall, useSkills } from "@/data/skills";
-import { BetaMark, FailureLine, Loading, RecommendedMark, StepButtons } from "./parts";
+import { FailureLine, StepButtons } from "./parts";
+import { SkillOfferText } from "./SkillOfferRow";
 
 /**
  * Step 3: the offered skills, each by what it changes, the recommended ones ticked and those without a cost marked, a beta one marked. The button names what it installs, and pressing it is the
@@ -30,7 +32,7 @@ export function SkillsStep({ onBack, onNext }: { onBack: () => void; onNext: () 
   useEffect(() => { if (running && install.phase === "idle") void follow(running); }, [running?.id]);
   // The rows' install state: the job running, or the one just finished.
   const job: SkillJob | null = install.phase === "running" || install.phase === "finished" ? install.job : null;
-  const installing = install.phase === "running" || !!running;
+  const installing = install.phase === "running" || install.phase === "sending" || !!running;
   // Every chosen skill went in: said once, as the setup moves on (a failure stays here, on its row).
   useEffect(() => {
     if (install.phase !== "finished" || !install.job.items.every(item => item.state === "done")) return;
@@ -38,7 +40,7 @@ export function SkillsStep({ onBack, onNext }: { onBack: () => void; onNext: () 
     onNext();
   }, [install]);
   if (skills.isError) return <ReadFailure what={t("skills.title")} error={skills.error} retry={() => void skills.refetch()} />;
-  if (!statuses || !ticked) return <Loading />;
+  if (!statuses || !ticked) return <RegionSkeleton shape="skills" />;
   const installed = (name: SkillName) => !!statuses.find(status => status.name === name)?.installed;
   const selectable = (name: SkillName) => { const status = statuses.find(each => each.name === name); return !!status && canSelectSkill(status); };
   const toInstall = SKILL_OFFERS.map(offer => offer.name).filter(name => ticked.has(name) && !installed(name) && selectable(name));
@@ -52,27 +54,9 @@ export function SkillsStep({ onBack, onNext }: { onBack: () => void; onNext: () 
           <label className={cn("grid cursor-pointer grid-cols-[22px_minmax(0,1fr)] items-start gap-x-3 py-3", (done || installing) && "cursor-default")}>
             <input type="checkbox" checked={done || ticked.has(offer.name)} disabled={done || installing || !selectable(offer.name)}
               onChange={event => toggle(offer.name, event.target.checked)} className="mt-0.75 size-4.5 cursor-pointer accent-ink disabled:cursor-default" />
-            {/* What it changes, then how, then which skill and where it comes from: the name means little before it is used. */}
-            <span className="min-w-0">
-              {/* The state sits on the heading's line only, so the lines under it keep the row's width; where the heading
-                  leaves no room for it (a phone), it drops under the heading rather than squeeze it. */}
-              <span className="flex flex-wrap items-baseline gap-x-3">
-                <span className="font-semibold [word-break:auto-phrase]">{t(`skills.items.${offer.name}.title`)}</span>
-                {/* Marked only where nothing is given up for it: a recommended one that costs time and tokens is ticked, not urged. */}
-                {offer.recommended && !offer.cost && <RecommendedMark className="self-center" />}
-                {offer.beta && <BetaMark className="self-center" />}
-                {done ? <span className="ml-auto text-sm whitespace-nowrap text-done">{t("skills.installed")}</span>
-                  : item?.state === "installing" && installing ? <span className="ml-auto text-sm whitespace-nowrap text-muted">{t("skills.installing")}</span> : null}
-              </span>
-              <span className="mt-0.5 block text-sm text-muted [word-break:auto-phrase]">{t(`skills.items.${offer.name}.what`)}</span>
-              <span className="mt-1 flex flex-wrap items-baseline gap-x-2 text-xs text-soft">
-                <code className="font-mono text-muted [overflow-wrap:anywhere]">{offer.name}</code>
-                {/* Only a skill fetched from elsewhere says where from; one that comes with alpacawork needs no word. */}
-                {offer.from.kind === "repo" && <span className="[word-break:auto-phrase]">
-                  <Trans t={t} i18nKey="skills.from.repo" values={{ repo: offer.from.repo }}
-                    components={{ repo: <a className="inline-link" href={`https://github.com/${offer.from.repo}`} target="_blank" rel="noreferrer" /> }} /></span>}
-              </span>
-            </span>
+            <SkillOfferText offer={offer} marked
+              state={done ? <span className="ml-auto text-sm whitespace-nowrap text-done">{t("skills.installed")}</span>
+                : item?.state === "installing" && installing ? <span className="ml-auto text-sm whitespace-nowrap text-muted">{t("skills.installing")}</span> : null} />
           </label>
           {/* Under the row's words, outside its label: a failure is read, not part of what the checkbox names. */}
           {item?.state === "failed" && !done && <FieldError className="-mt-2 mb-3 ml-[34px] [overflow-wrap:anywhere]">
