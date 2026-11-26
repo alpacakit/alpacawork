@@ -2,7 +2,7 @@ import { create } from "zustand";
 import type { ReaderCard } from "@/features/reader/next-question";
 
 /** The settings dialog's tabs; Resources can be opened from its banner and its push, Projects from the archive notices. */
-export type SettingsTab = "ai" | "skills" | "notifications" | "projects" | "general" | "apps" | "host";
+export type SettingsTab = "ai" | "skills" | "notifications" | "projects" | "general" | "apps" | "host" | "update";
 /** A part of the settings an opening brings into view and focuses: Notifications, the input's AI (AI). */
 export type SettingsFocus = "notifications" | "coordinatorAi";
 

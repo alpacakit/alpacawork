@@ -14,7 +14,7 @@ import { ProjectsSettingsTab } from "./ProjectsSettingsTab";
 import { SkillsSettingsTab } from "./SkillsSettingsTab";
 import { cn } from "@/lib/utils";
 import { useNarrow } from "@/state/view-store";
-import { UpdateConfirmDialog, UpdateStateLine, VersionLine } from "@/features/update/UpdateView";
+import { UpdateConfirmDialog, UpdateSettingsTab, useUpdateMarked, VersionLine } from "@/features/update/UpdateView";
 
 /**
  * Settings, in tabs named for what they hold, in the order they are looked for. This PC's config.yaml is one draft for
@@ -38,13 +38,14 @@ export function SettingsDialog({ initialTab = "ai", request, focus }: { initialT
 /** The top line of both columns on a computer: the dialog's title over the side list, the section's name over the page. */
 const HEAD_ROW = "flex h-16 flex-none items-center";
 
-const TABS = ["ai", "skills", "notifications", "projects", "general", "apps", "host"] as const satisfies readonly SettingsTab[];
+const TABS = ["ai", "skills", "notifications", "projects", "general", "apps", "host", "update"] as const satisfies readonly SettingsTab[];
 
 export function SettingsBody({ initialTab = "ai", request, focus }: { initialTab?: SettingsTab; request?: number; focus?: SettingsFocus }) {
   const focusNotifications = focus === "notifications";
   const { t } = useTranslation("panels");
   const coarsePointer = useCoarsePointer();
   const narrow = useNarrow();
+  const updateMarked = useUpdateMarked();
   // The guide is read at a computer: a phone that opens this is past every step of it.
   const availableTabs = TABS.filter((value) => value !== "apps" || !coarsePointer);
   const [selected, setTab] = useState<SettingsTab>(initialTab);
@@ -86,7 +87,9 @@ export function SettingsBody({ initialTab = "ai", request, focus }: { initialTab
         <div className={cn("border-b border-line", !narrow && "border-b-0 pt-1")}>
           <TabsList ref={list} className={cn("-mx-1 border-b-0", !narrow && "mx-0 flex-col items-stretch gap-0.5 overflow-visible py-0")}>
             {/* Mapped over TABS itself: i18n:extract reads each `settings.tabs.*` key from this constant list, not a filtered copy. */}
-            {TABS.map((value) => availableTabs.includes(value) && <TabsTrigger key={value} value={value} className={cn("", !narrow && "h-8 justify-start")}>
+            {TABS.map((value) => availableTabs.includes(value) && <TabsTrigger key={value} value={value} className={cn("", !narrow && "h-8 justify-start",
+              // Update carries the gear's mark while something there waits for the person.
+              value === "update" && updateMarked && "pe-5 before:absolute before:end-2 before:top-1/2 before:size-2 before:-translate-y-1/2 before:rounded-full before:bg-new")}>
               {t(`settings.tabs.${value}`)}
             </TabsTrigger>)}
           </TabsList>
@@ -97,10 +100,7 @@ export function SettingsBody({ initialTab = "ai", request, focus }: { initialTab
       {/* The section's name on the title's line, at the title's size, with the close button at its end. */}
       {!narrow && <div className={cn(HEAD_ROW, "justify-between gap-3 px-8 pe-5")}>
         <h3 className="m-0 min-w-0 text-lg font-semibold">{t(`settings.tabs.${tab}`)}</h3><DialogCloseButton /></div>}
-      {!narrow && <UpdateStateLine className="mx-8 mb-4 flex-none" />}
       <DialogBody ref={body} className={cn("flex flex-col border-t-0 pt-5", !narrow && "pt-1 [--pane-side:--spacing(8)]")}>
-      {/* On a phone the update's band opens the page and scrolls away with it, so the tabs keep their place. */}
-      {narrow && <UpdateStateLine className="mb-4" />}
       {/* The two tabs showing the draft stay mounted while hidden, so a refused save can take the eye into either. */}
       <TabsContent value="ai" forceMount hidden={tab !== "ai"}>
         <AiSettingsTab />
@@ -121,6 +121,9 @@ export function SettingsBody({ initialTab = "ai", request, focus }: { initialTab
       {availableTabs.includes("apps") && <TabsContent value="apps">
         <AppGuideTab />
       </TabsContent>}
+      <TabsContent value="update">
+        <UpdateSettingsTab />
+      </TabsContent>
       <TabsContent value="host">
         <HostTab />
       </TabsContent>

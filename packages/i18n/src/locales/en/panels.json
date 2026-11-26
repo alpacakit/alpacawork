@@ -539,7 +539,8 @@
       "host": "Resources",
       "notifications": "Notifications",
       "projects": "Projects",
-      "skills": "Recommended skills"
+      "skills": "Recommended skills",
+      "update": "Update"
     },
     "title": "Settings",
     "up": "Up",
@@ -553,7 +554,8 @@
       "versions": {
         "installed": "Installed {{version}}",
         "latest": "Latest {{version}}"
-      }
+      },
+      "withApp": "Updated with alpacawork"
     }
   },
   "telemetry": {
@@ -707,7 +709,13 @@
       "on": "Could not save turning on “Show this confirmation next time”. Check the earlier save, then turn on “Confirm before updating” on the General tab."
     },
     "start": "Update",
-    "unavailable": "The update cannot start right now. Try again in a while."
+    "unavailable": "The update cannot start right now. Try again in a while.",
+    "page": {
+      "latest": "You're on the latest version",
+      "running": "Current version",
+      "together": "Updated along with it",
+      "togetherNote": "Skills that come with alpacawork are replaced together with it when you update. They need no update of their own."
+    }
   },
   "workspaceStop": {
     "failed": "Couldn't show the screen.",

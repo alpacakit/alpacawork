@@ -16,7 +16,7 @@ const SAMPLES: Record<string, Record<SkillName, Sample>> = {
     askmeclearly: { installed: "11/02", latest: "11/20" },
     doyourjob: { installed: "11/20", latest: "11/20" },
     "alpacawork-betterquality": { installed: null, latest: "0.1.7" },
-    "alpacawork-modelpickoptimization": { installed: "0.1.5", latest: "0.1.7" },
+    "alpacawork-modelpickoptimization": { installed: "0.1.7", latest: "0.1.7" },
   },
   b: {
     askmeclearly: { installed: "11/02", latest: "11/20", state: "installing" },
@@ -29,7 +29,8 @@ const sampleSet = () => SAMPLES[new URLSearchParams(location.search).get("sample
 
 /**
  * The skills setup offers, here to install one or bring it up to date at any time: each row as setup shows it, and at
- * its end what it is on this PC — its one action (Install, Update) or Up to date — over the version there and the latest.
+ * its end what it is on this PC — its one action (Install, Update) or Up to date — over the version there and the latest. One that comes with
+ * alpacawork has no version of its own: it is replaced with alpacawork at each update, and says so.
  * Pressing it installs at once; nothing waits for a save.
  */
 export function SkillsSettingsTab() {
@@ -48,7 +49,9 @@ export function SkillsSettingsTab() {
         const sample = samples[offer.name];
         const installing = sample.state === "installing" || !!running?.items.some(item => item.name === offer.name && item.state !== "done" && item.state !== "failed");
         const failed = sample.state === "failed";
-        const current = sample.installed !== null && sample.installed === sample.latest;
+        // One that comes with alpacawork is replaced with it at each update: it is either installed or not, never behind.
+        const bundled = offer.from.kind === "bundled";
+        const current = sample.installed !== null && (bundled || sample.installed === sample.latest);
         return <li key={offer.name} data-settings-skill={offer.name} className="border-b border-line py-5 last:border-b-0">
           <div className="grid grid-cols-[minmax(0,1fr)_10rem] items-start gap-x-6 narrow:grid-cols-1 narrow:gap-y-3">
             <div className="min-w-0">
@@ -56,11 +59,12 @@ export function SkillsSettingsTab() {
               {failed && <FieldError className="mt-2 mb-0 [overflow-wrap:anywhere]">{setup("skills.failed", { reason: setup("skills.reason.unreachable") })}</FieldError>}
             </div>
             <div className="flex flex-col items-end gap-2 narrow:min-h-11 narrow:flex-row-reverse narrow:items-center narrow:justify-between">
-              {current ? <span className="inline-flex h-9 items-center gap-1 text-sm whitespace-nowrap text-done"><Icon name="check" className="size-4" />{t("settings.skills.upToDate")}</span>
+              {current ? <span className="inline-flex h-9 items-center gap-1 text-sm whitespace-nowrap text-done"><Icon name="check" className="size-4" />{bundled ? setup("skills.installed") : t("settings.skills.upToDate")}</span>
                 : <Button variant={failed ? "outline" : "default"} className="min-w-24 narrow:min-h-11" disabled={installing || !!running} onClick={() => void start([offer.name])}>
                   {installing ? <><Icon name="pending" className="size-4 animate-spin [animation-duration:1.4s]" />{sample.installed === null ? t("settings.skills.installing") : t("settings.skills.updating")}</>
                     : failed ? t("settings.skills.retry") : sample.installed === null ? t("settings.skills.install") : t("settings.skills.update")}</Button>}
-              <Versions installed={sample.installed} latest={sample.latest} current={current} />
+              {bundled ? <span className="text-end text-xs text-soft narrow:text-start">{t("settings.skills.withApp")}</span>
+                : <Versions installed={sample.installed} latest={sample.latest} current={current} />}
             </div>
           </div>
         </li>;

@@ -4,6 +4,9 @@
  * and the version at the settings' foot. There is no update tab. Each draws the one projection (`useUpdateStatus`).
  */
 import { useState } from "react";
+import { SKILL_OFFERS } from "@alpacawork/contract";
+import { useSkills } from "@/data/skills";
+import { useDialogStore } from "@/state/dialog-store";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { ConsequenceNote } from "@/components/ui/consequence-note";
@@ -204,4 +207,46 @@ export function HeldPage() {
 /** Settings' foot: the version this page runs, small and muted, the same on every tab. */
 export function VersionLine() {
   return <p data-version-line className="mt-8 mb-0 text-xs text-muted">alpacawork {APP_VERSION}</p>;
+}
+
+/** Whether the gear's mark asks for the person: the settings then open on Update, where it is read and pressed. */
+const MARKED = new Set<UpdateStatus["kind"]>(["available", "fetching", "waiting", "applying", "recovering", "failed", "attention", "done"]);
+/** Whether Update's place in the settings carries the gear's mark: something there waits for the person. */
+export const useUpdateMarked = () => MARKED.has(useUpdateStatus().kind);
+/** What pressing the gear opens: Update while its mark shows something, else the section last open. */
+export function useOpenSettingsFromGear() {
+  const kind = useUpdateStatus().kind;
+  return () => useDialogStore.getState().open("settings", MARKED.has(kind) ? { tab: "update" } : undefined);
+}
+
+/**
+ * Settings' Update: the one place the app's update is read and done. Its state line (with its one press), or that this
+ * is the latest; the version running; and what an update replaces with it, the skills that come with alpacawork, so
+ * none of them is updated on its own.
+ */
+export function UpdateSettingsTab() {
+  const { t } = useTranslation("panels");
+  const { t: setup } = useTranslation("setup");
+  const status = useUpdateStatus();
+  const skills = useSkills().data?.skills;
+  const bundled = SKILL_OFFERS.filter(offer => offer.from.kind === "bundled" && skills?.find(each => each.name === offer.name)?.installed);
+  return <div data-settings-update className="space-y-6">
+    {status.kind === "none" || status.kind === "withdrawn"
+      ? <p className="m-0 flex items-center gap-2 text-sm text-done"><Icon name="check" className="size-4" />{t("update.page.latest")}</p>
+      : <UpdateStateLine />}
+    <dl className="m-0 border-t border-line">
+      <div className="flex min-h-13 items-center justify-between gap-6 border-b border-line py-2">
+        <dt className="text-base">{t("update.page.running")}</dt><dd className="m-0 text-sm text-muted tabular-nums">alpacawork {APP_VERSION}</dd>
+      </div>
+      <div className="border-b border-line py-3">
+        <dt className="text-base">{t("update.page.together")}</dt>
+        <dd className="m-0 mt-1 text-sm text-muted [word-break:auto-phrase]">{t("update.page.togetherNote")}</dd>
+        <dd className="m-0 mt-2 flex flex-wrap gap-1.5">
+          <code className="rounded-sm bg-[color:color-mix(in_oklab,var(--ink)_5%,transparent)] px-1.5 py-0.5 font-mono text-xs text-muted">alpacawork</code>
+          {bundled.map(offer => <span key={offer.name} title={offer.name} className="rounded-sm bg-[color:color-mix(in_oklab,var(--ink)_5%,transparent)] px-1.5 py-0.5 text-xs text-muted">
+            {setup(`skills.items.${offer.name}.title`)}</span>)}
+        </dd>
+      </div>
+    </dl>
+  </div>;
 }
