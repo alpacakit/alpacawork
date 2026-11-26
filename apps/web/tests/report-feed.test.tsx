@@ -693,6 +693,8 @@ test("each working person's steps open from their own work line, read only then;
   fireEvent.click(member.querySelector<HTMLElement>("[data-working-steps]")!);
   await waitFor(() => expect(member.querySelector("[data-run-steps=open]")?.textContent).toContain("member step 1"));
   expect(asked).toEqual(["R1", "R2"]);
+  // Each person's steps open on their own: the lead's stay open beside the member's.
+  expect(lead.querySelector("[data-run-steps=open]")?.textContent).toContain("lead step 1");
 });
 
 test("an opened list stays while the latest steps the activity carries are none, as long as the Run has taken steps", async () => {
