@@ -10,7 +10,8 @@ test('History has a row for the compaction an agent made on its own and for a la
   await h.tick();
   await h.waitState(compacting, 'succeeded');
   const kept = h.store.get(compacting.id)!.compactions;
-  assert.deepEqual(kept?.map(({ beforeTokens, afterTokens }) => ({ beforeTokens, afterTokens })), [{ beforeTokens: 610_000, afterTokens: 140_000 }]);
+  assert.deepEqual(kept?.map(({ beforeTokens, afterTokens, trigger }) => ({ beforeTokens, afterTokens, trigger })),
+    [{ beforeTokens: 610_000, afterTokens: 140_000, trigger: 'agent' }], 'its agent compacted it on its own');
   // The same agent's next Run that resumes nothing starts its conversation anew.
   const anew = h.create('claude');
   await h.tick();

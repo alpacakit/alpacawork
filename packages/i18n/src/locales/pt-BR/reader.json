@@ -76,8 +76,8 @@
     "after": "Aguarda",
     "analysis": "Análise",
     "context": "Contexto",
-    "count_many": "{{count}}",
     "count_one": "{{count}}",
+    "count_many": "{{count}}",
     "count_other": "{{count}}",
     "dependencies": "Dependências",
     "files": "Arquivos",
@@ -313,6 +313,16 @@
       "others_many": "Mais {{count}} abaixo",
       "others_other": "Mais {{count}} abaixo"
     },
+    "conversation": {
+      "byAgent": "A conversa ficou longa e a IA a compactou por conta própria.",
+      "byRequest": "Numa pausa do trabalho, a IA pediu para compactá-la.",
+      "fillBefore": "O contexto era {{before}} antes. A IA não informou o valor depois.",
+      "fillUnknown": "A IA não informou o contexto antes nem depois.",
+      "keeps": "Compactar substitui a troca até aqui por um resumo e segue na mesma conversa. Alguns detalhes podem ficar de fora do resumo.",
+      "source": "Laban et al. (2025)",
+      "startsFrom": "A conversa anterior não é levada adiante: a conversa começa dos registros da tarefa (o objetivo, o que foi decidido, até onde chegou).",
+      "why": "Quando uma troca longa perde o rumo, recomeçar com o que foi estabelecido costuma dar melhores resultados, segundo um estudo."
+    },
     "copy": "Copiar",
     "empty": {
       "unassigned": {
@@ -348,7 +358,9 @@
       },
       "cause": "Recebeu “{{title}}” · {{at}}",
       "changedTo": "Mudou para {{state}}",
+      "compactedCut": "{{tokens}} tokens a menos",
       "compactedFill": "Contexto",
+      "compactedFrom": "Contexto antes",
       "end": {
         "again": {
           "question": "Fez a mesma pergunta de novo",
@@ -381,7 +393,7 @@
         "comment": "Nota",
         "compacted": "Compactação",
         "confirm": "Revisão",
-        "conversationNew": "Conversa nova",
+        "conversationNew": "Recomeço",
         "dialogue": "Mensagem",
         "done": "Concluída",
         "error": "Parada",
@@ -396,11 +408,11 @@
         "withdrawn": "Retirada"
       },
       "newBecause": {
-        "another_ai": "Começou de novo porque o trabalho passou para outra IA",
-        "asked": "A solicitação pediu uma conversa nova",
-        "handoff": "O responsável passou para uma conversa nova numa pausa do trabalho",
-        "handoffAt": "O responsável passou para uma conversa nova depois de “{{report}}”",
-        "unresumable": "Começou de novo porque não foi possível retomar a conversa anterior"
+        "another_ai": "Recomeço, porque o trabalho passou para outra IA",
+        "asked": "A solicitação pediu um recomeço",
+        "handoff": "O responsável recomeçou a conversa numa pausa do trabalho",
+        "handoffAt": "O responsável recomeçou a conversa depois de “{{report}}”",
+        "unresumable": "Recomeço, porque não foi possível retomar a conversa anterior"
       },
       "older": "Mostrar {{n}} anteriores",
       "openTask": "Abrir “{{task}}”",

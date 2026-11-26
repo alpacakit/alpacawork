@@ -130,8 +130,9 @@ export function claudeContext(value: unknown): ContextUpdate | null {
     return windows.length ? { windowTokens: Math.max(...windows) } : null;
   }
   if (row.type === 'system' && row.subtype === 'compact_boundary') {
-    const after = object(row.compact_metadata).post_tokens;
-    return { usedTokens: callTokens(after), compacted: true };
+    const { pre_tokens: before, post_tokens: after } = object(row.compact_metadata);
+    const from = callTokens(before);
+    return { usedTokens: callTokens(after), compacted: true, ...from === null ? {} : { compactedFrom: from } };
   }
   return null;
 }

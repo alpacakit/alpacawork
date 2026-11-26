@@ -282,6 +282,16 @@
       "grandchild": "下级子任务",
       "others_other": "下方还有 {{count}} 个"
     },
+    "conversation": {
+      "byAgent": "对话变长，AI 自行进行了压缩。",
+      "byRequest": "在工作告一段落时，AI 请求进行了压缩。",
+      "fillBefore": "压缩前用量为 {{before}}。AI 未告知压缩后的值。",
+      "fillUnknown": "AI 未告知压缩前后的用量。",
+      "keeps": "压缩会用摘要替换之前的往来内容，并在同一对话中继续。细节可能不会保留在摘要中。",
+      "source": "Laban 等（2025）",
+      "startsFrom": "不沿用之前的对话内容，而是带着任务记录（目标、已决定的事项、进展）从该状态开始工作。",
+      "why": "有研究报告，长对话迷失方向时，整理要点后重新开始对话效果更好。"
+    },
     "copy": "复制",
     "empty": {
       "unassigned": {
@@ -313,7 +323,9 @@
       },
       "cause": "收到“{{title}}” · {{at}}",
       "changedTo": "已设为 {{state}}",
+      "compactedCut": "减少 {{tokens}} 个令牌",
       "compactedFill": "用量",
+      "compactedFrom": "压缩前用量",
       "end": {
         "again": {
           "question": "再次提出了同一个提问",
@@ -344,9 +356,9 @@
         "answer": "回答",
         "changed": "更改",
         "comment": "记录",
-        "compacted": "压缩",
+        "compacted": "对话压缩",
         "confirm": "验收",
-        "conversationNew": "新对话",
+        "conversationNew": "对话重新开始",
         "dialogue": "消息",
         "done": "已完成",
         "error": "已停止",
@@ -361,11 +373,11 @@
         "withdrawn": "已撤回"
       },
       "newBecause": {
-        "another_ai": "因为工作转到了其他 AI，开始了新的对话",
-        "asked": "请求指定了新的对话",
-        "handoff": "负责人在工作告一段落时切换到了新的对话",
-        "handoffAt": "负责人在“{{report}}”之后切换到了新的对话",
-        "unresumable": "因为无法继续之前的对话，开始了新的对话"
+        "another_ai": "因为工作转到了其他 AI，对话重新开始",
+        "asked": "请求指定了重新开始对话",
+        "handoff": "负责人在工作告一段落时让对话重新开始",
+        "handoffAt": "负责人在“{{report}}”之后让对话重新开始",
+        "unresumable": "因为无法继续之前的对话，对话重新开始"
       },
       "older": "显示更早的 {{n}} 条",
       "openTask": "打开“{{task}}”",

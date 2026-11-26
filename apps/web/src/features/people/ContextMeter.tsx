@@ -7,6 +7,7 @@ import { compactionCut, contextFigure, type TaskConversations } from "@/domain/c
 import { limitTone } from "@/domain/limits";
 import { contextPercent } from "@alpacawork/contract/agent-context";
 import { Icon } from "@/components/ui/icon";
+import { LOST_IN_CONVERSATION } from "@/features/reader/ConversationDetail";
 import { cn } from "@/lib/utils";
 
 /* Hallmark · component: context meter · genre: modern-minimal · theme: the app's own tokens (the usage ring) */
@@ -86,7 +87,8 @@ function ConversationList({ conversations }: { conversations: TaskConversations 
             <div><dt className="flex items-center gap-1 font-medium"><Icon name="reload" className="size-3.5 text-conversation" />{t("context.change.compacted")}</dt>
               <dd className="m-0 mt-0.5">{t("context.helpCompacted")}</dd></div>
             <div><dt className="flex items-center gap-1 font-medium"><Icon name="chat" className="size-3.5 text-conversation" />{t("context.change.new")}</dt>
-              <dd className="m-0 mt-0.5">{t("context.helpNew")}</dd></div>
+              <dd className="m-0 mt-0.5">{t("context.helpNew")}{" "}
+                <a href={LOST_IN_CONVERSATION} target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-ink">{t("context.source")}</a></dd></div>
           </dl>
           <p className="m-0 mt-2 border-t border-rule pt-2 text-muted">{t("context.helpFigures")}</p></PopoverContent>
       </Popover>

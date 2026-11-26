@@ -71,7 +71,9 @@ export function piContext(value: unknown): ContextUpdate | null {
     return used === null ? null : { usedTokens: used, compacted: false };
   }
   // Its end also comes when a compaction failed or was cut short: then it has no result, and nothing was compacted.
-  return row.type === 'compaction_end' && row.result && !row.aborted ? { usedTokens: null, compacted: true } : null;
+  if (row.type !== 'compaction_end' || !row.result || row.aborted) return null;
+  const from = callTokens(object(row.result).tokensBefore);
+  return { usedTokens: null, compacted: true, ...from === null ? {} : { compactedFrom: from } };
 }
 /** pi's own reckoning of the fill and its window, read when a turn ends. */
 export function piStatsContext(value: unknown): ContextUpdate | null {

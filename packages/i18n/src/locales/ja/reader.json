@@ -282,6 +282,16 @@
       "grandchild": "孫",
       "others_other": "ほか{{count}}件"
     },
+    "conversation": {
+      "byAgent": "会話が長くなったため、AI が自分で圧縮しました。",
+      "byRequest": "作業の区切りで、AI の依頼により圧縮しました。",
+      "fillBefore": "圧縮前の使用量は {{before}} でした。圧縮後の値は AI から届いていません。",
+      "fillUnknown": "圧縮前後の使用量は AI から届いていません。",
+      "keeps": "圧縮では、これまでのやり取りを要約に置き換えて同じ会話を続けます。細かい経緯は要約から抜けることがあります。",
+      "source": "Laban ほか（2025）",
+      "startsFrom": "前の会話のやり取りは引き継がず、タスクの記録（目的・決まったこと・進み具合）を渡して、その状態から作業を始めます。",
+      "why": "長いやり取りで方向を見失ったときは、それまでの要点をまとめて会話を始め直すほうが良い結果になると報告されています。"
+    },
     "copy": "コピー",
     "empty": {
       "unassigned": {
@@ -313,7 +323,9 @@
       },
       "cause": "{{at}} に受け取った「{{title}}」",
       "changedTo": "{{state}}にしました",
+      "compactedCut": "{{tokens}} トークン減",
       "compactedFill": "使用量",
+      "compactedFrom": "圧縮前の使用量",
       "end": {
         "again": {
           "question": "同じ質問を出し直しました",
@@ -344,9 +356,9 @@
         "answer": "回答",
         "changed": "変更",
         "comment": "記録",
-        "compacted": "圧縮",
+        "compacted": "会話の圧縮",
         "confirm": "確認",
-        "conversationNew": "新しい会話",
+        "conversationNew": "会話の仕切り直し",
         "dialogue": "発言",
         "done": "完了",
         "error": "停止",
@@ -361,11 +373,11 @@
         "withdrawn": "取り下げ"
       },
       "newBecause": {
-        "another_ai": "作業が別の AI に移ったため、新しい会話で始めました",
-        "asked": "依頼で新しい会話が指定されました",
-        "handoff": "作業の区切りで、責任者が新しい会話に切り替えました",
-        "handoffAt": "「{{report}}」の区切りで、責任者が新しい会話に切り替えました",
-        "unresumable": "前の会話を続けられなかったため、新しい会話で始めました"
+        "another_ai": "作業が別の AI に移ったため、会話を仕切り直しました",
+        "asked": "依頼で会話の仕切り直しが指定されました",
+        "handoff": "作業の区切りで、責任者が会話を仕切り直しました",
+        "handoffAt": "「{{report}}」の区切りで、責任者が会話を仕切り直しました",
+        "unresumable": "前の会話を続けられなかったため、会話を仕切り直しました"
       },
       "older": "前の{{n}}回を読む",
       "openTask": "「{{task}}」を開く",

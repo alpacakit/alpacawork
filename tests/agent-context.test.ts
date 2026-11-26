@@ -138,3 +138,13 @@ test('a compaction whose agent does not say the fill after it is kept with the n
   activity.finish(folder, 'done');
   assert.deepEqual(told.at(-1), { beforeTokens: 60_000, afterTokens: null }, 'a Run that ends first keeps it without the fill after');
 });
+
+test('each agent that says how full its conversation was before a compaction is taken at its word', () => {
+  // Claude and Copilot say both figures; pi says the one before, and the next fill read gives the one after.
+  assert.deepEqual(adapters.claude.context({ type: 'system', subtype: 'compact_boundary', compact_metadata: { trigger: 'auto', pre_tokens: 610_000, post_tokens: 140_000 } }),
+    { usedTokens: 140_000, compacted: true, compactedFrom: 610_000 });
+  assert.deepEqual(copilotContext('session.compaction_complete', { success: true, preCompactionTokens: 500_000, postCompactionTokens: 90_000 }),
+    { usedTokens: 90_000, compacted: true, compactedFrom: 500_000 });
+  assert.deepEqual(piContext({ type: 'compaction_end', result: { summary: 'Kept', tokensBefore: 120_000 }, aborted: false }),
+    { usedTokens: null, compacted: true, compactedFrom: 120_000 });
+});

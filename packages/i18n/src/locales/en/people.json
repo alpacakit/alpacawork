@@ -37,7 +37,7 @@
     },
     "change": {
       "compacted": "Compacted",
-      "new": "New conversation"
+      "new": "Fresh start"
     },
     "compacted": "The conversation was just compacted. The next reply says how much is used.",
     "conversations": "This task's conversations",
@@ -46,12 +46,13 @@
     "help": "About compactions and new conversations",
     "helpCompacted": "As a conversation grows long, the AI summarizes what was said so far and carries on with the shorter one.",
     "helpFigures": "A % is how much of the conversation's limit was used; the number on the right is the tokens that compaction cut.",
-    "helpNew": "When, for example, the approach changes, the conversation starts over with the task's details, without reading the old exchange again.",
+    "helpNew": "The old exchange is not carried over; the conversation starts again from the task's records. A conversation that has lost its way tends to do better started over with what was established, as a study reports.",
     "label": "Conversation context {{figure}} (used {{used}} / limit {{window}})",
     "more_one": "{{count}} more in History",
     "more_other": "{{count}} more in History",
     "noWindow": "Not set",
     "setWindow": "Enter a limit under Context limits in the agent's settings to see a percent.",
+    "source": "Laban et al. (2025)",
     "title": "Conversation context",
     "tokens_one": "{{tokens}} token",
     "tokens_other": "{{tokens}} tokens",
