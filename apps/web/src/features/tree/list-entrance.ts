@@ -11,24 +11,32 @@ const MOST_LINES = 40;
  * strips where strips are shown), the lines in sight come in from the top in turn, each title rising into place as its
  * strip draws its time from the left to the edge of the screen. It runs once, before the list is first painted, and
  * only on that change of face: the list drawn any other way, and every redraw after, moves nothing and costs nothing.
+ * Titles already painted (the time read after them) stay where they are: only the strips, drawn just now, come in.
  */
 export function useListEntrance(box: RefObject<HTMLElement | null>, entering: boolean, ready: boolean, lead: number) {
   const since = useRef(entering ? performance.now() : null);
+  // Set as the first frame is drawn: a frame asked for before it is painted runs just before that paint.
+  const painted = useRef(false);
+  useLayoutEffect(() => {
+    if (since.current === null) return;
+    const frame = requestAnimationFrame(() => { painted.current = true; });
+    return () => cancelAnimationFrame(frame);
+  }, []);
   useLayoutEffect(() => {
     if (since.current === null || !ready) return;
     const late = performance.now() - since.current > LATE_MS;
     since.current = null;
-    if (!late && box.current) enterLines(box.current, lead);
+    if (!late && box.current) enterLines(box.current, lead, !painted.current);
   }, [ready]);
 }
 
 /**
  * The lines (section headings and rows) of `root` in sight come in one after another, all started within --motion-slow:
- * a heading or a row's title rises into place, a row's strip uncovers its time from the strip's left edge in sight to its
- * right one in sight. Only what the compositor draws moves (translate, opacity, clip-path), and nothing is held once it
+ * a heading or a row's title rises into place (unless `titles` is false), a row's strip uncovers its time from the strip's
+ * left edge in sight to its right one in sight. Only what the compositor draws moves (translate, opacity, clip-path), and nothing is held once it
  * lands (fill: backwards), so the list is left exactly as it was drawn. Reduced motion: each only fades in.
  */
-function enterLines(root: HTMLElement, lead: number) {
+function enterLines(root: HTMLElement, lead: number, titles: boolean) {
   const bounds = root.getBoundingClientRect();
   const lines: HTMLElement[] = [];
   for (const line of root.querySelectorAll<HTMLElement>("[data-section], li[data-row]")) {
@@ -43,7 +51,7 @@ function enterLines(root: HTMLElement, lead: number) {
   const rising: Keyframe[] = shift ? [{ opacity: 0, translate: `0 ${shift}px` }, { opacity: 1, translate: "0 0" }] : [{ opacity: 0 }, { opacity: 1 }];
   lines.forEach((line, at) => {
     const delay = at * step;
-    const words = line.matches("[data-section]") ? line.firstElementChild : line.querySelector("[data-row-label]");
+    const words = !titles ? null : line.matches("[data-section]") ? line.firstElementChild : line.querySelector("[data-row-label]");
     words?.animate(rising, { duration: duration(shift ? "base" : "fast"), delay, easing: easing("out"), fill: "backwards" });
     const strip = line.querySelector<SVGSVGElement>("svg[data-time-strip]");
     if (!strip) return;
