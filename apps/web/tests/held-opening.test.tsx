@@ -1,4 +1,4 @@
-import { snapshotJson } from './conversation-fixture';
+import { snapshotJson, SERVED } from './conversation-fixture';
 import { setConversationState } from './conversation-fixture';
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
@@ -7,7 +7,8 @@ import { afterEach, beforeAll, expect, test, vi } from 'vitest';
 import { i18n, startI18n } from '@alpacawork/i18n';
 import { userTurn } from '@alpacawork/contract';
 import type { ControlTreeDTO } from '@alpacawork/contract/control';
-import type { CoordinatorConversation, CoordinatorMessageInput } from '@alpacawork/contract/coordinator';
+import type { CoordinatorMessageInput } from '@alpacawork/contract/coordinator';
+import type { CoordinatorConversation } from '../src/data/coordinator';
 import { queryClient } from '../src/data/query-client';
 import { Reader } from '../src/features/reader/Reader';
 import { CoordinatorInput } from '../src/features/coordinator/CoordinatorInput';
@@ -57,7 +58,7 @@ const screenAt = (stage: Stage) => screenData(servedAt(stage));
 function serve() {
   const sent: {task:string;state:string}[] = [];
   let stage: Stage = 'asked';
-  const conversation = (): CoordinatorConversation => ({ id: 'c1', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [] });
+  const conversation = (): CoordinatorConversation => ({ id: 'c1', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, cancelled: [], turns: [] });
   const json = (value: unknown) => new Response(snapshotJson(value), { status: 200 });
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, init) => {
     const path = String(url);

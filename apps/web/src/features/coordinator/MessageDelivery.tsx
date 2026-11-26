@@ -16,7 +16,6 @@ import { useShownConversation, type LocalTurn, type SentTurn } from './shown';
 import { deliveryLine, deliveryOf } from './delivery-line';
 import { LocalOutcome } from './LocalOutcome';
 import { cn } from '@/lib/utils';
-import { waitingKey } from './delivery-copy';
 
 /** One sent message's status and actions, wherever that message is drawn. */
 export function MessageDelivery({ turn, local, children, panel = false }: { turn: SentTurn; local?: LocalTurn; children?: ReactNode; panel?: boolean }) {
@@ -58,7 +57,7 @@ export function MessageDelivery({ turn, local, children, panel = false }: { turn
   // Under a message its state is a line beside it, at the size of the answer's own line (who, when): the work line's.
   return <div className={panel ? 'contents' : 'flex flex-wrap items-center gap-x-3 text-xs'}>
     {panel ? <div className="min-w-0 flex-1">{children}{status}</div> : status}
-    {!panel && line.kind === 'waiting' && <WaitingStatus>{t(waitingKey(shown.preparing))}</WaitingStatus>}
+    {!panel && line.kind === 'waiting' && <WaitingStatus>{t('coordinatorCard.queuedLocally')}</WaitingStatus>}
     {/* Under a message its state is said in the conversation's own words at its states' size, from the reply's edge (as "Working on it…" is);
         the panel's compact row says it among its controls. */}
     {!panel && line.kind === 'moving' && words}

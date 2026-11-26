@@ -2,7 +2,7 @@ import type { TFunction } from 'i18next';
 import type { DraftEntry } from '@/features/forms/draft-store';
 import { awaitsWithdrawal, isLive, outgoing, outgoingDisplay, outgoingKey } from './editor/outbox';
 import { rowControl } from './delivery-presentation';
-import { localDeliveryText, waitingKey } from './delivery-copy';
+import { localDeliveryText } from './delivery-copy';
 import type { LocalTurn, SentTurn, Shown } from './shown';
 
 /** What a message's delivery is read from, besides the message: the outbox's entries and live sends, and the drawn partition. */
@@ -45,10 +45,10 @@ export function deliveryLine(turn: SentTurn, local: LocalTurn | undefined, { out
   return { kind: 'none' };
 }
 /** The line's words, except at work (whose words come from the work itself: useWorkingWords). */
-export function deliveryLineWords(line: DeliveryLine, preparing: boolean, t: TFunction<'ui'>): string | null {
+export function deliveryLineWords(line: DeliveryLine, t: TFunction<'ui'>): string | null {
   switch (line.kind) {
-    case 'outcome': return localDeliveryText(line.turn, t, preparing);
-    case 'waiting': return t(waitingKey(preparing));
+    case 'outcome': return localDeliveryText(line.turn, t);
+    case 'waiting': return t('coordinatorCard.queuedLocally');
     case 'moving': return t(line.key);
     default: return null;
   }

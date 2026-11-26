@@ -1,4 +1,4 @@
-import { snapshotJson } from './conversation-fixture';
+import { snapshotJson, SERVED } from './conversation-fixture';
 import { setConversationState } from './conversation-fixture';
 /** Use the store refresh caller which isolates, reconciles receipts and reconciles the outbox. */
 import { coordinatorResultSchema } from '@alpacawork/contract/coordinator';
@@ -19,7 +19,7 @@ const words = (requestId = id) => ({ doc: JSON.stringify(textDocument('same word
 const base: Fixed = { conversationId: cid, text: 'same words', tasks: ['T1'], attachments: [] };
 const answer = (question: string) => ({ answers: [{ task: 'T1', question }] });
 const intent = (action: 'continue' | 'retry') => ({ intent: { task: 'T1', action } });
-const snapshot = (meaning: Partial<CoordinatorTurn>): CoordinatorConversation => ({ id: cid, nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [],
+const snapshot = (meaning: Partial<CoordinatorTurn>): CoordinatorConversation => ({ id: cid, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, cancelled: [],
   turns: [{ id, at: '2026-10-23T08:00:00Z', ask: base.text, tasks: base.tasks, attachments: [], status: 'queued', waiting: true,
     answer: null, seen: false, answeredAt: null, error: null, result: null, ...meaning }] });
 beforeEach(() => {

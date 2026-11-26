@@ -1,7 +1,7 @@
 import { draftKey, updateDraft, discardDraft, useDraftStore } from '../src/features/forms/draft-store';
 import { freeze, returnReaderSubmission, outgoingKey, reconcileOutbox } from '../src/features/coordinator/editor/outbox';
 import { readerTurn } from '../src/features/reader/submission';
-import { snapshotJson } from './conversation-fixture';
+import { snapshotJson, SERVED } from './conversation-fixture';
 import { setConversationState } from './conversation-fixture';
 import { useDirectWriteRecovery } from '../src/features/reader/recovery';
 import * as departureMotion from '../src/features/reader/departure';
@@ -13,7 +13,8 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { i18n, startI18n } from "@alpacawork/i18n";
 import { userTurn } from "@alpacawork/contract";
 import { isFinished } from "@alpacawork/contract/branch";
-import type { CoordinatorConversation, CoordinatorMessageInput, CoordinatorResult } from "@alpacawork/contract/coordinator";
+import type { CoordinatorMessageInput, CoordinatorResult } from "@alpacawork/contract/coordinator";
+import type { CoordinatorConversation } from "../src/data/coordinator";
 import { Reader } from "../src/features/reader/Reader";
 import { EmptyDeck } from "../src/features/reader/NextQuestion";
 import { TaskActionSlot } from "../src/features/coordinator/task-action-slot";
@@ -110,10 +111,10 @@ function serve() {
         ? new Response(snapshotJson({ task: { ...headOf(dto({ id: input.task })), state: input.state }, outcome: { kind: 'recorded' } }))
         : problemResponse('conflict', 'Task changed'))));
     }
-    if (String(url) === '/api/coordinator') return new Response(snapshotJson({ id: 'c1', turns: [], cancelled: [], nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false }));
+    if (String(url) === '/api/coordinator') return new Response(snapshotJson({ id: 'c1', turns: [], cancelled: [], nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false }));
     return problemResponse('not_found');
   });
-  setConversationState({ conversation: { id: 'c1', turns: [], cancelled: [], nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false }, open: false, expanded: false, error: null });
+  setConversationState({ conversation: { id: 'c1', turns: [], cancelled: [], nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false }, open: false, expanded: false, error: null });
 }
 const contents = <><Recovery /><TaskActionSlot /><Reader mode="docked" /><CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }} /><Toaster /></>;
 let shownData: ReturnType<typeof screenOf>;
@@ -180,7 +181,7 @@ for (const hook of ['waiting', 'shown'] as const) test(`${hook} reader ignores e
     [{ ...readerTurn(data.tasks[0]!), title: 'Question', kind: 'answer', answer: 'send', expectedWrites: null }]); });
   expect(renders).toBeGreaterThan(initial);
   if (hook === 'waiting') expect(waiting).toEqual([]);
-  act(() => { reconcileOutbox({ id:'c1',nextLaunch: { agent: 'claude', values: {} },warm: 'none' as const,busy:false,cancelled:[],turns:[{
+  act(() => { reconcileOutbox({ id:'c1',nextLaunch: { agent: 'claude', values: {} },...SERVED,busy:false,cancelled:[],turns:[{
     id:requestId,at:new Date().toISOString(),ask:'answer',attachments:[],status:'succeeded',waiting:false,
     answer:null,seen:false,answeredAt:null,error:null,result:{writes:[],refused:[]}
   }] },root, null,true); });

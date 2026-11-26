@@ -1,6 +1,6 @@
 import { startTransition } from "react";
 
-export type Press = { root: string; conversationId: string; target: string; action: 'send-now' | 'clear' };
+export type Press = { root: string; conversationId: string; target: string; action: 'send-now' | 'clear' | 'reset' };
 // Synchronous admission for the optimistic presses. It owns no saved intent or server state, only their lifetimes.
 const pressing = new Map<string, Promise<void>>();
 const pressKey = (press: Press) => JSON.stringify([press.root, press.conversationId, press.target, press.action]);

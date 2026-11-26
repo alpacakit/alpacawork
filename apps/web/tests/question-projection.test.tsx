@@ -1,4 +1,4 @@
-import { setConversationState, snapshotJson } from './conversation-fixture';
+import { setConversationState, snapshotJson, SERVED } from './conversation-fixture';
 import { afterEach, beforeAll, expect, onTestFinished, test, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { startI18n, i18n } from '@alpacawork/i18n';
@@ -38,7 +38,7 @@ function feed(value = fixture()) {
 const card = (key = 'log:T1:Qown') => document.querySelector<HTMLElement>(`[data-report-key="${key}"]`)!;
 
 test('the Task’s own human question appears without History, and answers its original ID and what it fixed', async () => {
-  const fetcher = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(snapshotJson({ id: 'projection-choice', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [] })));
+  const fetcher = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(snapshotJson({ id: 'projection-choice', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, cancelled: [], turns: [] })));
   onTestFinished(() => fetcher.mockRestore());
   render(feed().node);
   expect(within(card()).getByText('Where to save?')).toBeTruthy();

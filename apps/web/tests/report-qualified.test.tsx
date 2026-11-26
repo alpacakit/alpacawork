@@ -20,6 +20,7 @@ import { hasSubmission, type Fixed } from '../src/features/coordinator/editor/ou
 import type { CoordinatorConversation } from '../src/data/coordinator';
 import { headOf, TestWorkspace, screenData, tree, dto, taskFixture, homeFixture, userBall, logEntry, at } from './fixtures';
 import { jsonAnswer } from './receipt-fixture';
+import { SERVED } from './conversation-fixture';
 
 beforeAll(() => startI18n());
 beforeEach(() => { client.clear(); useConnection.setState({ state:'connecting', fresh:false, offline:false }); });
@@ -162,7 +163,7 @@ test('W5 display turn cannot retire a different server turn',()=>{
 for(const historical of [{task:'T1',action:'approve'}, {nonsense:'recorded'}] as Record<string,string>[]) test(`W6 historical ${JSON.stringify(historical)} is nonthrowing and cannot match absent intent`,()=>{
  const fixed:Fixed={conversationId:'c',text:'original words',attachments:[]};
  const turn={id:'fixed',at,ask:fixed.text,attachments:[],intent:historical,status:'queued' as const,waiting:true,answer:null,seen:false,answeredAt:null,error:null,result:null};
- const conversation:CoordinatorConversation={id:'c',nextLaunch: { agent: 'claude', values: {} },warm: 'none' as const,busy:false,cancelled:[],turns:[turn]};
+ const conversation:CoordinatorConversation={id:'c',nextLaunch: { agent: 'claude', values: {} },...SERVED,busy:false,cancelled:[],turns:[turn]};
  expect(()=>hasSubmission(conversation,'fixed',fixed)).not.toThrow();expect(hasSubmission(conversation,'fixed',fixed)).toBe(false);
  expect(turn.ask).toBe('original words');
 });

@@ -11,7 +11,7 @@ test('a missing destination is consumed once and cannot execute after a later re
   function Thread() {
     const root = useRef<HTMLOListElement>(null), [visible, setVisible] = useState(false);
     show = () => setVisible(true);
-    useReplyNavigationOwner(root, 'conversation', 0, () => {});
+    useReplyNavigationOwner(root, 'conversation', 0, () => 'here');
     return <ol ref={root}>{visible && <li data-coordinator-message="missing"><div data-ask-answer>Now present</div></li>}</ol>;
   }
   render(<Thread />);

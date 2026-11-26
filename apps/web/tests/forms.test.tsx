@@ -1,5 +1,5 @@
 import { indexTasks } from '../src/domain/tasks';
-import { snapshotJson } from './conversation-fixture';
+import { snapshotJson, SERVED } from './conversation-fixture';
 import { setConversationState } from './conversation-fixture';
 import { serverView, jsonAnswer } from './receipt-fixture';
 import { readerPresentation, readQuery, readIndex, refuseRead } from '../src/data/read-model';
@@ -18,7 +18,8 @@ import { test, expect, vi, onTestFinished } from "vitest";
 import type { ReactNode } from "react";
 import { cleanup, render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { i18n } from "@alpacawork/i18n";
-import type { CoordinatorConversation, CoordinatorMessageInput, CoordinatorResult } from "@alpacawork/contract/coordinator";
+import type { CoordinatorMessageInput, CoordinatorResult } from "@alpacawork/contract/coordinator";
+import type { CoordinatorConversation } from "../src/data/coordinator";
 import { StateControl } from "../src/features/forms/ReportInputs";
 import { useTitleKeys } from "../src/features/forms/title-keys";
 import type { Task } from "../src/data/types";
@@ -85,7 +86,7 @@ function withInput(data: ReturnType<typeof screenData>, children: ReactNode, hol
   const asked: CoordinatorMessageInput[] = [];
   const reports: any[] = [], pending: ((result: CoordinatorResult) => void)[] = [];
   let status: CoordinatorConversation["turns"][number]["status"] = "running", result: CoordinatorResult | null = null;
-  const conversation = (): CoordinatorConversation => ({ id: "c1", nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [],
+  const conversation = (): CoordinatorConversation => ({ id: "c1", nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, cancelled: [],
     turns: asked.map((input) => ({ id: input.id, at, ask: input.text, tasks: input.tasks, attachments: input.attachments,
       ...(input.intent ? { intent: input.intent } : {}), status, waiting: status === "queued" || status === "sending", answer: null, seen: false, answeredAt: null, error: null, result })) });
   const json = (value: unknown) => new Response(snapshotJson(value), { status: 200 });

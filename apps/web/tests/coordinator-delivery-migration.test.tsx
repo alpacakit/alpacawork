@@ -1,6 +1,6 @@
-import { readConversationThroughOwner } from './conversation-fixture';
+import { readConversationThroughOwner, SERVED } from './conversation-fixture';
 import { queryClient } from '../src/data/query-client';
-import { snapshotJson } from './conversation-fixture';
+import { snapshotJson, messageJson, servedJson } from './conversation-fixture';
 import { setConversationState } from './conversation-fixture';
 /** Render the real editor and thread against controlled transport ordering. */
 import { useRef } from 'react';
@@ -23,13 +23,14 @@ import { notify, useToasts } from '../src/lib/notify';
 import { TestWorkspace } from './fixtures';
 
 const root = '/fixture', cid = 'migration-delivery', key = draftKey(root, 'coordinator', cid);
-const snapshot = (turns: any[] = [], busy = false) => ({ id: cid, nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy, cancelled: [], turns });
+const snapshot = (turns: any[] = [], busy = false) => ({ id: cid, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy, cancelled: [], turns });
 const turn = (input: any, extra = {}) => ({ ...input.tasks?.length ? { tasks: input.tasks } : {}, ...input.skills?.length ? { skills: input.skills } : {}, id: input.id, at: '2026-10-16T00:00:00Z', ask: input.text, attachments: [],
   status: 'succeeded', waiting: false, answer: 'Done', seen: true, answeredAt: '2026-10-16T00:00:01Z', error: null, result: { writes: [], refused: [] }, ...extra });
 const reply = (value: unknown, status = 200) => new Response(snapshotJson(value), { status });
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(r => { resolve = r; }); return { promise, resolve }; }
+const NO_TURNS: never[] = [];
 function Surface() {
-  const turns = useConversation(state => state.conversation?.turns ?? []);
+  const turns = useConversation(state => state.conversation?.turns ?? NO_TURNS);
   const area = useRef<HTMLDivElement>(null);
   return <TestWorkspace><ShownConversationProvider><div ref={area}>
     <CoordinatorThread turns={turns} retry={() => {}} />
@@ -54,7 +55,7 @@ const rows = (stage?: string) => document.querySelectorAll(stage ? `[data-coordi
 async function mount(deliver: (body: any) => Promise<Response>, get: () => ReturnType<typeof snapshot> = () => snapshot()) {
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, init) => {
     if (String(url) === '/api/coordinator/messages') return deliver(JSON.parse(String(init?.body)));
-    if (String(url) === '/api/coordinator') return reply(get());
+    if (String(url) === '/api/coordinator' || String(url).endsWith('/status')) return new Response(servedJson(String(url), init, get()));
     return reply({ status: 'ready', profile: 'claude', skills: [{ name: 'alpacawork', invocation: '/', description: 'Distributed skill' }] });
   });
   await readConversationThroughOwner(get(), root);
@@ -73,7 +74,7 @@ test('event before the POST answer draws the turn once; the late reply leaves th
   await act(async () => { await useConversation.getState().refresh(); });
   await waitFor(() => expect(document.querySelectorAll('[data-coordinator-turn=succeeded]')).toHaveLength(1));
   expect(rows()).toHaveLength(0); expect(screen.getAllByText('Event arrives first', { exact: true })).toHaveLength(1);
-  await act(async () => { response.resolve(reply(server)); });
+  await act(async () => { response.resolve(new Response(messageJson(server, body.id))); });
   expect(screen.getAllByText('Event arrives first', { exact: true })).toHaveLength(1);
   expect(send().disabled).toBe(true); words('Next'); expect(send().disabled).toBe(false);
 });
@@ -100,7 +101,7 @@ test('an unknown send survives remount and resends the exact ID and payload befo
   const bodies: any[] = []; let server = snapshot(), cut = true;
   const view = await mount(async input => {
     bodies.push(input); if (cut) throw new Error('connection lost');
-    server = snapshot([...server.turns, turn(input)]); return reply(server);
+    server = snapshot([...server.turns, turn(input)]); return new Response(messageJson(server, input.id));
   }, () => server);
   words('Disconnected instruction'); fireEvent.click(send());
   await waitFor(() => expect(rows('unknown')).toHaveLength(1));
@@ -131,7 +132,7 @@ test('failed send now preserves the exact message in the thread for retry', asyn
     if (String(url) === '/api/coordinator/messages/send-now') {
       expect(JSON.parse(String(init?.body))).toEqual({ conversationId: cid, id: 'next' });
       if (++attempts === 1) throw new Error('lost send-now');
-      return reply(snapshot([first, { ...next, status: 'joined', waiting: false, into: first.id }], true));
+      return new Response(messageJson(snapshot([first, { ...next, status: 'joined', waiting: false, into: first.id }], true), 'next'));
     }
     if (String(url) === '/api/coordinator') return reply(current);
     return reply({ status: 'unavailable', skills: [] });
@@ -158,7 +159,7 @@ test('version mismatch keeps words and skill labels in the input; updating never
       if (!current) return reply({ error: { code: 'conflict', message: 'version mismatch', retry: 'reread', reason: {
         kind: 'managed_skills_version', skill: 'alpacawork', expectedVersion: '0.3.0', currentVersion: '0.2.0', command,
       } } }, 409);
-      server = snapshot([turn(input)]); return reply(server);
+      server = snapshot([turn(input)]); return new Response(messageJson(server, input.id));
     }
     if (String(url) === '/api/coordinator') return reply(server);
     return reply({ status: 'ready', profile: 'claude', skills: [{ name: 'alpacawork', invocation: '/', description: 'Distributed skill' }] });
@@ -192,14 +193,14 @@ for (const queuedNext of [false, true]) test(`appended input excludes the first 
   await mount(async input => {
     bodies.push(input);
     if (bodies.length === 1) return response.promise;
-    server = snapshot([...server.turns, turn(input)]); return reply(server);
+    server = snapshot([...server.turns, turn(input)]); return new Response(messageJson(server, input.id));
   }, () => server);
   words('First.'); fireEvent.click(send()); await waitFor(() => expect(bodies).toHaveLength(1));
   const editor = (field() as HTMLElement & { editor: import('@tiptap/react').Editor }).editor;
   act(() => { editor.commands.insertContentAt(editor.state.doc.content.size - 1, 'Second.'); });
   if (queuedNext) { fireEvent.click(send()); expect(bodies).toHaveLength(1); }
   server = snapshot([turn(bodies[0])]);
-  await act(async () => { response.resolve(reply(server)); });
+  await act(async () => { response.resolve(new Response(messageJson(server, bodies[0].id))); });
   if (!queuedNext) {
     await waitFor(() => expect(field().textContent).toBe('Second.'));
     fireEvent.click(send());
@@ -251,12 +252,12 @@ for (const [original, next] of [
 ] as const) for (const queuedNext of [false, true]) test(`fix5 position: ${original}, next queued=${queuedNext}`, async () => {
   const gate = deferred<Response>(), bodies: any[] = []; let server = snapshot();
   await mount(async input => { bodies.push(input); if (bodies.length === 1) return gate.promise;
-    server = snapshot([...server.turns, turn(input)]); return reply(server); }, () => server);
+    server = snapshot([...server.turns, turn(input)]); return new Response(messageJson(server, input.id)); }, () => server);
   words(original); fireEvent.click(send()); await waitFor(() => expect(bodies).toHaveLength(1));
   const editor = (field() as HTMLElement & { editor: import('@tiptap/react').Editor }).editor;
   act(() => { editor.commands.insertContentAt(editor.state.doc.content.size - 1, next); });
   if (queuedNext) { fireEvent.click(send()); expect(bodies).toHaveLength(1); }
-  server = snapshot([turn(bodies[0])]); await act(async () => { gate.resolve(reply(server)); });
+  server = snapshot([turn(bodies[0])]); await act(async () => { gate.resolve(new Response(messageJson(server, bodies[0].id))); });
   if (!queuedNext) { await waitFor(() => expect(field().textContent).toBe(next)); fireEvent.click(send()); }
   await waitFor(() => expect(bodies).toHaveLength(2));
   expect(bodies.map(body => body.text)).toEqual([original, next]);
@@ -266,7 +267,7 @@ for (const [original, next] of [
 for (const labelled of [false, true]) test(`fix5 position: refused head and accepted successor, context=${labelled}`, async () => {
   const gate = deferred<Response>(), bodies: any[] = []; let server = snapshot();
   await mount(async input => { bodies.push(input); if (bodies.length === 1) return gate.promise;
-    server = snapshot([...server.turns, turn(input)]); return reply(server); }, () => server);
+    server = snapshot([...server.turns, turn(input)]); return new Response(messageJson(server, input.id)); }, () => server);
   const editor = (field() as HTMLElement & { editor: import('@tiptap/react').Editor }).editor;
   act(() => { editor.commands.setContent({ type: 'doc', content: [{ type: 'paragraph', content: [
     ...labelled ? [{ type: 'taskLabel', attrs: { id: 'T1', title: 'Local task' } }] : [], { type: 'text', text: ' First.' },
@@ -286,10 +287,10 @@ for (const labelled of [false, true]) test(`fix5 position: refused head and acce
 test('fix5 position: rewriting the original preserves the complete new instruction', async () => {
   const gate = deferred<Response>(), bodies: any[] = []; let server = snapshot();
   await mount(async input => { bodies.push(input); if (bodies.length === 1) return gate.promise;
-    server = snapshot([...server.turns, turn(input)]); return reply(server); }, () => server);
+    server = snapshot([...server.turns, turn(input)]); return new Response(messageJson(server, input.id)); }, () => server);
   words('一覧を作って'); fireEvent.click(send()); await waitFor(() => expect(bodies).toHaveLength(1));
   words('表を作ってください'); server = snapshot([turn(bodies[0])]);
-  await act(async () => { gate.resolve(reply(server)); });
+  await act(async () => { gate.resolve(new Response(messageJson(server, bodies[0].id))); });
   await waitFor(() => expect(useOutbox.getState().live.size).toBe(0)); expect(field().textContent).toBe('表を作ってください');
   fireEvent.click(send()); await waitFor(() => expect(bodies).toHaveLength(2));
   expect(bodies.map(body => body.text)).toEqual(['一覧を作って', '表を作ってください']);
@@ -298,7 +299,7 @@ test('fix5 position: rewriting the original preserves the complete new instructi
 test('fix5 position: a quote with a hard break in a new paragraph consumes only the original paragraph', async () => {
   const gate = deferred<Response>(), bodies: any[] = []; let server = snapshot();
   await mount(async input => { bodies.push(input); if (bodies.length === 1) return gate.promise;
-    server = snapshot([...server.turns, turn(input)]); return reply(server); }, () => server);
+    server = snapshot([...server.turns, turn(input)]); return new Response(messageJson(server, input.id)); }, () => server);
   words('はい'); fireEvent.click(send()); await waitFor(() => expect(bodies).toHaveLength(1));
   const editor = (field() as HTMLElement & { editor: import('@tiptap/react').Editor }).editor;
   act(() => { editor.commands.insertContentAt(editor.state.doc.content.size - 1, [
@@ -309,7 +310,7 @@ test('fix5 position: a quote with a hard break in a new paragraph consumes only 
   expect(quote.content?.at(-1)?.content).toEqual([
     { type: 'text', text: 'はい、あと' }, { type: 'hardBreak' }, { type: 'text', text: '確認してください。' },
   ]);
-  server = snapshot([turn(bodies[0])]); await act(async () => { gate.resolve(reply(server)); });
+  server = snapshot([turn(bodies[0])]); await act(async () => { gate.resolve(new Response(messageJson(server, bodies[0].id))); });
   await waitFor(() => expect(rows()).toHaveLength(0));
   expect(editor.getJSON()).toEqual(quote);
   expect(bodies[0].text).toBe('はい');
@@ -321,14 +322,14 @@ test('fix5 position: a quote with a hard break in a new paragraph consumes only 
 test('fix5 position: changing Task context keeps the new label while admitted words are consumed', async () => {
   const gate = deferred<Response>(), bodies: any[] = []; let server = snapshot();
   await mount(async input => { bodies.push(input); if (bodies.length === 1) return gate.promise;
-    server = snapshot([...server.turns, turn(input)]); return reply(server); }, () => server);
+    server = snapshot([...server.turns, turn(input)]); return new Response(messageJson(server, input.id)); }, () => server);
   const editor = (field() as HTMLElement & { editor: import('@tiptap/react').Editor }).editor;
   act(() => { editor.commands.setContent({ type: 'doc', content: [{ type: 'paragraph', content: [
     { type: 'taskLabel', attrs: { id: 'T1', title: 'First task' } }, { type: 'text', text: ' First.' },
   ] }] }); });
   fireEvent.click(send()); await waitFor(() => expect(bodies).toHaveLength(1));
   act(() => { editor.commands.insertContentAt({ from: 1, to: 2 }, { type: 'taskLabel', attrs: { id: 'T2', title: 'New task' } }); });
-  server = snapshot([turn(bodies[0])]); await act(async () => { gate.resolve(reply(server)); });
+  server = snapshot([turn(bodies[0])]); await act(async () => { gate.resolve(new Response(messageJson(server, bodies[0].id))); });
   await waitFor(() => expect(field().textContent).not.toContain('First.'));
   const doc = JSON.parse(useDraftStore.getState().entries[key]!.values.doc!);
   expect(doc.content[0].content).toEqual([{ type: 'taskLabel', attrs: { id: 'T2', title: 'New task' } }]);
@@ -344,7 +345,7 @@ test('removing Task context during admission never restores the sent recipient',
   ] }] }); });
   fireEvent.click(send()); await waitFor(() => expect(body).toBeTruthy());
   act(() => { editor.commands.deleteRange({ from: 1, to: 2 }); });
-  server = snapshot([turn(body)]); await act(async () => { gate.resolve(reply(server)); });
+  server = snapshot([turn(body)]); await act(async () => { gate.resolve(new Response(messageJson(server, body.id))); });
   await waitFor(() => expect(field().textContent).not.toContain('First.'));
   expect(field().textContent).not.toContain('First task');
   expect(JSON.parse(useDraftStore.getState().entries[key]!.values.doc!).content[0].content ?? []).toEqual([]);

@@ -1,5 +1,5 @@
 import { MessageDelivery } from '../src/features/coordinator/MessageDelivery';
-import { snapshotJson } from './conversation-fixture';
+import { snapshotJson, messageJson, statusJson, SERVED } from './conversation-fixture';
 import { setConversationState } from './conversation-fixture';
 import { afterEach, beforeAll, expect, test, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
@@ -30,7 +30,7 @@ const message = (id: string, status: CoordinatorTurn["status"], rest: Partial<Co
   // Replies are read unless a case says otherwise: an unread one is folded when the conversation opens.
   answer: null, seen: status === 'succeeded' || status === 'failed', answeredAt: null, error: null, result: null, ...rest,
 });
-const state = (turns: CoordinatorTurn[]) => ({ id: "conversation", nextLaunch: { agent: "fake", values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns });
+const state = (turns: CoordinatorTurn[]) => ({ id: "conversation", nextLaunch: { agent: "fake", values: {} }, ...SERVED, busy: false, cancelled: [], turns });
 const reply = (turns: CoordinatorTurn[], cancelled: string[] = []) => new Response(snapshotJson({ ...state(turns), cancelled }), { status: 200 });
 beforeAll(async () => { await startI18n(); await i18n.changeLanguage("en"); });
 afterEach(() => { for (const offer of useUndoOffers.getState().offers) endSendGrace(offer.id); useOutbox.setState({ live: new Set() }); useConnection.setState({ offline: false }); cleanup(); vi.unstubAllGlobals(); setConversationState({ conversation: null, open: false, read: true, error: null }); });
@@ -53,8 +53,8 @@ test("shared waiting rows expand the whole message and its attachments", () => {
 test("withdraw and send now call the server for their own message; sending cannot be withdrawn", async () => {
   const running = message('work', 'running'), a = message('a', 'queued'), b = message('b', 'queued');
   setConversationState({ conversation: state([running, a, b]) });
-  const fetcher = vi.fn().mockResolvedValueOnce(reply([running, b], ['a']))
-    .mockResolvedValueOnce(reply([running, { ...b, status: 'sending', waiting: true, into: running.id }]));
+  const fetcher = vi.fn().mockResolvedValueOnce(new Response(messageJson(state([running, b]), 'a', 'withdrawn')))
+    .mockResolvedValueOnce(new Response(messageJson(state([running, { ...b, status: 'sending', waiting: true, into: running.id }]), 'b')));
   vi.stubGlobal('fetch', fetcher);
   render(<TestWorkspace><QueueRows /></TestWorkspace>);
   fireEvent.click(within(document.querySelector('[data-coordinator-waiting=a]')!).getByRole('button', { name: 'Cancel' }));
@@ -79,6 +79,8 @@ test("send now is absent without a running turn, and a rejected action refreshes
   expect(screen.queryByRole('button', { name: 'Send now' })).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
   await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2));
+  // The refused withdrawal is checked by reading the queue again, which still holds the message.
+  expect(fetcher.mock.calls.map(([url]) => url)).toEqual(['/api/coordinator/messages/withdraw', '/api/coordinator']);
   await waitFor(() => expect(document.querySelector('[data-coordinator-waiting]')).toBeNull());
 });
 

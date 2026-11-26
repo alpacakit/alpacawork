@@ -1,4 +1,4 @@
-import { snapshotJson } from './conversation-fixture';
+import { snapshotJson, messageJson, statusJson, SERVED } from './conversation-fixture';
 import { setConversationState } from './conversation-fixture';
 /** Actual Card.retry and Card -> Input -> refresh recovery, below the public HTTP adapter only. */
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest';
@@ -17,7 +17,7 @@ import { notify } from '../src/lib/notify';
 import { TestWorkspace, tree, dto, screenData, viewsOf } from './fixtures';
 
 const root = '/fixture', cid = 'admission-callers', id = 'unknown-request';
-const conversation = (turns: any[] = []) => ({ id: cid, nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns });
+const conversation = (turns: any[] = []) => ({ id: cid, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, cancelled: [], turns });
 const response = (value: unknown, status = 200) => new Response(snapshotJson(value), { status });
 const fixedTurn = (input: any) => ({ id: input.id, at: '2026-10-23T09:00:00Z', ask: input.text,
   tasks: input.tasks, answers: input.answers, intent: input.intent, attachments: input.attachments,
@@ -44,7 +44,7 @@ afterEach(({ task }) => {
     vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
       const method = init?.method ?? 'GET'; requests.push({ path: url, method, ...(method === 'POST' ? { body: JSON.parse(String(init?.body)) } : {}) });
       if (url.includes('/task/view')) return refused ? response({}, 403) : response(detail);
-      if (url === '/api/coordinator/messages') return response(conversation([failed, fixedTurn(JSON.parse(String(init?.body)))]));
+      if (url === '/api/coordinator/messages') { const sent = JSON.parse(String(init?.body)); return new Response(messageJson(conversation([failed, fixedTurn(sent)]), sent.id)); }
       if (url.includes('/skills')) return response({ status: 'unavailable', profile: 'claude', skills: [] });
       return response(conversation([failed]));
     }));
@@ -90,7 +90,9 @@ for (const meaning of ['answers', 'intent'] as const) for (const matches of [tru
       requests.push({ path: url, method: init?.method ?? 'GET' });
       if (url.includes('/task/view')) return response({}, 403);
       if (url === '/api/coordinator') return gate;
-      if (url === '/api/coordinator/messages') return response(conversation([other, fixedTurn({ ...fixed, id })]));
+      if (url === '/api/coordinator/messages') return new Response(messageJson(conversation([other, fixedTurn({ ...fixed, id })]), id));
+      // Not among the snapshot's turns, the message's own status says serve never took it.
+      if (url === `/api/coordinator/messages/${id}/status`) return new Response(statusJson(id, 'missing'));
       if (url.includes('/skills')) return response({ status: 'unavailable', profile: 'claude', skills: [] });
       return response(conversation());
     }));

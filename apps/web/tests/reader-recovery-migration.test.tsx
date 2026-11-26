@@ -1,4 +1,4 @@
-import { readConversationThroughOwner } from './conversation-fixture';
+import { readConversationThroughOwner, SERVED } from './conversation-fixture';
 import { snapshotJson } from './conversation-fixture';
 import { setConversationState } from './conversation-fixture';
 /** Keyboard → actual reader send → rendered recovery toast, without replacing recovery rules. */
@@ -22,7 +22,7 @@ import { useDialogStore } from '../src/state/dialog-store';
 import { queryClient } from '../src/data/query-client';
 import { at, homeFixture, logEntry, decideItem, questionFixture, screenData, taskFixture, TestWorkspace, tree, userBall } from './fixtures';
 const cid = 'reader-recovery-migration';
-const conversation = { id: cid, nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [] };
+const conversation = { id: cid, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, cancelled: [], turns: [] };
 const refusal = () => new Response(snapshotJson({ error: { code: 'conflict', message: 'Refused', retry: 'reread' } }), { status: 409 });
 const data = () => screenData(tree({ tasks: ['T1', 'T2'].map((id, i) => taskFixture({ id, title: `Review card ${i + 1}`, state: 'doing',
   log: [logEntry({ id: `Q${i + 1}`, kind: 'asked', title: 'Please review', description: 'This is a report', askedTo: null, actor: { kind: 'placement', placementId: `P${i + 1}` } })],

@@ -1,4 +1,4 @@
-import { setConversationState } from './conversation-fixture';
+import { setConversationState, SERVED } from './conversation-fixture';
 import { labelled } from './fixtures';
 import { afterEach, beforeEach, expect, test } from 'vitest';
 import { cleanup } from '@testing-library/react';
@@ -12,7 +12,7 @@ import { useConversation } from '../src/features/coordinator/coordinator';
 const reply = { id: '11111111-1111-4111-8111-111111111111', answeredAt: '2026-10-22T11:00:00Z' };
 const other = { ...reply, id: '22222222-2222-4222-8222-222222222222' };
 const root = '/fixture', cid = 'conversation', key = draftKey(root, 'coordinator', cid);
-beforeEach(() => { sessionStorage.clear(); useDraftStore.setState({ entries: {}, unavailable: false }); useOutbox.setState({ live: new Set() }); setConversationState({ root, conversation: { id: cid, nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, turns: [], cancelled: [] } }); });
+beforeEach(() => { sessionStorage.clear(); useDraftStore.setState({ entries: {}, unavailable: false }); useOutbox.setState({ live: new Set() }); setConversationState({ root, conversation: { id: cid, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, turns: [], cancelled: [] } }); });
 afterEach(cleanup);
 
 test('the document owns one replaceable reply; putting it in takes Task labels off and keeps everything else', () => {
@@ -82,6 +82,6 @@ test('a snapshot with a different reply under the same ID cannot settle the outb
   const doc = replyTo(textDocument('reply words'), reply), values = { doc: JSON.stringify(doc), requestId: 'request-1' };
   useDraftStore.setState({ entries: { [key]: { status: 'editing', values } } });
   freeze(root, { conversationId: cid, text: 'reply words', attachments: [], replyTo: reply.id }, values);
-  const conflicts = isolateConflicts({ id: cid, nextLaunch: { agent: 'claude', values: {} }, busy: false, warm: 'none' as const, cancelled: [], turns: [{ id: 'request-1', ask: 'reply words', attachments: [], replyTo: { ...other, head: '' } } as any] }, root, 'conflict');
+  const conflicts = isolateConflicts({ id: cid, nextLaunch: { agent: 'claude', values: {} }, busy: false, ...SERVED, cancelled: [], turns: [{ id: 'request-1', ask: 'reply words', attachments: [], replyTo: { ...other, head: '' } } as any] }, root, 'conflict');
   expect(conflicts.has('request-1')).toBe(true);
 });

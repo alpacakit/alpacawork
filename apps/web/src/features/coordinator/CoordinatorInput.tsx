@@ -22,6 +22,7 @@ import { decideOf } from '@/domain/questions';
 import { useTaskDetail, useWriteDisabled, useWorkspaceWritable } from '@/data/queries';
 import { useDraftStore } from '@/features/forms/draft-store';
 import { CoordinatorAi } from './CoordinatorAi';
+import { CoordinatorContext } from './CoordinatorContext';
 import { attachmentsOf } from '@/domain/attachments';
 import { useComposerFiles } from '@/features/reader/Attachments';
 import { useConversation } from './coordinator';
@@ -298,6 +299,8 @@ export const CoordinatorInput = memo(function CoordinatorInput({ launch }: { lau
   const row = 'flex min-h-10 flex-none flex-wrap items-center gap-1 px-2 pb-2 narrow:min-h-13 narrow:gap-0 narrow:px-2 narrow:pb-2 pointer-coarse:min-h-13 pointer-coarse:gap-0 pointer-coarse:px-2 pointer-coarse:pb-2';
   // The input's AI is one of the row's quiet tools, not a field: no box of its own, its ground only when pointed at.
   const ai = 'h-8 rounded-full border-transparent bg-transparent px-2 text-muted hover:text-ink narrow:h-11 pointer-coarse:h-11';
+  // The usage is one of them too, a finger's width at least where a finger presses it.
+  const context = 'h-8 rounded-full px-2 text-muted hover:bg-hover hover:text-ink narrow:h-11 narrow:min-w-11 pointer-coarse:h-11 pointer-coarse:min-w-11';
   const tool = inputTool;
   return <div data-one-input-area data-input-tall={tall || undefined} className="flex min-h-0 shrink flex-col border-t border-rule bg-raised p-2">
     {/* What stands over the words is what lasts about them (a draft that cannot be kept, notify.ts); a send that did not
@@ -330,7 +333,8 @@ export const CoordinatorInput = memo(function CoordinatorInput({ launch }: { lau
           <span className={cn("min-w-0 flex-1 self-stretch", !own && !narrow && "cursor-grab touch-none [[data-coordinator-held]_&]:cursor-grabbing")} />
           {/* The AI takes the room it needs before the ground does (grow-9), and keeps at least a finger's width (basis-11):
               narrower than that, it goes to the next line instead. */}
-          {launch.ready && <span className="ml-auto flex min-w-0 max-w-max grow-9 basis-11"><CoordinatorAi next={launch.next} className={ai} /></span>}
+          {/* How full the coordinator's conversation is, and its reset, left of its AI: both are about the coordinator. */}
+          {launch.ready && <span className="ml-auto flex min-w-0 max-w-max grow-9 basis-11 items-center"><CoordinatorContext className={context} /><CoordinatorAi next={launch.next} className={ai} /></span>}
           <span className="ml-auto flex flex-none">
           {/* Initial release: voice.enabled && !content ? <VoiceInput voice={voice} disabled={unreachable} round className={cn(inputSpeak, inputFinger)} /> : */}<Button type="submit" data-ask-send className={action}
             aria-label={t('coordinatorCard.send')} title={closing ? t('coordinatorCard.clearingHint') : undefined} disabled={steady.disabled || !content} onClick={steady.press()}><Icon name="plane" className="size-4" /></Button>

@@ -43,10 +43,10 @@ for (const [width, height] of [[1440, 900]] as const) {
 
     // The conversation opens over the list and offers its examples there. An example only goes into the input.
     await openCoordinator(page);
-    const warm = page.locator("[data-coordinator-warm]");
-    await expect(warm.locator("[data-warm-example]")).toHaveCount(4);
-    const example = (name: string) => warm.locator(`[data-warm-example="${name}"]`);
-    const names = await warm.locator("[data-warm-example]").evaluateAll(rows => rows.map(row => row.getAttribute("data-warm-example")!));
+    const start = page.locator("[data-coordinator-start]");
+    await expect(start.locator("[data-warm-example]")).toHaveCount(4);
+    const example = (name: string) => start.locator(`[data-warm-example="${name}"]`);
+    const names = await start.locator("[data-warm-example]").evaluateAll(rows => rows.map(row => row.getAttribute("data-warm-example")!));
     const [first, second] = names as [string, string];
     await example(first).click();
     const firstWords = (await field(page).innerText()).trim();
