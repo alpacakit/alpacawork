@@ -31,7 +31,7 @@ export function Causes({ accepted, open }: { accepted: Accepted; open: Open }) {
   const ratio = (part: number, whole: number) => whole ? `${share(part / whole)}` : "—";
   const clues = [
     [t("causes.choice"), ratio(items.choice, items.total), t("causes.ofItems", { count: items.total })],
-    [t("causes.recommended"), ratio(items.recommended, items.recommendable), t("causes.ofItems", { count: items.recommendable })],
+    [t("causes.recommended"), ratio(items.recommended, items.recommendable), t("causes.ofRecommendable", { count: items.recommendable })],
     [t("causes.replaced"), ratio(accepted.questionsReplaced, accepted.questions), t("causes.ofQuestions", { count: accepted.questions })],
     [t("causes.noQuestions"), ratio(accepted.passedNoQuestions, accepted.noQuestions), t("causes.ofTasks", { count: accepted.noQuestions })],
   ] as const;
@@ -51,7 +51,7 @@ export function Causes({ accepted, open }: { accepted: Accepted; open: Open }) {
         part("ai", t("time.ai"), accepted.time.ai, "ai"), part("other", t("time.other"), accepted.time.other, "other"),
       ]),
       after: time > 0 && <p className="mt-3 text-xs text-muted" {...tip(t("causes.laterTip"))} data-tip-tap="">
-        {t("causes.laterTime", { time: duration(accepted.rounds.later.ms), share: share(accepted.rounds.later.ms / time) })}</p> },
+        {t("causes.laterTime", { total: duration(time), time: duration(accepted.rounds.later.ms), share: share(accepted.rounds.later.ms / time) })}</p> },
     { key: "tokens", name: t("causes.tokens"), of: t("causes.ofTokens", { tokens: format("tokens", tokens) }), none: t("causes.none"),
       causes: [["first", accepted.rounds.first.tokens], ["later", accepted.rounds.later.tokens]].filter(([, n]) => (n as number) > 0).map(([key, n]) => ({
         key: key as string, name: t(`causes.${key}Round`), value: format("tokens", n as number), share: (n as number) / tokens, bar: (n as number) / tokens,

@@ -14,6 +14,7 @@ import { AnalysisLayers } from "./AnalysisLayers";
 import { TasksLook } from "./TasksLook";
 import { FaceSkeleton } from "./FaceSkeleton";
 import { UsageLook } from "./UsageLook";
+import { WorkBand } from "./WorkBand";
 import type { Head, Period, TasksView, UsageSeriesView, UsageView } from "./contract";
 import type { LaunchAnswers } from "./Launches";
 
@@ -97,7 +98,7 @@ export function AnalysisView({ place }: { place: AnalysisPlace }) {
     <ReadPart set={set}
       skeleton={<FaceSkeleton look={place.look} span={place.span} bucket={bucket} />}>
       {([first, finished]) => !days || !head ? <p className="text-soft">{t("usage.none")}</p>
-        : place.look === "tasks" ? <TasksLook view={first as TasksView} span={place.span} root={root} days={days} open={open} zone={zoneName(head.timeZone)} />
+        : place.look === "tasks" ? <><WorkBand work={(first as TasksView).activeWork} /><TasksLook view={first as TasksView} span={place.span} root={root} days={days} open={open} zone={zoneName(head.timeZone)} /></>
           : <UsageLook view={first as UsageView} span={place.span} root={root} tasks={finished as TasksView} days={days} open={open} zone={zoneName(head.timeZone)}
             series={series} />}
     </ReadPart>

@@ -61,7 +61,7 @@
     "firstRoundTip": "Tokens used up to each task's first review and its answer",
     "laterRound": "Rounds after the first review",
     "laterRoundTip": "Tokens used after each task's first review: the work redone",
-    "laterTime": "Of it, rounds after the first review: {{time}} ({{share}})",
+    "laterTime": "Of the {{total}}, the rounds after the first review took {{time}} ({{share}})",
     "laterTip": "The work redone and waited on after each task's first review",
     "meant": "As you meant",
     "noFixes": "No fixes were labelled in this span.",
@@ -73,6 +73,8 @@
     "ofItems_other": "Of {{count}} answered items",
     "ofQuestions_one": "Of {{count}} question to you",
     "ofQuestions_other": "Of {{count}} questions to you",
+    "ofRecommendable_one": "Of {{count}} answered item with a recommended choice",
+    "ofRecommendable_other": "Of {{count}} answered items with a recommended choice",
     "ofTasks_one": "Of {{count}} task with no question besides review",
     "ofTasks_other": "Of {{count}} tasks with no question besides review",
     "ofTime": "Of the {{time}} from request to acceptance",
@@ -510,5 +512,15 @@
     "accepted": "Accepted",
     "created": "Task created",
     "linked": "State changed"
+  },
+  "work": {
+    "aboutCause": "About: {{cause}}",
+    "aboutDays": "About {{days}}",
+    "aboutTask": "About {{task}}",
+    "fewer": "Show fewer",
+    "more_one": "{{count}} more",
+    "more_other": "{{count}} more",
+    "title": "Being looked into or improved",
+    "yourTurn": "Your turn"
   }
 }

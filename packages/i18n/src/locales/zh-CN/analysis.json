@@ -56,7 +56,7 @@
     "firstRoundTip": "各任务首次审阅及其回答之前使用的 Token",
     "laterRound": "修改轮次",
     "laterRoundTip": "各任务首次审阅之后使用的 Token（返工部分）",
-    "laterTime": "其中首次审阅后的修改轮次：{{time}}（{{share}}）",
+    "laterTime": "{{total}} 中，首次审阅后的修改轮次占 {{time}}（{{share}}）",
     "laterTip": "各任务首次审阅之后返工和等待的部分",
     "meant": "是否符合预期",
     "noFixes": "此期间没有已分类的修改。",
@@ -68,6 +68,8 @@
     "ofItems_other": "已回答的 {{count}} 项中",
     "ofQuestions_one": "给你的 {{count}} 个提问中",
     "ofQuestions_other": "给你的 {{count}} 个提问中",
+    "ofRecommendable_one": "有推荐项的 {{count}} 项中",
+    "ofRecommendable_other": "有推荐项的 {{count}} 项中",
     "ofTasks_one": "除审阅外无提问的 {{count}} 项任务中",
     "ofTasks_other": "除审阅外无提问的 {{count}} 项任务中",
     "ofTime": "从请求到接受的 {{time}} 中",
@@ -483,5 +485,15 @@
     "accepted": "已接受",
     "created": "任务创建",
     "linked": "状态变更"
+  },
+  "work": {
+    "aboutCause": "关于：{{cause}}",
+    "aboutDays": "关于 {{days}}",
+    "aboutTask": "关于 {{task}}",
+    "fewer": "收起",
+    "more_one": "其他 {{count}} 项",
+    "more_other": "其他 {{count}} 项",
+    "title": "正在调查或改进",
+    "yourTurn": "轮到你"
   }
 }

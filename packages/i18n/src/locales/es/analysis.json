@@ -66,7 +66,7 @@
     "firstRoundTip": "Tokens usados hasta la primera revisión de cada tarea y su respuesta",
     "laterRound": "Rondas tras la primera revisión",
     "laterRoundTip": "Tokens usados tras la primera revisión de cada tarea: el trabajo rehecho",
-    "laterTime": "De ello, rondas tras la primera revisión: {{time}} ({{share}})",
+    "laterTime": "De las {{total}}, las rondas tras la primera revisión llevaron {{time}} ({{share}})",
     "laterTip": "El trabajo rehecho y esperado tras la primera revisión de cada tarea",
     "meant": "Como querías",
     "noFixes": "No hay arreglos clasificados en este periodo.",
@@ -78,6 +78,8 @@
     "ofItems_other": "De {{count}} elementos respondidos",
     "ofQuestions_one": "De {{count}} pregunta para ti",
     "ofQuestions_other": "De {{count}} preguntas para ti",
+    "ofRecommendable_one": "De {{count}} elemento respondido con opción recomendada",
+    "ofRecommendable_other": "De {{count}} elementos respondidos con opción recomendada",
     "ofTasks_one": "De {{count}} tarea sin preguntas aparte de la revisión",
     "ofTasks_other": "De {{count}} tareas sin preguntas aparte de la revisión",
     "ofTime": "De las {{time}} entre la solicitud y la aceptación",
@@ -526,5 +528,15 @@
     "accepted": "Aceptada",
     "created": "Tarea creada",
     "linked": "Cambio de estado"
+  },
+  "work": {
+    "aboutCause": "Sobre: {{cause}}",
+    "aboutDays": "Sobre {{days}}",
+    "aboutTask": "Sobre {{task}}",
+    "fewer": "Mostrar menos",
+    "more_one": "{{count}} más",
+    "more_other": "{{count}} más",
+    "title": "En estudio o mejora",
+    "yourTurn": "Tu turno"
   }
 }

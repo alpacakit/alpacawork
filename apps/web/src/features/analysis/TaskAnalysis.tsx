@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { useFindings, useTrace, useUnitValues } from "./data";
 import { duration, format, instant, share } from "./format";
 import { PointerTip, ReadPart, Square, tip, useReadSet } from "./parts";
-import { Timeline } from "./Timeline";
+import { sceneOf, Timeline } from "./Timeline";
 import { Waits } from "./Waits";
 import type { Finding, FindingsView, TraceMark, TraceView, UnitValues } from "./contract";
 
@@ -33,8 +33,9 @@ function Body({ task, values, findings, trace }: { task: string; values: UnitVal
   const { t } = useTranslation("analysis");
   const zone = trace.head.timeZone;
   const choose = (finding: Finding) => {
-    useViewStore.getState().setScene({ finding: finding.id, at: finding.at });
-    document.querySelector("[data-timeline]")?.scrollIntoView({ block: "start", behavior: "smooth" });
+    useViewStore.getState().setScene(sceneOf(finding));
+    // To the finding's own line over the lanes, so the lanes and what was going on then stand in view under it.
+    requestAnimationFrame(() => (document.querySelector("[data-finding-steps]") ?? document.querySelector("[data-timeline]"))?.scrollIntoView({ block: "start", behavior: "smooth" }));
   };
   return <>
     <Axes values={values} task={task} />

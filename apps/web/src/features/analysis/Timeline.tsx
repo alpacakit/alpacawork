@@ -5,7 +5,7 @@ import { Icon } from "@/components/ui/icon";
 import { useViewStore } from "@/state/view-store";
 import { cn } from "@/lib/utils";
 import { useAt, useTrace } from "./data";
-import { duration, instant, share } from "./format";
+import { duration, format, instant, share } from "./format";
 import { Square, tip } from "./parts";
 import { PART_COLOR, SPAN_LOOKS } from "./timeline-kinds";
 import type { AtView, Finding, TraceMark, TraceSpan, TraceView } from "./contract";
@@ -18,6 +18,12 @@ const STEPS_WITHIN = 4 * HOUR;
 const LEAST = 5 * MINUTE;
 
 /** The window around a finding: its own time, with a fifth of it (and at least a few minutes) on each side. */
+/**
+ * The scene a finding opens: its instant a moment inside it (a tenth of it, at most a minute), not its first instant,
+ * where what ended as it began (the Run that asked the question) still shows as going on.
+ */
+export const sceneOf = (finding: Finding) =>
+  ({ finding: finding.id, at: new Date(Date.parse(finding.at) + Math.min(MINUTE, finding.durationMs / 10)).toISOString() });
 export function windowAround(at: number, length: number, whole: Window): Window {
   at = Math.min(Math.max(at, whole.from), whole.to);
   const pad = Math.max(length / 5, 5 * MINUTE), from = Math.max(whole.from, at - pad), to = Math.min(whole.to, at + length + pad);
@@ -79,8 +85,8 @@ export function Timeline({ task, trace, findings }: { task: string; trace: Trace
         <Button variant="outline" onClick={() => step(1)}>{t("timeline.next")}<Icon name="right" className="size-3.5" /></Button>
       </span>
       <span className="flex gap-2">
-        <Button variant="outline" aria-label={t("timeline.zoomOut")} title={t("timeline.zoomOut")} onClick={() => zoom(2)}>−</Button>
-        <Button variant="outline" aria-label={t("timeline.zoomIn")} title={t("timeline.zoomIn")} onClick={() => zoom(0.5)}>+</Button>
+        <Button variant="outline" className="min-w-10" aria-label={t("timeline.zoomOut")} title={t("timeline.zoomOut")} onClick={() => zoom(2)}>−</Button>
+        <Button variant="outline" className="min-w-10" aria-label={t("timeline.zoomIn")} title={t("timeline.zoomIn")} onClick={() => zoom(0.5)}>+</Button>
         <Button variant="outline" onClick={() => setWindow(whole)}>{t("timeline.whole")}</Button>
       </span>
     </div>
@@ -89,8 +95,8 @@ export function Timeline({ task, trace, findings }: { task: string; trace: Trace
       onDrag={ms => setDragging(ms)} onLetGo={ms => { setDragging(null); setAt(ms); }} />
     {!steps && <p className="mt-1 text-xs text-soft">{t("timeline.stepsHidden")}</p>}
     {shown.cursor && <p className="mt-1 text-xs text-soft">{t("timeline.partial")}</p>}
-    <Legend />
     {at !== null && <Situation task={task} at={scene!.at!} zone={zone} />}
+    <Legend />
   </section>;
 }
 
@@ -101,11 +107,11 @@ export function Timeline({ task, trace, findings }: { task: string; trace: Trace
 function FindingSteps({ finding, findings, onAt }: { finding: Finding; findings: Finding[]; onAt: boolean }) {
   const { t } = useTranslation("analysis");
   const at = findings.indexOf(finding);
-  const go = (to: Finding | undefined) => { if (to) useViewStore.getState().setScene({ finding: to.id, at: to.at }); };
-  return <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2">
+  const go = (to: Finding | undefined) => { if (to) useViewStore.getState().setScene(sceneOf(to)); };
+  return <div data-finding-steps="" className="mt-5 flex scroll-mt-4 flex-wrap items-center gap-x-3 gap-y-2">
     <p className={cn("me-auto min-w-0 font-semibold", !onAt && "text-muted")}>
       <span className="me-2 text-xs font-normal text-soft">{at + 1}/{findings.length}</span>{t(`rule.${finding.rule}`)}
-      <span className="ms-2 font-normal text-muted">{duration(finding.durationMs)}</span>
+      <span className="ms-2 font-normal text-muted">{finding.count !== null && `${format("times", finding.count)} `}{duration(finding.durationMs)}</span>
       {finding.line && <span dir="auto" className="block text-xs font-normal text-muted line-clamp-2">「{finding.line}」</span>}</p>
     <span className="flex gap-2">
       <Button variant="outline" disabled={at <= 0} onClick={() => go(findings[at - 1])}><Icon name="up" className="size-3.5" />{t("timeline.previousFinding")}</Button>
@@ -216,7 +222,7 @@ function Lanes({ trace, lanes, window, findings, at, zone, onDrag, onLetGo }: {
   const lit = at !== null && at >= window.from && at <= window.to;
   const ticks = axisTicks(window);
   const names = lanes.map(lane => <span key={lane.id} style={{ paddingInlineStart: `${depth(lane) * 0.5}rem` }}
-    className="flex h-7 items-center text-[0.6875rem] leading-tight text-muted" title={lane.label}><span className="line-clamp-2">{lane.label}</span></span>);
+    className="flex h-9 items-center text-[0.6875rem] leading-tight text-muted" title={lane.label}><span className="line-clamp-2">{lane.label}</span></span>);
   return <div className="mt-3 flex gap-x-2 text-xs">
     {/* The lanes' names, beside their tracks, under the axis's height. */}
     <div className="w-36 flex-none pt-9 narrow:w-20">{names}</div>
@@ -233,17 +239,17 @@ function Lanes({ trace, lanes, window, findings, at, zone, onDrag, onLetGo }: {
           {tickWords(ticks, at => instant(new Date(ticks[at]!).toISOString(), zone), axisStep(window), tick)}</span>)}
         {findings.map((finding, n) => { const ms = Date.parse(finding.at); return ms >= window.from && ms <= window.to &&
           <button key={finding.id} type="button" style={{ left: `${left(ms)}%` }} onPointerDown={event => event.stopPropagation()}
-            onClick={() => useViewStore.getState().setScene({ finding: finding.id, at: finding.at })}
+            onClick={() => useViewStore.getState().setScene(sceneOf(finding))}
             className="absolute top-0 grid size-5.5 -translate-x-1/2 place-items-center rounded-full bg-turn text-[0.6875rem] font-semibold text-bg"
             {...tip(`${n + 1} ${t(`rule.${finding.rule}`)} ${duration(finding.durationMs)}`)}>{n + 1}</button>; })}
       </div>
       {lanes.map(lane => {
         const spans = spansOf.get(lane.id) ?? [], marks = marksOf.get(lane.id) ?? [];
-        return <div key={lane.id} className="relative h-7 overflow-hidden border-b border-rule/60">
+        return <div key={lane.id} className="relative h-9 overflow-hidden border-b border-rule/60">
           {spans.map(span => { const box = place(Date.parse(span.from), span.to ? Date.parse(span.to) : end); if (!box) return null;
             const look = SPAN_LOOKS[span.kind];
             return <i key={span.id} style={look.band === "tick" ? { left: box.left } : box} data-tip-tap="" className={cn("absolute block rounded-[2px]", look.color(span),
-              look.band === "full" ? "top-1.5 h-3.5" : look.band === "thin" ? "top-5.5 h-1" : "top-1 h-1.5 w-px")}
+              look.band === "full" ? "top-2.5 h-3.5" : look.band === "thin" ? "top-7 h-1" : "top-1.5 h-1.5 w-px")}
               {...tip(spanWords(span, t, zone))} />; })}
           {marks.map(mark => { const ms = Date.parse(mark.at); return ms >= window.from && ms <= window.to &&
             <i key={mark.id} style={{ left: `${left(ms)}%` }} data-tip-tap="" className={cn("absolute top-0 block h-1.5 w-0.5 -translate-x-1/2 rounded-[1px]", MARK_COLOR[mark.kind] ?? "bg-ink/40")}
@@ -295,7 +301,8 @@ function Situation({ task, at, zone }: { task: string; at: string; zone: string 
       </li>)}</ul> : <p className="text-soft">{t("timeline.noQuestions")}</p>}
       <h5 className="mt-4 mb-1 text-xs text-soft">{t("timeline.history")}</h5>
       <ul className="space-y-1">{view.history.filter(line => line.kind !== "request_labeled").map(line => <li key={line.log} className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-2 text-xs">
-        <span className="text-soft tabular-nums">{instant(line.at, zone)}</span><span dir="auto" className="line-clamp-2">{line.title ?? historyWords(line.kind, t)}</span></li>)}</ul>
+        <span className="text-soft tabular-nums">{instant(line.at, zone)}</span><span dir="auto" className="line-clamp-2">
+          <span className="me-1.5 text-soft">{historyWords(line.kind, t)}</span>{line.title}</span></li>)}</ul>
     </div>
   </div>;
 }
@@ -304,4 +311,4 @@ function Situation({ task, at, zone }: { task: string; at: string; zone: string 
 const HISTORY_KINDS: Record<string, string> = { question_withdrawn: "mark.question-withdrawn", answered: "mark.answer", request_accepted: "mark.instruction",
   review_sent_back: "mark.instruction", reported: "mark.report", moved: "mark.moved", body_updated: "mark.values-changed", linked: "history.linked",
   created: "history.created", asked: "span.question", review_approved: "history.accepted", responsible_changed: "mark.assigned", placement_changed: "mark.assigned" };
-const historyWords = (kind: string, t: Say) => HISTORY_KINDS[kind] ? t(HISTORY_KINDS[kind]) : kind;
+const historyWords = (kind: string, t: Say) => HISTORY_KINDS[kind] ? t(HISTORY_KINDS[kind]) : "";

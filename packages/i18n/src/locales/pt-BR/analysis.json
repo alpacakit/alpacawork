@@ -66,7 +66,7 @@
     "firstRoundTip": "Tokens usados até a primeira revisão de cada tarefa e sua resposta",
     "laterRound": "Rodadas após a primeira revisão",
     "laterRoundTip": "Tokens usados após a primeira revisão de cada tarefa: o trabalho refeito",
-    "laterTime": "Disso, rodadas após a primeira revisão: {{time}} ({{share}})",
+    "laterTime": "Das {{total}}, as rodadas após a primeira revisão levaram {{time}} ({{share}})",
     "laterTip": "O trabalho refeito e esperado após a primeira revisão de cada tarefa",
     "meant": "Como você queria",
     "noFixes": "Nenhuma correção classificada neste período.",
@@ -78,6 +78,8 @@
     "ofItems_other": "De {{count}} itens respondidos",
     "ofQuestions_one": "De {{count}} pergunta para você",
     "ofQuestions_other": "De {{count}} perguntas para você",
+    "ofRecommendable_one": "De {{count}} item respondido com opção recomendada",
+    "ofRecommendable_other": "De {{count}} itens respondidos com opção recomendada",
     "ofTasks_one": "De {{count}} tarefa sem perguntas além da revisão",
     "ofTasks_other": "De {{count}} tarefas sem perguntas além da revisão",
     "ofTime": "Das {{time}} entre o pedido e a aceitação",
@@ -531,5 +533,15 @@
     "accepted": "Aceita",
     "created": "Tarefa criada",
     "linked": "Mudança de estado"
+  },
+  "work": {
+    "aboutCause": "Sobre: {{cause}}",
+    "aboutDays": "Sobre {{days}}",
+    "aboutTask": "Sobre {{task}}",
+    "fewer": "Mostrar menos",
+    "more_one": "Mais {{count}}",
+    "more_other": "Mais {{count}}",
+    "title": "Em análise ou melhoria",
+    "yourTurn": "Sua vez"
   }
 }
