@@ -50,6 +50,33 @@
     "shareHint": "通过设备的分享菜单仅发送图片。",
     "theme": "颜色"
   },
+  "causes": {
+    "away": "你不在时的等待",
+    "later": "首次审阅后的修改轮次",
+    "laterTip": "各任务首次审阅之后返工和等待的部分",
+    "meant": "是否符合预期",
+    "noFixes": "此期间没有已分类的修改。",
+    "none": "此期间没有可显示的内容。",
+    "ofFixes_one": "你要求的 {{count}} 项修改中（按类别）",
+    "ofFixes_other": "你要求的 {{count}} 项修改中（按类别）",
+    "ofTime": "从请求到接受的 {{time}} 中",
+    "ofTokens": "所用 {{tokens}} Token 中",
+    "otherTasks": "你处理其他任务时的等待",
+    "thisTask": "轮到此任务时的等待",
+    "time": "时间",
+    "title": "主要原因",
+    "tokens": "Token"
+  },
+  "change": {
+    "agent": "代理",
+    "effort": "effort",
+    "gone": "移除",
+    "instruction-file": "指示文件",
+    "legend": "变更标记",
+    "model": "模型",
+    "skill": "技能",
+    "version": "alpacawork"
+  },
   "chart": {
     "binLabel": "{{day}}・{{name}} {{value}}",
     "fewShare": "{{accepted}} 个中 {{passed}} 个",
@@ -119,6 +146,16 @@
     "label": "画面",
     "use": "使用"
   },
+  "fix": {
+    "behavior": "行为错误",
+    "intent": "误解意图",
+    "look_feel": "外观与使用感",
+    "other": "其他",
+    "review_flow": "展示方式",
+    "scope": "范围追加",
+    "speed": "速度",
+    "wording": "措辞"
+  },
   "home": {
     "label": "{{marks}}。打开分析",
     "marks_other": "今天完成 {{count}} 个（无需返工 {{passed}} 个）"
@@ -147,11 +184,33 @@
     "tasks": "任务",
     "usage": "AI 使用量"
   },
+  "mark": {
+    "answer": "回答",
+    "assigned": "负责人变更",
+    "change": "条件变更",
+    "command-stopped": "命令达上限被中止",
+    "compacted": "对话压缩",
+    "instruction": "指示",
+    "moved": "移动",
+    "question-withdrawn": "撤回提问",
+    "report": "报告",
+    "values-changed": "值变更"
+  },
   "outcome": {
     "none": "进行中",
     "passed": "无需返工",
     "reworked": "有返工",
     "stopped": "中止"
+  },
+  "part": {
+    "child-working": "仅子任务工作中",
+    "held": "搁置",
+    "idle": "无任何进展",
+    "member-working": "仅成员工作中",
+    "owner-working": "负责人工作中",
+    "queued": "排队等待",
+    "waiting-answer": "等待回答",
+    "waiting-review": "等待审阅"
   },
   "period": {
     "28d": "最近 28 天",
@@ -168,10 +227,64 @@
     "days_other": "前 {{count}} 天"
   },
   "range": "{{from}}～{{to}}",
+  "role": {
+    "member": "成员",
+    "owner": "负责人"
+  },
+  "rule": {
+    "failed-run": "失败的运行",
+    "fan-out": "本可一次完成却逐个执行",
+    "idle": "无任何进展",
+    "limit-hit": "达到时间上限被中止",
+    "long-step": "耗时的步骤",
+    "long-wait": "长时间等待回答",
+    "queue-wait": "排队等待",
+    "repeated-failure": "重复同一失败",
+    "repeated-question": "重复同一提问",
+    "rework": "返工",
+    "same-result": "重复读取相同结果"
+  },
   "same": "±0",
   "sep": "・",
+  "span": {
+    "acceptQuestion": "询问是否接受结果",
+    "question": "提问",
+    "queued": "排队等待",
+    "run": "运行",
+    "step": "步骤",
+    "task-state": "{{state}}",
+    "thinking": "思考中"
+  },
+  "state": {
+    "doing": "进行中",
+    "done": "完成",
+    "failed": "失败",
+    "held": "搁置",
+    "stopped": "中止",
+    "todo": "未开始",
+    "waiting": "等待审阅"
+  },
   "table": {
     "head": "{{name}}（{{unit}}）"
+  },
+  "task": {
+    "accepted": "{{times}}后接受",
+    "causes": "原因",
+    "causesNote": "值得一看的地方（按时长排序）和你要求的修改。点按一项即可在时间线上查看那一刻。",
+    "fixes_one": "你要求的修改 {{count}} 项（按类别）",
+    "fixes_other": "你要求的修改 {{count}} 项（按类别）",
+    "noFindings": "没有值得注意的地方。",
+    "noWords": "（未记录文字）",
+    "ofRequest": "按整个请求 {{id}} 统计",
+    "open": "{{times}}（进行中）",
+    "question": "{{task}} 的提问",
+    "reviews": "审阅",
+    "round": "第 {{n}} 轮",
+    "rounds": "每轮审阅",
+    "roundsNote": "一轮＝提交审阅前的工作加上等待你回答的时间。第 1 轮是首次工作，之后的轮次是修改。",
+    "stopped": "{{times}}后中止",
+    "time": "耗时",
+    "tokens": "Token"
   },
   "tasks": {
     "accepted": "已验收",
@@ -206,6 +319,35 @@
     "review": "等待确认",
     "total": "耗时合计",
     "you": "轮到你"
+  },
+  "timeline": {
+    "failed": "无法读取此时刻。",
+    "history": "截至此时的记录",
+    "next": "下一个事件",
+    "noQuestions": "没有未答的提问。",
+    "noRuns": "没有正在运行的 AI。",
+    "noSteps": "没有记录其步骤。",
+    "now": "现在",
+    "openSince": "自 {{at}} 起",
+    "partial": "此范围只显示了一部分。放大可查看其余部分。",
+    "parts": "时间分布（共 {{time}}）",
+    "pick": "请选择上方的项目，或点按泳道",
+    "previous": "上一个事件",
+    "questions_one": "未答提问 {{count}}",
+    "questions_other": "未答提问 {{count}}",
+    "reading": "正在读取此时刻…",
+    "runs": "正在运行的 AI",
+    "seek": "显示的时刻",
+    "since": "开始后 {{time}}",
+    "situation": "当时的情况",
+    "situationNote": "根据记录还原",
+    "stepsHidden": "放大到 4 小时以内即可看到每个步骤。",
+    "tasks": "任务",
+    "title": "时间线",
+    "toUser": "给你",
+    "whole": "全部",
+    "zoomIn": "放大",
+    "zoomOut": "缩小"
   },
   "unit": {
     "conversations_other": "个",
@@ -292,70 +434,6 @@
     "tasks": "涉及的任务",
     "tokens": "令牌"
   },
-  "values": {
-    "accepted": "{{at}} 验收",
-    "afterAccept": "验收后的指示",
-    "answers": "你回答了",
-    "atReview": "确认中的指示",
-    "band": {
-      "doing": "进行中",
-      "paused": "暂停",
-      "yours": "轮到你"
-    },
-    "children": "子任务",
-    "conversations": "新会话",
-    "duringWork": "工作中的指示",
-    "inputCache": "输入＋缓存",
-    "marks": {
-      "instruction": "指示",
-      "sendBack": "退回"
-    },
-    "models": "模型",
-    "open": "打开任务",
-    "sendBacks": "退回",
-    "skills": "技能",
-    "stopped": "{{at}} 中止",
-    "tools": "工具",
-    "usage": "AI 使用量",
-    "workers": "成员"
-  },
-  "window": {
-    "accepted_other": "已验收 {{count}} 个",
-    "after": "下一段",
-    "before": "上一段",
-    "finished_other": "已结束 {{count}} 个",
-    "list": "任务列表",
-    "passedOf_other": "{{count}} 个中 {{passed}} 个"
-  },
-  "task": {
-    "accepted": "{{times}}后接受",
-    "causes": "原因",
-    "causesNote": "值得一看的地方（按时长排序）和你要求的修改。点按一项即可在时间线上查看那一刻。",
-    "fixes_one": "你要求的修改 {{count}} 项（按类别）",
-    "fixes_other": "你要求的修改 {{count}} 项（按类别）",
-    "noFindings": "没有值得注意的地方。",
-    "noWords": "（未记录文字）",
-    "ofRequest": "按整个请求 {{id}} 统计",
-    "open": "{{times}}（进行中）",
-    "question": "{{task}} 的提问",
-    "reviews": "审阅",
-    "round": "第 {{n}} 轮",
-    "rounds": "每轮审阅",
-    "roundsNote": "一轮＝提交审阅前的工作加上等待你回答的时间。第 1 轮是首次工作，之后的轮次是修改。",
-    "stopped": "{{times}}后中止",
-    "time": "耗时",
-    "tokens": "Token"
-  },
-  "fix": {
-    "behavior": "行为错误",
-    "intent": "误解意图",
-    "look_feel": "外观与使用感",
-    "other": "其他",
-    "review_flow": "展示方式",
-    "scope": "范围追加",
-    "speed": "速度",
-    "wording": "措辞"
-  },
   "waits": {
     "away": "不在",
     "awayTip": "你在任何地方都没有操作达 30 分钟以上期间的等待",
@@ -365,117 +443,12 @@
     "thisTaskTip": "你在场且没有做其他操作期间的等待",
     "title": "轮到你的时间（按你当时所在）"
   },
-  "rule": {
-    "failed-run": "失败的运行",
-    "fan-out": "本可一次完成却逐个执行",
-    "idle": "无任何进展",
-    "limit-hit": "达到时间上限被中止",
-    "long-step": "耗时的步骤",
-    "long-wait": "长时间等待回答",
-    "queue-wait": "排队等待",
-    "repeated-failure": "重复同一失败",
-    "repeated-question": "重复同一提问",
-    "rework": "返工",
-    "same-result": "重复读取相同结果"
-  },
-  "timeline": {
-    "failed": "无法读取此时刻。",
-    "history": "截至此时的记录",
-    "next": "下一个事件",
-    "noQuestions": "没有未答的提问。",
-    "noRuns": "没有正在运行的 AI。",
-    "noSteps": "没有记录其步骤。",
-    "now": "现在",
-    "openSince": "自 {{at}} 起",
-    "partial": "此范围只显示了一部分。放大可查看其余部分。",
-    "parts": "时间分布（共 {{time}}）",
-    "pick": "请选择上方的项目，或点按泳道",
-    "previous": "上一个事件",
-    "questions_one": "未答提问 {{count}}",
-    "questions_other": "未答提问 {{count}}",
-    "reading": "正在读取此时刻…",
-    "runs": "正在运行的 AI",
-    "seek": "显示的时刻",
-    "since": "开始后 {{time}}",
-    "situation": "当时的情况",
-    "situationNote": "根据记录还原",
-    "stepsHidden": "放大到 4 小时以内即可看到每个步骤。",
-    "tasks": "任务",
-    "title": "时间线",
-    "toUser": "给你",
-    "whole": "全部",
-    "zoomIn": "放大",
-    "zoomOut": "缩小"
-  },
-  "part": {
-    "child-working": "仅子任务工作中",
-    "held": "搁置",
-    "idle": "无任何进展",
-    "member-working": "仅成员工作中",
-    "owner-working": "负责人工作中",
-    "queued": "排队等待",
-    "waiting-answer": "等待回答",
-    "waiting-review": "等待审阅"
-  },
-  "span": {
-    "acceptQuestion": "询问是否接受结果",
-    "question": "提问",
-    "queued": "排队等待",
-    "run": "运行",
-    "step": "步骤",
-    "task-state": "{{state}}",
-    "thinking": "思考中"
-  },
-  "state": {
-    "doing": "进行中",
-    "done": "完成",
-    "failed": "失败",
-    "held": "搁置",
-    "stopped": "中止",
-    "todo": "未开始",
-    "waiting": "等待审阅"
-  },
-  "mark": {
-    "answer": "回答",
-    "assigned": "负责人变更",
-    "change": "条件变更",
-    "command-stopped": "命令达上限被中止",
-    "compacted": "对话压缩",
-    "instruction": "指示",
-    "moved": "移动",
-    "question-withdrawn": "撤回提问",
-    "report": "报告",
-    "values-changed": "值变更"
-  },
-  "role": {
-    "member": "成员",
-    "owner": "负责人"
-  },
-  "causes": {
-    "away": "你不在时的等待",
-    "later": "首次审阅后的修改轮次",
-    "laterTip": "各任务首次审阅之后返工和等待的部分",
-    "meant": "是否符合预期",
-    "noFixes": "此期间没有已分类的修改。",
-    "none": "此期间没有可显示的内容。",
-    "ofFixes_one": "你要求的 {{count}} 项修改中（按类别）",
-    "ofFixes_other": "你要求的 {{count}} 项修改中（按类别）",
-    "ofTime": "从请求到接受的 {{time}} 中",
-    "ofTokens": "所用 {{tokens}} Token 中",
-    "otherTasks": "你处理其他任务时的等待",
-    "thisTask": "轮到此任务时的等待",
-    "time": "时间",
-    "title": "主要原因",
-    "tokens": "Token"
-  },
-  "change": {
-    "agent": "代理",
-    "effort": "effort",
-    "gone": "移除",
-    "instruction-file": "指示文件",
-    "legend": "变更标记",
-    "model": "模型",
-    "skill": "技能",
-    "version": "alpacawork"
+  "window": {
+    "accepted_other": "已验收 {{count}} 个",
+    "after": "下一段",
+    "before": "上一段",
+    "finished_other": "已结束 {{count}} 个",
+    "list": "任务列表",
+    "passedOf_other": "{{count}} 个中 {{passed}} 个"
   }
 }

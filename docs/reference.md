@@ -139,6 +139,11 @@ parts are `answersWithoutParts`. `questionsReplaced` counts questions withdrawn 
 name several fixes, and kinds with no count are left out); `unlabeled` were sent without one. `noQuestions` counts the
 accepted Tasks with no question to the user besides those asking to take a result, and `passedNoQuestions` those of them
 accepted without rework. `analysis task` returns the same values for one Task, with `submitsEstimated` as true or false.
+`rounds` splits a Task's time from its request into review rounds: each is the work up to one review (as `submits` counts
+them) and the wait until the user answered, withdrew or sent it back, the next starting where it closed and the last
+running to the end (or now). Each round's `tokens` are those of the Runs of the Task and under it that started in it. In
+`analysis tasks` the accepted Tasks' rounds are summed as `first` (each Task's first round) and `later` (the rounds after
+it: the work redone and waited on), each with its `ms` and `tokens`.
 Each Task trend point includes `accepted` totals for the Tasks accepted in that bucket. A related PR counts once,
 on the earliest acceptance day of any Task that references it in the project scope. Trend points and period totals
 use that same day. The Task model and agent breakdowns use the earliest owner Run on the top-level Task.
@@ -179,8 +184,9 @@ a record carries its first line. The rules:
 - `rework`: work done again by the counts' rule (a send-back, an instruction at review or after acceptance, one in place of answering a question asking to take a result); at: the record, durationMs: until that task next waits for review or is done.
 - `idle`: a stretch this long with nothing running, queued, asked or in review in the task or under it; at: its start, durationMs: its length.
 
+An `instruction` mark's `label` is what its sender said it was (`kind`, and `fixes` for a fix), or `null` when it was sent with none.
 `url` in the answers of `analysis trace`, `analysis findings` (and each finding) and `analysis at` is the screen's address
-of the same scene, a path relative to the screen. `analysis changes` takes the scope and days of `analysis tasks`. A
+of the same scene, a path relative to the screen: the Task's Analysis tab at an instant (`at`) or on a finding (`finding`). `analysis changes` takes the scope and days of `analysis tasks`. A
 placement's agent, model and effort come from the launch records and compare the Runs of that placement. Version,
 skill and instruction-file changes need the Runs' condition records and compare each agent's Runs in the order they
 started; `runs.recorded` counts the period's Runs that have them. An item added to or gone from a set already recorded

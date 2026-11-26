@@ -60,6 +60,33 @@
     "shareHint": "Compartir envía solo la imagen a través del menú de tu dispositivo.",
     "theme": "Color"
   },
+  "causes": {
+    "away": "Esperas mientras estabas ausente",
+    "later": "Rondas tras la primera revisión",
+    "laterTip": "El trabajo rehecho y esperado tras la primera revisión de cada tarea",
+    "meant": "Como querías",
+    "noFixes": "No hay arreglos clasificados en este periodo.",
+    "none": "Nada que mostrar en este periodo.",
+    "ofFixes_one": "Del {{count}} arreglo que pediste, por tipo",
+    "ofFixes_other": "De los {{count}} arreglos que pediste, por tipo",
+    "ofTime": "De las {{time}} entre la solicitud y la aceptación",
+    "ofTokens": "De los {{tokens}} tokens usados",
+    "otherTasks": "Esperas mientras estabas en otras tareas",
+    "thisTask": "Esperas en el turno de esta tarea",
+    "time": "Tiempo",
+    "title": "Causas principales",
+    "tokens": "Tokens"
+  },
+  "change": {
+    "agent": "Agente",
+    "effort": "Esfuerzo",
+    "gone": "quitado",
+    "instruction-file": "Archivo de instrucciones",
+    "legend": "Cambios",
+    "model": "Modelo",
+    "skill": "Skill",
+    "version": "alpacawork"
+  },
   "chart": {
     "binLabel": "{{day}} · {{name}} {{value}}",
     "fewShare": "{{passed}} de {{accepted}}",
@@ -131,6 +158,16 @@
     "label": "Pantalla",
     "use": "Usar"
   },
+  "fix": {
+    "behavior": "Comportamiento erróneo",
+    "intent": "Solicitud malinterpretada",
+    "look_feel": "Aspecto y uso",
+    "other": "Otro",
+    "review_flow": "Cómo se mostró",
+    "scope": "Alcance añadido",
+    "speed": "Velocidad",
+    "wording": "Redacción"
+  },
   "home": {
     "label": "{{marks}}. Abrir el análisis",
     "marks_one": "Completadas hoy: {{count}} ({{passed}} sin correcciones)",
@@ -165,11 +202,33 @@
     "tasks": "Tareas",
     "usage": "Uso de la IA"
   },
+  "mark": {
+    "answer": "Respuesta",
+    "assigned": "Asignación",
+    "change": "Condiciones cambiadas",
+    "command-stopped": "Comando detenido en el límite",
+    "compacted": "Conversación compactada",
+    "instruction": "Instrucción",
+    "moved": "Movida",
+    "question-withdrawn": "Pregunta retirada",
+    "report": "Informe",
+    "values-changed": "Valores cambiados"
+  },
   "outcome": {
     "none": "En curso",
     "passed": "Sin correcciones",
     "reworked": "Necesitó correcciones",
     "stopped": "Detenida"
+  },
+  "part": {
+    "child-working": "Solo subtareas trabajando",
+    "held": "En pausa",
+    "idle": "Nada en marcha",
+    "member-working": "Solo miembros trabajando",
+    "owner-working": "Responsable trabajando",
+    "queued": "Esperando para empezar",
+    "waiting-answer": "Esperando respuesta",
+    "waiting-review": "Esperando revisión"
   },
   "period": {
     "28d": "Últimos 28 días",
@@ -190,10 +249,64 @@
     "days_other": "{{count}} días anteriores"
   },
   "range": "{{from}} – {{to}}",
+  "role": {
+    "member": "miembro",
+    "owner": "responsable"
+  },
+  "rule": {
+    "failed-run": "Ejecución fallida",
+    "fan-out": "Uno por uno donde bastaba una lectura",
+    "idle": "Nada en marcha",
+    "limit-hit": "Detenido en el límite de tiempo",
+    "long-step": "Paso largo",
+    "long-wait": "Larga espera de respuesta",
+    "queue-wait": "Esperó para empezar",
+    "repeated-failure": "El mismo fallo otra vez",
+    "repeated-question": "La misma pregunta otra vez",
+    "rework": "Trabajo rehecho",
+    "same-result": "El mismo resultado leído otra vez"
+  },
   "same": "±0",
   "sep": " · ",
+  "span": {
+    "acceptQuestion": "Pregunta para aceptar el resultado",
+    "question": "Pregunta",
+    "queued": "Esperando para empezar",
+    "run": "Ejecución",
+    "step": "Paso",
+    "task-state": "{{state}}",
+    "thinking": "Pensando"
+  },
+  "state": {
+    "doing": "En curso",
+    "done": "Hecha",
+    "failed": "Fallida",
+    "held": "En pausa",
+    "stopped": "Detenida",
+    "todo": "Por hacer",
+    "waiting": "Esperando revisión"
+  },
   "table": {
     "head": "{{name}} ({{unit}})"
+  },
+  "task": {
+    "accepted": "{{times}} y aceptada",
+    "causes": "Causas",
+    "causesNote": "Lugares que conviene revisar, del más largo al más corto, y los arreglos que pediste. Pulsa uno para ver ese momento en la línea de tiempo.",
+    "fixes_one": "Arreglos que pediste: {{count}}, por tipo",
+    "fixes_other": "Arreglos que pediste: {{count}}, por tipo",
+    "noFindings": "Nada destacó.",
+    "noWords": "(sin texto registrado)",
+    "ofRequest": "Contado para toda la solicitud {{id}}",
+    "open": "{{times}} por ahora",
+    "question": "Una pregunta de {{task}}",
+    "reviews": "Revisiones",
+    "round": "Ronda {{n}}",
+    "rounds": "Cada ronda de revisión",
+    "roundsNote": "Una ronda es el trabajo hasta una revisión y la espera de tu respuesta. La ronda 1 es el primer trabajo; las siguientes son los arreglos.",
+    "stopped": "{{times}} y detenida",
+    "time": "Tiempo empleado",
+    "tokens": "Tokens"
   },
   "tasks": {
     "accepted": "Aceptadas",
@@ -230,6 +343,35 @@
     "review": "Esperando tu revisión",
     "total": "Tiempo total",
     "you": "Tu turno"
+  },
+  "timeline": {
+    "failed": "No se pudo leer este momento.",
+    "history": "Historial hasta entonces",
+    "next": "Evento siguiente",
+    "noQuestions": "No había preguntas abiertas.",
+    "noRuns": "No había ninguna IA en marcha.",
+    "noSteps": "Sus pasos no se registraron.",
+    "now": "ahora",
+    "openSince": "abierta desde {{at}}",
+    "partial": "Solo se muestra parte de este intervalo. Acerca para ver el resto.",
+    "parts": "En qué se fue el tiempo ({{time}} en total)",
+    "pick": "Elige un lugar arriba o pulsa los carriles",
+    "previous": "Evento anterior",
+    "questions_one": "Pregunta abierta: {{count}}",
+    "questions_other": "Preguntas abiertas: {{count}}",
+    "reading": "Leyendo este momento…",
+    "runs": "IA en marcha",
+    "seek": "Momento mostrado",
+    "since": "{{time}} tras el inicio",
+    "situation": "En ese momento",
+    "situationNote": "Reconstruido a partir de los registros",
+    "stepsHidden": "Acerca a 4 horas o menos para ver cada paso.",
+    "tasks": "Tareas",
+    "title": "Línea de tiempo",
+    "toUser": "Para ti",
+    "whole": "Todo",
+    "zoomIn": "Acercar",
+    "zoomOut": "Alejar"
   },
   "unit": {
     "conversations_one": "conversación",
@@ -329,32 +471,14 @@
     "tasks": "Tareas implicadas",
     "tokens": "Tokens"
   },
-  "values": {
-    "accepted": "Aceptada {{at}}",
-    "afterAccept": "Instrucciones tras aceptar",
-    "answers": "Respondiste",
-    "atReview": "Instrucciones en revisión",
-    "band": {
-      "doing": "En curso",
-      "paused": "En pausa",
-      "yours": "Tu turno"
-    },
-    "children": "Subtareas",
-    "conversations": "Conversaciones nuevas",
-    "duringWork": "Instrucciones durante el trabajo",
-    "inputCache": "Entrada + caché",
-    "marks": {
-      "instruction": "Instrucción",
-      "sendBack": "Devolución"
-    },
-    "models": "Modelo",
-    "open": "Abrir la tarea",
-    "sendBacks": "Devoluciones",
-    "skills": "Skills",
-    "stopped": "Detenida {{at}}",
-    "tools": "Herramientas",
-    "usage": "Uso de la IA",
-    "workers": "Miembros"
+  "waits": {
+    "away": "Ausente",
+    "awayTip": "Esperas mientras no hiciste nada en ningún sitio durante 30 minutos o más",
+    "otherTasks": "En otras tareas",
+    "otherTasksTip": "Esperas mientras respondías o dabas instrucciones a otras tareas",
+    "thisTask": "Turno de esta tarea",
+    "thisTaskTip": "Esperas mientras estabas aquí sin ocuparte de otra cosa",
+    "title": "Tu turno, según dónde estabas"
   },
   "window": {
     "accepted_one": "{{count}} aceptada",
@@ -369,156 +493,5 @@
     "passedOf_one": "{{passed}} de {{count}}",
     "passedOf_many": "{{passed}} de {{count}}",
     "passedOf_other": "{{passed}} de {{count}}"
-  },
-  "task": {
-    "accepted": "{{times}} y aceptada",
-    "causes": "Causas",
-    "causesNote": "Lugares que conviene revisar, del más largo al más corto, y los arreglos que pediste. Pulsa uno para ver ese momento en la línea de tiempo.",
-    "fixes_one": "Arreglos que pediste: {{count}}, por tipo",
-    "fixes_other": "Arreglos que pediste: {{count}}, por tipo",
-    "noFindings": "Nada destacó.",
-    "noWords": "(sin texto registrado)",
-    "ofRequest": "Contado para toda la solicitud {{id}}",
-    "open": "{{times}} por ahora",
-    "question": "Una pregunta de {{task}}",
-    "reviews": "Revisiones",
-    "round": "Ronda {{n}}",
-    "rounds": "Cada ronda de revisión",
-    "roundsNote": "Una ronda es el trabajo hasta una revisión y la espera de tu respuesta. La ronda 1 es el primer trabajo; las siguientes son los arreglos.",
-    "stopped": "{{times}} y detenida",
-    "time": "Tiempo empleado",
-    "tokens": "Tokens"
-  },
-  "fix": {
-    "behavior": "Comportamiento erróneo",
-    "intent": "Solicitud malinterpretada",
-    "look_feel": "Aspecto y uso",
-    "other": "Otro",
-    "review_flow": "Cómo se mostró",
-    "scope": "Alcance añadido",
-    "speed": "Velocidad",
-    "wording": "Redacción"
-  },
-  "waits": {
-    "away": "Ausente",
-    "awayTip": "Esperas mientras no hiciste nada en ningún sitio durante 30 minutos o más",
-    "otherTasks": "En otras tareas",
-    "otherTasksTip": "Esperas mientras respondías o dabas instrucciones a otras tareas",
-    "thisTask": "Turno de esta tarea",
-    "thisTaskTip": "Esperas mientras estabas aquí sin ocuparte de otra cosa",
-    "title": "Tu turno, según dónde estabas"
-  },
-  "rule": {
-    "failed-run": "Ejecución fallida",
-    "fan-out": "Uno por uno donde bastaba una lectura",
-    "idle": "Nada en marcha",
-    "limit-hit": "Detenido en el límite de tiempo",
-    "long-step": "Paso largo",
-    "long-wait": "Larga espera de respuesta",
-    "queue-wait": "Esperó para empezar",
-    "repeated-failure": "El mismo fallo otra vez",
-    "repeated-question": "La misma pregunta otra vez",
-    "rework": "Trabajo rehecho",
-    "same-result": "El mismo resultado leído otra vez"
-  },
-  "timeline": {
-    "failed": "No se pudo leer este momento.",
-    "history": "Historial hasta entonces",
-    "next": "Evento siguiente",
-    "noQuestions": "No había preguntas abiertas.",
-    "noRuns": "No había ninguna IA en marcha.",
-    "noSteps": "Sus pasos no se registraron.",
-    "now": "ahora",
-    "openSince": "abierta desde {{at}}",
-    "partial": "Solo se muestra parte de este intervalo. Acerca para ver el resto.",
-    "parts": "En qué se fue el tiempo ({{time}} en total)",
-    "pick": "Elige un lugar arriba o pulsa los carriles",
-    "previous": "Evento anterior",
-    "questions_one": "Pregunta abierta: {{count}}",
-    "questions_other": "Preguntas abiertas: {{count}}",
-    "reading": "Leyendo este momento…",
-    "runs": "IA en marcha",
-    "seek": "Momento mostrado",
-    "since": "{{time}} tras el inicio",
-    "situation": "En ese momento",
-    "situationNote": "Reconstruido a partir de los registros",
-    "stepsHidden": "Acerca a 4 horas o menos para ver cada paso.",
-    "tasks": "Tareas",
-    "title": "Línea de tiempo",
-    "toUser": "Para ti",
-    "whole": "Todo",
-    "zoomIn": "Acercar",
-    "zoomOut": "Alejar"
-  },
-  "part": {
-    "child-working": "Solo subtareas trabajando",
-    "held": "En pausa",
-    "idle": "Nada en marcha",
-    "member-working": "Solo miembros trabajando",
-    "owner-working": "Responsable trabajando",
-    "queued": "Esperando para empezar",
-    "waiting-answer": "Esperando respuesta",
-    "waiting-review": "Esperando revisión"
-  },
-  "span": {
-    "acceptQuestion": "Pregunta para aceptar el resultado",
-    "question": "Pregunta",
-    "queued": "Esperando para empezar",
-    "run": "Ejecución",
-    "step": "Paso",
-    "task-state": "{{state}}",
-    "thinking": "Pensando"
-  },
-  "state": {
-    "doing": "En curso",
-    "done": "Hecha",
-    "failed": "Fallida",
-    "held": "En pausa",
-    "stopped": "Detenida",
-    "todo": "Por hacer",
-    "waiting": "Esperando revisión"
-  },
-  "mark": {
-    "answer": "Respuesta",
-    "assigned": "Asignación",
-    "change": "Condiciones cambiadas",
-    "command-stopped": "Comando detenido en el límite",
-    "compacted": "Conversación compactada",
-    "instruction": "Instrucción",
-    "moved": "Movida",
-    "question-withdrawn": "Pregunta retirada",
-    "report": "Informe",
-    "values-changed": "Valores cambiados"
-  },
-  "role": {
-    "member": "miembro",
-    "owner": "responsable"
-  },
-  "causes": {
-    "away": "Esperas mientras estabas ausente",
-    "later": "Rondas tras la primera revisión",
-    "laterTip": "El trabajo rehecho y esperado tras la primera revisión de cada tarea",
-    "meant": "Como querías",
-    "noFixes": "No hay arreglos clasificados en este periodo.",
-    "none": "Nada que mostrar en este periodo.",
-    "ofFixes_one": "Del {{count}} arreglo que pediste, por tipo",
-    "ofFixes_other": "De los {{count}} arreglos que pediste, por tipo",
-    "ofTime": "De las {{time}} entre la solicitud y la aceptación",
-    "ofTokens": "De los {{tokens}} tokens usados",
-    "otherTasks": "Esperas mientras estabas en otras tareas",
-    "thisTask": "Esperas en el turno de esta tarea",
-    "time": "Tiempo",
-    "title": "Causas principales",
-    "tokens": "Tokens"
-  },
-  "change": {
-    "agent": "Agente",
-    "effort": "Esfuerzo",
-    "gone": "quitado",
-    "instruction-file": "Archivo de instrucciones",
-    "legend": "Cambios",
-    "model": "Modelo",
-    "skill": "Skill",
-    "version": "alpacawork"
   }
 }

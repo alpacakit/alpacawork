@@ -1,17 +1,14 @@
 import { EFFORT_NONE } from "./series";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/button";
-import { Icon } from "@/components/ui/icon";
 import { RegionSkeleton } from "@/components/ui/skeleton";
 import { ReadFailure } from "@/components/ui/loadable";
 import { useViewStore } from "@/state/view-store";
 import { cn } from "@/lib/utils";
-import { useBreakdown, useUnitList, useUnitValues } from "./data";
-import { duration, format, instant, spanLabel, tokenColumn } from "./format";
-import { listColumn, listHeading, listTitle, showsDays, writeValue } from "./lists";
-import { ModelName, PointerTip, ReadPart, rowName, Square, tip, useChoices } from "./parts";
-import type { ListRow, UnitValues } from "./contract";
+import { useBreakdown, useUnitList } from "./data";
+import { instant, spanLabel } from "./format";
+import { listColumn, listHeading, showsDays, writeValue } from "./lists";
+import { ReadPart, rowName, Square, useChoices } from "./parts";
+import type { ListRow } from "./contract";
 import type { AnalysisPlace, ListPlace, Span } from "./place";
 
 export { CardPane } from "./ShareCard";

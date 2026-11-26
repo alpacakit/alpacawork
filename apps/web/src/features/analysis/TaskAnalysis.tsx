@@ -3,7 +3,7 @@ import { RegionSkeleton } from "@/components/ui/skeleton";
 import { useViewStore } from "@/state/view-store";
 import { cn } from "@/lib/utils";
 import { useFindings, useTrace, useUnitValues } from "./data";
-import { duration, format, instant, share } from "./format";
+import { duration, format, instant } from "./format";
 import { ReadPart, Square, tip, useReadSet } from "./parts";
 import { Timeline } from "./Timeline";
 import { Waits } from "./Waits";
