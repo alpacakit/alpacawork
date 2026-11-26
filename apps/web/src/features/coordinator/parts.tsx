@@ -144,19 +144,20 @@ export function TurnWork({ turn }: { turn: Pick<CoordinatorTurn, 'id' | 'at' | '
 const STEPS_BUTTON = "group/steps flex w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-sm -my-1 py-1 text-left outline-none focus-visible:outline-2 focus-visible:outline-ring narrow:min-h-11 narrow:-my-[calc((--spacing(11)-1lh)/2)]";
 /**
  * The answered turn's way into its work: one quiet line, its words at the answer's left edge and › after them. On a phone
- * its press is a finger's height, overhanging the line evenly as the line at work does. Its focus ring is the app's own
- * (base.css: shown while the keyboard is in use), so nothing here turns the outline off.
+ * its press is a finger's height, overhanging the line by the room over and under it (ANSWERED_PLACE). Its focus ring
+ * is the app's own (base.css: shown while the keyboard is in use), so nothing here turns the outline off.
  */
-const ANSWERED_LINE = "group/steps inline-flex max-w-full min-w-0 cursor-pointer items-center gap-1 rounded-sm -my-1 py-1 text-left text-muted hover:text-ink aria-expanded:text-ink narrow:min-h-11 narrow:-my-[calc((--spacing(11)-1lh)/2)]";
+const ANSWERED_LINE = "group/steps inline-flex max-w-full min-w-0 cursor-pointer items-center gap-1 rounded-sm -my-1 py-1 text-left text-muted hover:text-ink aria-expanded:text-ink narrow:-mt-(--press-up) narrow:-mb-(--press-down) narrow:pt-(--press-up) narrow:pb-(--press-down)";
 /**
- * The answered line's letters stand as far from the message over it as from the answer's letters under it. Over it is the
- * conversation's room between blocks (type-block of the answer's line, which the reply keeps over it already); under it,
- * that room less the answer's own half-leading, i.e. half the answer's size. On a phone the press's overhang comes first,
- * so it covers neither the message nor the answer, and the same evenness is kept around it.
+ * The answered line's letters stand as far from the message over it as from the answer's letters under it: the room over
+ * the line is the room under it and the answer's own half-leading, the white above the answer's letters in its line.
+ * Over it is the conversation's room between blocks (type-block of the answer's line, which the reply keeps over it
+ * already), so under it is half the answer's size. On a phone the two rooms are the press's overhang instead, a finger's
+ * height between them with the line, so the press covers neither the message nor the answer.
  */
-const ANSWERED_PLACE = "mt-[calc(var(--text-base)*var(--text-base--line-height)/2)] mb-[calc(var(--text-base)/2)] narrow:mt-[calc((--spacing(11)-1lh)/2+(var(--text-base)*var(--text-base--line-height)-var(--text-base))/2)] narrow:mb-[calc((--spacing(11)-1lh)/2)]";
+const ANSWERED_PLACE = "mt-[calc(var(--text-base)*var(--text-base--line-height)/2)] mb-[calc(var(--text-base)/2)] narrow:[--press-up:calc((--spacing(11)-1lh)/2+(var(--text-base)*var(--text-base--line-height)-var(--text-base))/4)] narrow:[--press-down:calc((--spacing(11)-1lh)/2-(var(--text-base)*var(--text-base--line-height)-var(--text-base))/4)] narrow:mt-(--press-up) narrow:mb-(--press-down)";
 /** Open under the answered line on a phone, the steps start below the press's overhang, so their first step is pressed as itself. */
-const ANSWERED_LOG = "narrow:mt-[calc((--spacing(11)-1lh)/2)]";
+const ANSWERED_LOG = "narrow:mt-(--press-down)";
 /** The conversation is short: its steps' box keeps the answer under it in sight, a step opened in it too. */
 const CHAT_LOG = "mt-1 max-h-[min(14rem,35vh)] narrow:max-h-[min(16rem,40vh)] has-[[data-run-step-open]]:max-h-[min(14rem,35vh)] narrow:has-[[data-run-step-open]]:max-h-[min(16rem,40vh)]";
 function Chevron({ open }: { open: boolean }) {
