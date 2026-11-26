@@ -8,7 +8,7 @@ import { analysisMoved, analysisSurfaces, analysisValues, belowLayer, listOnAnsw
 import { axisLabels } from "../src/features/analysis/charts";
 import { dayIntent, inSpanOf, legendRoom, lineDots, lineTop, spanMost } from "../src/features/analysis/rows";
 import { tipAround, tipBeside, tipPlace } from "../src/features/analysis/parts";
-import { isStep, surfacesOf } from "../src/state/history-step";
+import { belowSurface, isStep, surfacesOf } from "../src/state/history-step";
 import type { Navigation } from "../src/state/view-store";
 
 beforeAll(async () => { startI18n(); await i18n.changeLanguage("ja"); });
@@ -121,9 +121,9 @@ const navigation = (analysis: AnalysisPlace | null, task: string | null = null):
 const step = (from: string, to: string) => isStep(navigation(place(from)), navigation(place(to)), new URL(`http://x/?${from}`), new URL(`http://x/?${to}`));
 
 test("the analysis's place survives its URL, with the defaults left out", () => {
-  const shown = place("face=analysis&look=usage&span=2026-11-01~2026-11-30&list=used&measure=runMs&group=model&member=opus(high)&unit=T12")!;
+  const shown = place("face=analysis&look=usage&span=2026-11-01~2026-11-30&list=used&measure=runMs&group=model&member=opus(high)")!;
   expect(shown).toEqual({ look: "usage", span: { from: "2026-11-01", to: "2026-11-30" },
-    list: { set: "used", value: "runMs", group: "model", member: "opus(high)", days: null }, unit: "T12", card: null });
+    list: { set: "used", value: "runMs", group: "model", member: "opus(high)", days: null }, card: null });
   // A list opened from a chart's bin keeps that bin's days.
   const bin = place("face=analysis&list=finished&bin=2026-11-09~2026-11-15")!;
   expect(bin.list).toMatchObject({ set: "finished", days: { from: "2026-11-09", to: "2026-11-15" } });
@@ -139,20 +139,19 @@ test("the analysis's place survives its URL, with the defaults left out", () => 
   expect(place("face=analysis&card=7d~2026-13-18")!.card).toEqual({ length: "7d", end: null });
 });
 
-test("Back undoes one step at a time: a span chosen, the list opened, a task's values opened; another look is not a step", () => {
+test("Back undoes one step at a time: a span chosen, the list opened, a task opened over it; another look is not a step", () => {
   const list = "face=analysis&span=today&list=passed&measure=lead";
   expect(step("", "face=analysis")).toBe(true);
   expect(step("face=analysis", "face=analysis&span=28d")).toBe(true);
   expect(step("face=analysis", "face=analysis&look=usage")).toBe(false);
   expect(step("face=analysis&span=today", list)).toBe(true);
-  expect(step(list, `${list}&unit=T5`)).toBe(true);
-  expect(surfacesOf(`?${list}&unit=T5`)).toHaveLength(2);
-  // Opening the task from its values leaves the analysis for the reader: a step, which Back undoes.
-  expect(isStep(navigation(place(`${list}&unit=T5`)), navigation(null, "T5"), new URL(`http://x/?${list}&unit=T5`), new URL("http://x/?task=T5"))).toBe(true);
-  // Closing a layer takes away it and those over it.
-  const open = place(`${list}&unit=T5`)!;
-  expect(belowLayer(open, 1)).toMatchObject({ list: open.list, unit: null });
-  expect(belowLayer(open, 0)).toMatchObject({ list: null, unit: null, span: { period: "today" } });
+  // A task opened from the list is the reader over the face: a step, its surface over the list's.
+  expect(isStep(navigation(place(list)), navigation(place(list), "T5"), new URL(`http://x/?${list}`), new URL(`http://x/?${list}&task=T5`))).toBe(true);
+  expect(surfacesOf(`?${list}&task=T5`)).toEqual([expect.stringMatching(/^list:/), "T5"]);
+  // Closing a surface takes away it and those over it: the task first, then the list under it.
+  const open = place(list)!, reading = navigation(open, "T5");
+  expect(belowSurface(reading, 1)).toMatchObject({ task: null, analysis: { list: open.list } });
+  expect(belowSurface(reading, 0)).toMatchObject({ task: null, analysis: { list: null, span: { period: "today" } } });
   expect(analysisSurfaces(belowLayer(open, 0))).toEqual([]);
   expect(analysisMoved(open, { ...open, look: "usage" })).toBe(false);
   // The card is a layer as well: opening it is a step; another span on it, or a reload, keeps it as it is.

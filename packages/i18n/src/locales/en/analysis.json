@@ -355,7 +355,7 @@
     "passedOf_other": "{{passed}} of {{count}}"
   },
   "task": {
-    "accepted": "then accepted",
+    "accepted": "{{times}}, then accepted",
     "causes": "Causes",
     "causesNote": "Places worth a look, longest first, and the fixes you asked for. Press one to see that moment on the timeline.",
     "fixes_one": "Fixes you asked for: {{count}}, by kind",
@@ -363,13 +363,13 @@
     "noFindings": "Nothing stood out.",
     "noWords": "(no words recorded)",
     "ofRequest": "Counted for the whole request {{id}}",
-    "open": "so far",
+    "open": "{{times}} so far",
     "question": "A question of {{task}}",
     "reviews": "Reviews",
     "round": "Round {{n}}",
     "rounds": "Each review round",
     "roundsNote": "A round is the work up to one review and the wait for your answer. Round 1 is the first work; later rounds are the fixes.",
-    "stopped": "then stopped",
+    "stopped": "{{times}}, then stopped",
     "time": "Time taken",
     "tokens": "Tokens"
   },
@@ -389,7 +389,8 @@
     "otherTasks": "On other tasks",
     "otherTasksTip": "Waits while you were answering or instructing other tasks",
     "thisTask": "This task's turn",
-    "thisTaskTip": "Waits while you were here and busy with nothing else"
+    "thisTaskTip": "Waits while you were here and busy with nothing else",
+    "title": "Your turn, by where you were"
   },
   "rule": {
     "failed-run": "Failed run",
@@ -476,5 +477,32 @@
   "role": {
     "member": "member",
     "owner": "owner"
+  },
+  "causes": {
+    "away": "Waits while you were away",
+    "later": "Rounds after the first review",
+    "laterTip": "The work redone and waited on after each task's first review",
+    "meant": "As you meant",
+    "noFixes": "No fixes were labelled in this span.",
+    "none": "Nothing to show in this span.",
+    "ofFixes_one": "Of the {{count}} fix you asked for, by kind",
+    "ofFixes_other": "Of the {{count}} fixes you asked for, by kind",
+    "ofTime": "Of the {{time}} from request to acceptance",
+    "ofTokens": "Of the {{tokens}} tokens used",
+    "otherTasks": "Waits while you were on other tasks",
+    "thisTask": "Waits on this task's turn",
+    "time": "Time",
+    "title": "Main causes",
+    "tokens": "Tokens"
+  },
+  "change": {
+    "agent": "Agent",
+    "effort": "Effort",
+    "gone": "removed",
+    "instruction-file": "Instruction file",
+    "legend": "Changes",
+    "model": "Model",
+    "skill": "Skill",
+    "version": "alpacawork"
   }
 }

@@ -328,7 +328,7 @@
     "passedOf_other": "{{count}} 个中 {{passed}} 个"
   },
   "task": {
-    "accepted": "后接受",
+    "accepted": "{{times}}后接受",
     "causes": "原因",
     "causesNote": "值得一看的地方（按时长排序）和你要求的修改。点按一项即可在时间线上查看那一刻。",
     "fixes_one": "你要求的修改 {{count}} 项（按类别）",
@@ -336,13 +336,13 @@
     "noFindings": "没有值得注意的地方。",
     "noWords": "（未记录文字）",
     "ofRequest": "按整个请求 {{id}} 统计",
-    "open": "（进行中）",
+    "open": "{{times}}（进行中）",
     "question": "{{task}} 的提问",
     "reviews": "审阅",
     "round": "第 {{n}} 轮",
     "rounds": "每轮审阅",
     "roundsNote": "一轮＝提交审阅前的工作加上等待你回答的时间。第 1 轮是首次工作，之后的轮次是修改。",
-    "stopped": "后中止",
+    "stopped": "{{times}}后中止",
     "time": "耗时",
     "tokens": "Token"
   },
@@ -362,7 +362,8 @@
     "otherTasks": "处理其他任务",
     "otherTasksTip": "你在回答或指示其他任务期间的等待",
     "thisTask": "轮到此任务",
-    "thisTaskTip": "你在场且没有做其他操作期间的等待"
+    "thisTaskTip": "你在场且没有做其他操作期间的等待",
+    "title": "轮到你的时间（按你当时所在）"
   },
   "rule": {
     "failed-run": "失败的运行",
@@ -449,5 +450,32 @@
   "role": {
     "member": "成员",
     "owner": "负责人"
+  },
+  "causes": {
+    "away": "你不在时的等待",
+    "later": "首次审阅后的修改轮次",
+    "laterTip": "各任务首次审阅之后返工和等待的部分",
+    "meant": "是否符合预期",
+    "noFixes": "此期间没有已分类的修改。",
+    "none": "此期间没有可显示的内容。",
+    "ofFixes_one": "你要求的 {{count}} 项修改中（按类别）",
+    "ofFixes_other": "你要求的 {{count}} 项修改中（按类别）",
+    "ofTime": "从请求到接受的 {{time}} 中",
+    "ofTokens": "所用 {{tokens}} Token 中",
+    "otherTasks": "你处理其他任务时的等待",
+    "thisTask": "轮到此任务时的等待",
+    "time": "时间",
+    "title": "主要原因",
+    "tokens": "Token"
+  },
+  "change": {
+    "agent": "代理",
+    "effort": "effort",
+    "gone": "移除",
+    "instruction-file": "指示文件",
+    "legend": "变更标记",
+    "model": "模型",
+    "skill": "技能",
+    "version": "alpacawork"
   }
 }

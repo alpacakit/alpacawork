@@ -3,7 +3,7 @@ import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-quer
 import { commandRoute } from "@alpacawork/contract/command-path";
 import { api, resources } from "@/data/resources";
 import { useWorkspaceInfo } from "@/data/queries";
-import { atViewSchema, breakdownViewSchema, findingsViewSchema, traceViewSchema, tasksViewSchema, unitListSchema, unitValuesSchema, usageSeriesViewSchema, usageViewSchema, type Bucket, type Group, type UnitList } from "./contract";
+import { atViewSchema, breakdownViewSchema, changesViewSchema, findingsViewSchema, traceViewSchema, tasksViewSchema, unitListSchema, unitValuesSchema, usageSeriesViewSchema, usageViewSchema, type Bucket, type Group, type UnitList } from "./contract";
 import { filterQuery, type LaunchFilter, type SeriesBy } from "./series";
 import { cardDays, spanQuery, type CardSpan, type ListPlace, type Span } from "./place";
 
@@ -189,4 +189,9 @@ export function useFindings(task: string) {
 export function useAt(task: string, at: string | null) {
   const root = useWorkspaceInfo(info => info.root);
   return useQuery({ ...resources.analysisTimeline(root, "at", { task, scope: "subtree", at }, atViewSchema), enabled: !!at });
+}
+/** When what Runs ran under changed (`analysis changes`) over the face's span, read with the face. */
+export function useChanges(project: string | null, span: Span) {
+  const root = useWorkspaceInfo(info => info.root);
+  return useQuery({ ...resources.analysisTimeline(root, "changes", { ...scope(project, span), limit: "100" }, changesViewSchema) });
 }

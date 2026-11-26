@@ -6,6 +6,7 @@ import { useFindings, useTrace, useUnitValues } from "./data";
 import { duration, format, instant, share } from "./format";
 import { ReadPart, Square, tip, useReadSet } from "./parts";
 import { Timeline } from "./Timeline";
+import { Waits } from "./Waits";
 import type { Finding, FindingsView, TraceMark, TraceView, UnitValues } from "./contract";
 
 /**
@@ -50,13 +51,14 @@ function Axes({ values, task }: { values: UnitValues; task: string }) {
   const row = values.unit, lead = row.finishedAt ? Date.parse(row.finishedAt) - Date.parse(row.requestedAt) : null;
   const tokens = values.usage.tokens.output + values.usage.tokens.input + values.usage.tokens.cache;
   const you = values.time.review + values.time.answer, waits = values.waits;
-  const outcome = row.outcome === "stopped" ? t("task.stopped") : row.outcome ? t("task.accepted") : t("task.open");
+  const times = format("times", values.submits);
+  const reviews = row.outcome === "stopped" ? t("task.stopped", { times }) : row.outcome ? t("task.accepted", { times }) : t("task.open", { times });
   return <section>
     {values.unit.id !== task && <p className="mb-2 text-xs text-soft">{t("task.ofRequest", { id: values.unit.id })}</p>}
     <dl className="grid grid-cols-3 gap-x-4 gap-y-3 narrow:grid-cols-2">
       <Axis name={t("task.time")} value={duration(lead ?? values.time.review + values.time.answer + values.time.ai + values.time.other)} />
       <Axis name={t("task.tokens")} value={format("tokens", tokens)} />
-      <Axis name={t("task.reviews")} value={`${format("times", values.submits)} ${outcome}`} />
+      <Axis name={t("task.reviews")} value={reviews} />
     </dl>
     {you > 0 && <div className="mt-3 text-xs text-muted">
       <span className="inline-flex items-center"><Square className="bg-turn" />{t("time.you")} <b className="ms-1 font-semibold text-ink">{duration(you)}</b></span>
@@ -66,17 +68,6 @@ function Axes({ values, task }: { values: UnitValues; task: string }) {
 }
 const Axis = ({ name, value }: { name: string; value: string }) =>
   <div className="min-w-0"><dt className="text-xs text-muted">{name}</dt><dd className="text-[1.375rem] leading-tight font-semibold tabular-nums">{value}</dd></div>;
-
-/** The time the user was waited on, by where the user was: away, on other tasks, free for this one. */
-export function Waits({ waits, total, className }: { waits: { away: number; otherTasks: number; thisTask: number }; total: number; className?: string }) {
-  const { t } = useTranslation("analysis");
-  const parts = [["away", waits.away], ["otherTasks", waits.otherTasks], ["thisTask", waits.thisTask]] as const;
-  return <ul className={cn("flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted", className)}>
-    {parts.map(([key, ms]) => <li key={key} className="whitespace-nowrap" {...tip(t(`waits.${key}Tip`))}>
-      {t(`waits.${key}`)} <b className="font-semibold text-ink tabular-nums">{duration(ms)}</b>
-      {total > 0 && <span className="ms-1 text-soft">{share(ms / total)}</span>}</li>)}
-  </ul>;
-}
 
 /** Each review round's time and tokens as two rows of small bars, so the round that cost the most stands out. */
 function Rounds({ values }: { values: UnitValues }) {

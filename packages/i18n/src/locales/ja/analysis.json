@@ -328,7 +328,7 @@
     "passedOf_other": "{{count}}件のうち{{passed}}件"
   },
   "task": {
-    "accepted": "で受け入れ",
+    "accepted": "{{times}}で受け入れ",
     "causes": "原因",
     "causesNote": "見る価値のある所（時間の長い順）と、あなたが頼んだ直し。押すと時系列のその時へ移ります。",
     "fixes_one": "あなたが頼んだ直し {{count}}件（分類ごと）",
@@ -336,13 +336,13 @@
     "noFindings": "目立つ所はありませんでした。",
     "noWords": "（文の記録なし）",
     "ofRequest": "依頼全体（{{id}}）の数です",
-    "open": "（途中）",
+    "open": "{{times}}（途中）",
     "question": "{{task}} の問い",
     "reviews": "確認",
     "round": "{{n}}回目",
     "rounds": "確認の往復ごと",
     "roundsNote": "1回＝確認に出すまでの作業と、あなたの答えまでの待ち。1回目が初回の作業、2回目からが直しです。",
-    "stopped": "で中止",
+    "stopped": "{{times}}で中止",
     "time": "かかった時間",
     "tokens": "トークン"
   },
@@ -362,7 +362,8 @@
     "otherTasks": "他のタスクを処理中",
     "otherTasksTip": "あなたが他のタスクに答えたり指示したりしていた間の待ち",
     "thisTask": "このタスクの番",
-    "thisTaskTip": "あなたがいて、他の操作もしていなかった間の待ち"
+    "thisTaskTip": "あなたがいて、他の操作もしていなかった間の待ち",
+    "title": "あなたの番の内訳（その間どこにいたか）"
   },
   "rule": {
     "failed-run": "失敗した実行",
@@ -449,5 +450,32 @@
   "role": {
     "member": "メンバー",
     "owner": "担当"
+  },
+  "causes": {
+    "away": "不在の間の待ち",
+    "later": "直しの往復",
+    "laterTip": "各タスクの1回目の確認の後に、直して待った分",
+    "meant": "思った通りか",
+    "noFixes": "この期間に分類された直しはありません。",
+    "none": "この期間に出せるものはありません。",
+    "ofFixes_one": "あなたが頼んだ直し {{count}}件のうち（分類ごと）",
+    "ofFixes_other": "あなたが頼んだ直し {{count}}件のうち（分類ごと）",
+    "ofTime": "頼んでから受け入れまでの {{time}} のうち",
+    "ofTokens": "使ったトークン {{tokens}} のうち",
+    "otherTasks": "他のタスクを処理中の待ち",
+    "thisTask": "このタスクの番の待ち",
+    "time": "時間",
+    "title": "主な原因",
+    "tokens": "トークン"
+  },
+  "change": {
+    "agent": "エージェント",
+    "effort": "effort",
+    "gone": "なし",
+    "instruction-file": "指示ファイル",
+    "legend": "変更の印",
+    "model": "モデル",
+    "skill": "スキル",
+    "version": "alpacawork"
   }
 }

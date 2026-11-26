@@ -33,7 +33,8 @@ const row = { id: 'T2', title: 'Fictional task', project: 'P1', outcome: 'passed
 const listed_ = { head, total: 1, rows: [row], cursor: null };
 const unit = { head, unit: { ...row, requestedAt: '2026-11-25T00:00:00.000Z', asked: 'T2' }, band: [], marks: [], time: accepted.time,
   submits: 1, questions: 0, sendBacks: 0, instructionsAtReview: 0, instructionsAfterAccept: 0, instructionsDuringWork: 0, answers: 0,
-  workers: 0, children: 0, usage: counts, models: [], prs: [], skills: [], tools: [], tallied: { runs: 0, of: 0, since: '2026-11-25' } };
+  waits: accepted.waits, answerItems: accepted.answerItems, answersWithoutParts: 0, instructions: accepted.instructions, questionsReplaced: 0, submitsEstimated: false,
+  workers: 0, children: 0, usage: counts, rounds: [], models: [], prs: [], skills: [], tools: [], tallied: { runs: 0, of: 0, since: '2026-11-25' } };
 const listOptions = () => resources.analysisList(index.root, { project: null, period: 'today', set: 'finished', limit: '100' });
 const options = () => resources.analysisView(index.root, 'tasks', { project: null, period: 'today', bucket: 'day', by: null }, analysisTasksViewSchema);
 

@@ -376,7 +376,7 @@
     "passedOf_other": "{{passed}} de {{count}}"
   },
   "task": {
-    "accepted": "e aceita",
+    "accepted": "{{times}} e aceita",
     "causes": "Causas",
     "causesNote": "Pontos que valem uma olhada, do mais longo ao mais curto, e as correções que você pediu. Toque em um para ver esse momento na linha do tempo.",
     "fixes_one": "Correções que você pediu: {{count}}, por tipo",
@@ -384,13 +384,13 @@
     "noFindings": "Nada se destacou.",
     "noWords": "(sem texto registrado)",
     "ofRequest": "Contado para a solicitação inteira {{id}}",
-    "open": "até agora",
+    "open": "{{times}} até agora",
     "question": "Uma pergunta de {{task}}",
     "reviews": "Revisões",
     "round": "Rodada {{n}}",
     "rounds": "Cada rodada de revisão",
     "roundsNote": "Uma rodada é o trabalho até uma revisão e a espera pela sua resposta. A rodada 1 é o primeiro trabalho; as seguintes são as correções.",
-    "stopped": "e interrompida",
+    "stopped": "{{times}} e interrompida",
     "time": "Tempo gasto",
     "tokens": "Tokens"
   },
@@ -410,7 +410,8 @@
     "otherTasks": "Em outras tarefas",
     "otherTasksTip": "Esperas enquanto você respondia ou instruía outras tarefas",
     "thisTask": "Vez desta tarefa",
-    "thisTaskTip": "Esperas enquanto você estava aqui sem fazer outra coisa"
+    "thisTaskTip": "Esperas enquanto você estava aqui sem fazer outra coisa",
+    "title": "Sua vez, por onde você estava"
   },
   "rule": {
     "failed-run": "Execução com falha",
@@ -497,5 +498,32 @@
   "role": {
     "member": "membro",
     "owner": "responsável"
+  },
+  "causes": {
+    "away": "Esperas enquanto você estava ausente",
+    "later": "Rodadas após a primeira revisão",
+    "laterTip": "O trabalho refeito e esperado após a primeira revisão de cada tarefa",
+    "meant": "Como você queria",
+    "noFixes": "Nenhuma correção classificada neste período.",
+    "none": "Nada a mostrar neste período.",
+    "ofFixes_one": "Da {{count}} correção que você pediu, por tipo",
+    "ofFixes_other": "Das {{count}} correções que você pediu, por tipo",
+    "ofTime": "Das {{time}} entre o pedido e a aceitação",
+    "ofTokens": "Dos {{tokens}} tokens usados",
+    "otherTasks": "Esperas enquanto você estava em outras tarefas",
+    "thisTask": "Esperas na vez desta tarefa",
+    "time": "Tempo",
+    "title": "Causas principais",
+    "tokens": "Tokens"
+  },
+  "change": {
+    "agent": "Agente",
+    "effort": "Esforço",
+    "gone": "removido",
+    "instruction-file": "Arquivo de instruções",
+    "legend": "Mudanças",
+    "model": "Modelo",
+    "skill": "Skill",
+    "version": "alpacawork"
   }
 }
