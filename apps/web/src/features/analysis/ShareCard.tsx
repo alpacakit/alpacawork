@@ -1,8 +1,7 @@
 import { useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import icon from "../../../public/icons/icon-192-2c.png?inline";
-import { Button } from "@/components/ui/button";
-import { Icon } from "@/components/ui/icon";
+import { Icon, shareIcon } from "@/components/ui/icon";
 import { TAB, TabLabel } from "@/components/ui/tabs";
 import { deviceValue, jsonCodec, useDeviceValue } from "@/lib/device-storage";
 import { srgb } from "@/lib/mermaid-colors";
@@ -82,17 +81,40 @@ async function copyCard(svg: string): Promise<void> {
 const canShareFiles = () => {
   try { return !!navigator.canShare?.({ files: [new File([""], "card.png", { type: "image/png" })] }); } catch { return false; }
 };
-/** X's post screen, its text begun with the card's own words (the person's to change). */
-const postUrl = (text: string) => `https://x.com/intent/post?text=${encodeURIComponent(text)}`;
+/**
+ * Where a post can start with the card's own words (the person's to change): each service's own link to its post screen.
+ * None takes a picture by link, so the picture goes along on the clipboard (or into the downloads) to be pasted in.
+ * Each mark is the service's own, unaltered, on its own colour or in the button's text colour (X's and Threads' are
+ * black or white by their guides; Bluesky's butterfly is white on its blue).
+ */
+const DESTINATIONS = [
+  { key: "x", name: "X", post: (text: string) => `https://x.com/intent/post?text=${encodeURIComponent(text)}`,
+    face: "bg-scrim text-paper dark:bg-paper dark:text-scrim",
+    mark: "M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z" },
+  { key: "bluesky", name: "Bluesky", post: (text: string) => `https://bsky.app/intent/compose?text=${encodeURIComponent(text)}`,
+    face: "bg-[#1185fe] text-white",
+    mark: "M5.202 2.857C7.954 4.922 10.913 9.11 12 11.358c1.087-2.247 4.046-6.436 6.798-8.501C20.783 1.366 24 .213 24 3.883c0 .732-.42 6.156-.667 7.037-.856 3.061-3.978 3.842-6.755 3.37 4.854.826 6.089 3.562 3.422 6.299-5.065 5.196-7.28-1.304-7.847-2.97-.104-.305-.152-.448-.153-.327 0-.121-.05.022-.153.327-.568 1.666-2.782 8.166-7.847 2.97-2.667-2.737-1.432-5.473 3.422-6.3-2.777.473-5.899-.308-6.755-3.369C.42 10.04 0 4.615 0 3.883c0-3.67 3.217-2.517 5.202-1.026" },
+  { key: "threads", name: "Threads", post: (text: string) => `https://www.threads.com/intent/post?text=${encodeURIComponent(text)}`,
+    face: "bg-scrim text-paper dark:bg-paper dark:text-scrim",
+    mark: "M18.263 11.097c-.03-3.486-1.92-5.586-5.111-5.586-2.13 0-3.922.963-4.863 2.499l2.062 1.438c.535-.843 1.272-1.543 2.628-1.543 1.528 0 2.318.85 2.544 2.431a15 15 0 0 0-2.236-.173c-4.125 0-6.068 1.867-6.068 4.336s1.943 3.99 4.804 3.99c3.139 0 5.013-2.115 5.781-4.735.798.361 1.348 1.204 1.348 2.47 0 3.387-3.907 5.232-7.22 5.232-4.885 0-8.077-3.207-8.077-8.424 0-6.392 4.223-10.487 9.9-10.487 3.808 0 5.69 1.671 6.97 3.914l2.108-1.475C21.44 2.078 18.331 0 13.663 0 6.227 0 1.168 5.277 1.168 12.934c0 7 4.953 11.066 10.856 11.066 4.878 0 9.809-2.846 9.809-7.716 0-2.545-1.46-4.231-3.569-5.187m-6.33 4.855c-1.077 0-2.026-.512-2.026-1.453 0-1.483 1.822-1.934 3.606-1.934.678 0 1.34.045 1.927.173-.422 1.927-1.671 3.215-3.508 3.214Z" },
+] as const;
+type Destination = typeof DESTINATIONS[number];
 
 /**
- * X's mark as X gives it (its brand toolkit, about.x.com): its own form, unaltered, in one colour, black or white (the button's
- * text, which is pure black or white), with equal room on every side (the button's padding and the gap to its word).
+ * One way out of the page, as a phone's share sheet lays them out: a round face over its name, the whole column pressed.
+ * The services stand on their own colours; what stays on this device (the share menu, copy, save) on the page's.
  */
-function XMark() {
-  return <svg aria-hidden viewBox="0 0 24 24" className="size-3.5 flex-none" fill="currentColor">
-    <path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z" />
-  </svg>;
+/** What stays on this device: the page's own ground, its line round it. */
+const DEVICE = "border border-line text-ink group-hover:bg-hover";
+
+function Way({ name, label, face, disabled, onClick, describedBy, children }: {
+  name: string; label?: string; face: string; disabled: boolean; onClick: () => void; describedBy?: string; children: ReactNode;
+}) {
+  return <button type="button" disabled={disabled} onClick={onClick} aria-label={label} aria-describedby={describedBy}
+    className="group flex w-16 flex-none cursor-pointer touch-manipulation flex-col items-center gap-1.5 rounded-md py-1 text-xs text-muted outline-offset-2 hover:text-ink disabled:cursor-default disabled:opacity-38 disabled:hover:text-muted narrow:w-auto narrow:min-w-0 narrow:flex-1">
+    <span className={cn("grid size-12 place-items-center rounded-full narrow:size-11 transition-[filter,transform] group-hover:brightness-110 group-active:translate-y-px group-disabled:brightness-100", face)}>{children}</span>
+    <span className="whitespace-nowrap">{name}</span>
+  </button>;
 }
 
 /**
@@ -131,7 +153,7 @@ export function CardPane({ place, reads: { face, tasks, usage }, waitFrom }: {
   const picks = facts ? cardPicks(choice, facts) : null;
   const [sharing] = useState(canShareFiles);
   const [copying] = useState(canCopyPictures);
-  const postHint = useId(), imageName = useId(), shareHint = useId();
+  const postHint = useId();
   // As the analysis says it: what failed, no record for these days, or a wait.
   const failed = tasks.error ?? usage.error;
   const state = svg ? null : failed ? <p className="text-soft">{failed.message}</p>
@@ -160,16 +182,16 @@ export function CardPane({ place, reads: { face, tasks, usage }, waitFrom }: {
       if (!(error instanceof DOMException && error.name === "AbortError")) notify.error(t("card.shareFailed"));
     }
   };
-  // The picture goes with the person to X: onto the clipboard while the press still counts, or, where this browser
-  // cannot copy a picture, into their downloads, then the post opens in a new tab. Should a copy still fail, the
-  // picture is saved after all, so it is at hand to attach either way.
-  const post = () => {
+  // The picture goes with the person to the service: onto the clipboard while the press still counts, or, where this
+  // browser cannot copy a picture, into their downloads, then the post opens in a new tab. Should a copy still fail,
+  // the picture is saved after all, so it is at hand to attach either way.
+  const post = (to: Destination) => {
     if (!svg || !facts) return;
     const text = cardPostText(facts, choice, card.length === "all");
-    const saveForPost = () => void save(t("card.postSave"));
+    const saveForPost = () => void save(t("card.postSave", { name: to.name }));
     if (copying) void copyCard(svg).then(() => notify.success(t("card.postCopied")), saveForPost);
     else saveForPost();
-    window.open(postUrl(text), "_blank", "noopener");
+    window.open(to.post(text), "_blank", "noopener");
   };
 
   // A number is chosen by the name the card gives it; several can be, so each chosen one carries a check.
@@ -192,22 +214,18 @@ export function CardPane({ place, reads: { face, tasks, usage }, waitFrom }: {
       {THEMES.map(each => <div key={each} className={`theme-${each}`}>{PROBE.map(name => <i key={name} data-token={name} className={name} />)}</div>)}
     </div>
     <CardPreview picture={svg && input ? { svg, label: cardWords(input) } : undefined}>{state}</CardPreview>
-    {/* Keep the manual image step next to the X action. */}
-    <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
-      <Button disabled={!current} onClick={post} aria-describedby={postHint}
-        className="min-h-10 gap-2.5 border-scrim bg-scrim px-5 text-base font-semibold text-paper hover:border-scrim hover:bg-scrim hover:text-paper active:translate-y-px narrow:w-full dark:border-paper dark:bg-paper dark:text-scrim dark:hover:border-paper dark:hover:bg-paper dark:hover:text-scrim">
-        <XMark />{t("card.post")}</Button>
-      <p id={postHint} className="min-w-0 flex-1 basis-60 text-xs text-soft">{copying ? t("card.postHintCopy") : t("card.postHintSave")}</p>
+    {/* The services first, then what stays on this device, apart by a rule; one line under them says what a service's
+        press does. On a phone the ways share the width. */}
+    <div className="mt-5 flex items-start gap-2 narrow:gap-0">
+      {DESTINATIONS.map(each => <Way key={each.key} name={each.name} label={t("card.postTo", { name: each.name })} face={each.face}
+        disabled={!current} onClick={() => post(each)} describedBy={postHint}>
+        <svg aria-hidden viewBox="0 0 24 24" className="size-5" fill="currentColor"><path d={each.mark} /></svg></Way>)}
+      <span aria-hidden className="mx-2 mt-3 h-6 w-px flex-none bg-line narrow:mx-1" />
+      {sharing && <Way name={t("card.more")} face={DEVICE} disabled={!current} onClick={() => void share()}><Icon name={shareIcon()} className="size-5" /></Way>}
+      <Way name={t("card.copy")} face={DEVICE} disabled={!current} onClick={copy}><Icon name="copy" className="size-5" /></Way>
+      <Way name={t("card.save")} face={DEVICE} disabled={!current} onClick={() => void save()}><Icon name="download" className="size-5" /></Way>
     </div>
-    <div role="group" aria-labelledby={imageName} className="mt-5">
-      <h4 id={imageName} className="mb-1 text-xs font-normal text-soft">{t("card.image")}</h4>
-      <div className="flex flex-wrap gap-2 narrow:[&>button]:min-h-10">
-        <Button variant="outline" disabled={!current} onClick={() => void save()} className="active:translate-y-px"><Icon name="download" className="size-3.5" />{t("card.save")}</Button>
-        <Button variant="outline" disabled={!current} onClick={copy} className="active:translate-y-px"><Icon name="copy" className="size-3.5" />{t("card.copy")}</Button>
-        {sharing && <Button variant="outline" disabled={!current} onClick={() => void share()} aria-describedby={shareHint} className="active:translate-y-px"><Icon name="share" className="size-3.5" />{t("card.share")}</Button>}
-      </div>
-      {sharing && <p id={shareHint} className="mt-2 text-xs text-soft">{t("card.shareHint")}</p>}
-    </div>
+    <p id={postHint} className="mt-2 text-xs text-soft">{copying ? t("card.postHintCopy") : t("card.postHintSave")}</p>
     <div className="mt-8 grid gap-6">
       {row(t("period.label"), <Seg label={t("period.label")} value={card.length} className={fold}
         onChange={length => useViewStore.getState().showAnalysis({ ...place, card: { ...card, length } })}
