@@ -544,13 +544,16 @@
     "title": "Settings",
     "up": "Up",
     "skills": {
-      "installedVersion": "Installed {{version}}",
-      "latestVersion": "Latest {{version}}",
       "upToDate": "Up to date",
       "install": "Install",
       "update": "Update",
-      "installing": "Installing…",
-      "notInstalled": "Not installed"
+      "installing": "Installing",
+      "updating": "Updating",
+      "retry": "Retry",
+      "versions": {
+        "installed": "Installed {{version}}",
+        "latest": "Latest {{version}}"
+      }
     }
   },
   "telemetry": {

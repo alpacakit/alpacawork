@@ -537,13 +537,16 @@
     "title": "設定",
     "up": "上へ",
     "skills": {
-      "installedVersion": "入っている版 {{version}}",
-      "latestVersion": "最新 {{version}}",
-      "upToDate": "最新です",
+      "upToDate": "最新",
       "install": "インストール",
       "update": "更新する",
-      "installing": "インストール中…",
-      "notInstalled": "未インストール"
+      "installing": "インストール中",
+      "updating": "更新中",
+      "retry": "再試行",
+      "versions": {
+        "installed": "入っている版 {{version}}",
+        "latest": "最新 {{version}}"
+      }
     }
   },
   "telemetry": {

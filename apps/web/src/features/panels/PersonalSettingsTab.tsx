@@ -1,3 +1,4 @@
+import { RegionSkeleton } from '@/components/ui/skeleton';
 import { useRef, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { personalSettings, quietTimes, type SettingDefinition, type SettingValues } from '@alpacawork/contract';
@@ -115,7 +116,10 @@ function GuideRow() {
   </SettingRow>;
 }
 
-/** What the tabs of these values (General, Notifications) show while the values are read, or when a read fails. */
+/** Whether this person's values are still being read: their rows stand as placeholders meanwhile. */
+const usePersonalLoading = () => usePersonalSettings(state => state.status === 'idle' || state.status === 'loading');
+
+/** What the tabs of these values (General, Notifications) show when a read fails. */
 function PersonalReadState() {
   const { t } = useTranslation('panels');
   const state = usePersonalSettings();
@@ -128,8 +132,6 @@ function PersonalReadState() {
       retry={state.root ? () => void state.load(state.root!, true) : undefined} />}
     {reloadFailed && <ReadFailure what={t('settings.personal.reloadFailed')} error={read.error} note={t('settings.personal.previousShown')}
       retry={read.retry} />}
-    {(state.status === 'idle' || state.status === 'loading') &&
-      <FieldHint role="status">{t('settings.personal.loading')}</FieldHint>}
   </>;
 }
 
@@ -141,11 +143,13 @@ const shown = (definitions: readonly SettingDefinition[]) => definitions.filter(
  */
 export function GeneralSettingsTab({ definitions = personalSettings, children }: { definitions?: readonly SettingDefinition[]; children?: ReactNode }) {
   const { t } = useTranslation('panels');
+  const loading = usePersonalLoading();
   return <>
     <FieldHint className="mb-6">{t('settings.scope.server')}</FieldHint>
     <div className="border-b border-line">
       <PersonalReadState />
-      {shown(definitions).filter(item => item.group === 'display').map(item => <PersonalSettingRow key={item.key} definition={item} />)}
+      {loading ? <RegionSkeleton shape="settingRows" rows={3} />
+        : shown(definitions).filter(item => item.group === 'display').map(item => <PersonalSettingRow key={item.key} definition={item} />)}
       <GuideRow />
       <TelemetrySection />
       {children}
@@ -164,13 +168,15 @@ export function NotificationSettingsTab({ definitions = personalSettings, focusN
   const { t } = useTranslation('panels');
   const notifications = shown(definitions).filter(item => item.group === 'notifications');
   const hasQuietHours = definitions.some(item => item.key === 'push.quiet');
+  const loading = usePersonalLoading();
   return <div>
     <PersonalReadState />
     <SettingSection id="settings-notifications" title={t('settings.personal.pushDevices')}>
       <PushSection focusHeading={focusNotifications} />
     </SettingSection>
     <SettingSection id="settings-notification-events" title={t('settings.personal.pushEvents')} note={t('settings.personal.pushScope')}>
-      {notifications.filter(item => !TIMING_KEYS.includes(item.key)).map(item => <PersonalSettingRow key={item.key} definition={item} />)}
+      {loading ? <RegionSkeleton shape="settingRows" rows={3} />
+        : notifications.filter(item => !TIMING_KEYS.includes(item.key)).map(item => <PersonalSettingRow key={item.key} definition={item} />)}
     </SettingSection>
     <SettingSection id="settings-notification-timing" title={t('settings.personal.pushTiming')}>
       {notifications.filter(item => item.key === 'push.awayAfter').map(item => <PersonalSettingRow key={item.key} definition={item} />)}

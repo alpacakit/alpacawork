@@ -4,11 +4,12 @@ import { SKILL_OFFERS, canSelectSkill, type SkillJob, type SkillName } from "@al
 import { Button } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field";
 import { ReadFailure } from "@/components/ui/loadable";
+import { RegionSkeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { notify } from "@/lib/notify";
 import { problemText } from "@/features/forms/problem-text";
 import { useSkillInstall, useSkills } from "@/data/skills";
-import { FailureLine, Loading, StepButtons } from "./parts";
+import { FailureLine, StepButtons } from "./parts";
 import { SkillOfferText } from "./SkillOfferRow";
 
 /**
@@ -39,7 +40,7 @@ export function SkillsStep({ onBack, onNext }: { onBack: () => void; onNext: () 
     onNext();
   }, [install]);
   if (skills.isError) return <ReadFailure what={t("skills.title")} error={skills.error} retry={() => void skills.refetch()} />;
-  if (!statuses || !ticked) return <Loading />;
+  if (!statuses || !ticked) return <RegionSkeleton shape="skills" />;
   const installed = (name: SkillName) => !!statuses.find(status => status.name === name)?.installed;
   const selectable = (name: SkillName) => { const status = statuses.find(each => each.name === name); return !!status && canSelectSkill(status); };
   const toInstall = SKILL_OFFERS.map(offer => offer.name).filter(name => ticked.has(name) && !installed(name) && selectable(name));

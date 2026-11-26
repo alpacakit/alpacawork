@@ -18,6 +18,7 @@ import { approveStart, continueUpdate, postponeUpdate, pressUpdate, retryUpdate,
   type Confirmation, type UpdateStatus } from "./update-state";
 
 const CUT = "ring-2 ring-[color:var(--bg)]";
+const BAND = "rounded-lg border border-line bg-[color:color-mix(in_oklab,var(--ink)_4%,transparent)] px-4 py-3";
 /**
  * A press whose answer has not come: the button looks and acts disabled but keeps the focus it has (a disabled button
  * drops the keyboard's focus out of the dialog), so the next Tab goes on from it.
@@ -107,15 +108,16 @@ function useLine(status: UpdateStatus, held: boolean): Line | null {
  * Under the title row, above the tabs (or alone on the page an update holds, `held`): one always-present live line
  * whose words are replaced, and its one action.
  */
-export function UpdateStateLine({ held = false }: { held?: boolean }) {
+export function UpdateStateLine({ held = false, className }: { held?: boolean; className?: string }) {
   const status = useUpdateStatus(), sending = useUpdateLocal((local) => local.sending);
   const line = useLine(status, held);
-  return <div data-update-line className={cn("flex flex-wrap items-center gap-x-3 gap-y-1", line && "mb-3")}>
-    <p role="status" aria-live="polite" data-update-state className={cn("m-0 flex min-w-0 flex-1 basis-48 items-start gap-1.5 text-sm", line?.long && "narrow:basis-full", line?.warn ? "text-warn" : "text-muted")}>
+  // A line stands as a band (the note set apart beside what it is about, as Message's band): none when there is nothing to say.
+  return <div data-update-line className={cn("flex flex-wrap items-center gap-x-4 gap-y-2.5", line && BAND, line && className)}>
+    <p role="status" aria-live="polite" data-update-state className={cn("m-0 flex min-w-0 flex-1 basis-48 items-start gap-2 text-sm", line?.long && "narrow:basis-full", line?.warn ? "text-warn" : "text-ink")}>
       {line && <><Icon name={line.icon} className="mt-0.5 flex-none" /><span className="min-w-0 [overflow-wrap:anywhere] [word-break:auto-phrase]">{line.text}
         {line.notes && <> <ReleaseNotes version={line.notes} /></>}</span></>}
     </p>
-    {line?.action && <Button data-update-action variant={line.action.primary ? "default" : "outline"} className={cn("flex-none narrow:min-h-11", BUSY_PRESS)}
+    {line?.action && <Button data-update-action variant={line.action.primary ? "default" : "outline"} className={cn("flex-none narrow:min-h-11 narrow:w-full", BUSY_PRESS)}
       aria-disabled={sending || undefined} onClick={() => { if (!sending) line.action!.run(); }}>{line.action.label}</Button>}
     {line?.pause && <PauseInstruction version={line.pause} />}
   </div>;

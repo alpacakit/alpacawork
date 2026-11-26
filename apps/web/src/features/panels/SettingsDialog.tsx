@@ -76,7 +76,6 @@ export function SettingsBody({ initialTab = "ai", request, focus }: { initialTab
     <Tabs value={tab} orientation={narrow ? "horizontal" : "vertical"} onValueChange={(value) => setTab(value as SettingsTab)} className={cn("min-h-0 flex-1", !narrow && "flex-row")}>
       {/* A computer lists the sections down the side, under the title; a phone keeps them in a row that scrolls sideways. */}
       <div className={cn("flex-none px-6 narrow:px-4.5", !narrow && "flex w-52 flex-col border-e border-line px-3 pt-1")}>
-        {narrow && <UpdateStateLine />}
         <div className={cn("border-b border-line", !narrow && "border-b-0")}>
           <TabsList ref={list} className={cn("-mx-1 border-b-0", !narrow && "mx-0 flex-col items-stretch gap-0.5 overflow-visible py-0")}>
             {/* Mapped over TABS itself: i18n:extract reads each `settings.tabs.*` key from this constant list, not a filtered copy. */}
@@ -88,8 +87,11 @@ export function SettingsBody({ initialTab = "ai", request, focus }: { initialTab
         {!narrow && <div className="mt-auto px-2 pb-5"><VersionLine /></div>}
       </div>
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      {!narrow && <div className="flex-none px-6 empty:hidden"><UpdateStateLine /></div>}
-      <DialogBody ref={body} className="flex flex-col border-t-0 pt-5">
+      {!narrow && <UpdateStateLine className="mx-8 mt-5 flex-none" />}
+      <DialogBody ref={body} className={cn("flex flex-col border-t-0 pt-5", !narrow && "pt-6 [--pane-side:--spacing(8)]")}>
+      {/* On a computer the page says which section it is, as the side list does beside it; a phone's row of tabs is right above. */}
+      {/* On a phone the update's band opens the page and scrolls away with it, so the tabs keep their place. */}
+      {narrow ? <UpdateStateLine className="mb-4" /> : <h3 className="m-0 mb-1.5 text-lg font-semibold">{t(`settings.tabs.${tab}`)}</h3>}
       {/* The two tabs showing the draft stay mounted while hidden, so a refused save can take the eye into either. */}
       <TabsContent value="ai" forceMount hidden={tab !== "ai"}>
         <AiSettingsTab />
