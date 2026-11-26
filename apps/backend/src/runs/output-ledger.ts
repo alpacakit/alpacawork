@@ -29,7 +29,8 @@ export class OutputLedger {
     const previous = event.id === undefined ? undefined : this.calls.get(event.id);
     if (previous?.tokens === event.tokens) return false;
     const to = Math.max(second, previous?.to ?? second);
-    const from = previous?.from ?? Math.min(to, Math.max(0, oldestSecond(to), this.turnStarted ?? -1, this.lastCallEnded, this.lastToolEnded));
+    const start = event.startedSecond ?? Math.max(this.turnStarted ?? -1, this.lastCallEnded, this.lastToolEnded);
+    const from = previous?.from ?? Math.min(to, Math.max(0, oldestSecond(to), start));
     const next = { from, to, tokens: event.tokens };
 
     this.prune(to);

@@ -127,12 +127,16 @@ export class OutputActivityReader {
    */
   constructor(private readonly adapter: AgentAdapter, private readonly now = () => Date.now(),
     private readonly reported: (update: ContextUpdate) => void = () => {},
-    private readonly compacted: (fill: CompactionObservation, at: string) => void = () => {}, private readonly cwd?: string) {}
+    private readonly compacted: (fill: CompactionObservation, at: string) => void = () => {}, private readonly cwd?: string) {
+    this.lines = new JsonlReader(() => this.resetWork(), STEP_LINE_LIMIT, adapter.skipActivityLine);
+    this.modelOutput = adapter.modelOutputReader();
+  }
 
   private readonly work = new WorkActivity();
   private readonly output = new OutputLedger();
   // The same lines the index of steps reads (STEP_LINE_LIMIT), so the steps counted here are the steps it lists.
-  private readonly lines = new JsonlReader(() => this.resetWork(), STEP_LINE_LIMIT);
+  private readonly lines: JsonlReader;
+  private readonly modelOutput: ReturnType<AgentAdapter['modelOutputReader']>;
   private latest: Pick<RunActivity, 'at' | 'kind' | 'toolName' | 'note'> | null = null;
   private context: AgentContext | null = null;
   private dirty = false;
@@ -181,8 +185,8 @@ export class OutputActivityReader {
   private accept(value: unknown, line: number, live = true): void {
     const now = this.now(), received = new Date(now).toISOString();
     if (live) {
-      const output = this.adapter.modelOutput(value);
-      if (output && this.output.observe(output, Math.floor(now / 1000))) {
+      const second = Math.floor(now / 1000), output = this.modelOutput(value, second);
+      if (output && this.output.observe(output, second)) {
         this.latest ??= { at: received, kind: 'output', toolName: null, note: null };
         this.dirty = true;
       }

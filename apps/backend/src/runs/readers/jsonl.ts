@@ -15,7 +15,9 @@ type OnValue = (value: unknown, line: number) => void;
 
 /** Reads complete lines only. A reader can resume at its previous byte offset. Each line is bounded, the file is not. */
 export class JsonlReader {
-  constructor(private readonly rejected: () => void = () => {}, private readonly maxLine = MAX_LINE) {}
+  constructor(private readonly rejected: () => void = () => {}, private readonly maxLine = MAX_LINE,
+    private readonly skipLine?: (line: Buffer) => boolean) {}
+  private readonly decoder = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
   private offset = 0;
   private line = 0;
   /** The unfinished line's parts, joined once it ends: a long line is not copied again with every chunk. */
@@ -27,8 +29,9 @@ export class JsonlReader {
   private reject(reason: NonNullable<JsonlReader['rejection']>): void { this.rejection = reason; this.rejected(); }
 
   private parse(line: Buffer, onValue: OnValue): void {
+    if (this.skipLine?.(line)) return;
     let value: unknown;
-    try { value = JSON.parse(new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(line)); }
+    try { value = JSON.parse(this.decoder.decode(line)); }
     catch { this.reject('unreadable'); return; }
     onValue(value, this.line);
   }
@@ -52,7 +55,7 @@ export class JsonlReader {
       for (let end = bytes.indexOf(10, start); end !== -1; end = bytes.indexOf(10, start)) {
         const part = bytes.subarray(start, end);
         if (!this.dropping && this.pendingLength + part.length <= this.maxLine) {
-          const line = Buffer.concat([...this.pending, part]);
+          const line = this.pendingLength ? Buffer.concat([...this.pending, part]) : part;
           this.parse(line, onValue);
         } else {
           this.reject('too_large');

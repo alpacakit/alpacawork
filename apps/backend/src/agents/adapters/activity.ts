@@ -171,7 +171,9 @@ const STATE_FIELDS = ['status', 'exitCode', 'success', 'resultIsError'] as const
 
 export function claudeActivity(value: unknown, received: string): ActivityEvent[] {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) return [];
-  const row = object(value), at = eventAt(row, received);
+  const row = object(value);
+  if (row.type === 'stream_event') return [];
+  const at = eventAt(row, received);
   if (row.type === 'result') return [{ at, kind: row.is_error === true ? 'error' : 'result' }];
   if (row.type === 'error') return [{ at, kind: 'error' }];
   if (row.type === 'assistant' || row.type === 'user') {

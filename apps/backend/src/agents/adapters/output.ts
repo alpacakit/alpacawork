@@ -9,14 +9,14 @@ export type Rejection = 'missing' | 'too_large' | 'unreadable';
 export const rejectedFile = (error: unknown): Rejection => error instanceof RunFileRejected ? error.reason
   : hasCode(error, 'ENOENT') ? 'missing' : 'unreadable';
 /** Consume all complete lines and the final unterminated line, retaining only the adapter's bounded summary. */
-export function scanOutput(folder: string, observe: (value: unknown, line: number) => boolean | void): {
+export function scanOutput(folder: string, observe: (value: unknown, line: number) => boolean | void, skipLine?: (line: Buffer) => boolean): {
   rejection: Rejection | null; outcomeRejection: Rejection | null;
 } {
   let outcomeRejection: Rejection | null = null, oversized = false;
   const lines = new JsonlReader(() => {
     oversized ||= lines.rejection === 'too_large';
     outcomeRejection = oversized ? 'too_large' : lines.rejection;
-  });
+  }, undefined, skipLine);
   const accept = (value: unknown, line: number) => {
     // A verified completion supersedes earlier malformed lines for the outcome only.
     // Oversized lines and any damage to the evidence used for diagnostics remain rejected.

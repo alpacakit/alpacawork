@@ -124,6 +124,7 @@ export class RunStepIndex {
   }
 
   private accept(line: Buffer, at: number, number: number): void {
+    if (this.adapter.skipOutputLine?.(line)) return;
     const value = parse(line);
     if (value === undefined) { this.unreadable(); return; }
     this.observeRow(value, number, at);
@@ -160,7 +161,8 @@ export class RunStepIndex {
         let from = 0;
         for (let end = bytes.indexOf(10); end !== -1; end = bytes.indexOf(10, from)) {
           const part = bytes.subarray(from, end);
-          if (!dropping && pendingLength + part.length <= RUN_STEPS_LINE_LIMIT) this.accept(Buffer.concat([...pending, part]), lineStart, lines);
+          if (!dropping && pendingLength + part.length <= RUN_STEPS_LINE_LIMIT)
+            this.accept(pendingLength ? Buffer.concat([...pending, part]) : part, lineStart, lines);
           else this.unreadable();
           pending = []; pendingLength = 0; dropping = false; lines++;
           lineStart = position + end + 1; from = end + 1;

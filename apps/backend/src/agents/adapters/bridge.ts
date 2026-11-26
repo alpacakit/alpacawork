@@ -54,7 +54,8 @@ function bridgeModelOutput(value: unknown): ModelOutputEvent | null {
 /** All bridge built-ins speak this boundary; only codex's known writer-lock exit has a special meaning. */
 export function bridgeAdapter(id: BridgeAdapterId): AgentAdapter {
   return {
-    input: bridgeInput, activity: bridgeActivity, modelOutput: bridgeModelOutput, context: bridgeContext, limits: AGENT_ADAPTERS[id].limits ? bridgeLimits : null,
+    input: bridgeInput, activity: bridgeActivity, modelOutputReader: () => bridgeModelOutput,
+    context: bridgeContext, limits: AGENT_ADAPTERS[id].limits ? bridgeLimits : null,
     skillCatalogContext: input => catalogContext(id, input),
     earlySession(invocation, folder) {
       try {

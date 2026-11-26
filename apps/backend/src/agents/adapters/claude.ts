@@ -143,20 +143,54 @@ export function claudeContext(value: unknown): ContextUpdate | null {
   }
   return null;
 }
-function claudeModelOutput(value: unknown): ModelOutputEvent | null {
-  const row = object(value);
-  if (row.parent_tool_use_id == null) {
-    if (row.type === 'command_lifecycle' && row.state === 'started') return { kind: 'turn_started' };
-    if (row.type === 'result') return { kind: 'turn_ended' };
-  }
-  if (row.type !== 'assistant' || row.is_api_error_message === true) return null;
-  const message = object(row.message);
-  const tokens = callTokens(object(message.usage).output_tokens);
-  return typeof message.id === 'string' && message.id && tokens !== null ? { kind: 'call', id: message.id, tokens } : null;
+const streamPrefix = '{"type":"stream_event","event":';
+const streamLine = Buffer.from(streamPrefix);
+const blockLines = ['content_block_delta', 'content_block_start', 'content_block_stop']
+  .map(type => Buffer.from(`${streamPrefix}{"type":"${type}",`));
+const startsWith = (line: Buffer, prefix: Buffer) => line.length > prefix.length &&
+  line[line.length - 1] === 0x7d && line.compare(prefix, 0, prefix.length, 0, prefix.length) === 0;
+function skipClaudeOutputLine(line: Buffer): boolean {
+  return startsWith(line, streamLine);
+}
+function skipClaudeActivityLine(line: Buffer): boolean {
+  // Only the exact compact serialization takes the fast path. Parsed checks also handle key order and whitespace.
+  return startsWith(line, streamLine) && blockLines.some(prefix => startsWith(line, prefix));
+}
+
+function claudeModelOutputReader() {
+  const open = new Map<string, { id: string; startedSecond: number }>();
+  return (value: unknown, observedSecond: number): ModelOutputEvent | null => {
+    const row = object(value);
+    if (row.parent_tool_use_id == null) {
+      if (row.type === 'command_lifecycle' && row.state === 'started') return { kind: 'turn_started' };
+      if (row.type === 'result') { open.clear(); return { kind: 'turn_ended' }; }
+    }
+    if (row.type !== 'stream_event') return null;
+    const event = object(row.event);
+    if (event.type !== 'message_start' && event.type !== 'message_delta' && event.type !== 'message_stop') return null;
+    // This CLI can interleave root and nested streams. Older envelope shapes can still be matched within their lane.
+    const key = JSON.stringify([row.session_id, row.parent_tool_use_id, row.api_message_id]
+      .map(field => typeof field === 'string' ? field : null));
+    if (event.type === 'message_start') {
+      const id = object(event.message).id;
+      if (typeof id === 'string' && id && open.get(key)?.id !== id) {
+        const timestamp = typeof row.timestamp === 'string' ? Date.parse(row.timestamp) : NaN;
+        const startedSecond = Number.isFinite(timestamp) ? Math.floor(timestamp / 1000) : observedSecond;
+        open.set(key, { id, startedSecond });
+      }
+    } else if (event.type === 'message_stop') {
+      open.delete(key);
+    } else {
+      const call = open.get(key), tokens = callTokens(object(event.usage).output_tokens);
+      if (call && tokens !== null) return { kind: 'call', ...call, tokens };
+    }
+    return null;
+  };
 }
 
 export const claudeAdapter: AgentAdapter = {
-  input: claudeInput, activity: claudeActivity, modelOutput: claudeModelOutput, context: claudeContext, limits: claudeLimits,
+  input: claudeInput, activity: claudeActivity, modelOutputReader: claudeModelOutputReader,
+  skipOutputLine: skipClaudeOutputLine, skipActivityLine: skipClaudeActivityLine, context: claudeContext, limits: claudeLimits,
   earlySession: invocation => invocation.session,
   skillCatalogContext: input => catalogContext('claude', input),
   read(invocation, folder, exit) {
@@ -169,6 +203,7 @@ export const claudeAdapter: AgentAdapter = {
     const tools = new ToolResults(), compaction = new ClaudeCompaction(invocation.compaction);
     const { rejection, outcomeRejection } = scanOutput(folder, value => {
       const row = object(value);
+      if (row.type === 'stream_event') return;
       compaction.observe(row, invocation.session);
       if (row.type === 'command_lifecycle' && row.state === 'started' && row.parent_tool_use_id == null &&
         (row.session_id == null || row.session_id === invocation.session)) {
@@ -195,7 +230,7 @@ export const claudeAdapter: AgentAdapter = {
         said = undefined;
         return true;
       }
-    });
+    }, skipClaudeOutputLine);
     const result = completion as { result: string; is_error: boolean } | null;
     const base = { session: invocation.session, usage, compaction: compaction.outcome,
       ...(!rejection && failure ? { failure, toolsSettled: tools.complete } : {}) };

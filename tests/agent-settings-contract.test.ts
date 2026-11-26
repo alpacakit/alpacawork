@@ -205,6 +205,8 @@ test('coordinator resume freezes a start alternative from the same values; fresh
   const before = structuredClone(saved);
   assert.equal(saved.mode, 'resume'); assert.ok(saved.restartArgv?.includes('--session-id'));
   assert.ok(saved.launch.argv.includes('--resume')); assert.equal(saved.launch.values.effort, 'low');
+  assert.ok(saved.launch.argv.includes('--include-partial-messages'));
+  assert.ok(saved.restartArgv?.includes('--include-partial-messages'));
   const fresh = agentInvocationSchema.parse({ mode: 'start', launch: { ...saved.launch, argv: saved.restartArgv } });
   assert.ok(resolveLaunchArgv(fresh.launch.argv, fresh.launch.values, { session: 'new-synthetic-session' }).includes('new-synthetic-session'));
   assert.deepEqual(saved, before);
