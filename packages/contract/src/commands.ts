@@ -287,12 +287,12 @@ const definitions = {
   'analysis/task': command('read', 'Read the analysis values behind one task', analysisTaskInput, [
     ...analysisScope, taskId,
   ], { output: analysisUnitValuesSchema }),
-  'analysis/changes': command('read', 'List when what Runs ran under changed (alpacawork\'s version, a skill, an instruction file, a ' +
-    'placement\'s agent, model or effort), each with the first Run under the new condition, over the days analysis tasks reads', analysisChangesInput, [
+  'analysis/changes': command('read', 'List when what Runs ran under changed (alpacawork\'s version, a skill, an instruction file), ' +
+    'each with the first Run under the new condition, over the days analysis tasks reads', analysisChangesInput, [
     ...analysisScope, ...analysisPeriodOptions, text('cursor', 'cursor from the previous page'), number('limit', 'Most changes per page (up to 100, default 100)'),
   ], { output: analysisChangesViewSchema, help: help(
-    'Agent, model and effort come from the launch records and compare the Runs of one placement. Version, skill and instruction-file changes ' +
-    'need the Runs\' condition records and compare each agent\'s Runs in the order they started; runs.recorded counts the period\'s Runs that have them.',
+    'Changes need the Runs\' condition records and compare each agent\'s Runs in the order they started; runs.recorded counts the period\'s ' +
+    'Runs that have them. A placement\'s agent, model or effort is its task\'s: analysis trace shows those.',
     'An item added to or gone from a set already recorded is a change; the first conditions recorded are not.') }),
   'analysis/trace': command('read', 'Read one task\'s timeline: lanes (the task, the tasks under it and each placement that ran), spans and ' +
     'marks in time order, the wall time split into parts that do not overlap, the time the user was waited on, and which Runs have step times',

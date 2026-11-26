@@ -70,12 +70,12 @@ function useFolded(bar: React.RefObject<HTMLElement | null>): boolean {
   return folded;
 }
 
-export function AppBar() {
+/** The bar across the page's top; `docked`: a window stands at the page's right (Workbench), and the bar gives it its room. */
+export function AppBar({ docked = false }: { docked?: boolean }) {
   const { t } = useTranslation("chrome");
   const { t: tt } = useTranslation("tree");
   const strips = useTimeView((state) => state.strips);
   const searchShown = useViewStore(isSearchShown);
-  const readerOpen = useViewStore(state => state.reader.open);
   const narrow = useNarrow();
   const ready = useFrameSelector(data => data !== null);
   const { open } = useDialogStore.getState();
@@ -91,7 +91,7 @@ export function AppBar() {
 
   return (
     <header ref={bar} data-bar-folded={folded || undefined} className={cn("@container flex min-h-bar w-full flex-none items-center px-6 py-2 narrow:min-h-13.5 narrow:px-3",
-      readerOpen && !narrow && "pr-[calc(var(--window-reserve)+36px)]")}>
+      docked && "pr-[calc(var(--window-reserve)+36px)]")}>
       <div className="flex w-full min-w-0 items-center gap-3 narrow:gap-0.5">
         <div className={PROJECT}>
           {folded && <BarMenu open={menu} onOpenChange={setMenu} present={present} />}

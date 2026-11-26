@@ -179,7 +179,8 @@ export function CardPane({ place, reads: { face, tasks, usage }, waitFrom }: {
   // past the window. On a phone each is a finger's height.
   const fold = `flex-wrap gap-2 overflow-x-visible ${TALL_ROW}`;
 
-  return <div className="animate-rise pb-6">
+  // The window comes in with its own motion; the picture already standing in its place while this part loads stays still.
+  return <div className="pb-6">
     {/* The colours the card is drawn in, one part of the page in each theme. */}
     <div ref={probe} hidden className="font-sans">
       {THEMES.map(each => <div key={each} className={`theme-${each}`}>{PROBE.map(name => <i key={name} data-token={name} className={name} />)}</div>)}

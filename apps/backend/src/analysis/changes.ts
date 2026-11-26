@@ -7,13 +7,13 @@
  * not. Where the agent worked (its commit) is left out: it moves with every commit and is the work, not a condition.
  *
  * Readers choose the place a value is compared within (`within`): the timeline compares each placement with itself; the
- * scope-wide read compares what an agent ran under across its Runs, and launch choices within each placement.
+ * scope-wide read (`scopeChangeEvents`) compares what an agent ran under across its Runs.
  */
 import type { AnalysisChange } from '@alpacawork/contract/analysis';
 import type { RunConditions } from '@alpacawork/contract/run';
 
 export type ChangeWhat = AnalysisChange['what'];
-export type ChangeRun = { id: string; task: string; placement: string; agent: string; model: string | null; effort: string | null;
+export type ChangeRun = { id: string; task: string; agent: string; model: string | null; effort: string | null;
   started: number | null; conditions: RunConditions | null };
 export type ChangeEvent<R extends ChangeRun> = { run: R; previous: R | null; changes: AnalysisChange[] };
 
@@ -75,4 +75,17 @@ export function changeEvents<R extends ChangeRun>(runs: readonly R[], within: (r
       changes: changes.sort((a, b) => ORDER.indexOf(a.what) - ORDER.indexOf(b.what) || (a.name ?? '').localeCompare(b.name ?? '')) });
   }
   return events;
+}
+
+const LAUNCH_CHOICES = new Set<ChangeWhat>(['agent', 'model', 'effort']);
+/**
+ * The changes of a whole scope: what every later Run of an agent runs under (its version, skills and instruction files),
+ * compared across the agent's Runs. A placement's launch choices are its task's (its timeline shows them), not a change
+ * of the scope: owners choose a model or an effort for each request, and each choice would read as a change of all.
+ */
+export function scopeChangeEvents<R extends ChangeRun>(runs: readonly R[]): ChangeEvent<R>[] {
+  return changeEvents(runs, run => `agent:${run.agent}`).flatMap(event => {
+    const changes = event.changes.filter(change => !LAUNCH_CHOICES.has(change.what));
+    return changes.length ? [{ ...event, changes }] : [];
+  });
 }

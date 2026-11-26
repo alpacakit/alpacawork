@@ -82,12 +82,9 @@
   },
   "change": {
     "added": "新增{{what}} {{name}}",
-    "agent": "代理",
-    "effort": "effort",
     "fromTo": "{{what}} {{from}} → {{to}}",
     "instruction-file": "指示文件",
     "legend": "变更标记",
-    "model": "模型",
     "removed": "移除{{what}} {{name}}",
     "skill": "技能",
     "updated": "更新{{what}} {{name}}",

@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { later } from "@/lib/later";
 import { AnalysisView } from "@/features/analysis/AnalysisView";
 import { loadAnalysisLayers } from "@/features/analysis/AnalysisLayers";
+import { analysisSurfaces } from "@/features/analysis/place";
 import { readerHasTask, useEveryTaskIndex, useListPlace } from "@/data/queries";
 import { subscribeReads } from "@/data/read-model";
 import { useQueryClient } from "@tanstack/react-query";
@@ -48,6 +49,10 @@ const subscribeReaderGeometry = (notify: () => void) => {
   return () => { stopWidth(); stopViewport(); };
 };
 const canFitDock = () => innerWidth >= MIN_DOCK_VIEWPORT_WIDTH;
+/** The analysis's charts keep at least this much beside a window at the page's right (its 24px left and the 36px gap aside). */
+const ANALYSIS_LEAST_WIDTH = 680;
+const analysisFitsBeside = () =>
+  innerWidth - readerListReservation(fitReaderWidth(readerWidth.get(), innerWidth), innerWidth) - 24 - 36 >= ANALYSIS_LEAST_WIDTH;
 const viewportWidth = () => innerWidth;
 const readerOverlaps = () => {
   const width = fitReaderWidth(readerWidth.get(), innerWidth);
@@ -114,7 +119,13 @@ export function Workbench() {
   // On a phone the task is a sheet from the bottom over the list, which stays in reach until the sheet is pulled whole.
   const mode: ReaderMode = narrow ? "sheet" : !canDock || readerFull ? "overlay" : "docked";
   const sheetWhole = useViewStore((state) => state.reader.whole === true);
-  const docked = readerOpen && mode === "docked";
+  // What a number of the analysis opens (its list, the share card) stands where the docked reader stands, and the page
+  // gives it the same room: the charts narrow beside it and stay in reach, never under it.
+  const analysisShown = analysis && !(place === "lookup" && project) ? analysis : null;
+  // Where the charts would be left too narrow to read, it stands over them instead, as on a narrower screen.
+  const analysisBeside = useSyncExternalStore(subscribeReaderGeometry, analysisFitsBeside, analysisFitsBeside) && canDock;
+  const layerBeside = !!analysisShown && analysisBeside && analysisSurfaces(analysisShown).length > 0;
+  const docked = readerOpen ? mode === "docked" : layerBeside;
   // While it stands there, the list and its bar are out of reach at once, and out of sight once the reader has moved
   // over them (the page's data-panel-moving: lib/motion.ts moveAcross), kept as they were for its closing.
   const listAway = docked && viewing;
@@ -136,7 +147,7 @@ export function Workbench() {
       {ready && <WorkspaceEffects />}
       {ready && <TelemetryReaskDialog />}
       <Bar inert={covered || listAway} away={listAway}>
-        <AppBar />
+        <AppBar docked={docked} />
         <div className={cn("@container px-6 has-[[data-workspace-notice]]:pb-2 narrow:px-3", docked && "pr-[calc(var(--window-reserve)+36px)]")}>
           <NarrowSearchRow />{ready && <WorkspaceNotice />}
         </div>
@@ -157,7 +168,7 @@ export function Workbench() {
         </>}>{() => <>
           <div inert={covered || listAway} className={cn("contents", listAway && AWAY)}>
             {/* The analysis face stands in the list's place whatever the list would show (a search ends as it opens). */}
-            {analysis && !(place === "lookup" && project) ? <AnalysisView place={analysis} />
+            {analysisShown ? <AnalysisView place={analysisShown} beside={analysisBeside} />
               : place === "search" ? <div data-list-scroll {...UNDER_BAR} className="relative min-h-75 flex-1 basis-0 overflow-auto overscroll-contain scroll-pb-(--list-foot) pb-(--list-foot) narrow:min-h-67.5"><BarRoom /><SearchResults /></div>
               : place === "lookup" && project ? <div className="flex min-h-75 flex-1 flex-col narrow:min-h-67.5"><BarRoom /><AwaitedLookup address={project} placement="list" reason={{ kind: "scope_lookup_unavailable" }} skeleton={<RegionSkeleton shape="time" />} /></div>
               : place === "no-projects" ? <div className="flex-1"><BarRoom /><NoProjects onOpenArchive={() => openSettings("projects")} onCreateProject={() => useDialogStore.getState().openProject()} /></div>

@@ -22,7 +22,7 @@ import { serverZone } from './calendar.js';
 import type { Activity } from './presence.js';
 import { Kept, type Slices } from './slices.js';
 import { inDays } from './calendar.js';
-import { changeEvents, type ChangeRun } from './changes.js';
+import { scopeChangeEvents, type ChangeRun } from './changes.js';
 import type { FactLaunch } from './facts.js';
 import { allRules, findFindings, STEP_RULES, thresholdsOf } from './findings.js';
 import { breakdown, iso, isOpen, timedSteps, lanes, marks, sceneUrl, segments, situationAt, spans, waited, wholePeriod,
@@ -272,40 +272,29 @@ export async function readAt(root: string, input: AnalysisAtInput): Promise<Anal
 /** Ended Runs that kept no conditions (from before they were kept): they never will, so their folders are not read again. */
 const noConditions = new Set<string>();
 type DatedRun = ChangeRun & { day: string };
-type ChangesMade = { runs: DatedRun[]; events: ReturnType<typeof changeEvents<DatedRun>> };
+type ChangesMade = { runs: DatedRun[]; events: ReturnType<typeof scopeChangeEvents<DatedRun>> };
 /**
  * The change events of one scope's launches, made once per reading of the facts (the launches given are kept with
  * those facts, `ScopedAnalysis.datedLaunches`): later pages and other periods of the same facts read them again.
  */
 const made = new WeakMap<object, Promise<ChangesMade>>();
 async function makeChanges(root: string, launches: readonly { day: string; run: FactLaunch }[], slices: Slices): Promise<ChangesMade> {
-  const store = new ControlStore(root, { busyTimeoutMs: 10_000 }, true), seats = new Map<string, string>();
-  try {
-    store.read(db => {
-      for (const row of db.prepare("SELECT 'R'||id AS id, json_extract(record,'$.placementId') AS placement FROM runs WHERE id IN (SELECT value FROM json_each(?))")
-        .iterate(JSON.stringify(launches.map(({ run }) => Number(run.id.slice(1)))))) seats.set(String(row.id), String(row.placement));
-    });
-  } finally { store.close(); }
   const runs: DatedRun[] = [];
   for (const { day, run } of launches) {
     const key = `${root}\0${run.id}`;
     const conditions = noConditions.has(key) ? null : readConditions(runFolder(root, run.id));
     if (!conditions && !run.live) noConditions.add(key);
-    runs.push({ id: run.id, task: run.task, placement: seats.get(run.id) ?? run.id, agent: run.agent, model: run.model, effort: run.effort,
-      started: run.started, conditions, day });
+    runs.push({ id: run.id, task: run.task, agent: run.agent, model: run.model, effort: run.effort, started: run.started, conditions, day });
     if (slices.due) await slices.pause();
   }
-  // Launch choices compare within a placement; versions, skills and instruction files within an agent.
-  const events = changeEvents(runs, (run, what) => what === 'agent' || what === 'model' || what === 'effort' ? `placement:${run.placement}` : `agent:${run.agent}`);
-  return { runs, events };
+  return { runs, events: scopeChangeEvents(runs) };
 }
 
 const CHANGES = 100;
 /**
  * analysis changes: each Run of the scope that ran under a condition its agent had not run under before (a version, a
- * skill, an instruction file; these need the Runs' condition records) or whose placement changed its launch choices
- * (agent, model, effort; from the launch records), dated on the period's days. Every earlier Run of the scope is read
- * too, so the first Run of the period compares with the last before it.
+ * skill, an instruction file; these need the Runs' condition records), dated on the period's days. Every earlier Run
+ * of the scope is read too, so the first Run of the period compares with the last before it.
  */
 export async function readChanges(root: string, head: AnalysisHead, launches: readonly { day: string; run: FactLaunch }[],
   input: AnalysisChangesInput, slices: Slices): Promise<AnalysisChangesView> {
