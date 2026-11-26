@@ -32,6 +32,14 @@ function roomyHeight() {
 /** Where a phone sheet keeps the height the hand gave it, with what stands below it: one per sheet. */
 export const sheetExtent = (key: `alpacawork.${string}`) => deviceValue<number | null>(key, jsonCodec<number | null>((value) =>
   typeof value === "number" && Number.isFinite(value) ? value : null), null);
+/** A height kept only while one sheet stays open, so each opening starts at its first height. */
+function openingExtent(): DeviceValue<number | null> {
+  let value: number | null = null;
+  const listeners = new Set<() => void>();
+  const set = (next: number | null) => { value = next; listeners.forEach(each => each()); return "memory" as const; };
+  return { get: () => value, set, remove: () => set(null),
+    subscribe: listener => { listeners.add(listener); return () => { listeners.delete(listener); }; } };
+}
 // One saved vertical budget includes the input below the conversation. Its top stays put when context wraps the input.
 export const conversationExtent = sheetExtent("alpacawork.coordinatorExtent");
 
@@ -61,16 +69,21 @@ export function fitPhoneSheetToLowerHalf() {
  */
 export const PhoneSheet = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement> & {
   label: string; below: number; room: number; expanded: boolean; onLetGo: () => void;
-  /** Where its height is kept (`sheetExtent`): the coordinator's conversation unless another sheet names its own. */
-  store?: DeviceValue<number | null>;
+  /**
+   * Where its height is kept (`sheetExtent`): the coordinator's conversation unless another sheet names its own. `null`:
+   * kept only while it is open, for a sheet whose contents do not change from one opening to the next.
+   */
+  store?: DeviceValue<number | null> | null;
   /** The height it starts at before the hand gives it one, of the screen without the keyboard. */
   first?: number;
   /** Takes off its copy, as it slides away once closed, the marks that name the live surface (leaveSheet). */
   unname?: (copy: HTMLElement) => void;
-}>(function PhoneSheet({ className, children, style, label, below, room, expanded, onLetGo, store = conversationExtent, first = FIRST, unname, ...props }, ref) {
+}>(function PhoneSheet({ className, children, style, label, below, room, expanded, onLetGo, store: given = conversationExtent, first = FIRST, unname, ...props }, ref) {
   const { t } = useTranslation("ui");
   const own = useRef<HTMLDivElement>(null);
   useImperativeHandle(ref, () => own.current!, []);
+  const [opening] = useState(openingExtent);
+  const store = given ?? opening;
   const extent = useDeviceValue(store);
   const [roomyScreen, setRoomyScreen] = useState(roomyHeight);
   // Keep the same keyboard-free height basis as the sheet's default. Only rendering is capped by the current room.
