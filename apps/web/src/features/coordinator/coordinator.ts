@@ -310,7 +310,7 @@ function take(received: CoordinatorSnapshot['conversation'], origin: Sending, re
     if (!drawn || awaitsDrawing(useDraftStore.getState().entries, origin.root, drawn)) void useConversation.getState().refresh();
   }
   // Every snapshot drawn, the same as the one held or not, is a moment to ask after sends it does not hold.
-  if (taken === 'shown') void askAbsentSends(origin.root);
+  if (taken === 'shown') void askAbsentSends(origin.root, next);
   return taken;
 }
 function draw(next: CoordinatorConversation, origin: Sending, replace: boolean): Taken {
@@ -634,9 +634,9 @@ const recoverOutbox = (root: string) => {
  * question at a time); once its status settles the record, nothing is left to ask about.
  */
 const statusAsking = new Set<string>();
-async function askAbsentSends(root: string) {
-  const conversation = useConversation.getState().conversation;
-  if (!conversation) return;
+/** `received`: the snapshot just taken, before the read holds it (a first read has nothing held yet). */
+async function askAbsentSends(root: string, received: CoordinatorConversation) {
+  const conversation = received;
   const absent = outgoing(useDraftStore.getState().entries, root, conversation.id).filter(item => (item.stage === 'posted' || item.stage === 'accepted')
     && !statusAsking.has(item.requestId) && !isLive(item.key) && !conversation.turns.some(turn => turn.id === item.requestId)
     // Withdrawn is final: its record settles with what is known.
@@ -651,6 +651,8 @@ async function askAbsentSends(root: string) {
   const now = useConversation.getState();
   // Only what a status newly said can settle anything here.
   if (learnt && now.root === root && now.conversation?.id === conversation.id) {
+    // As a snapshot's facts are taken: other words under its ID kept apart, then the rest settled.
+    isolateConflicts(now.conversation, root, i18n.t('ui:coordinatorCard.conflict'));
     const result = reconcileOutbox(now.conversation, root, currentInputKey());
     for (const id of result.restored) dismissRecoveredReaderSends(id, { root, conversationId: conversation.id });
     reconcileReaderSends(now.conversation, root);

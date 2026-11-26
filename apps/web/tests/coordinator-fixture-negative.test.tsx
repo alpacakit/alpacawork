@@ -12,15 +12,15 @@ import { coordinatorReadState, readIndex, readQuery } from '../src/data/read-mod
 import { receiveFullIndex } from '../src/data/resources';
 import { useDraftStore } from '../src/features/forms/draft-store';
 import { useOutbox } from '../src/features/coordinator/editor/outbox';
-import { readConversationThroughOwner, SERVED } from './conversation-fixture';
+import { readConversationThroughOwner, served, SERVED } from './conversation-fixture';
 import { indexOf, screenData, TestWorkspace, tree } from './fixtures';
 
 const root = '/fixture', generation = 'independent-index-generation', cid = 'independent-index-cid';
 const revision = 'a'.repeat(64), at = '2026-10-24T10:00:00Z', words = 'Acquired through actual coordinator GET';
-const conversation: CoordinatorConversation = { id: cid, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns: [
+const conversation: CoordinatorConversation = served({ id: cid, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns: [
   { id: 'independent-turn', at, ask: words, attachments: [], status: 'succeeded', waiting: false,
     answer: 'Actual acquired answer', answeredAt: at, seen: true, error: null, result: null },
-] };
+] });
 const envelope: CoordinatorSnapshot = { root, generation, revision, conversation };
 const baseline = () => {
   const index = indexOf(tree({ root }));

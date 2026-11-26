@@ -13,44 +13,70 @@ const key = (root: string, conversationId: string) => ['coordinator-history', ro
 /** Windows whose next read is one page further back, rather than the window read again. */
 const widen = new WeakSet<object>();
 
-/**
- * A window read again from where the snapshot now starts (`boundary`), down to its oldest turn: serve's turns, order and
- * resets for the whole range replace the held ones, so turns withdrawn or cleaned since, and turns pushed out of the
- * snapshot since, are as serve has them. The first read (none held) is the first page.
- */
-async function readWindow(conversationId: string, boundary: string, held: CoordinatorHistory | undefined, signal: AbortSignal): Promise<CoordinatorHistory> {
-  const oldest = held?.turns[0]?.id;
-  let turns: CoordinatorTurn[] = [], resets: CoordinatorReset[] = [], cursor: string | null = boundary;
+type Pages = { turns: CoordinatorTurn[]; resets: CoordinatorReset[]; more: string | null };
+/** Pages read back from `before` while `enough` does not hold of what is read (one page at least): serve's order. */
+async function readBack(conversationId: string, before: string, enough: (turns: readonly CoordinatorTurn[]) => boolean, signal: AbortSignal): Promise<Pages> {
+  let turns: CoordinatorTurn[] = [], resets: CoordinatorReset[] = [], cursor: string | null = before;
   do {
     const page = await readCoordinatorTurns(conversationId, { before: cursor }, signal);
     turns = [...page.turns, ...turns]; resets = [...page.resets, ...resets]; cursor = page.more;
-  } while (cursor && oldest && !turns.some(turn => turn.id === oldest));
-  return { until: boundary, turns, resets, more: cursor };
+  } while (cursor && !enough(turns));
+  return { turns, resets, more: cursor };
+}
+/** Each reset once, older first: one read again replaces the held one. */
+const joinResets = (older: readonly CoordinatorReset[], newer: readonly CoordinatorReset[]) => {
+  const ids = new Set(newer.map(reset => reset.id));
+  return [...older.filter(reset => !ids.has(reset.id)), ...newer];
+};
+
+/**
+ * What the window becomes for where the snapshot starts now (`boundary`):
+ * - none held: the first page;
+ * - the snapshot moved on: only the turns pushed out of it since are read (back to the window's end, `held.until`) and
+ *   put after the window, so reading costs what moved, not what is held;
+ * - the same boundary (stale, or the screen came back): the whole range read again, so turns whose files were cleaned
+ *   since are as serve has them.
+ */
+async function readWindow(conversationId: string, boundary: string, held: CoordinatorHistory | undefined, signal: AbortSignal): Promise<CoordinatorHistory> {
+  if (!held) return { until: boundary, ...await readBack(conversationId, boundary, () => true, signal) };
+  if (held.until !== boundary) {
+    const gap = await readBack(conversationId, boundary, turns => turns.some(turn => turn.id === held.until), signal);
+    const from = gap.turns.findIndex(turn => turn.id === held.until);
+    // Not reached (the window's end is gone): what was read is the window now.
+    if (from < 0) return { until: boundary, ...gap };
+    return { until: boundary, turns: [...held.turns, ...gap.turns.slice(from)], resets: joinResets(held.resets, gap.resets), more: held.more };
+  }
+  const oldest = held.turns[0]?.id;
+  return { until: boundary, ...await readBack(conversationId, boundary, turns => !oldest || turns.some(turn => turn.id === oldest), signal) };
 }
 /** One page before the window's oldest turn, put before it: the page ends where the window starts. */
 async function readOlder(conversationId: string, held: CoordinatorHistory, signal: AbortSignal): Promise<CoordinatorHistory> {
   if (!held.more) return held;
   const page = await readCoordinatorTurns(conversationId, { before: held.more }, signal);
-  return { ...held, turns: [...page.turns, ...held.turns], resets: [...page.resets, ...held.resets], more: page.more };
+  return { ...held, turns: [...page.turns, ...held.turns], resets: joinResets(page.resets, held.resets), more: page.more };
 }
 
 /**
- * The window as a Query, read when the history is opened (`boundary`: where the snapshot starts now). Reading it again
- * (its staleness, the screen coming back, the snapshot moving on) revalidates the whole range; `readOlderTurns` widens
- * it by a page.
+ * The window as a Query, read when the history is opened (`boundary`: where the snapshot starts now). It is read again
+ * when it is stale and the screen comes back (files cleaned since show as removed) and when the snapshot moves on;
+ * `readOlderTurns` widens it by a page.
  */
 export const coordinatorHistory = (client: QueryClient, root: string, conversationId: string, boundary: string) => queryOptions({
   queryKey: key(root, conversationId),
   queryFn: ({ signal }) => {
     const query = client.getQueryCache().find<CoordinatorHistory>({ queryKey: key(root, conversationId), exact: true });
     const held = query?.state.data;
-    if (query && widen.has(query)) { widen.delete(query); if (held && held.until === boundary) return readOlder(conversationId, held, signal); }
-    return readWindow(conversationId, boundary, held, signal);
+    const wider = !!query && widen.delete(query);
+    return wider && held && held.until === boundary ? readOlder(conversationId, held, signal) : readWindow(conversationId, boundary, held, signal);
   },
   staleTime: 60_000,
+  refetchOnWindowFocus: true,
 });
 
-/** The next older page: the same Query, asked to widen once. */
+/**
+ * The window's next read on request: one page further back, or, with none held yet (its first read failed), its first
+ * page. Either way the same Query reads it, so a retry is a read like any other.
+ */
 export function readOlderTurns(client: QueryClient, root: string, conversationId: string) {
   const query = client.getQueryCache().find({ queryKey: key(root, conversationId), exact: true });
   if (!query) return Promise.resolve();

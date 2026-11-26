@@ -1,5 +1,5 @@
 import { MessageDelivery } from '../src/features/coordinator/MessageDelivery';
-import { snapshotJson, messageJson, statusJson, SERVED } from './conversation-fixture';
+import { snapshotJson, messageJson, statusJson, SERVED, servedTurn } from './conversation-fixture';
 import { setConversationState } from './conversation-fixture';
 import { afterEach, beforeAll, expect, test, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
@@ -25,7 +25,7 @@ function QueueRows() {
   return queue.count ? <WaitingRows queue={queue} open={() => {}} /> : null;
 }
 
-const message = (id: string, status: CoordinatorTurn["status"], rest: Partial<CoordinatorTurn> = {}): CoordinatorTurn => ({
+const message = (id: string, status: CoordinatorTurn["status"], rest: Partial<CoordinatorTurn> = {}): CoordinatorTurn => servedTurn('conversation', {
   id, at: '2026-10-15T12:00:00Z', ask: `message ${id}`, attachments: [], status, waiting: status === "queued" || status === "sending",
   // Replies are read unless a case says otherwise: an unread one is folded when the conversation opens.
   answer: null, seen: status === 'succeeded' || status === 'failed', answeredAt: null, error: null, result: null, ...rest,

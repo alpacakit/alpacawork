@@ -1,4 +1,4 @@
-import { snapshotJson, SERVED } from './conversation-fixture';
+import { snapshotJson, SERVED, servedTurn } from './conversation-fixture';
 import { setConversationState } from './conversation-fixture';
 import { beforeAll, beforeEach, afterEach, expect, test, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -10,7 +10,7 @@ import type { CoordinatorConversation, CoordinatorTurn } from "../src/data/coord
 import { TestWorkspace, screenData } from "./fixtures";
 
 const at = "2026-10-19T08:00:00.000Z";
-const answered = (n: number, extra: Partial<CoordinatorTurn> = {}): CoordinatorTurn => ({ id: `turn-${n}`, at, ask: `Request ${n}`,
+const answered = (n: number, extra: Partial<CoordinatorTurn> = {}): CoordinatorTurn => servedTurn('conversation-1', { id: `turn-${n}`, at, ask: `Request ${n}`,
   attachments: [], status: "succeeded", waiting: false, answer: `Answer ${n}.`, answeredAt: at, seen: n <= 3, error: null, result: null, ...extra });
 const conversation = (turns: CoordinatorTurn[]): CoordinatorConversation => ({ id: "conversation-1", nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns });
 const five = [1, 2, 3, 4, 5].map(n => answered(n));

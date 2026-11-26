@@ -222,17 +222,21 @@ export const CoordinatorThread = memo(function CoordinatorThread({ turns: recent
     return 'here';
   });
   const readOlder = () => { if (thread.current) keepThreadPosition(thread.current); void earlier.readMore(); };
-  // Where the coordinator started again: before the message it started with, or at the end until there is one.
+  // Where the coordinator started again: before the message it started with, or at the end until there is one. A message
+  // drawn as no row of its own (sent into another, or sent again in its place) leaves its line before the next row in
+  // serve's order, so a line is never folded away with it.
   const resets = useMemo(() => {
+    const drawn = new Set([...work.map(turn => turn.id), ...shown.tail.map(row => row.turn.id)]), order = turns.map(turn => turn.id);
     const at = new Map<string | null, CoordinatorReset[]>(), ids = new Set<string>();
     for (const reset of [...earlier.resets, ...conversation?.resets ?? []]) {
       if (ids.has(reset.id)) continue;
       ids.add(reset.id);
-      const key = reset.beforeRequestId !== null && turns.some(turn => turn.id === reset.beforeRequestId) ? reset.beforeRequestId : null;
+      const from = reset.beforeRequestId === null ? -1 : order.indexOf(reset.beforeRequestId);
+      const key = from < 0 ? null : order.slice(from).find(id => drawn.has(id)) ?? null;
       at.set(key, [...at.get(key) ?? [], reset]);
     }
     return at;
-  }, [earlier.resets, conversation?.resets, turns]);
+  }, [earlier.resets, conversation?.resets, turns, work, shown.tail]);
   const resetLines = (id: string | null) => resets.get(id)?.map(reset => <ResetLine key={reset.id} reset={reset} />) ?? null;
   const tailStart = work.length;
   const rows = [...work.map(turn => ({ kind: 'server' as const, turn })), ...shown.tail].map((row, at) => {

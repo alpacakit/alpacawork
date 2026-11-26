@@ -53,12 +53,12 @@ export function handovers(db: DatabaseSync, runs: readonly RunId[]): Map<string,
  * `into` is a message ID: the one whose Run took this message in, or is taking it.
  */
 function drawnTurn(request: Record<string, unknown>, run: CoordinatorRunRecord, result: { text: string | null; state: string } | undefined,
-  handover: Handover | undefined, messageOf: ReadonlyMap<string, string>, done: CoordinatorResult | null, waiting: boolean): CoordinatorTurn {
+  handover: Handover | undefined, messageOf: ReadonlyMap<string, string>, done: CoordinatorResult | null, waiting: boolean, inputDigest: string): CoordinatorTurn {
   const into = (runId: string | null) => {
     const message = runId === null ? undefined : messageOf.get(runId);
     return message === undefined ? {} : { into: message };
   };
-  const turn = { id: String(request.id), at: String(request.submitted_at), ask: String(request.body),
+  const turn = { id: String(request.id), at: String(request.submitted_at), ask: String(request.body), inputDigest,
     attachments: run.message.attachments,
     ...(request.coordinator_files_expired_at !== null ? { filesExpired: true as const } : {}),
     ...run.message.skills === undefined ? {} : { skills: run.message.skills },
@@ -165,9 +165,12 @@ function draw(db: DatabaseSync, store: RunStore, conversation: string, requests:
   return last.map(({ request, run, row }) => {
     const handover = inputs.get(run.id);
     const waiting = run.state === 'queued' && (!!handover && inputUnsettled(handover.state) || !!laneAhead(lane, run, blocked, reservations));
-    const turn = drawnTurn(request, run, { text: row.result as string | null, state: String(row.result_state) },
-      handover, messageOf, done.get(run.requestId) ?? null, waiting);
     const attempts = trials.get(run.requestId)!;
+    // The admitted input is the first attempt's, as a status's receipt reads it (admittedMessageDigest).
+    const inputDigest = coordinatorMessageDigest({ ...attempts[0]!.run.message, conversationId: conversation, id: String(request.id),
+      text: String(request.body), replyTo: typeof request.reply_to === 'string' ? request.reply_to : null });
+    const turn = drawnTurn(request, run, { text: row.result as string | null, state: String(row.result_state) },
+      handover, messageOf, done.get(run.requestId) ?? null, waiting, inputDigest);
     const failed = turn.status === 'failed';
     const failure = failed ? readRunFailure(store.root, run) : undefined;
     const again = failed && !!row.sent_again;

@@ -604,16 +604,11 @@ export function settleInterrupted(root: string, reason: string) {
 }
 
 /**
- * Serve's receipt of a request: the digest of the input it took, by the contract's one rule, whether its turn is among the
- * recent ones (the turn's fixed input) or not (the message's own status). Unsupported historical values digest as they
- * are, so they never prove a current submission.
+ * Serve's receipt of a request: the digest of the input it took, as serve computed it, on its turn when the turn is among
+ * the recent ones and on the message's own status otherwise. Never recomputed here: serve alone knows what it admitted.
  */
-function receipt(conversation: CoordinatorConversation, requestId: string): string | undefined {
-  const turn = conversation.turns.find(each => each.id === requestId);
-  return turn ? coordinatorMessageDigest({ conversationId: conversation.id, id: turn.id, text: turn.ask, replyTo: turn.replyTo?.id ?? null,
-    tasks: turn.tasks, skills: turn.skills, attachments: turn.attachments, intent: turn.intent, answers: turn.answers })
-    : conversation.admitted[requestId]?.digest;
-}
+const receipt = (conversation: CoordinatorConversation, requestId: string): string | undefined =>
+  conversation.turns.find(each => each.id === requestId)?.inputDigest ?? conversation.admitted[requestId]?.digest;
 /** The one delivery-evidence rule, shared by POST failure checks, snapshot reconciliation and withdrawal. */
 export function deliveryOutcome(conversation: CoordinatorConversation | null | undefined, requestId: string, fixed: Fixed, last: 'ask' | 'withdraw' = 'ask'): 'accepted' | 'cancelled' | 'conflict' | 'unknown' {
   if (conversation?.id !== fixed.conversationId) return 'unknown';
@@ -719,9 +714,9 @@ export function isolateConflicts(conversation: CoordinatorConversation, root: st
   const state = useDraftStore.getState(), entries = { ...state.entries }, isolated = new Set<string>();
   let changed = false;
   for (const item of outgoing(state.entries, root, conversation.id)) {
-    const turn = conversation.turns.find(each => each.id === item.requestId);
     if (entries[item.key]!.values.conflict) { isolated.add(item.requestId); continue; }
-    if (item.stage === 'refused' || !turn || deliveryOutcome(conversation, item.requestId, item.fixed, item.last) !== 'conflict') continue;
+    // Other words under its ID, whether its turn is drawn or only its status said so.
+    if (item.stage === 'refused' || deliveryOutcome(conversation, item.requestId, item.fixed, item.last) !== 'conflict') continue;
     endDeliveryNotice(root, item.requestId);
     entries[item.key] = amended(entries[item.key]!, { stage: 'refused', refusal: reason, conflict: '1' });
     isolated.add(item.requestId); changed = true;

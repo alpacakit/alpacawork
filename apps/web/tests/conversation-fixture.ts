@@ -11,12 +11,21 @@ import { coordinatorMessageDigest } from '@alpacawork/contract/coordinator';
 
 /** What every served conversation carries besides its turns: nothing older, no reset, no usage yet, the default reset. */
 export const SERVED: Pick<CoordinatorConversation, 'earlier' | 'resets' | 'context' | 'autoReset'> = { earlier: null, resets: [], context: null, autoReset: { tokens: 200000, percent: 50 } };
+type Turn = CoordinatorConversation['turns'][number];
+/** A turn as a test writes it: serve's receipt is optional and, left out, is the one serve computes for its input. */
+export type FixtureTurn = Omit<Turn, 'inputDigest'> & { inputDigest?: string };
 /** A conversation as a test writes it: the page's withdrawals (`cancelled`) are optional and never served. */
-export type FixtureConversation = Omit<CoordinatorConversation, 'cancelled' | 'admitted'> & { cancelled?: readonly string[]; admitted?: CoordinatorConversation['admitted'] };
+export type FixtureConversation = Omit<CoordinatorConversation, 'cancelled' | 'admitted' | 'turns'> & { turns: FixtureTurn[];
+  cancelled?: readonly string[]; admitted?: CoordinatorConversation['admitted'] };
+/** The conversation as serve holds it: each turn with its receipt, as the page holds it (no learnt withdrawals). */
+export const served = <T extends FixtureConversation>(fixture: T): T & Pick<CoordinatorConversation, 'turns' | 'cancelled' | 'admitted'> =>
+  ({ cancelled: [], admitted: {}, ...fixture, turns: fixture.turns.map(turn => servedTurn(fixture.id, turn)) });
+/** One turn of conversation `conversationId` as serve holds it: with the receipt of its input, unless the test gave one. */
+export const servedTurn = (conversationId: string, turn: FixtureTurn): Turn => ({ ...turn, inputDigest: turn.inputDigest ?? turnDigest(conversationId, turn) });
 /** Fixtures use the new wire DTO; production accepts no old conversation response. */
 export function conversationSnapshot(fixture: FixtureConversation): CoordinatorSnapshot {
-  const { cancelled: _cancelled, admitted: _admitted, ...served } = fixture;
-  const conversation = JSON.parse(JSON.stringify(Object.assign({ busy: false }, served)));
+  const { cancelled: _cancelled, admitted: _admitted, ...held } = served(fixture);
+  const conversation = JSON.parse(JSON.stringify(Object.assign({ busy: false }, held)));
   const index = readIndex(queryClient);
   return { root: index?.root ?? '/fixture', generation: index?.generation ?? 'a',
     revision: createHash('sha256').update(JSON.stringify(conversation)).digest('hex'), conversation };
@@ -32,7 +41,7 @@ export function snapshotJson(value: unknown) {
  */
 type StatusName = CoordinatorMessageStatus['status'];
 /** The digest serve keeps of a turn's input: the same contract function the outbox checks against. */
-export const turnDigest = (conversationId: string, turn: FixtureConversation['turns'][number]) => coordinatorMessageDigest({
+export const turnDigest = (conversationId: string, turn: FixtureTurn) => coordinatorMessageDigest({
   conversationId, id: turn.id, text: turn.ask, replyTo: turn.replyTo?.id ?? null, tasks: turn.tasks, skills: turn.skills,
   attachments: turn.attachments, intent: turn.intent, answers: turn.answers });
 /** A digest of no input this page sent (a status named without its turn). */

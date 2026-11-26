@@ -11,11 +11,11 @@ import { useReaderSend } from '../src/features/coordinator/reader-send';
 import { queryClient } from '../src/data/query-client';
 import { notify } from '../src/lib/notify';
 import { receiveFullIndex } from '../src/data/resources';
-import { setConversationState, snapshotJson, messageJson, SERVED } from './conversation-fixture';
+import { setConversationState, snapshotJson, messageJson, served, SERVED } from './conversation-fixture';
 import { TestWorkspace, tree, dto, screenData, decideItem, questionFixture } from './fixtures';
 
 const cid = 'fixed-answer-admission';
-const conversation = (turns: any[] = []) => ({ id: cid, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns });
+const conversation = (turns: any[] = []) => served({ id: cid, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns });
 const doc = (question: string) => ({ type: 'doc', content: [{ type: 'paragraph', content: [
   { type: 'answerLabel', attrs: { task: 'T1', question, n: '1', name: 'Yes', answer: '1-Yes' } },
 ] }] });

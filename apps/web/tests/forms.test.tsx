@@ -1,5 +1,5 @@
 import { indexTasks } from '../src/domain/tasks';
-import { snapshotJson, SERVED } from './conversation-fixture';
+import { served, snapshotJson, SERVED } from './conversation-fixture';
 import { setConversationState } from './conversation-fixture';
 import { serverView, jsonAnswer } from './receipt-fixture';
 import { readerPresentation, readQuery, readIndex, refuseRead } from '../src/data/read-model';
@@ -86,7 +86,7 @@ function withInput(data: ReturnType<typeof screenData>, children: ReactNode, hol
   const asked: CoordinatorMessageInput[] = [];
   const reports: any[] = [], pending: ((result: CoordinatorResult) => void)[] = [];
   let status: CoordinatorConversation["turns"][number]["status"] = "running", result: CoordinatorResult | null = null;
-  const conversation = (): CoordinatorConversation => ({ id: "c1", nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [],
+  const conversation = (): CoordinatorConversation => served({ id: "c1", nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [],
     turns: asked.map((input) => ({ id: input.id, at, ask: input.text, tasks: input.tasks, attachments: input.attachments,
       ...(input.intent ? { intent: input.intent } : {}), status, waiting: status === "queued" || status === "sending", answer: null, seen: false, answeredAt: null, error: null, result })) });
   const json = (value: unknown) => new Response(snapshotJson(value), { status: 200 });

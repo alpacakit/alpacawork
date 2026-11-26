@@ -1,7 +1,7 @@
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { i18n, startI18n } from '@alpacawork/i18n';
-import { snapshotJson, setConversationState, SERVED, serving, servedJson, messageJson } from './conversation-fixture';
+import { snapshotJson, setConversationState, SERVED, serving, servedJson, messageJson, served, type FixtureTurn } from './conversation-fixture';
 import { TestWorkspace, screenData, tree } from './fixtures';
 import { CoordinatorCard } from '../src/features/coordinator/CoordinatorCard';
 import { ShownConversationProvider } from '../src/features/coordinator/shown';
@@ -20,10 +20,10 @@ import { readDrafts } from '../src/features/forms/draft-store';
 import { deliveryNoticeId } from '../src/features/coordinator/delivery-notice';
 
 const root = '/fixture', cid = 'ack-conversation';
-const turn = (id: string, status: CoordinatorTurn['status']): CoordinatorTurn => ({ id, status, ask: id, at: '2026-10-31T15:00:00Z',
+const turn = (id: string, status: CoordinatorTurn['status']): FixtureTurn => ({ id, status, ask: id, at: '2026-10-31T15:00:00Z',
   attachments: [], waiting: status === 'queued' || status === 'sending', answer: null, answeredAt: null, error: null, result: null, seen: false });
 const work = turn('working', 'running'), queued = turn('waiting', 'queued');
-const conversation = (turns = [work, queued], cancelled: string[] = []) => ({ id: cid, nextLaunch: { agent: 'fake', values: {} }, ...SERVED, busy: true, turns, cancelled, admitted: {} });
+const conversation = (turns = [work, queued], cancelled: string[] = [], id = cid) => served({ id, nextLaunch: { agent: 'fake', values: {} }, ...SERVED, busy: true, turns, cancelled, admitted: {} });
 const response = (value: unknown) => new Response(snapshotJson(value));
 /** A send's, withdrawal's or send-now's answer: the snapshot and where that message now is. */
 const answer = (value: ReturnType<typeof conversation>, id: string, status?: Parameters<typeof messageJson>[2]) => new Response(messageJson(value, id, status));
@@ -387,7 +387,7 @@ test(`a late server refusal is recoverable in the current conversation (occupied
       if (url === '/api/coordinator/messages') {
         const sent = JSON.parse(init!.body as string);
         expect(sent.conversationId).toBe('current'); expect(sent.attachments).toEqual([]);
-        return Promise.resolve(answer({ ...conversation([{ ...queued, id: sent.id, ask: sent.text }]), id: 'current' }, sent.id));
+        return Promise.resolve(answer(conversation([{ ...queued, id: sent.id, ask: sent.text }], [], 'current'), sent.id));
       }
       return Promise.resolve(new Response('', { status: 404 }));
     });

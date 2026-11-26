@@ -1,7 +1,7 @@
 import { freeze, outgoingKey, cancelUnsent, canTakeBack, takeBack, reconcileOutbox } from '../src/features/coordinator/editor/outbox';
 import { consumeInput } from '../src/features/coordinator/editor/input-ownership';
 import { serialize, draftDocument, filterDocument, parseDocument } from '../src/features/coordinator/editor/document';
-import { snapshotJson, SERVED } from './conversation-fixture';
+import { served, snapshotJson, SERVED } from './conversation-fixture';
 import { setConversationState } from './conversation-fixture';
 import { afterEach, beforeAll, beforeEach, expect, onTestFinished, test, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -543,7 +543,7 @@ test.each(['clear before cancelling', 'keep until manual recovery', 'send newer 
       const nextId = input.entry.values.requestId!;
       act(() => {
         expect(freeze('/fixture', { conversationId: 'editor-tests', text: 'next words', replyTo: 'answer-two', attachments: [] }, input.entry.values, { from: key })).toBe(nextId);
-        reconcileOutbox({ id: 'editor-tests', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: true, admitted: {}, cancelled: [], turns: [{ id: nextId, at: '', ask: 'next words', replyTo: { id: 'answer-two', answeredAt: '2026-11-05T00:01:00Z', head: '' }, attachments: [], status: 'queued', waiting: true, answer: null, answeredAt: null, seen: false, error: null, result: null }] }, '/fixture', key);
+        reconcileOutbox(served({ id: 'editor-tests', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: true, admitted: {}, cancelled: [], turns: [{ id: nextId, at: '', ask: 'next words', replyTo: { id: 'answer-two', answeredAt: '2026-11-05T00:01:00Z', head: '' }, attachments: [], status: 'queued', waiting: true, answer: null, answeredAt: null, seen: false, error: null, result: null }] }), '/fixture', key);
       });
     } else act(clearReply);
     expect(serialize(input.doc)).toBe('');

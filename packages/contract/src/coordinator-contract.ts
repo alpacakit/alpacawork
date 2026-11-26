@@ -124,6 +124,8 @@ export type CoordinatorResult = z.infer<typeof coordinatorResultSchema>;
  */
 export const coordinatorTurnSchema = z.object({
   id: z.string(), at: z.string(), ask: z.string(),
+  /** Serve's receipt of the input it took (coordinatorMessageDigest of the admitted message), as a status carries it. */
+  inputDigest: digestSchema,
   tasks: coordinatorMessageSchema.shape.tasks,
   skills: coordinatorMessageSchema.shape.skills,
   attachments: coordinatorMessageSchema.shape.attachments,

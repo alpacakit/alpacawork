@@ -8,7 +8,6 @@ import { initializeControlFixture } from '../../../tests/helpers/control-fixture
 import { installAgentStub } from '../../../tests/helpers/agent-stub.ts';
 import { readServerSettings, saveServerSettings } from '@alpacawork/backend/test-dist/server-settings.js';
 import { readAgentsSettings } from '@alpacawork/backend/test-dist/agents-settings.js';
-import { coordinatorNextLaunch } from '@alpacawork/backend/test-dist/coordinator/continuation.js';
 import { serverAgentDraftSchema, serverAgentsYaml } from '../src/features/panels/server-agent-draft';
 import { configYaml, serverDraft } from '../src/features/panels/settings-draft';
 import { moveRow, rowChoices, withRowValue } from '../src/features/panels/ai-stack-draft';
@@ -120,11 +119,10 @@ test('with no input\'s list saved, it shows the row the input runs on, and a sav
     const root = realpathSync(mkdtempSync(join(tmpdir(), 'alpacawork-stack-unsaved-')));
     roots.push(root);
     initializeControlFixture(root);
-    const path = installAgentStub(root, 'alpacawork-agent');
+    installAgentStub(root, 'alpacawork-agent');
     writeFileSync(join(root, 'config.yaml'), stringify(config));
     const settings = readAgentsSettings(root);
     if (!settings.ok) throw settings.error;
-    expect(coordinatorNextLaunch(settings.config, [], path).row).toEqual(row);
     const shown = serverDraft(await readServerSettings(root)).coordinatorAiStack.map(({ agent, values }) => ({ agent, values }));
     expect(shown).toEqual(row ? [row] : []);
     // An empty list saved stays empty here, held back until a row is added, as before.

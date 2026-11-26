@@ -2,7 +2,7 @@
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { i18n, startI18n } from '@alpacawork/i18n';
-import { conversationSnapshot, setConversationState, snapshotJson, SERVED, messageJson, messageStatus, statusJson } from './conversation-fixture';
+import { conversationSnapshot, served, setConversationState, snapshotJson, SERVED, messageJson, messageStatus, statusJson } from './conversation-fixture';
 import { TestWorkspace, screenData, tree } from './fixtures';
 import { CoordinatorInput } from '../src/features/coordinator/CoordinatorInput';
 import { LastWordsPill } from '../src/features/coordinator/LastWords';
@@ -20,7 +20,7 @@ const root = '/fixture', cid = 'cancel-conversation', key = draftKey(root, 'coor
 const values = (text = '', requestId: string = crypto.randomUUID()) => ({ doc: JSON.stringify(textDocument(text)), requestId });
 const fixed = (text = 'words') => ({ conversationId: cid, text, agent: 'claude', attachments: [] });
 const turn = (id: string, ask = 'words') => ({ id, ask, at: '2026-10-28T08:00:00Z', attachments: [], status: 'queued' as const, waiting: false, seen: false, answer: null, answeredAt: null, error: null, result: null });
-const conv = (turns: ReturnType<typeof turn>[] = [], cancelled: string[] = []) => ({ id: cid, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, turns, cancelled, admitted: {} });
+const conv = (turns: ReturnType<typeof turn>[] = [], cancelled: string[] = []) => served({ id: cid, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, turns, cancelled, admitted: {} });
 type Conv = ReturnType<typeof conv>;
 /** Serve's answer; a conversation answer keeps the conversation it holds, so a message request's answer can name its message. */
 const reply = (value: unknown, status = 200) => Object.assign(new Response(snapshotJson(value), { status }), { held: value as Conv });

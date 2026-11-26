@@ -1,5 +1,5 @@
 import { rememberWriteIdentity } from '../src/data/write-identity';
-import { announceConversation, SERVED } from './conversation-fixture';
+import { announceConversation, served, SERVED } from './conversation-fixture';
 import { snapshotJson, messageJson, serving } from './conversation-fixture';
 import { setConversationState } from './conversation-fixture';
 import { beforeEach, afterEach, expect, test, vi } from 'vitest';
@@ -17,7 +17,7 @@ const data = screenData(tree({ tasks: [taskFixture({ id: 'T3', state: 'waiting',
 const { tasks, people } = data;
 const task = tasks[0]!;
 const scope = { root: '/fixture', conversationId: 'c' };
-const snapshot = (id = 'c', cancelled: string[] = [], turns: any[] = []) => ({ id, cancelled, admitted: {}, turns, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false });
+const snapshot = (id = 'c', cancelled: string[] = [], turns: any[] = []) => served({ id, cancelled, admitted: {}, turns, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false });
 const queued = { id: 'message', at: '', ask: 'Fix T3', attachments: [], status: 'queued', waiting: true, answer: null, seen: false, answeredAt: null, error: null, result: null };
 /** The Run that answered the message ended, and it wrote on T3 (the review the message answers). */
 const carried = { ...queued, status: 'succeeded', waiting: false, result: { writes: [{ task: 'T3', record: 'L9', kind: 'request_accepted' }], refused: [] } };

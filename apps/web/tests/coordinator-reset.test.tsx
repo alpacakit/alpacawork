@@ -10,10 +10,13 @@ import type { CoordinatorReset, CoordinatorTurn } from "../src/data/coordinator"
 import { screenData, TestWorkspace, tree, dto } from "./fixtures";
 import { SERVED, setConversationState, snapshotJson } from "./conversation-fixture";
 import { coordinatorMessageDigest } from "@alpacawork/contract/coordinator";
-import { deliveryOutcome } from "../src/features/coordinator/editor/outbox";
+import { deliveryOutcome, isolateConflicts, freeze, outgoingKey } from "../src/features/coordinator/editor/outbox";
+import { useDraftStore, draftKey } from "../src/features/forms/draft-store";
+import { focusManager } from "@tanstack/react-query";
 
 const at = (minute: number) => new Date(Date.UTC(2026, 10, 1, 6, minute)).toISOString();
 const answered = (id: string, minute: number): CoordinatorTurn => ({ id, at: at(minute), ask: `ask ${id}`, attachments: [], status: "succeeded",
+  inputDigest: coordinatorMessageDigest({ conversationId: "conversation-1", id, text: `ask ${id}`, attachments: [] }),
   waiting: false, answer: `answer ${id}`, answeredAt: at(minute), seen: true, error: null, result: null });
 const empty = { id: "conversation-1", nextLaunch: { agent: "claude", values: {} }, ...SERVED, busy: false, turns: [] as CoordinatorTurn[] };
 /** A reset's ID is a UUID; tests name it by its last digit. */
@@ -196,4 +199,69 @@ test("a read receipt's answer keeps no mark for a turn the range has left", asyn
   useConversation.getState().flushSeen();
   await waitFor(() => expect(useConversation.getState().pendingSeen.size).toBe(0));
   expect([...useConversation.getState().seen]).toEqual([]);
+});
+
+test("the history's first read failing, the press to read on reads it again", async () => {
+  let failures = 1;
+  const conversation = { ...empty, earlier: { count: 1, before: "a" }, turns: [answered("a", 10)] };
+  const fetcher = vi.fn(async (url: string) => {
+    if (!url.startsWith("/api/coordinator/turns?")) return json(conversation);
+    if (failures-- > 0) return new Response(JSON.stringify({ error: { code: "internal", message: "down" } }), { status: 500 });
+    return new Response(JSON.stringify({ turns: [answered("old", 1)], resets: [], more: null }), { status: 200 });
+  });
+  vi.stubGlobal("fetch", fetcher);
+  setConversationState({ open: true, expanded: true, read: true, conversation });
+  card();
+  fireEvent.click(thread().querySelector("[data-earlier] button")!);
+  await waitFor(() => expect(thread().querySelector("[data-earlier-more=failed]")).not.toBeNull(), { timeout: 5000 });
+  fireEvent.click(thread().querySelector("[data-earlier-more] button")!);
+  await waitFor(() => expect(order()).toEqual(["old", "a"]));
+});
+
+test("a reset line stays where it was when the message it stood before is drawn as no row of its own", () => {
+  // The first message after the reset failed and was sent again: only the one sent in its place is a row.
+  const failed = { ...answered("f", 2), status: "failed" as const, answer: null, error: "exit" as const, sentAgain: true as const };
+  const conversation = { ...empty, turns: [answered("a", 1), failed, answered("g", 3)], resets: [reset(1, "f")] };
+  vi.stubGlobal("fetch", vi.fn(async () => json(conversation)));
+  setConversationState({ open: true, expanded: true, read: true, conversation });
+  card();
+  expect(order().slice(-2)).toEqual(["asked", "g"]);
+});
+
+test("a send is settled by serve's own receipt, never by words read back from its turn, and other words under its ID are kept apart", () => {
+  const fixed = { conversationId: "conversation-1", text: "words", attachments: [] };
+  const taken = coordinatorMessageDigest({ ...fixed, id: "m" });
+  // Serve's receipt on the turn proves it, whatever the turn's fields would digest to here.
+  const drawn = { ...empty, cancelled: [], admitted: {}, turns: [{ ...answered("m", 1), ask: "shown otherwise", inputDigest: taken }] };
+  expect(deliveryOutcome(drawn, "m", fixed)).toBe("accepted");
+  // Out of the recent turns, a status saying other words were taken under its ID keeps the send apart as a conflict.
+  const root = "/fixture", key = draftKey(root, "coordinator", "conversation-1");
+  useDraftStore.setState({ entries: { [key]: { status: "editing", values: { doc: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "words" }] }] }), requestId: "m" } } }, unavailable: false });
+  freeze(root, fixed, useDraftStore.getState().entries[key]!.values, { from: key });
+  const statusSaid = { ...empty, cancelled: [], admitted: { m: { digest: coordinatorMessageDigest({ ...fixed, text: "other", id: "m" }), ended: true } }, turns: [] };
+  expect([...isolateConflicts(statusSaid, root, "conflict")]).toEqual(["m"]);
+  expect(useDraftStore.getState().entries[outgoingKey(root, "m")]?.values.conflict).toBe("1");
+});
+
+test("history held open is read again when the screen comes back after it went stale, so files cleaned since show as removed", async () => {
+  const old = (expired: boolean) => ({ ...answered("old", 1), answer: "See [r.pdf](r.pdf)", answerFiles: [{ href: "r.pdf", state: "ready" as const, name: "r.pdf", size: 1 }],
+    ...expired ? { filesExpired: true as const } : {} });
+  let cleaned = false;
+  const conversation = { ...empty, earlier: { count: 1, before: "a" }, turns: [answered("a", 10)] };
+  vi.stubGlobal("fetch", vi.fn(async (url: string) => url.startsWith("/api/coordinator/turns?")
+    ? new Response(JSON.stringify({ turns: [old(cleaned)], resets: [], more: null }), { status: 200 }) : json(conversation)));
+  setConversationState({ open: true, expanded: true, read: true, conversation });
+  card();
+  fireEvent.click(thread().querySelector("[data-earlier] button")!);
+  await waitFor(() => expect(order()).toEqual(["old", "a"]));
+  const old0 = thread().querySelector<HTMLElement>("[data-coordinator-message=old]")!;
+  if (old0.dataset.exchange === "folded") fireEvent.click(old0.querySelector("[data-exchange-toggle]")!);
+  expect(thread().querySelector("[data-file-removed]")).toBeNull();
+  cleaned = true;
+  // A minute on, the screen comes back.
+  const later = Date.now() + 61_000;
+  vi.spyOn(Date, "now").mockReturnValue(later);
+  focusManager.setFocused(false); focusManager.setFocused(true);
+  await waitFor(() => expect(thread().querySelector("[data-file-removed]")?.textContent).toBe("ファイルは削除済み: r.pdf"));
+  focusManager.setFocused(undefined); vi.restoreAllMocks();
 });

@@ -1,4 +1,4 @@
-import { snapshotJson, messageJson, serving, SERVED } from './conversation-fixture';
+import { snapshotJson, messageJson, serving, served, SERVED } from './conversation-fixture';
 import { setConversationState } from './conversation-fixture';
 import { answerTask } from './fixtures';
 import { labelled } from './fixtures';
@@ -31,7 +31,7 @@ import { WaitingReportActions } from "../src/features/reader/WaitingReportAction
 // The outbox and its projection keep a request in the conversation it
 // was sent to, take a turn for it only as it was sent, and settle it only where a drawn snapshot holds it.
 const root = "/fixture", cid = "old-conversation", key = draftKey(root, "coordinator", cid);
-const conv = (id = cid, turns: any[] = []) => ({ id, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns });
+const conv = (id = cid, turns: any[] = []) => served({ id, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns });
 const values = (text = "", id: string = crypto.randomUUID()) => ({ body: "", doc: JSON.stringify(textDocument(text)), requestId: id });
 const fixed = (text = "sent") => ({ conversationId: cid, text, attachments: [] });
 const sentTurn = (id: string, ask = "sent", status = "running") => ({ id, at: new Date().toISOString(), ask, attachments: [], status, waiting: status === "queued" || status === "sending", answer: null, seen: false, answeredAt: null, error: null, result: null });

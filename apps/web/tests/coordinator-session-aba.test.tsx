@@ -1,4 +1,4 @@
-import { snapshotJson, messageJson, servedJson, SERVED } from './conversation-fixture';
+import { snapshotJson, messageJson, servedJson, served, SERVED } from './conversation-fixture';
 import { setConversationState } from './conversation-fixture';
 /** Coordinator async boundaries, not Task POST ABA nor the seen ACK. */
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest';
@@ -19,7 +19,7 @@ import { receiveFullIndex } from '../src/data/resources';
 import { TestWorkspace, tree, dto, decideItem, questionFixture, indexOf, screenData, viewsOf } from './fixtures';
 
 const cid = 'aba-conversation';
-const conv = (turns: any[] = []) => ({ id: cid, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns });
+const conv = (turns: any[] = []) => served({ id: cid, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns });
 const reply = (value: unknown) => new Response(snapshotJson(value));
 const deferred = <T,>() => { let resolve!: (value: T) => void; const promise = new Promise<T>(done => { resolve = done; }); return { resolve, promise }; };
 const tick = async () => { await act(async () => { await new Promise(done => setTimeout(done, 10)); }); };

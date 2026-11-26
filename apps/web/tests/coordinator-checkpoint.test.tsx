@@ -28,11 +28,12 @@ let onReadEvent: typeof import('../src/data/resources')['onReadEvent'];
 let useConnection: typeof import('../src/data/connection')['useConnection'];
 import { indexOf, tree } from './fixtures';
 import { checkpointFixture } from './checkpoint-fixture';
-import { messageStatus, SERVED } from './conversation-fixture';
+import { messageStatus, SERVED, turnDigest } from './conversation-fixture';
 const { Hono } = createRequire(process.cwd() + '/apps/backend/package.json')('hono');
 const empty = (): ServedConversation => ({ id: 'checkpoint-conversation', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, turns: [] });
-const answered = (): ServedConversation => ({ ...empty(), turns: [{ id: 'reply', at: '2026-10-21T10:00:00Z', ask: 'question', attachments: [],
-  status: 'succeeded' as const, waiting: false, answer: 'ACQUIRED WORDS', answeredAt: '2026-10-21T10:01:00Z', seen: false, error: null, result: null }] });
+const answered = (): ServedConversation => { const held = empty(); const turn = { id: 'reply', at: '2026-10-21T10:00:00Z', ask: 'question', attachments: [],
+  status: 'succeeded' as const, waiting: false, answer: 'ACQUIRED WORDS', answeredAt: '2026-10-21T10:01:00Z', seen: false, error: null, result: null };
+  return { ...held, turns: [{ ...turn, inputDigest: turnDigest(held.id, turn) }] }; };
 let stops: (() => void)[] = [];
 beforeEach(async () => {
   vi.resetModules();

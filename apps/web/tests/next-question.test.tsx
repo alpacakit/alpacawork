@@ -1,7 +1,7 @@
 import { draftKey, updateDraft, discardDraft, useDraftStore } from '../src/features/forms/draft-store';
 import { freeze, returnReaderSubmission, outgoingKey, reconcileOutbox } from '../src/features/coordinator/editor/outbox';
 import { readerTurn } from '../src/features/reader/submission';
-import { snapshotJson, SERVED } from './conversation-fixture';
+import { served, snapshotJson, SERVED } from './conversation-fixture';
 import { setConversationState } from './conversation-fixture';
 import { useDirectWriteRecovery } from '../src/features/reader/recovery';
 import * as departureMotion from '../src/features/reader/departure';
@@ -181,10 +181,10 @@ for (const hook of ['waiting', 'shown'] as const) test(`${hook} reader ignores e
     [{ ...readerTurn(data.tasks[0]!), title: 'Question', kind: 'answer', answer: 'send', expectedWrites: null }]); });
   expect(renders).toBeGreaterThan(initial);
   if (hook === 'waiting') expect(waiting).toEqual([]);
-  act(() => { reconcileOutbox({ id:'c1',nextLaunch: { agent: 'claude', values: {} },...SERVED,busy:false,cancelled:[],admitted:{},turns:[{
+  act(() => { reconcileOutbox(served({ id:'c1',nextLaunch: { agent: 'claude', values: {} },...SERVED,busy:false,cancelled:[],admitted:{},turns:[{
     id:requestId,at:new Date().toISOString(),ask:'answer',attachments:[],status:'succeeded',waiting:false,
     answer:null,seen:false,answeredAt:null,error:null,result:{writes:[],refused:[]}
-  }] },root, null,true); });
+  }] }),root, null,true); });
   expect(useDraftStore.getState().entries[outgoingKey(root,requestId)]?.values.stage).toBe('settled');
   if (hook === 'waiting') expect(waiting).toEqual([]);
   const submitted = renders;

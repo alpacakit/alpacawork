@@ -1,4 +1,4 @@
-import { snapshotJson, messageJson, statusJson, SERVED } from './conversation-fixture';
+import { snapshotJson, messageJson, statusJson, served as servedConversation, SERVED } from './conversation-fixture';
 import { setConversationState } from './conversation-fixture';
 /** Actual Card.retry and Card -> Input -> refresh recovery, below the public HTTP adapter only. */
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest';
@@ -17,7 +17,7 @@ import { notify } from '../src/lib/notify';
 import { TestWorkspace, tree, dto, screenData, viewsOf } from './fixtures';
 
 const root = '/fixture', cid = 'admission-callers', id = 'unknown-request';
-const conversation = (turns: any[] = []) => ({ id: cid, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns });
+const conversation = (turns: any[] = []) => servedConversation({ id: cid, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns });
 const response = (value: unknown, status = 200) => new Response(snapshotJson(value), { status });
 const fixedTurn = (input: any) => ({ id: input.id, at: '2026-10-23T09:00:00Z', ask: input.text,
   tasks: input.tasks, answers: input.answers, intent: input.intent, attachments: input.attachments,

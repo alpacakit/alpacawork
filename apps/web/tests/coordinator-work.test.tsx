@@ -7,13 +7,13 @@ import { workNameWords, workWords } from '../src/domain/work-words';
 import { useConnection } from '../src/data/connection';
 import { useActivityText } from '../src/features/people/labels';
 import { screenData, TestWorkspace } from './fixtures';
-import { setConversationState, SERVED } from './conversation-fixture';
+import { setConversationState, SERVED, servedTurn } from './conversation-fixture';
 import type { CoordinatorTurn } from '../src/data/coordinator';
 
 beforeAll(async () => { await startI18n(); await i18n.changeLanguage('en'); });
 afterEach(() => { vi.useRealTimers(); cleanup(); setConversationState({ conversation: null }); });
-const turn: CoordinatorTurn = { id: 'turn', at: new Date(0).toISOString(), ask: 'work', status: 'running', attachments: [],
-  waiting: false, answer: null, answeredAt: null, seen: false, error: null, result: null };
+const turn: CoordinatorTurn = servedTurn('conversation', { id: 'turn', at: new Date(0).toISOString(), ask: 'work', status: 'running', attachments: [],
+  waiting: false, answer: null, answeredAt: null, seen: false, error: null, result: null });
 
 test('every place shows one paced work name and the seconds since sending: held 2 s from the DOM, latest after, released at once', () => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });

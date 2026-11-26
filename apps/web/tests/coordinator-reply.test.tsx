@@ -1,4 +1,4 @@
-import { setConversationState, SERVED } from './conversation-fixture';
+import { served, setConversationState, SERVED } from './conversation-fixture';
 import { labelled } from './fixtures';
 import { afterEach, beforeEach, expect, test } from 'vitest';
 import { cleanup } from '@testing-library/react';
@@ -82,6 +82,6 @@ test('a snapshot with a different reply under the same ID cannot settle the outb
   const doc = replyTo(textDocument('reply words'), reply), values = { doc: JSON.stringify(doc), requestId: 'request-1' };
   useDraftStore.setState({ entries: { [key]: { status: 'editing', values } } });
   freeze(root, { conversationId: cid, text: 'reply words', attachments: [], replyTo: reply.id }, values);
-  const conflicts = isolateConflicts({ id: cid, nextLaunch: { agent: 'claude', values: {} }, busy: false, ...SERVED, admitted: {}, cancelled: [], turns: [{ id: 'request-1', ask: 'reply words', attachments: [], replyTo: { ...other, head: '' } } as any] }, root, 'conflict');
+  const conflicts = isolateConflicts(served({ id: cid, nextLaunch: { agent: 'claude', values: {} }, busy: false, ...SERVED, admitted: {}, cancelled: [], turns: [{ id: 'request-1', ask: 'reply words', attachments: [], replyTo: { ...other, head: '' } } as any] }), root, 'conflict');
   expect(conflicts.has('request-1')).toBe(true);
 });

@@ -23,6 +23,7 @@ export function useEarlierHistory(root: string, conversation: CoordinatorConvers
     turns: (range?.turns ?? NONE) as readonly CoordinatorTurn[], resets: (range?.resets ?? NONE) as readonly CoordinatorReset[],
     more: range ? range.more !== null : !!boundary, reading: query.isFetching, failed: query.isError && !query.isFetching,
     unread: range ? null : conversation?.earlier?.count ?? 0,
-    readMore: () => conversation && range ? readOlderTurns(client, root, conversation.id) : Promise.resolve(),
+    // The next page, or the first again after it could not be read: the Query decides which.
+    readMore: () => conversation && boundary ? readOlderTurns(client, root, conversation.id) : Promise.resolve(),
   };
 }

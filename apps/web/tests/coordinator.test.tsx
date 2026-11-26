@@ -1,4 +1,4 @@
-import { announceConversation, SERVED } from './conversation-fixture';
+import { announceConversation, SERVED, type FixtureTurn } from './conversation-fixture';
 import { snapshotJson, messageJson } from './conversation-fixture';
 import { setConversationState } from './conversation-fixture';
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
@@ -46,7 +46,7 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); setConversationState({ conve
 
 test('selecting another Task leaves an unengaged conversation thread alone, while new turns and language still redraw it', async () => {
   await i18n.changeLanguage('en');
-  const first: CoordinatorTurn = { ...turn, status: 'succeeded', answer: 'Stable answer', answeredAt: turn.at, seen: true };
+  const first: FixtureTurn = { ...turn, status: 'succeeded', answer: 'Stable answer', answeredAt: turn.at, seen: true };
   setConversationState({ conversation: { ...empty, turns: [first] }, open: false, expanded: false, engaged: false, read: true });
   useViewStore.setState({ selected: null, reader: { ...useViewStore.getState().reader, open: false } });
   const get = vi.fn().mockImplementation(() => { throw new Error('an unengaged card must not fetch'); });
@@ -102,7 +102,7 @@ test("a failed turn says its cause and then the Run's error words in full, and o
   await i18n.changeLanguage("en");
   const weekly = "You've hit your weekly limit · resets Nov 8, 8pm (Asia/Tokyo)";
   const long = `API Error: 500 ${"x".repeat(1500)}\nend`;
-  const failed = (id: string, failure?: CoordinatorTurn["failure"]): CoordinatorTurn =>
+  const failed = (id: string, failure?: CoordinatorTurn["failure"]): FixtureTurn =>
     ({ ...turn, id, status: "failed", waiting: false, error: "exit", answeredAt: new Date().toISOString(), seen: true, ...failure ? { failure } : {} });
   stubFetch(vi.fn().mockResolvedValue(reply({ ...empty })));
   for (const [shown, reason, words] of [
@@ -123,7 +123,7 @@ test("a failed turn says its cause and then the Run's error words in full, and o
 test("a folded exchange and the folded conversation say the cause, not the Run's words", async () => {
   await i18n.changeLanguage("en");
   const weekly = "You've hit your weekly limit · resets Nov 8, 8pm (Asia/Tokyo)";
-  const failed: CoordinatorTurn = { ...turn, id: "weekly", status: "failed", waiting: false, error: "exit", seen: true,
+  const failed: FixtureTurn = { ...turn, id: "weekly", status: "failed", waiting: false, error: "exit", seen: true,
     answeredAt: new Date().toISOString(), failure: { cause: "weekly_limit", message: weekly } };
   stubFetch(vi.fn().mockResolvedValue(reply({ ...empty })));
   setConversationState({ conversation: { ...empty, turns: [failed] }, open: true, expanded: false, read: true });
@@ -143,7 +143,7 @@ test("a folded exchange and the folded conversation say the cause, not the Run's
 
 test("a busy turn can be sent again from the card", async () => {
   await i18n.changeLanguage("en");
-  const failed: CoordinatorTurn = { ...turn, status: "failed", waiting: false, error: "conversation_busy", answeredAt: new Date().toISOString(), seen: true };
+  const failed: FixtureTurn = { ...turn, status: "failed", waiting: false, error: "conversation_busy", answeredAt: new Date().toISOString(), seen: true };
   setConversationState({ conversation: { ...empty, turns: [failed] }, open: true, expanded: true, read: true });
   const fetcher = vi.fn().mockResolvedValue(reply({ ...empty, turns: [failed, { ...turn, id: "retry-1", status: "queued", waiting: true }] }));
   stubFetch(fetcher);
@@ -157,7 +157,7 @@ test("a turn sent again goes with the reply reference as well as the questions i
   await i18n.changeLanguage("en");
   const replyTo = { id: "source-request", answeredAt: new Date().toISOString(), head: "Original answer" };
   const answers = ["L-first", "L-second"].map(question => ({ task: "T13", question }));
-  const failed: CoordinatorTurn = { ...turn, status: "failed", waiting: false, error: "conversation_busy", answeredAt: new Date().toISOString(), seen: true, answers, replyTo };
+  const failed: FixtureTurn = { ...turn, status: "failed", waiting: false, error: "conversation_busy", answeredAt: new Date().toISOString(), seen: true, answers, replyTo };
   setConversationState({ conversation: { ...empty, turns: [failed] }, open: true, expanded: true, read: true });
   const fetcher = vi.fn().mockResolvedValue(reply({ ...empty, turns: [failed, { ...turn, id: "retry-1", status: "queued", waiting: true, answers }] }));
   stubFetch(fetcher);
@@ -171,7 +171,7 @@ test("a turn sent again goes with the reply reference as well as the questions i
 
 test("a server accepted message appears and a later read supplies its answer", async () => {
   const fetcher = vi.fn().mockResolvedValueOnce(reply(empty))
-    .mockResolvedValueOnce(new Response(messageJson({ ...empty, turns: [turn as CoordinatorTurn] }, turn.id)))
+    .mockResolvedValueOnce(new Response(messageJson({ ...empty, turns: [turn as FixtureTurn] }, turn.id)))
     .mockResolvedValueOnce(reply({ ...empty, turns: [{ ...turn, status: "succeeded", waiting: false, answer: "Checked", answeredAt: new Date().toISOString() }] }));
   stubFetch(fetcher);
   await useConversation.getState().refresh();
@@ -187,8 +187,8 @@ test("a server accepted message appears and a later read supplies its answer", a
 
 test("folded, a failed last turn says it failed, not the answer before it", async () => {
   await i18n.changeLanguage("en");
-  const earlier: CoordinatorTurn = { ...turn, id: "turn-0", status: "succeeded", waiting: false, answer: "Previous answer.Continued", answeredAt: "2026-10-16T08:00:00.000Z" };
-  const failed: CoordinatorTurn = { ...turn, status: "failed", waiting: false, error: "conversation_busy", answeredAt: "2026-10-16T09:00:00.000Z" };
+  const earlier: FixtureTurn = { ...turn, id: "turn-0", status: "succeeded", waiting: false, answer: "Previous answer.Continued", answeredAt: "2026-10-16T08:00:00.000Z" };
+  const failed: FixtureTurn = { ...turn, status: "failed", waiting: false, error: "conversation_busy", answeredAt: "2026-10-16T09:00:00.000Z" };
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue(reply({ ...empty, turns: [earlier, failed] })));
   render(<TestWorkspace data={screenData(tree({ tasks: [dto(), dto({ id: "T13" })] }))}><CoordinatorCard /></TestWorkspace>);
   await act(() => useConversation.getState().refresh());
@@ -296,7 +296,7 @@ test("a send's answer arriving after a newer read of the conversation does not b
 });
 
 test("a send that fails takes nothing from a read sent before it: the read's answer is shown", async () => {
-  setConversationState({ conversation: { ...empty, turns: [turn as CoordinatorTurn] }, open: false, read: true, error: null });
+  setConversationState({ conversation: { ...empty, turns: [turn as FixtureTurn] }, open: false, read: true, error: null });
   let release!: (value: Response) => void;
   const delayed = new Promise<Response>((resolve) => { release = resolve; });
   const done = { ...empty, turns: [{ ...turn, status: "succeeded", waiting: false, answer: "final answer", answeredAt: new Date().toISOString() }] };
@@ -311,7 +311,7 @@ test("a send that fails takes nothing from a read sent before it: the read's ans
 });
 
 test("a late queue action cannot replace a newer completed conversation read", async () => {
-  setConversationState({ conversation: { ...empty, turns: [turn as CoordinatorTurn] }, open: false, read: true, error: null });
+  setConversationState({ conversation: { ...empty, turns: [turn as FixtureTurn] }, open: false, read: true, error: null });
   let release!: (value: Response) => void;
   const delayed = new Promise<Response>(resolve => { release = resolve; });
   const done = { ...empty, turns: [{ ...turn, status: 'succeeded', waiting: false, answer: 'newest answer', answeredAt: new Date().toISOString() }] };

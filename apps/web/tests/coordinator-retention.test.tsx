@@ -1,7 +1,7 @@
 import { expect, test, vi } from 'vitest';
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { TestWorkspace, screenData } from './fixtures';
-import { readConversationThroughOwner, setConversationState, snapshotJson, SERVED } from './conversation-fixture';
+import { readConversationThroughOwner, served, setConversationState, snapshotJson, SERVED } from './conversation-fixture';
 import { useInputDraft } from '../src/features/coordinator/editor/draft';
 import { commitDrafts, draftKey, readDrafts, updateDraft, useDraftStore } from '../src/features/forms/draft-store';
 import { begin, freeze, holds, outgoingKey, reconcileOutbox, refuse, settleInterrupted, takeBack, useOutbox } from '../src/features/coordinator/editor/outbox';
@@ -70,12 +70,12 @@ test('refused before anything else is written, the words and files go back at on
   const turn = { id: again, at: '', ask: 'Fixed text', attachments: ['a.txt'], status: 'queued' as const, waiting: true, answer: null, seen: false, answeredAt: null, error: null, result: null };
   // Another conversation's snapshot, read but not drawn, settles nothing of it, though it holds a turn under its ID (a
   // drawn one would be of the open conversation, so the request went with a cleared one).
-  reconcileOutbox({ id: 'other', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns: [turn] }, '/fixture', null, false);
+  reconcileOutbox(served({ id: 'other', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns: [turn] }), '/fixture', null, false);
   expect(holds(readDrafts().entries, '/fixture', 'conversation')).toBe(true);
-  reconcileOutbox({ id: 'conversation', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns: [turn] }, '/fixture', null);
+  reconcileOutbox(served({ id: 'conversation', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns: [turn] }), '/fixture', null);
   expect(readDrafts().entries[outgoingKey('/fixture', again)]?.values.stage).toBe('accepted');
   expect(holds(readDrafts().entries, '/fixture', 'conversation')).toBe(false);
-  reconcileOutbox({ id: 'conversation', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: true, admitted: {}, cancelled: [], turns: [{ ...turn, status: 'running', waiting: false }] }, '/fixture', null);
+  reconcileOutbox(served({ id: 'conversation', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: true, admitted: {}, cancelled: [], turns: [{ ...turn, status: 'running', waiting: false }] }), '/fixture', null);
   expect(readDrafts().entries[outgoingKey('/fixture', again)]).toBeUndefined();
 });
 
@@ -242,7 +242,7 @@ for (const change of ['append', 'words', 'label', 'file', 'fresh', 'quote'] as c
     attachments: JSON.stringify([change === 'file' ? { ...file, path: 'attachments/replaced/a.txt' } : file, later]),
     ...change === 'fresh' ? { requestId: crypto.randomUUID() } : {} };
   updateDraft(key, { values: current });
-  const server = { id: 'conversation', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns: [{ id, ask: submitted.text, skills: submitted.skills, attachments: ['a.txt'], at: '', status: 'queued' as const, waiting: true, seen: false, answer: null, answeredAt: null, error: null, result: null }] };
+  const server = served({ id: 'conversation', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns: [{ id, ask: submitted.text, skills: submitted.skills, attachments: ['a.txt'], at: '', status: 'queued' as const, waiting: true, seen: false, answer: null, answeredAt: null, error: null, result: null }] });
   // Undrawn and then drawn acceptance must consume exactly once.
   reconcileOutbox(server, '/fixture', key, false); reconcileOutbox(server, '/fixture', key);
   const result = useDraftStore.getState().entries[key]!.values;

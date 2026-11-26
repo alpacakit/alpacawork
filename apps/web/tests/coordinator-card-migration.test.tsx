@@ -1,4 +1,4 @@
-import { readConversationThroughOwner, SERVED } from './conversation-fixture';
+import { readConversationThroughOwner, served, SERVED, type FixtureConversation } from './conversation-fixture';
 import { queryClient } from '../src/data/query-client';
 import { snapshotJson, statusJson } from './conversation-fixture';
 import { setConversationState } from './conversation-fixture';
@@ -20,14 +20,14 @@ import { setAutoSwipe, useSitting } from '../src/features/reader/next-question';
 import { useTaskActionSlot } from '../src/features/coordinator/task-action-slot';
 import { TestWorkspace, at, dto, logEntry, narrowScreen, screenData, taskFixture, tree, userBall } from './fixtures';
 const root = '/fixture', cid = 'card-migration';
-const empty = (id = cid) => ({ id, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns: [] as any[] });
+const empty = (id = cid) => served({ id, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns: [] as any[] });
 const reply = (value: unknown) => new Response(snapshotJson(value));
 const review = taskFixture({ id: 'T1', state: 'waiting', title: 'Review', log: [logEntry({ id: 'L1', kind: 'reported', toState: 'waiting' })],
   ball: userBall('review', 'L1', at, { aboutRunId: 'R1' }) });
 const data = () => screenData(tree({ tasks: [review, dto({ id: 'T2', state: 'doing', title: 'Working' })] }));
 const field = () => document.querySelector('[data-one-input]')!;
 const input = (text: string) => act(() => { (field() as HTMLElement & { editor: import('@tiptap/react').Editor }).editor.commands.setContent(textDocument(text)); });
-let current = empty();
+let current: FixtureConversation = empty();
 let posted: any[];
 beforeAll(async () => { await startI18n(); await i18n.changeLanguage('en'); });
 beforeEach(async () => {

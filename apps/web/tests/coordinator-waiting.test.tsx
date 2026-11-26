@@ -1,4 +1,4 @@
-import { setConversationState, SERVED } from './conversation-fixture';
+import { setConversationState, SERVED, servedTurn } from './conversation-fixture';
 import { useRef } from 'react';
 import { afterEach, beforeAll, expect, test, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
@@ -17,7 +17,7 @@ import { useUndoOffers } from '../src/data/undo-offers';
 import { endSendGrace } from '../src/data/send-grace';
 import { TestWorkspace } from './fixtures';
 
-const turn = (extra: Partial<CoordinatorTurn> = {}): CoordinatorTurn => ({ id: 'first', at: new Date().toISOString(), ask: 'One instruction',
+const turn = (extra: Partial<CoordinatorTurn> = {}): CoordinatorTurn => servedTurn('waiting-test', { id: 'first', at: new Date().toISOString(), ask: 'One instruction',
   attachments: [], status: 'queued', waiting: false, answer: null, answeredAt: null, seen: false, error: null, result: null, ...extra });
 const conversation = (turns: CoordinatorTurn[] = [], busy = false) => ({ id: 'waiting-test', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy, admitted: {}, cancelled: [], turns });
 function Surface() {
