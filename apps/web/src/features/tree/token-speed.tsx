@@ -10,6 +10,8 @@ import { useLayoutEffect, useSyncExternalStore, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { runOutputSpeed, type RunOutputSpeed } from "@alpacawork/contract/run";
 import { AgentMark } from "@/components/ui/agent-mark";
+import { useServerSettings } from "@/data/queries";
+import { agentKind } from "@/domain/agent-mark";
 import { Icon } from "@/components/ui/icon";
 import type { Task } from "@/data/types";
 import { useWorkspaceSelector, useWorkspaceStore, type WorkspaceData } from "@/data/workspace-store";
@@ -212,25 +214,41 @@ export const TIME_SLOT = "inline-block min-w-[4.5em] text-right narrow:min-w-[3.
 /** The speed's slot on a phone, held while agents run so the columns stay put before a count arrives. */
 const NARROW_SPEED_SLOT = "inline-block min-w-[5ch] text-right tabular-nums";
 
+/** The most kinds of AI a row names; the rest are one "+count" of their agents. */
+const KINDS_SHOWN = 3;
+/** Where each kind stands, so an AI keeps its place from row to row; agents of no known kind come after them. */
+const KIND_ORDER: readonly string[] = ["claude", "codex", "grok", "copilot", "pi"];
+
 /**
- * Which AIs run and how many, as a list has room for: each AI's logo, most first, with how many of it as a small "×4"
- * at its upper right past one. Logos stand side by side, never over one another: they are their makers' marks. Its
- * press lists each agent's count, and a reader hears the total and each agent's name and count. Runs no read has
- * brought stand as the square with their count.
+ * Which AIs run and how many: each AI's logo with how many of it beside, on the text's line, past one ("✳2 ◎2 In"),
+ * in the kinds' order so an AI stands in the same place on every row; past three kinds, a "+count" of the rest.
+ * Logos stand side by side as their makers draw them. Its press lists each agent's count, and a reader hears the total
+ * and each agent's name and count. Runs no read has brought stand as the square with their count.
  */
 export function AgentCounts({ tasks }: { tasks: readonly Task[] }) {
   const { t } = useTranslation("tree");
+  const settings = useServerSettings().data?.agents;
   const key = useWorkspaceSelector((data) => JSON.stringify(runningAgents(tasks, data)));
   const agents = JSON.parse(key) as [string | null, number][];
   if (!agents.length) return null;
   const total = agents.reduce((sum, [, count]) => sum + count, 0);
   const words = agents.map(([agent, count]) => `${agent ?? "?"} ${count}`).join(", ");
-  return <span data-agent-counts title={words} className="flex flex-none items-center gap-1.5 self-center whitespace-nowrap tabular-nums">
+  const place = (agent: string | null) => {
+    if (agent === null) return KIND_ORDER.length + 1;
+    const at = KIND_ORDER.indexOf(agentKind(agent, settings?.[agent]?.adapter) ?? "");
+    return at < 0 ? KIND_ORDER.length : at;
+  };
+  const ordered = [...agents].sort(([a], [b]) => place(a) - place(b));
+  const shown = ordered.slice(0, KINDS_SHOWN), rest = ordered.slice(KINDS_SHOWN).reduce((sum, [, count]) => sum + count, 0);
+  return <span data-agent-counts title={words} className="flex flex-none items-baseline gap-2 whitespace-nowrap tabular-nums">
     <span className="sr-only">{`${t("status.runningRuns", { count: total })}: ${words}`}</span>
-    {agents.map(([agent, count]) => <span key={agent ?? ""} data-agent aria-hidden="true" className="flex flex-none items-start">
-      {agent === null ? <Icon name="runningRuns" className="size-[0.7em] self-center text-muted" /> : <AgentMark name={agent} className="size-[1.05em]" />}
-      {(count > 1 || agent === null) && <span className="-mt-[0.3em] ml-px text-[0.72em] leading-none text-muted">×{count}</span>}
+    {/* Each logo sits on the text's line, a little below it as a capital's middle is, so every group stands level. */}
+    {shown.map(([agent, count]) => <span key={agent ?? ""} data-agent aria-hidden="true" className="flex-none">
+      {agent === null ? <Icon name="runningRuns" className="inline size-[0.7em] align-[-0.02em] text-muted" />
+        : <AgentMark name={agent} className="size-[1em] align-[-0.17em]" />}
+      {(count > 1 || agent === null) && <span className="ml-[3px] text-[0.8em] font-medium text-ink/70">{count}</span>}
     </span>)}
+    {rest > 0 && <span aria-hidden="true" className="text-[0.8em] text-muted">+{rest}</span>}
   </span>;
 }
 
