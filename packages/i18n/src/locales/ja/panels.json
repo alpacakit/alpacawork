@@ -686,7 +686,7 @@
       "waiting_other": "作業中のエージェント{{count}}件が終わるのを待っています",
       "withdrawn": "{{version}} は取り下げられました"
     },
-    "notes": "変更点",
+    "notes": "リリースノート",
     "pauseInstruction": "alpacawork を {{version}} に更新します。作業中のエージェントがいるタスクを保留にして、切りの良いところで止めてください（走っているものは今の作業を終えるまで待つ）。",
     "postpone": "延期する",
     "reload": "再読み込み",
@@ -699,10 +699,14 @@
     "start": "アップデート",
     "unavailable": "今はアップデートを始められません。しばらくして、もう一度お試しください。",
     "page": {
+      "newTitle": "新しい版があります",
       "latest": "最新の版です",
-      "running": "今の版",
-      "together": "一緒に新しい版になるもの",
-      "togetherNote": "alpacawork に同梱のスキルは、アップデートのときに本体と一緒に置き換わります。ひとつずつ更新する必要はありません。"
+      "targets": "アップデートで新しくなるもの",
+      "targetsNote": "alpacawork と、一緒に入っているスキルがまとめて新しい版になります。スキルをひとつずつ更新する必要はありません。",
+      "app": "alpacawork 本体",
+      "appSkill": "alpacawork を使うためのスキル",
+      "skill": "スキル",
+      "handEdits": "これらのスキルを手で書き換えていた場合、その内容は新しい版で上書きされます。"
     }
   },
   "workspaceStop": {

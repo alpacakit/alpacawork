@@ -220,33 +220,57 @@ export function useOpenSettingsFromGear() {
 }
 
 /**
- * Settings' Update: the one place the app's update is read and done. Its state line (with its one press), or that this
- * is the latest; the version running; and what an update replaces with it, the skills that come with alpacawork, so
- * none of them is updated on its own.
+ * Settings' Update: the one place the app's update is read and done. On top, where this PC stands: a new version
+ * offered (from which to which, its release notes, the one press), the latest running, or the update's own state line
+ * while one is under way or needs the person. Under it, everything an update replaces, by name: alpacawork itself
+ * and each skill that comes with it, so none of them is looked for or updated on its own.
  */
 export function UpdateSettingsTab() {
   const { t } = useTranslation("panels");
   const { t: setup } = useTranslation("setup");
-  const status = useUpdateStatus();
+  const status = useUpdateStatus(), sending = useUpdateLocal((local) => local.sending);
   const skills = useSkills().data?.skills;
   const bundled = SKILL_OFFERS.filter(offer => offer.from.kind === "bundled" && skills?.find(each => each.name === offer.name)?.installed);
-  return <div data-settings-update className="space-y-6">
-    {status.kind === "none" || status.kind === "withdrawn"
-      ? <p className="m-0 flex items-center gap-2 text-sm text-done"><Icon name="check" className="size-4" />{t("update.page.latest")}</p>
+  const offered = status.kind === "available" && !(status.requiresNoRuns && status.runs > 0) ? status : null;
+  const latest = status.kind === "none" || status.kind === "withdrawn";
+  // The version an update offered or under way brings, whatever its state; none once it is running or none is offered.
+  const next = !latest && status.kind !== "done" && "version" in status ? status.version : null;
+  const items = [{ name: t("update.page.app"), kind: null },
+    { name: t("update.page.appSkill"), kind: t("update.page.skill") },
+    ...bundled.map(offer => ({ name: setup(`skills.items.${offer.name}.title`), kind: t("update.page.skill") }))];
+  return <div data-settings-update className="space-y-8">
+    {offered ? <section className="flex flex-wrap items-center gap-x-6 gap-y-4 rounded-lg border border-line px-5 py-4">
+      <div className="min-w-0 flex-1 basis-60">
+        <h4 className="m-0 text-base font-semibold">{t("update.page.newTitle")}</h4>
+        <p className="m-0 mt-1 flex flex-wrap items-baseline gap-x-3 text-sm text-muted tabular-nums">
+          <span>alpacawork {APP_VERSION}<Icon name="arrowRight" className="mx-1 inline size-3.5 align-[-2px]" /><span className="font-semibold text-ink">{offered.version}</span></span>
+          <ReleaseNotes version={offered.version} />
+        </p>
+      </div>
+      <Button data-update-action className={cn("flex-none narrow:min-h-11 narrow:w-full", BUSY_PRESS)} aria-disabled={sending || undefined}
+        onClick={() => { if (!sending) void pressUpdate(offered); }}>{t("update.start")}</Button>
+    </section>
+      : latest ? <section className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-line px-5 py-4">
+        <Icon name="check" className="size-4 text-done" />
+        <span className="text-base font-semibold">{t("update.page.latest")}</span>
+        <span className="text-sm text-muted tabular-nums">alpacawork {APP_VERSION}</span>
+        <span className="ms-auto text-sm"><ReleaseNotes version={APP_VERSION} /></span>
+      </section>
       : <UpdateStateLine />}
-    <dl className="m-0 border-t border-line">
-      <div className="flex min-h-13 items-center justify-between gap-6 border-b border-line py-2">
-        <dt className="text-base">{t("update.page.running")}</dt><dd className="m-0 text-sm text-muted tabular-nums">alpacawork {APP_VERSION}</dd>
-      </div>
-      <div className="border-b border-line py-3">
-        <dt className="text-base">{t("update.page.together")}</dt>
-        <dd className="m-0 mt-1 text-sm text-muted [word-break:auto-phrase]">{t("update.page.togetherNote")}</dd>
-        <dd className="m-0 mt-2 flex flex-wrap gap-1.5">
-          <code className="rounded-sm bg-[color:color-mix(in_oklab,var(--ink)_5%,transparent)] px-1.5 py-0.5 font-mono text-xs text-muted">alpacawork</code>
-          {bundled.map(offer => <span key={offer.name} title={offer.name} className="rounded-sm bg-[color:color-mix(in_oklab,var(--ink)_5%,transparent)] px-1.5 py-0.5 text-xs text-muted">
-            {setup(`skills.items.${offer.name}.title`)}</span>)}
-        </dd>
-      </div>
-    </dl>
+    <section>
+      <h4 className="m-0 text-base font-semibold">{t("update.page.targets")}</h4>
+      <p className="m-0 mt-1 text-sm text-muted [word-break:auto-phrase]">{t("update.page.targetsNote")}</p>
+      <ul className="m-0 mt-3 list-none border-t border-line p-0">
+        {items.map(item => <li key={item.name} className="flex min-h-12 items-center gap-3 border-b border-line py-2">
+          <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-0.5">
+            <span className="text-sm [word-break:auto-phrase]">{item.name}</span>
+            {item.kind && <span className="flex-none rounded-full border border-line px-1.5 text-xs text-muted">{item.kind}</span>}
+          </span>
+          <span className="w-28 flex-none text-end text-xs text-soft tabular-nums">
+            {next ? <>{APP_VERSION}<Icon name="arrowRight" className="mx-1 inline size-3 align-[-1px]" /><span className="font-semibold text-ink">{next}</span></> : APP_VERSION}</span>
+        </li>)}
+      </ul>
+      <p className="m-0 mt-3 text-xs text-soft [word-break:auto-phrase]">{t("update.page.handEdits")}</p>
+    </section>
   </div>;
 }

@@ -711,10 +711,14 @@
     "start": "Update",
     "unavailable": "The update cannot start right now. Try again in a while.",
     "page": {
+      "newTitle": "A new version is available",
       "latest": "You're on the latest version",
-      "running": "Current version",
-      "together": "Updated along with it",
-      "togetherNote": "Skills that come with alpacawork are replaced together with it when you update. They need no update of their own."
+      "targets": "What an update replaces",
+      "targetsNote": "alpacawork and the skills that come with it move to the new version together. No skill needs updating on its own.",
+      "app": "alpacawork",
+      "appSkill": "The skill for using alpacawork",
+      "skill": "Skill",
+      "handEdits": "If you edited any of these skills by hand, the new version replaces your edits."
     }
   },
   "workspaceStop": {
