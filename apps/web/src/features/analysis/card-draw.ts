@@ -14,10 +14,11 @@ const PAD = 64;
  */
 const HEAD_Y = 92, LABEL_Y = 214, HERO_Y = 412, RULE_Y = 470, REST_Y = 552, REST_LABEL_Y = 602;
 /**
- * The sizes: the small words (the head line, the brand, the numbers' names), sized to stay legible when the card is
- * shown at a third of its width, as a timeline shows it; the lead's name; the lead number; the numbers under it.
+ * The sizes: the small words (the head line, the numbers' names), sized and weighted to stay legible when the card is
+ * shown at a third of its width, as a timeline shows it, a longer one fitted to its room; the brand's name, a step
+ * smaller; the lead's name; the lead number; the numbers under it.
  */
-const SMALL = 30, LABEL = 38, HERO = 232, REST = 58, BRAND_MARK = 40, BRAND_GAP = 12;
+const SMALL = 33, BRAND = 31, LABEL = 38, HERO = 232, REST = 58, BRAND_MARK = 40, BRAND_GAP = 12;
 
 /** The colours of one theme, as tokens.css gives them (read on the page), in sRGB. `grass`: the calendar's five levels. */
 export type CardPalette = { bg: string; ink: string; muted: string; line: string; grass: [string, string, string, string, string] };
@@ -51,8 +52,9 @@ function figure(look: CardLook, x: number, y: number, size: number, item: Figure
   const base = item.words ? Math.round(size * 0.72) : size, weight = item.words ? 650 : 700;
   // The unit beside the lead number is a third of it, so the number leads and a broad glyph (M, 億) does not compete.
   const unitShare = item.words ? 0.6 : base >= 120 ? 0.36 : 0.56, gap = item.words || item.spaced ? 0.22 : 0.04;
-  // Large figures close up a little, as display type does; the names keep their own spacing.
-  const track = item.words ? -0.01 : base >= 120 ? -0.012 : -0.01;
+  // The lead number keeps its font's own spacing, so each figure stays apart when the card is shown small; the smaller
+  // figures and the names close up a little.
+  const track = item.words || base < 120 ? -0.01 : 0;
   const unitWeight = item.words ? 500 : 600;
   const wide = look.measure(item.value, base, weight) + item.value.length * base * track
     + (item.unit ? base * gap + look.measure(item.unit, base * unitShare, unitWeight) : 0);
@@ -69,16 +71,16 @@ function figure(look: CardLook, x: number, y: number, size: number, item: Figure
  * centred on the name's drawn glyphs (from its ascenders to its descender), not on the font's box.
  */
 function brand(look: CardLook, x: number, y: number) {
-  const name = "alpacawork", wide = look.measure(name, SMALL, 700), glyphs = look.ink(name, SMALL, 700);
+  const name = "alpacawork", wide = look.measure(name, BRAND, 700), glyphs = look.ink(name, BRAND, 700);
   const middle = y - (glyphs.ascent - glyphs.descent) / 2;
   return `<image href="${look.icon}" x="${Math.round(x - wide - BRAND_GAP - BRAND_MARK)}" y="${(middle - BRAND_MARK / 2).toFixed(1)}" width="${BRAND_MARK}" height="${BRAND_MARK}"/>`
-    + text(x, y, SMALL, 700, look.palette.ink, name, `text-anchor="end" letter-spacing="-0.3"`);
+    + text(x, y, BRAND, 700, look.palette.ink, name, `text-anchor="end" letter-spacing="-0.3"`);
 }
-const brandWidth = (look: CardLook) => look.measure("alpacawork", SMALL, 700) + BRAND_GAP + BRAND_MARK;
+const brandWidth = (look: CardLook) => look.measure("alpacawork", BRAND, 700) + BRAND_GAP + BRAND_MARK;
 /** What the numbers are of in ink, then for which days and how many, quieter, on one line. */
 function head(look: CardLook, input: CardInput, room: number) {
   const size = fit(look, `${input.kicker}  ${input.span}  ${input.days}`, SMALL, 600, room);
-  return text(edge(look, PAD, input.kicker, size, 650), HEAD_Y, size, 400, look.palette.muted,
+  return text(edge(look, PAD, input.kicker, size, 650), HEAD_Y, size, 500, look.palette.muted,
     `<tspan font-weight="650" fill="${look.palette.ink}">${esc(input.kicker)}</tspan>`
     + `<tspan dx="${Math.round(size * 0.75)}">${esc(input.span)}</tspan><tspan dx="${Math.round(size * 0.5)}">${esc(input.days)}</tspan>`);
 }
@@ -124,9 +126,9 @@ export function drawCard(input: CardInput, look: CardLook): string {
   const step = (CARD_W - PAD * 2) / 3;
   input.rest.forEach((entry, at) => {
     const x = Math.round(PAD + at * step), room = step - 40;
-    const size = fit(look, entry.label, SMALL, 400, room);
+    const size = fit(look, entry.label, SMALL, 500, room);
     body += figure(look, x, REST_Y, REST, entry.figure, room)
-      + text(edge(look, x, entry.label, size, 400), REST_LABEL_Y, size, 400, look.palette.muted, esc(entry.label));
+      + text(edge(look, x, entry.label, size, 500), REST_LABEL_Y, size, 500, look.palette.muted, esc(entry.label));
   });
   return frame(look, body);
 }
