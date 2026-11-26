@@ -4,12 +4,12 @@ Los datos de uso son recuentos de cómo se usa alpacawork (qué operaciones se u
 
 ## En resumen
 
-- El envío es opcional. Si no los envías puedes usarlo igual, y después de elegir enviarlos puedes dejar de hacerlo en cualquier momento
+- El envío es opcional. Si no los envías puedes usarlo igual, y después de elegir enviarlos puedes dejar de hacerlo en cualquier momento (con el interruptor de Configuración → General o con `alpacawork telemetry off`)
 - No se envía ni se cuenta nada hasta que eliges
-- Lo que se envía se registra en el PC antes de enviarlo, y puedes verlo en la pantalla tal como se envía
+- Lo que se envía se registra en el PC antes de enviarlo, y puedes verlo en la pantalla tal como se envía (“Ver lo que se envía”, más abajo)
 - Puedes pedir después que se eliminen los datos enviados
 - Si una versión añade campos al informe, se vuelve a pedir tu consentimiento
-- No se envía nada mientras `DO_NOT_TRACK=1` esté configurada en el servidor
+- No se envía nada mientras `DO_NOT_TRACK=1` esté configurada en el servidor (una variable configurada solo en una terminal puede no llegarle; consulta “Cuándo no se envía nada”, más abajo)
 - No se envían el texto que escribes, los títulos ni el texto de las tareas, los nombres de archivos, los nombres de los modelos de IA, etc.
 
 ## Elegir y dejar de enviar
@@ -48,7 +48,7 @@ Las variables de entorno que configuras en una terminal no llegan al servidor qu
 
 ## Qué se envía
 
-### Cuándo
+### Cuándo se envía
 
 - Por cada día que usas alpacawork, los datos de ese día se reúnen en un solo informe y se envían al día siguiente. Los días se cuentan en UTC
 - No se envía ningún informe por los días en que no lo usas
@@ -86,13 +86,15 @@ Las direcciones IP no se incluyen en el informe, y el receptor tampoco las conse
 ## Ver lo que se envía
 
 - **Pantalla**: con “Ver lo que se envía”, debajo del interruptor de datos de uso en Configuración → General, puedes ver el borrador de hoy, los informes pendientes y las solicitudes que hace alpacawork. Cada intento muestra el destino, el contenido exacto y el resultado si se conoce. También aparecen los reintentos y las solicitudes de eliminación hechas desde la aplicación
-- **Comando**: `alpacawork telemetry show` muestra el mismo historial y la lista de nombres y valores que se pueden enviar. Los comandos `alpacawork telemetry` solo funcionan cuando una persona los escribe desde una terminal en este PC
+- **Comando**: `alpacawork telemetry show` muestra el mismo historial y la lista de nombres y valores que se pueden enviar
 
 Sobre el registro de cada intento:
 
 - Se hace antes del envío, y solo se envía lo registrado, así que el historial muestra exactamente el destino y el contenido que se enviaron
 - Queda en este PC durante 13 semanas, aunque desactives el envío o solicites la eliminación de datos en el receptor
 - Si no se pudo registrar la respuesta, el historial muestra que se desconoce el resultado
+
+Los comandos `alpacawork telemetry` solo funcionan cuando una persona los escribe desde una terminal en este PC.
 
 ## Eliminar los datos enviados
 

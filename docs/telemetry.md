@@ -4,12 +4,12 @@ Usage data is a count of how alpacawork is used (which actions were used how man
 
 ## In short
 
-- Sending is optional. alpacawork works the same if you don't send, and after you choose to send, you can stop at any time
+- Sending is optional. alpacawork works the same if you don't send, and after you choose to send, you can stop at any time (the switch in Settings → General, or `alpacawork telemetry off`)
 - Nothing is sent or counted until you choose
-- What is sent is recorded on the PC before it is sent, and you can see it on the screen exactly as sent
+- What is sent is recorded on the PC before it is sent, and you can see it on the screen exactly as sent ("See what is sent" below)
 - You can ask for what was sent to be deleted later
 - If a version adds fields to the report, you are asked to agree again
-- Nothing is sent while `DO_NOT_TRACK=1` is set for the server
+- Nothing is sent while `DO_NOT_TRACK=1` is set for the server (a variable set only in a terminal may not reach it; see "When nothing is sent" below)
 - Text you type, task titles and text, file names, AI model names and the like are not sent
 
 ## Choosing and stopping
@@ -48,7 +48,7 @@ Environment variables set in a terminal don't reach the server that starts autom
 
 ## What is sent
 
-### When
+### When a report is sent
 
 - For each day you use alpacawork, that day's data is put into one report and sent the next day. Days are counted in UTC
 - No report is sent for days you don't use it
@@ -86,13 +86,15 @@ IP addresses are not included in reports, and the receiver doesn't keep them. Ho
 ## See what is sent
 
 - **Screen**: "See what's sent" under the usage data switch in Settings → General shows today's draft, reports waiting to send, and the requests made by alpacawork. Each attempt records the destination, the exact content, and the result if known, including retries and in-app deletion requests
-- **Command**: `alpacawork telemetry show` shows the same history and the list of names and values that can be sent. The `alpacawork telemetry` commands work only when a person types them in a terminal on this PC
+- **Command**: `alpacawork telemetry show` shows the same history and the list of names and values that can be sent
 
 About the record of each attempt:
 
 - It is made before sending, and only what was recorded is sent, so the history shows exactly the destination and content that were sent
 - It remains on this PC for 13 weeks, even if you turn sending off or ask to delete data at the receiver
 - If the response could not be recorded, the history shows that the outcome is unknown
+
+The `alpacawork telemetry` commands work only when a person types them in a terminal on this PC.
 
 ## Delete what was sent
 
