@@ -82,12 +82,10 @@
   },
   "change": {
     "added": "{{what}} {{name}} を追加",
-    "agent": "エージェント",
-    "effort": "effort",
     "fromTo": "{{what}} {{from}} → {{to}}",
     "instruction-file": "指示ファイル",
     "legend": "変更の印",
-    "model": "モデル",
+    "more": "ほか{{count}}件",
     "removed": "{{what}} {{name}} を削除",
     "skill": "スキル",
     "updated": "{{what}} {{name}} を更新",

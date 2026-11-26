@@ -30,9 +30,9 @@ function zoneName(zone: string) {
 /**
  * The analysis face: what can be counted from the records, for the project in view. The same left edge as the list;
  * the look (tasks, or the AI's use) and the span of days at the top, then the look. Every number opens the tasks
- * behind it over the page (`Layers`).
+ * behind it in a window beside the page, or over it where there is no room (`AnalysisLayers`).
  */
-export function AnalysisView({ place }: { place: AnalysisPlace }) {
+export function AnalysisView({ place, beside }: { place: AnalysisPlace; beside: boolean }) {
   const { t } = useTranslation("analysis");
   useAnalysisFreshness();
   const project = useViewStore(state => state.project);
@@ -103,7 +103,7 @@ export function AnalysisView({ place }: { place: AnalysisPlace }) {
             series={series} />}
     </ReadPart>
     </div></div>
-    <AnalysisLayers place={place} project={project} days={days} />
+    <AnalysisLayers place={place} project={project} days={days} beside={beside} />
     <PointerTip root={root} />
   </>;
 }

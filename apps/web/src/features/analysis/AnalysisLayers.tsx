@@ -57,11 +57,15 @@ function CardLayer({ place, project, part, waitFrom }: {
 
 /**
  * What a number opens: the list of the tasks behind it; or the share card. A task opened from the list is the reader over
- * the face (the same window as on the list of tasks), and the list waits under it, out of sight, until the reader closes. The same surface as the reader on the
- * list of tasks (lit, a hairline edge, 12px from the right and the top), the page behind it kept as it is; on a phone a
- * sheet from the bottom. × and a press behind it close every layer; the list's way back and Back close one.
+ * the face (the same window as on the list of tasks), and the list waits under it, out of sight, until the reader closes.
+ * Where the docked reader can stand (`beside`), it stands there, as wide as the reader, and the page gives it that room
+ * (Workbench): the charts stay in reach beside it, so another day or number opens in its place. Where it cannot, it is
+ * over the page, which a press behind it closes; on a phone a sheet from the bottom. × closes every layer; the list's
+ * way back and Back close one.
  */
-export function AnalysisLayers({ place, project, days }: { place: AnalysisPlace; project: string | null; days: { from: string; to: string } | null }) {
+export function AnalysisLayers({ place, project, days, beside }: {
+  place: AnalysisPlace; project: string | null; days: { from: string; to: string } | null; beside: boolean;
+}) {
   const { t } = useTranslation("analysis");
   const narrow = useNarrow();
   const cardOpen = !!place.card;
@@ -121,8 +125,8 @@ export function AnalysisLayers({ place, project, days }: { place: AnalysisPlace;
   </>;
   // Under the reader the layers keep their place (and the list its scroll), out of sight and reach.
   return <div className={reading ? "hidden" : "contents"}>
-    {/* A press behind the window closes it; the bar stays in reach above it (its faces, the project, settings). */}
-    <div aria-hidden className="fixed inset-x-0 top-(--bar-h) bottom-0 z-(--layer-reader)" onClick={closeLayers} />
+    {/* Over the page, a press behind the window closes it; the bar stays in reach above it (its faces, the project, settings). */}
+    {!beside && <div aria-hidden className="fixed inset-x-0 top-(--bar-h) bottom-0 z-(--layer-reader)" onClick={closeLayers} />}
     <PointerTip root={surfaceBox} />
     {phoneCard
       ? <PhoneSheet ref={setSurface} role="dialog" aria-label={label} label={t("card.resize")}
@@ -133,7 +137,7 @@ export function AnalysisLayers({ place, project, days }: { place: AnalysisPlace;
       : <aside ref={setSurface} role="dialog" data-analysis-panel={narrow ? undefined : ""} aria-label={label}
           className={cn("fixed z-(--layer-reader) flex flex-col border-hairline border-lit-line bg-lit shadow-float",
             narrow ? "inset-x-0 top-[18%] bottom-0 animate-sheet rounded-t-pane before:absolute before:top-1.5 before:left-1/2 before:-ms-4.5 before:h-1 before:w-9 before:rounded-xs before:bg-lit-line"
-              : "top-window right-window bottom-window w-[min(548px,calc(100%-24px))] animate-side rounded-pane")}>
+              : cn("top-window right-window bottom-window animate-side rounded-pane", beside ? "w-(--window-fit)" : "w-[min(548px,calc(100%-24px))]"))}>
           {contents}
         </aside>}
   </div>;

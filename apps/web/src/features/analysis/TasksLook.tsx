@@ -2,7 +2,7 @@ import { memo } from "react";
 import { useTranslation } from "react-i18next";
 import { RegionSkeleton } from "@/components/ui/skeleton";
 import { i18n } from "@alpacawork/i18n";
-import { dayLabel, daysBetween, decimalText, delta, format, inUnit, parts, share, shareDelta, previousName, unitOf, type Kind } from "./format";
+import { daysBetween, decimalText, delta, format, inUnit, parts, share, shareDelta, previousName, unitOf, type Kind } from "./format";
 import { Grass } from "./charts";
 import { BreakdownTable, type Cell } from "./BreakdownTable";
 import { BarChart, ChartGroup, DayAxis, inSpanOf, Lead, Leads, lineTop, Parts, Row, spanMost, useLineLabel, useScale, type DayList, type RowSay } from "./rows";
@@ -202,7 +202,6 @@ export const TasksLook = memo(function TasksLook({ view, span, root, days, open,
   return <>
     {leads}
     <ChartHead />
-    {changes.length > 0 && <ChangeLegend changes={changes} />}
     {rows}
     <Causes accepted={accepted} open={open} />
     <TasksBreakdown span={span} root={root} open={open} />
@@ -263,13 +262,12 @@ function TasksBreakdown({ span, root, open }: { span: Span; root: HTMLElement | 
   </Section></div>;
 }
 
-/** The changes of what Runs ran under, by their local days and in words, as the charts' dotted lines (`analysis changes`). */
+/** The changes of what Runs ran under, by their local days and in words, as the charts' marks (`analysis changes`). */
 function useChangeMarks(view: ChangesView | undefined, zone: string): ChangeMark[] {
   const { t } = useTranslation("analysis");
   if (!view) return [];
   const day = new Intl.DateTimeFormat("en-CA", { timeZone: zone, year: "numeric", month: "2-digit", day: "2-digit" });
-  return view.changes.map(change => ({ day: day.format(new Date(change.at)),
-    words: change.changes.map(each => changeWords(each, t)).join(t("sep")) }));
+  return view.changes.map(change => ({ day: day.format(new Date(change.at)), words: change.changes.map(each => changeWords(each, t)) }));
 }
 /**
  * One change in words: a skill or an instruction file by its name (its versions are digests, which say nothing), the
@@ -280,13 +278,6 @@ function changeWords(change: ChangesView["changes"][number]["changes"][number], 
   if (change.what === "skill" || change.what === "instruction-file")
     return t(change.from === null ? "change.added" : change.to === null ? "change.removed" : "change.updated", { what, name: change.name ?? "" });
   return t("change.fromTo", { what, from: change.from ?? "—", to: change.to ?? "—" });
-}
-function ChangeLegend({ changes }: { changes: ChangeMark[] }) {
-  const { t } = useTranslation("analysis");
-  return <p data-change-legend="" className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
-    <span className="inline-flex items-center"><i aria-hidden className="me-1.5 inline-block h-3 border-s border-dashed border-changed" />{t("change.legend")}</span>
-    {changes.map((change, at) => <span key={at} className="whitespace-nowrap"><b className="font-semibold text-ink">{dayLabel(change.day)}</b> {change.words}</span>)}
-  </p>;
 }
 
 /** A table's column heading with its unit once (none in a language that writes no count word). */
