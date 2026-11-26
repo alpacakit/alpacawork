@@ -359,10 +359,10 @@
       },
       "cause": "Recibido: “{{title}}” · {{at}}",
       "changedTo": "Cambió a {{state}}",
-      "compactedCut": "{{tokens}} tokens menos",
-      "compactedFill": "Contexto",
-      "compactedFrom": "Contexto antes",
-      "compactedTo": "Contexto después",
+      "compactedCut": "−{{tokens}} tokens",
+      "compactedFill": "Contexto de la conversación",
+      "compactedFrom": "Contexto antes de compactar",
+      "compactedTo": "Contexto después de compactar",
       "end": {
         "again": {
           "question": "Se hizo de nuevo la misma pregunta",

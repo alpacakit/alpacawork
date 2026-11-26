@@ -324,10 +324,10 @@
       },
       "cause": "收到“{{title}}” · {{at}}",
       "changedTo": "已设为 {{state}}",
-      "compactedCut": "减少 {{tokens}} 个令牌",
-      "compactedFill": "用量",
-      "compactedFrom": "压缩前用量",
-      "compactedTo": "压缩后用量",
+      "compactedCut": "−{{tokens}} 个令牌",
+      "compactedFill": "对话用量",
+      "compactedFrom": "压缩前的对话用量",
+      "compactedTo": "压缩后的对话用量",
       "end": {
         "again": {
           "question": "再次提出了同一个提问",

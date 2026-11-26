@@ -584,7 +584,8 @@ function RecordRow({ row, line, open, onToggle, task, gallery, onFollow }: Recor
   const wordsLine = useRef<HTMLSpanElement>(null);
   const leaving = useHandOver(bodySaysIt, wordsLine);
   // The head's words are its open heading only where they stay in it; handed over, they are always the closed line.
-  const heading = open && !handsOver;
+  // A conversation row's line is its figures or its reason, never a title: it keeps its weight open as closed.
+  const heading = open && !handsOver && !report.conversation;
   const yours = !!report.userQuestion || outcome?.kind === "waiting" && outcome.on === "you";
   // Closed, weight says what is yours to do; open, the words are the head of what is read under them.
   const strong = yours || report.kind === "urgent";

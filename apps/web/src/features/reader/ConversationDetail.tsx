@@ -53,7 +53,7 @@ export function conversationLine(conversation: Conversation, t: TFunction<"reade
     {before !== null && <Fill tokens={before} window={window} language={language} />}
     {before !== null && after !== null && <Icon name="arrowRight" className="size-3.5 text-muted" />}
     {after !== null && <Fill tokens={after} window={window} language={language} />}
-    {cut !== null && cut > 0 && <span className="text-soft tabular-nums">· {t("reportFeed.row.compactedCut", { tokens: tokensText(cut, language) })}</span>}
+    {cut !== null && cut > 0 && <span className="text-soft tabular-nums">{t("reportFeed.row.compactedCut", { tokens: tokensText(cut, language) })}</span>}
   </span>;
 }
 

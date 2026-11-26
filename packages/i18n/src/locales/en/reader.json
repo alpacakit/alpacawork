@@ -341,10 +341,10 @@
       },
       "cause": "Received “{{title}}” · {{at}}",
       "changedTo": "Set to {{state}}",
-      "compactedCut": "{{tokens}} tokens cut",
-      "compactedFill": "Context",
-      "compactedFrom": "Context before",
-      "compactedTo": "Context after",
+      "compactedCut": "−{{tokens}} tokens",
+      "compactedFill": "Conversation context",
+      "compactedFrom": "Context before compaction",
+      "compactedTo": "Context after compaction",
       "end": {
         "again": {
           "question": "Asked the same question again",

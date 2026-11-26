@@ -1306,7 +1306,7 @@ test("a compaction's row shows its fill before and after with what it cut, and a
   });
   expect(kinds.sort()).toEqual(["Compacted", "Fresh start"]);
   const fill = document.querySelector<HTMLElement>("[data-compaction-fill]")!;
-  expect(fill.textContent).toBe("Context61%14%· 470K tokens cut");
+  expect(fill.textContent).toBe("Conversation context61%14%−470K tokens");
   const words = [...document.querySelectorAll<HTMLElement>("[data-row-words]")].map(row => row.textContent);
   expect(words).toContain("The owner gave the conversation a fresh start after “Filters reviewed”");
   // Opened, a compaction says what set it off; a fresh start says what it carries over, with the study behind it.
@@ -1328,7 +1328,7 @@ test("a compaction whose agent gave only the figure after still shows it, and sa
     { id: "R1@2026-11-26T00:00:00.000Z", kind: "conversation", author: owner, conversation: { change: "compacted", beforeTokens: null, afterTokens: 66_500, windowTokens: 475_000, trigger: "asked" } }]) } }));
   render(<TestWorkspace data={data}><ReportFeed task={data.tasks[0]!} people={data.people} onFollow={() => {}} /></TestWorkspace>);
   const fill = await waitFor(() => document.querySelector<HTMLElement>("[data-compaction-fill]")!);
-  expect(fill.textContent).toBe("Context after14%");
+  expect(fill.textContent).toBe("Context after compaction14%");
   fireEvent.click(document.querySelector<HTMLElement>("button[aria-expanded]")!);
   const detail = await waitFor(() => document.querySelector<HTMLElement>("[data-conversation-detail]")!);
   expect(detail.textContent).toContain("Compacted before the next instruction, as requested.");
