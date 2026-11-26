@@ -19,7 +19,7 @@ Um relatório contém:
 
 Cada tipo de ação tem um nome fixo. O texto que você digita e os títulos das tarefas nunca passam a fazer parte de um nome. O tamanho, a velocidade de exibição e as contagens de falhas são enviados em faixas aproximadas, como `10-19`.
 
-O ID deste PC é um UUID aleatório (versão 4), criado com um gerador aleatório criptograficamente seguro quando você escolhe enviar pela primeira vez. Ele não é gerado a partir de nomes, contas ou qualquer informação sobre o PC ou o usuário. É usado para contar por quantos dias o mesmo PC continua em uso e para permitir que você exclua depois os dados enviados. Se você parar de enviar e começar de novo, ou excluir o que foi enviado, o mesmo ID é usado, enquanto o arquivo que o guarda for mantido. Há um ID por conta de usuário do PC (por padrão, em `~/.config/alpacawork/telemetry.json`).
+O ID deste PC é um UUID aleatório (versão 4), criado com um gerador aleatório criptograficamente seguro quando você escolhe enviar pela primeira vez. Ele não é gerado a partir de nomes, contas ou qualquer informação sobre o PC ou o usuário. É usado para contar por quantos dias o mesmo PC continua em uso e para permitir que você exclua depois os dados enviados. Se você parar de enviar e começar de novo, ou excluir o que foi enviado, o mesmo ID é usado, enquanto o arquivo que o guarda for mantido. Há um ID por conta de usuário do PC (guardado, por padrão, em `~/.config/alpacawork/telemetry.json`).
 
 Você pode ver o relatório real exatamente como ele será enviado (“Ver o que é enviado”, abaixo).
 
@@ -42,7 +42,7 @@ Para mudar sua escolha depois, use a chave “Enviar dados de uso para ajudar a 
 
 Quando você para, os dados ainda não enviados são excluídos sem serem enviados. Os dados já enviados não são excluídos só por você parar (“Excluir o que foi enviado”, abaixo).
 
-Se você atualizar para uma versão que acrescenta um tipo de informação ao que é enviado, ou muda como é enviado, uma janela pede sua concordância de novo ao abrir a tela, somente se você tinha escolhido enviar. A janela lista os campos acrescentados. Nada é enviado nem contado até você responder. Cada tipo de informação é um campo do relatório (por exemplo `shape.tasks`); sua escolha registra os campos que cobria, então um campo acrescentado depois sempre é perguntado. Um novo tipo de ação, ou um novo valor de um campo existente (como um novo tipo de IA), é contado sem perguntar de novo.
+Se você atualizar para uma versão que acrescenta um tipo de informação ao que é enviado, ou muda como é enviado, uma janela pede sua concordância de novo ao abrir a tela, somente se você tinha escolhido enviar. A janela lista os campos acrescentados. Nada é enviado nem contado até você responder. Cada tipo de informação é um campo do relatório (por exemplo `shape.tasks`); sua escolha registra os campos que cobria, então um campo acrescentado depois sempre é perguntado. Um novo tipo de ação, ou um novo valor dos atributos de uma ação ou dos tipos de IA (como um novo tipo de IA), é contado sem perguntar de novo.
 
 Em alguns casos, como quando o alpacawork é executado em CI ou dentro de um contêiner, nada é enviado mesmo que você tenha escolhido enviar. Nesses casos, a chave não pode ser alterada, e o motivo aparece abaixo dela.
 

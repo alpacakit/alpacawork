@@ -42,7 +42,7 @@ To change your choice later, use the "Send usage data to help improve alpacawork
 
 When you stop, data not yet sent is deleted without being sent. Data already sent isn't deleted just by stopping ("Delete what was sent" below).
 
-If you update to a version that adds a kind of information to what is sent, or changes how it is sent, a window asks you to agree again when you open the screen, only if you had chosen to send. It lists the fields added. Nothing is sent or counted until you answer. Each kind of information is a field of the report (for example `shape.tasks`); your choice records the fields it covered, so a field added later is always asked about. A new kind of action, or a new value of an existing field (such as a new kind of AI), is counted without asking again.
+If you update to a version that adds a kind of information to what is sent, or changes how it is sent, a window asks you to agree again when you open the screen, only if you had chosen to send. It lists the fields added. Nothing is sent or counted until you answer. Each kind of information is a field of the report (for example `shape.tasks`); your choice records the fields it covered, so a field added later is always asked about. A new kind of action, or a new value of an action's attributes or of the kinds of AI (such as a new kind of AI), is counted without asking again.
 
 In some cases, such as when alpacawork runs in CI or inside a container, nothing is sent even if you chose to send. The switch then can't be changed, and the reason appears under it.
 

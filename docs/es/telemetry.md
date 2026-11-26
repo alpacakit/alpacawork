@@ -19,7 +19,7 @@ El informe incluye lo siguiente:
 
 Los tipos de operación son solo nombres definidos de antemano. Nunca se incluye el texto que escribiste ni los títulos de las tareas. La escala, la velocidad de la pantalla y el número de fallos se envían como rangos aproximados, como `10-19`.
 
-El ID de este PC es un UUID aleatorio (versión 4), creado con un generador aleatorio criptográficamente seguro la primera vez que eliges enviar. No se genera a partir de nombres, cuentas ni datos del PC o del usuario. Sirve para contar cuántos días seguidos se usa el mismo PC y para poder eliminar después los datos enviados. Si dejas de enviar y vuelves a empezar, o eliminas los datos enviados, se usa el mismo ID, mientras se conserve el archivo que lo guarda. Hay un ID por cada cuenta de usuario del PC (por defecto, en `~/.config/alpacawork/telemetry.json`).
+El ID de este PC es un UUID aleatorio (versión 4), creado con un generador aleatorio criptográficamente seguro la primera vez que eliges enviar. No se genera a partir de nombres, cuentas ni datos del PC o del usuario. Sirve para contar cuántos días seguidos se usa el mismo PC y para poder eliminar después los datos enviados. Si dejas de enviar y vuelves a empezar, o eliminas los datos enviados, se usa el mismo ID, mientras se conserve el archivo que lo guarda. Hay un ID por cada cuenta de usuario del PC (se guarda, por defecto, en `~/.config/alpacawork/telemetry.json`).
 
 Puedes ver el informe real tal como se enviará (“Ver lo que se envía”, más abajo).
 
@@ -42,7 +42,7 @@ Para cambiarlo después, usa el interruptor “Enviar datos de uso para ayudar a
 
 Al dejar de enviar, lo que aún no se ha enviado se elimina sin enviarlo. Lo ya enviado no se elimina solo por dejar de enviar (“Eliminar los datos enviados”, más abajo).
 
-Si actualizas a una versión que añade un tipo de información a lo que se envía, o cambia la forma de enviarlo, una ventana vuelve a pedir tu consentimiento al abrir la pantalla, solo en los PC que habían elegido enviar. La ventana muestra los campos añadidos. No se envía ni se cuenta nada hasta que respondes. Cada tipo de información es un campo del informe (por ejemplo `shape.tasks`); tu elección registra los campos que cubría, así que siempre se pregunta por un campo añadido después. Un nuevo tipo de acción, o un nuevo valor de un campo existente (como un nuevo tipo de IA), se cuenta sin volver a preguntar.
+Si actualizas a una versión que añade un tipo de información a lo que se envía, o cambia la forma de enviarlo, una ventana vuelve a pedir tu consentimiento al abrir la pantalla, solo en los PC que habían elegido enviar. La ventana muestra los campos añadidos. No se envía ni se cuenta nada hasta que respondes. Cada tipo de información es un campo del informe (por ejemplo `shape.tasks`); tu elección registra los campos que cubría, así que siempre se pregunta por un campo añadido después. Un nuevo tipo de acción, o un nuevo valor de los atributos de una acción o de los tipos de IA (como un nuevo tipo de IA), se cuenta sin volver a preguntar.
 
 En algunos casos no se envía aunque hayas elegido enviar, como cuando se ejecuta en CI o en un contenedor. Entonces no puedes usar el interruptor, y el motivo aparece debajo.
 
