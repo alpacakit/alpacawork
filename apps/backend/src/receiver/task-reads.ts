@@ -12,6 +12,7 @@ import { controlTaskView } from '../control/task-dto.js';
 import { PROJECT_VALUES } from '../control/task-values-store.js';
 import type { PublishedFrame, RecordsReader } from './projection-contract.js';
 import { replyOf, withoutActivity } from './screen-derive.js';
+import { viewedRow } from './index-rows.js';
 import { resultHeadOf } from './workspace-records.js';
 import { recordedRequests, recordedRun } from './projected-records.js';
 
@@ -362,9 +363,10 @@ export function projectedView(frame: PublishedFrame, id: string): TaskProjectedV
   const ids = currentPlacementRunIds(placements, derived.runs);
   const schema = task.kind === 'project' ? PROJECT_VALUES
     : records.schemaOf(records.projectOf(id));
+  const reports = viewReportLog(task.log, new Set(placements.filter(item => item.responsible).map(item => item.id)));
   return { generation: frame.generation, sourcePv: frame.pv,
-    task: { ...task, log: viewReportLog(task.log, new Set(placements.filter(item => item.responsible).map(item => item.id))) },
-    row: derived.row,
+    task: { ...task, log: reports },
+    row: viewedRow(derived.row, reports),
     ancestors: [...records.ancestors(id)].reverse().flatMap(key => {
       const ancestor = records.bundle(key)?.task;
       return ancestor ? [{ id: ancestor.id, title: ancestor.meta.title, parentId: ancestor.meta.parentId,

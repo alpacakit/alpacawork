@@ -38,6 +38,14 @@ export function composeRow(derived: TaskDerived, aggregate: ScreenAggregate): Ta
 }
 /** The row the live index carries: only the log entries its current state is drawn from. */
 export const liveRow = <R extends Pick<TaskRowDTO, 'stateLog' | 'state' | 'baseState'>>(row: R): R => ({ ...row, stateLog: liveLog(row.stateLog, row.state, row.baseState) });
+/**
+ * The row an opened Task's view carries: the live row's entries and the reports the view shows (`reports`), so the
+ * reader draws the same row as the list. A whole log here was read again on every change of a long-running Task.
+ */
+export function viewedRow<R extends Pick<TaskRowDTO, 'stateLog' | 'state' | 'baseState'>>(row: R, reports: readonly { id: string }[]): R {
+  const ids = new Set([...liveLog(row.stateLog, row.state, row.baseState), ...reports].map(entry => entry.id));
+  return { ...row, stateLog: row.stateLog.filter(entry => ids.has(entry.id)) };
+}
 
 /** The resources the aggregates changed: the closed pages whose rows or order moved, and the search scopes of their Tasks. */
 export type AggregateResources = { readonly page: ReadonlySet<string>; readonly search: ReadonlySet<string> };
