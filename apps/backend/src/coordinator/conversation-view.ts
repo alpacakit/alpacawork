@@ -7,7 +7,7 @@ import { DELIVERY_STATE } from '@alpacawork/contract/control';
 import { coordinatorRunRecordSchema, runFolder, runNumber, tookSteps, type CoordinatorRunRecord, type RuntimeRunRecord } from '@alpacawork/contract/run';
 import type { RunId } from '@alpacawork/contract/fields';
 import { inputUnsettled } from '@alpacawork/contract/run-protocol';
-import { COORDINATOR_RECENT_TURNS, COORDINATOR_HISTORY_PAGE, type CoordinatorConversation as ConversationView,
+import { COORDINATOR_RECENT_TURNS, COORDINATOR_HISTORY_PAGE, coordinatorMessageDigest, coordinatorMessageSchema, type CoordinatorConversation as ConversationView,
   type CoordinatorError, type CoordinatorMessageStatus, type CoordinatorResult, type CoordinatorTurn,
   type CoordinatorTurnsPage } from '@alpacawork/contract/coordinator';
 import { currentRequestRun, isEnded, laneAhead, type RunStore } from '@alpacawork/runs';
@@ -228,6 +228,16 @@ export function historyPage(db: DatabaseSync, store: RunStore, conversation: str
     resets: coordinatorResetsFor(db, conversation, page.map(turn => turn.id)), more: more ? page[0]!.id : null };
 }
 
+/** The receipt is derived from the Request and its immutable admission metadata on the first Run. */
+export function admittedMessageDigest(db: DatabaseSync, conversation: string, id: string): string {
+  const row = db.prepare(`SELECT q.body,q.reply_to,json_extract(first.record,'$.message') AS message
+    FROM requests q JOIN runs first ON first.request_id=q.id AND first.attempt=0
+    WHERE q.id=? AND q.conversation_id=?`).get(id, conversation);
+  if (!row) throw new Error(`Accepted coordinator message ${id} has no initial Run`);
+  const message = coordinatorMessageSchema.parse(JSON.parse(String(row.message)));
+  return coordinatorMessageDigest({ ...message, conversationId: conversation, id, text: String(row.body), replyTo: row.reply_to as string | null });
+}
+
 export function messageStatus(db: DatabaseSync, conversation: string, id: string): CoordinatorMessageStatus {
   const row = db.prepare(`SELECT q.delivery_state,q.coordinator_turn_no,r.state,
     EXISTS (SELECT 1 FROM run_inputs i WHERE i.instruction_run_no=r.id AND i.initial=0
@@ -236,10 +246,11 @@ export function messageStatus(db: DatabaseSync, conversation: string, id: string
   if (!row) return { id, status: 'missing' };
   if (row.delivery_state === DELIVERY_STATE.aborted) return { id, status: 'withdrawn' };
   if (row.coordinator_turn_no === null) return { id, status: 'missing' };
+  const inputDigest = admittedMessageDigest(db, conversation, id);
   switch (row.state) {
-    case 'queued': return { id, status: row.sending ? 'sending' : 'queued' };
-    case 'running': case 'joined': case 'succeeded': return { id, status: row.state };
-    default: return { id, status: 'failed' };
+    case 'queued': return { id, status: row.sending ? 'sending' : 'queued', inputDigest };
+    case 'running': case 'joined': case 'succeeded': return { id, status: row.state, inputDigest };
+    default: return { id, status: 'failed', inputDigest };
   }
 }
 

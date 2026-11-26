@@ -7,7 +7,6 @@ import { assertRunReservation } from '../release/journal.js';
  * answer observations.
  */
 import { createHash, randomUUID } from 'node:crypto';
-import { isDeepStrictEqual } from 'node:util';
 import type { DatabaseSync } from 'node:sqlite';
 import type { z } from 'zod';
 import { Problem, PROBLEM_CODE, parseInput } from '@alpacawork/core';
@@ -19,7 +18,7 @@ import { coordinatorRunRecordSchema, type CoordinatorRunRecord } from '@alpacawo
 import { inputUnsettled } from '@alpacawork/contract/run-protocol';
 import type { coordinatorMessageInputSchema, CoordinatorConversation as ConversationView,
   CoordinatorMessage, CoordinatorReadAck, CoordinatorSnapshot } from '@alpacawork/contract/coordinator';
-import { coordinatorReadInputSchema } from '@alpacawork/contract/coordinator';
+import { coordinatorMessageContent, coordinatorMessageDigest, coordinatorReadInputSchema } from '@alpacawork/contract/coordinator';
 import { RunStore, admittedDelivery, currentRequestRun, isUnfinished, type RunTransaction } from '@alpacawork/runs';
 import { authorize } from '../control/authorize.js';
 import { TaskRepository } from '../control/task-store.js';
@@ -32,7 +31,7 @@ import { assertSkillInvocations, coordinatorSkills } from './skills.js';
 import { activeCoordinatorRuns, coordinatorLaunchFor, coordinatorReplyLanguage, coordinatorTurnNumber, prepareCoordinatorStart } from './continuation.js';
 import { coordinatorBoundary, coordinatorResetMemo, pendingCoordinatorReset, replayCoordinatorReset, reserveCoordinatorReset } from './resets.js';
 import { assertManagedSkillsVersion } from './managed-skills-version.js';
-import { completedAnswer, coordinatorBusy, failedRun, handovers, historyPage, messageStatus, recentReadableIds, view, type Conversation } from './conversation-view.js';
+import { admittedMessageDigest, completedAnswer, coordinatorBusy, failedRun, handovers, historyPage, messageStatus, recentReadableIds, view, type Conversation } from './conversation-view.js';
 import { actedTasks } from './messages.js';
 import { replySource, replyPrompt } from './reply.js';
 import { coordinatorAttachmentFile, coordinatorFolders, coordinatorRequestId, discardCoordinatorFiles } from './files.js';
@@ -63,9 +62,9 @@ function opened(db: DatabaseSync, id: string): Conversation {
 }
 /** The Request under a message ID, whichever conversation or Task it went to. */
 function sent(db: DatabaseSync, id: string) {
-  const row = db.prepare('SELECT conversation_id, body, delivery_state, reply_to, coordinator_turn_no, coordinator_files_expired_at FROM requests WHERE id = ?').get(id);
-  return row ? { conversationId: row.conversation_id === null ? null : String(row.conversation_id), body: String(row.body),
-    replyTo: row.reply_to as string | null, turn: row.coordinator_turn_no, filesExpired: row.coordinator_files_expired_at !== null, withdrawn: row.delivery_state === DELIVERY_STATE.aborted } : null;
+  const row = db.prepare('SELECT conversation_id, delivery_state, coordinator_turn_no, coordinator_files_expired_at FROM requests WHERE id = ?').get(id);
+  return row ? { conversationId: row.conversation_id === null ? null : String(row.conversation_id),
+    turn: row.coordinator_turn_no, filesExpired: row.coordinator_files_expired_at !== null, withdrawn: row.delivery_state === DELIVERY_STATE.aborted } : null;
 }
 /** A message in this conversation and its Run; null once it was withdrawn. */
 function shown(db: DatabaseSync, tx: RunTransaction, conversation: Conversation, id: string): CoordinatorRunRecord | null {
@@ -247,20 +246,14 @@ export class CoordinatorConversation {
     const settings = readAgentsSettings(this.root);
     return this.control(true, (db, store) => {
       const conversation = opened(db, input.conversationId);
-      const message: CoordinatorMessage = { context: null, attachments: input.attachments, intent: input.intent ?? null,
-        ...input.answers === undefined ? {} : { answers: input.answers },
-        ...(input.skills?.length ? { skills: [...new Set(input.skills)].sort() } : {}),
-        tasks: [...new Set(input.tasks ?? [])].sort(), ...input.retryOf === undefined ? {} : { retryOf: input.retryOf } };
+      const message = coordinatorMessageContent(input);
       store.write(tx => {
         const previous = sent(db, input.id);
         if (previous) {
           const ours = previous.conversationId === conversation.id;
           if (ours && previous.withdrawn) return;
-          // A live accepted Request retains its fixed input for strict replay.
-          const stored = ours ? db.prepare('SELECT id FROM runs WHERE request_id = ? AND attempt=0').get(input.id) : undefined;
-          const run = stored ? tx.runtimeGet(`R${stored.id}`) : null;
-          const same = ours && previous.body === input.text && previous.replyTo === (input.replyTo ?? null) && (run?.role === 'coordinator' &&
-            isDeepStrictEqual(run.message, message));
+          const same = ours && previous.turn !== null &&
+            admittedMessageDigest(db, conversation.id, input.id) === coordinatorMessageDigest(input);
           if (!same) throw new Problem(PROBLEM_CODE.idempotencyConflict, 'Message ID belongs to different input', undefined, { reason: { kind: 'message_id_belongs_different_input' } });
           return;
         }

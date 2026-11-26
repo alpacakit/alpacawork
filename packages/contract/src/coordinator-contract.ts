@@ -11,6 +11,7 @@ import { taskLogSchema } from '@alpacawork/raw/task-log-schema';
 import { digestSchema, logIdSchema, runIdSchema, taskIdSchema } from './fields.js';
 import { answerFileSchema } from './coordinator-files.js';
 import { contextViewSchema } from './agent-context.js';
+import { sha256Utf8 } from './options-base.js';
 
 const COORDINATOR_ATTACHMENT_LIMIT = 20;
 /** Immutable historical operation data. This is not an executable input contract. */
@@ -71,6 +72,25 @@ export const coordinatorMessageInputSchema = z.object({
 }).strict().refine(input => input.text.trim() !== '' || input.attachments.length > 0,
   { message: 'A message needs words or a file', path: ['text'] });
 export type CoordinatorMessageInput = z.input<typeof coordinatorMessageInputSchema>;
+
+/** Admission treats task IDs and invoked skills as sets; attachments and answers keep their order. */
+export function coordinatorMessageContent(input: Pick<CoordinatorMessage, 'tasks' | 'skills' | 'attachments' | 'answers' | 'retryOf'>
+  & { intent?: CoordinatorMessage['intent'] }): CoordinatorMessage {
+  return { context: null, tasks: [...new Set(input.tasks ?? [])].sort(), attachments: input.attachments,
+    intent: input.intent ?? null, ...(input.skills?.length ? { skills: [...new Set(input.skills)].sort() } : {}),
+    ...(input.answers === undefined ? {} : { answers: input.answers }), ...(input.retryOf === undefined ? {} : { retryOf: input.retryOf }) };
+}
+
+/** Both serve and the outbox hash the same admitted input, scoped to its conversation and message ID. */
+export function coordinatorMessageDigest(input: Parameters<typeof coordinatorMessageContent>[0]
+  & Pick<CoordinatorMessageInput, 'id' | 'conversationId' | 'text' | 'replyTo'>): string {
+  const payload = [input.conversationId, input.id, input.text, input.replyTo ?? null, coordinatorMessageContent(input)];
+  return sha256Utf8(JSON.stringify(payload, (_key, value: unknown) => {
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) return value;
+    return Object.fromEntries(Object.entries(value).sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0));
+  }));
+}
+
 export const coordinatorConversationInputSchema = z.object({ conversationId: z.string().min(1) }).strict();
 
 /** Completed replies acknowledged by reading or explicitly opening history, scoped to the conversation; set union makes retries idempotent. */
@@ -166,10 +186,11 @@ export const coordinatorTurnsPageSchema = z.object({
 }).strict();
 export type CoordinatorTurnsPage = z.infer<typeof coordinatorTurnsPageSchema>;
 
-export const coordinatorMessageStatusSchema = z.object({
-  id: coordinatorMessageId,
-  status: z.enum([...coordinatorTurnSchema.shape.status.options, 'withdrawn', 'missing']),
-}).strict();
+/** An accepted status carries proof of the fixed input even when the turn is outside the snapshot. */
+export const coordinatorMessageStatusSchema = z.discriminatedUnion('status', [
+  z.object({ id: coordinatorMessageId, status: coordinatorTurnSchema.shape.status, inputDigest: digestSchema }).strict(),
+  z.object({ id: coordinatorMessageId, status: z.enum(['withdrawn', 'missing']) }).strict(),
+]);
 export type CoordinatorMessageStatus = z.infer<typeof coordinatorMessageStatusSchema>;
 
 /** The bounded snapshot, including any active turns and the usage of the current session. */
