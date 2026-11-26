@@ -7,7 +7,7 @@ import { claudeActivity, ToolResults } from './activity.js';
 import { diagnosticFailure } from '@alpacawork/contract/agent-diagnostics';
 import { object, scanOutput } from './output.js';
 import { catalogContext } from './skills.js';
-import type { AgentAdapter, InputProtocol, LimitsProbe } from './types.js';
+import type { AgentAdapter, InputProtocol, LimitsProbe, ModelOutputEvent } from './types.js';
 import type { CompactionOutcome } from '@alpacawork/contract/run-protocol';
 
 /**
@@ -143,8 +143,20 @@ export function claudeContext(value: unknown): ContextUpdate | null {
   }
   return null;
 }
+function claudeModelOutput(value: unknown): ModelOutputEvent | null {
+  const row = object(value);
+  if (row.parent_tool_use_id == null) {
+    if (row.type === 'command_lifecycle' && row.state === 'started') return { kind: 'turn_started' };
+    if (row.type === 'result') return { kind: 'turn_ended' };
+  }
+  if (row.type !== 'assistant' || row.is_api_error_message === true) return null;
+  const message = object(row.message);
+  const tokens = callTokens(object(message.usage).output_tokens);
+  return typeof message.id === 'string' && message.id && tokens !== null ? { kind: 'call', id: message.id, tokens } : null;
+}
+
 export const claudeAdapter: AgentAdapter = {
-  input: claudeInput, activity: claudeActivity, context: claudeContext, limits: claudeLimits,
+  input: claudeInput, activity: claudeActivity, modelOutput: claudeModelOutput, context: claudeContext, limits: claudeLimits,
   earlySession: invocation => invocation.session,
   skillCatalogContext: input => catalogContext('claude', input),
   read(invocation, folder, exit) {

@@ -9,9 +9,10 @@ import type { AgentAdapter } from '../agents/adapters/types.js';
 import { RecentWork, recentWorkName, runStepKind } from './recent-work.js';
 import type { ActivityEvent } from './activity-events.js';
 import { StepJournal, liveStepTime } from './step-journal.js';
+import { OutputLedger } from './output-ledger.js';
 
-// Six steps with worst-case JSON escaping, plus the note and current work, fit below this bound.
-const ACTIVITY_FILE_LIMIT = 64 * 1024;
+// Leave room for escaped tool details and the bounded output ledger.
+const ACTIVITY_FILE_LIMIT = 68 * 1024;
 const MAX_ACTIVE_TOOLS = 128;
 type ActiveTool = NonNullable<RunActivity['doing']>;
 type Settled = Exclude<RunStep['state'], 'running'>;
@@ -129,12 +130,14 @@ export class OutputActivityReader {
     private readonly compacted: (fill: CompactionObservation, at: string) => void = () => {}, private readonly cwd?: string) {}
 
   private readonly work = new WorkActivity();
+  private readonly output = new OutputLedger();
   // The same lines the index of steps reads (STEP_LINE_LIMIT), so the steps counted here are the steps it lists.
   private readonly lines = new JsonlReader(() => this.resetWork(), STEP_LINE_LIMIT);
-  private latest: Omit<RunActivity, 'doing' | 'steps' | 'context'> | null = null;
+  private latest: Pick<RunActivity, 'at' | 'kind' | 'toolName' | 'note'> | null = null;
   private context: AgentContext | null = null;
   private dirty = false;
   private writtenRecent: string | undefined;
+  private writtenActivity: string | undefined;
 
   /** The Run's step journal, opened on the folder the first poll reads. */
   private journal: StepJournal | null = null;
@@ -142,8 +145,9 @@ export class OutputActivityReader {
   poll(folder: string): void {
     this.journal ??= new StepJournal(folder, this.cwd);
     this.lines.read(folder, (value, line) => this.accept(value, line), 8 * 1024 * 1024);
-    this.work.advance(this.now());
-    this.flush(folder);
+    const now = this.now();
+    this.work.advance(now);
+    this.flush(folder, now);
   }
 
   finish(folder: string, state: Settled = 'failed'): void {
@@ -153,10 +157,11 @@ export class OutputActivityReader {
       this.lines.finish((value, line) => this.accept(value, line, false));
       this.tellCompaction();
     } finally {
-      const read = new Date(this.now()).toISOString();
+      const now = this.now(), read = new Date(now).toISOString();
       this.journal.settle(state, () => ({ at: read, source: 'observed' }));
       this.resetWork(state);
-      this.flush(folder);
+      if (this.output.discard()) this.dirty = true;
+      this.flush(folder, now);
     }
   }
 
@@ -174,7 +179,14 @@ export class OutputActivityReader {
   }
 
   private accept(value: unknown, line: number, live = true): void {
-    const received = new Date(this.now()).toISOString();
+    const now = this.now(), received = new Date(now).toISOString();
+    if (live) {
+      const output = this.adapter.modelOutput(value);
+      if (output && this.output.observe(output, Math.floor(now / 1000))) {
+        this.latest ??= { at: received, kind: 'output', toolName: null, note: null };
+        this.dirty = true;
+      }
+    }
     const update = this.adapter.context(value);
     if (update) {
       // A compaction is told with the fill after it. An agent that does not say it (Codex) is told at its next model
@@ -193,6 +205,8 @@ export class OutputActivityReader {
     }
     for (const event of this.adapter.activity(value, received)) {
       this.journal?.observe(event, line, liveStepTime(event, received), live);
+      if (live && (event.kind === 'tool_start' || event.kind === 'tool_end'))
+        this.output.tool(Math.floor(Math.min(now, Date.parse(event.at)) / 1000), event.kind === 'tool_end');
       const name = this.work.observe(event);
       const text = words(event.text);
       const note = text ? { at: event.at, text } : this.latest?.note ?? null;
@@ -201,16 +215,21 @@ export class OutputActivityReader {
     }
   }
 
-  private flush(folder: string): void {
+  private flush(folder: string, now: number): void {
     const recent = JSON.stringify(this.work.label);
     if (recent !== this.writtenRecent) {
       writeRunFile(folder, RUN_FILES.recentWork, recent);
       this.writtenRecent = recent;
     }
     if (this.dirty && this.latest) {
+      const output = this.output.snapshot(Math.floor(now / 1000));
       const activity: RunActivity = { ...this.latest, doing: this.work.doing, context: this.context, steps: this.work.steps,
-        stepEvents: this.work.events, stepsStarted: this.work.started };
-      writeRunFile(folder, RUN_FILES.activity, JSON.stringify(activity));
+        stepEvents: this.work.events, stepsStarted: this.work.started, ...(output ? { output } : {}) };
+      const serialized = JSON.stringify(activity);
+      if (serialized !== this.writtenActivity) {
+        writeRunFile(folder, RUN_FILES.activity, serialized);
+        this.writtenActivity = serialized;
+      }
       this.dirty = false;
     }
   }

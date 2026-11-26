@@ -26,11 +26,17 @@ export type SkillCatalogContext = Pick<CatalogInput, 'env' | 'session'> & { kind
  * it gave no answer; the limits monitor checks every answer against the contract). An adapter without one reports none.
  */
 export type LimitsProbe = { args: readonly string[]; input: string | null; read(stdout: string): LimitsReport | null };
+/** A native block can revise a previous count for the same model call. Bridges only send new calls. */
+export type ModelOutputEvent =
+  | { kind: 'turn_started' }
+  | { kind: 'turn_ended' }
+  | { kind: 'call'; tokens: number; id?: string };
 export type AgentAdapter = {
   input: InputProtocol;
   read(invocation: AdapterInvocation, folder: string, exit: AgentExit): AdapterObservation;
   earlySession(invocation: Pick<AdapterInvocation, 'mode' | 'session'>, folder: string): string | null;
   activity(value: unknown, received: string): ActivityEvent[];
+  modelOutput(value: unknown): ModelOutputEvent | null;
   /** What one output row says of how full the main conversation is; null when it says nothing of it. */
   context(value: unknown): ContextUpdate | null;
   skillCatalogContext(input: Pick<CatalogInput, 'argv' | 'env' | 'session'>): SkillCatalogContext;

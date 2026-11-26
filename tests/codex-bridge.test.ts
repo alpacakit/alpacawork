@@ -49,7 +49,8 @@ test('exec options, JSONL, result file and exit; an instruction during a turn is
   assert.equal(await b.exited, 0);
   assertInputOutcomes(b.events(), { 'in-1': 'taken', 'in-2': 'taken' });
   assert.deepEqual(b.events().filter(event => event.type !== 'input.accepted').map(event => event.type),
-    ['thread.started', 'turn.started', 'input.taken', 'input.taken', 'item.started', 'item.completed', 'turn.completed']);
+    ['thread.started', 'turn.started', 'input.taken', 'input.taken', 'item.started', 'item.completed', 'model.output', 'turn.completed']);
+  assert.equal(b.events().find(event => event.type === 'model.output').tokens, 2);
   assert.deepEqual(b.events()[0], { type: 'thread.started', thread_id: 'thread-new' });
   for (const id of ['in-1', 'in-2']) {
     const inputEvents = b.events().filter(event => event.id === id).map(event => event.type);
@@ -76,6 +77,21 @@ test('exec options, JSONL, result file and exit; an instruction during a turn is
   const steer = requests.find(item => item.method === 'turn/steer').params;
   assert.deepEqual({ ...steer, input: steer.input[0].text }, { threadId: 'thread-new', expectedTurnId: 'turn-1',
     clientUserMessageId: 'in-2', input: 'also this' });
+});
+
+test('Codex live output counts new tokens across resumed and reset conversation totals', async t => {
+  const h = setup(t);
+  for (const [restored, totals, added] of [
+    ['100', [107, 107, 3, 5], [7, 2]],
+    [undefined, [100, 108, 108, 3, 5], [8, 2]],
+  ] as const) {
+    const b = h.start(['resume', 'thread-resumed'], { FAKE_CODEX_RESTORED_OUTPUT: restored });
+    b.send('one', JSON.stringify({ outputTotals: totals }));
+    await b.until(events => events.some(event => event.type === 'turn.completed'));
+    b.child.stdin.end();
+    assert.equal(await b.exited, 0, b.stderr());
+    assert.deepEqual(b.events().filter(event => event.type === 'model.output').map(event => event.tokens), added);
+  }
 });
 
 test('a saved image line reaches Codex as localImage beside the unchanged instruction text', async t => {
