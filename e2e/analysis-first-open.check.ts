@@ -44,4 +44,22 @@ test.describe("phone", () => {
     await expect(card).toHaveCount(0);
     await expect(page).toHaveURL(url => url.searchParams.get("face") === "analysis" && !url.searchParams.has("card"));
   });
+
+  test("a share card made shorter by hand opens at its full height the next time", async ({ page, runtime }) => {
+    await page.goto(`${runtime.origin}/?face=analysis`);
+    const open = page.getByRole("button", { name: "Make a card", exact: true });
+    const card = page.getByRole("dialog", { name: "Make a card" });
+    const height = async () => (await card.boundingBox())!.height;
+    await open.tap();
+    await settleMotion(page, card);
+    const full = await height();
+    await card.getByRole("separator").focus();
+    for (let step = 0; step < 6; step++) await page.keyboard.press("ArrowDown");
+    await expect.poll(height).toBeLessThan(full - 100);
+    await card.getByRole("button", { name: "Close", exact: true }).tap();
+    await expect(card).toHaveCount(0);
+    await open.tap();
+    await settleMotion(page, card);
+    expect(await height()).toBe(full);
+  });
 });

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { ReadFailure } from "@/components/ui/loadable";
 import { RegionSkeleton } from "@/components/ui/skeleton";
-import { PhoneSheet, sheetExtent } from "@/features/coordinator/PhoneSheet";
+import { PhoneSheet } from "@/features/coordinator/PhoneSheet";
 import { useScreenHeight } from "@/features/reader/TaskSheet";
 import { failedAddress } from "@/lib/failed-address";
 import { giveFocusBack, openerChain } from "@/lib/focus-return";
@@ -17,7 +17,6 @@ import { listTitle } from "./lists";
 import { PointerTip, useChoices } from "./parts";
 import { analysisSurfaces, type AnalysisPlace } from "./place";
 
-const cardExtent = sheetExtent("alpacawork.analysisCardExtent");
 const closeLayers = () => closeAnalysisLayer(0);
 
 /** The panel and its loading state are ready with the face. Fetch the panel bodies separately. */
@@ -126,7 +125,7 @@ export function AnalysisLayers({ place, project, days }: { place: AnalysisPlace;
     <PointerTip root={surfaceBox} />
     {phoneCard
       ? <PhoneSheet ref={setSurface} role="dialog" aria-label={label} label={t("card.resize")}
-          below={0} room={room} expanded onLetGo={closeLayers} store={cardExtent} first={0.82}
+          below={0} room={room} expanded onLetGo={closeLayers} store={null} first={0.82}
           className="z-(--layer-reader) animate-sheet rounded-t-pane border-t-hairline border-lit-line bg-lit shadow-float">
           {contents}
         </PhoneSheet>
