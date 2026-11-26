@@ -91,7 +91,7 @@ test("each service's button opens that service's post screen with the card's sen
   await page.getByRole("button", { name: "Share", exact: true }).click();
   const card = page.getByRole("dialog", { name: "Share" });
   await expect(card.getByRole("img", { name: /^Work handed to AI/ })).toBeVisible();
-  for (const [name, start] of [["X", "https://x.com/intent/post?text="], ["Bluesky", "https://bsky.app/intent/compose?text="], ["Threads", "https://www.threads.com/intent/post?text="]]) {
+  for (const [name, start] of [["X", "https://x.com/intent/post?text="], ["Bluesky", "https://bsky.app/intent/compose?text="], ["Threads", "https://www.threads.com/intent/post?text="]] as const) {
     const opened = page.waitForEvent("popup");
     await card.getByRole("button", { name: `Post to ${name}` }).click();
     const url = (await opened).url();
