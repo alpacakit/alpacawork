@@ -76,15 +76,16 @@
   },
   "speed": {
     "help": "Como ler a velocidade de saída",
-    "helpSpeed": "A velocidade com que os agentes em andamento produzem tokens (média dos últimos 5 segundos). As barras mostram o último minuto em passos de 5 segundos.",
-    "helpZero": "Um 0 que se mantém pode significar que o agente está aguardando um comando ou algo parecido terminar (uma gravação de tela, uma execução no GitHub). No computador, aponte para a linha para ver o que ele aguarda.",
+    "helpBars": "As barras mostram o último minuto em passos de 5 segundos.",
+    "helpSpeed": "A velocidade com que os agentes em andamento produzem tokens (média dos últimos 5 segundos).",
+    "helpZero": "Um 0 que se mantém pode significar que o agente está aguardando um comando ou algo parecido terminar (uma gravação de tela, uma execução no GitHub). Abra a tarefa para ver o que ele aguarda; no computador, aponte para o 0 para ver também.",
     "perSecond": "/s",
     "rowTip": "Velocidade de saída {{rate}} tok/s (média dos últimos 5 segundos)\nÚltimo minuto: média {{mean}}, pico {{peak}}",
     "totalTip_many": "Velocidade de saída total de {{count}} tarefas em andamento (média dos últimos 5 segundos)",
     "totalTip_one": "Velocidade de saída total de {{count}} tarefa em andamento (média dos últimos 5 segundos)",
     "totalTip_other": "Velocidade de saída total de {{count}} tarefas em andamento (média dos últimos 5 segundos)",
     "unit": "tok/s",
-    "waitedTip": "Aguardando {{name}} terminar ({{length}}). Enquanto isso, o agente não produz saída.\n{{line}}"
+    "waitedTip": "Aguardando um comando ou algo parecido terminar ({{length}}). Enquanto isso, o agente não produz saída.\n{{line}}"
   },
   "status": {
     "cause": {

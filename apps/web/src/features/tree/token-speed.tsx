@@ -8,13 +8,13 @@
  */
 import { useLayoutEffect, useSyncExternalStore, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { runOutputSpeed, type RunOutputSpeed } from "@alpacawork/contract/run";
+import { runOutputSpeed, type RunOutputSpeed, type RunStep } from "@alpacawork/contract/run";
 import { Icon } from "@/components/ui/icon";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { Task } from "@/data/types";
 import { useWorkspaceStore, type WorkspaceData } from "@/data/workspace-store";
 import { runningRunsSaid, shortLength } from "@/domain/row-status";
-import { awaitedStep, type AwaitedStep } from "@/domain/run-activity";
+import { awaitedStep, toolName } from "@/domain/run-activity";
 import { cn } from "@/lib/utils";
 
 /** The one second clock the speed cells share, in Unix seconds as the ledgers count; it runs only while a cell shows. */
@@ -87,16 +87,16 @@ function useSpeedKey(read: (data: WorkspaceData, now: number) => string) {
  * What a silent row waits on: when every one of its Runs is in a step still running (a command, a subagent), the one
  * that began last, with how long it has run, so the silence reads as waiting rather than as an agent that stopped.
  */
-type Waited = { name: string; line: string; seconds: number };
+type Waited = { line: string; seconds: number };
 /** `live`: output counted in the 5 seconds ending now; otherwise the rate is the latest one held between model calls. */
 type RowShown = { rate: number; live: boolean; bars: number[]; scale: number; waited?: Waited };
 const wholeMinutes = (seconds: number) => Math.floor(seconds / 60) * 60;
 function rowWaited(task: Task, data: WorkspaceData, now: number): Waited | undefined {
   const steps = rowRunIds(task, data).map((id) => awaitedStep(data.people.runs.get(id)?.activity?.steps));
   if (!steps.length || steps.some((each) => !each)) return undefined;
-  const { name, step } = (steps as AwaitedStep[]).reduce((last, each) => each.step.at > last.step.at ? each : last);
-  const what = step.kind === "command" ? `$ ${step.text}` : `${name} ${step.text}`.trim();
-  return { name, line: step.about ? `${step.about}\n${what}` : what, seconds: wholeMinutes(Math.max(0, now - Date.parse(step.at) / 1000)) };
+  const step = (steps as RunStep[]).reduce((last, each) => each.at > last.at ? each : last);
+  const what = step.kind === "command" ? `$ ${step.text}` : `${toolName(step.tool)} ${step.text}`.trim();
+  return { line: step.about ? `${step.about}\n${what}` : what, seconds: wholeMinutes(Math.max(0, now - Date.parse(step.at) / 1000)) };
 }
 /** What it waits on is kept only as shown (whole minutes), so a waiting row does not re-render every second. */
 const rowKey = (task: Task) => (data: WorkspaceData, now: number) => {
@@ -147,7 +147,7 @@ function useLengthWords() {
 function useWaitedTip() {
   const { t } = useTranslation("tree");
   const length = useLengthWords();
-  return (waited: Waited) => t("speed.waitedTip", { name: waited.name, length: length(waited.seconds), line: waited.line });
+  return (waited: Waited) => t("speed.waitedTip", { length: length(waited.seconds), line: waited.line });
 }
 
 function rowTip(t: (key: string, options?: Record<string, unknown>) => string, row: RowShown) {
@@ -197,14 +197,15 @@ const totalKey = (tops: readonly Task[]) => (data: WorkspaceData, now: number) =
  * What the speed column means, behind a small mark in its heading: the card opens on a press, phones included, and
  * says that a 0 may only be an agent waiting on a command.
  */
-function SpeedHelp({ className }: { className?: string }) {
+function SpeedHelp({ bars, className }: { bars: boolean; className?: string }) {
   const { t } = useTranslation("tree");
   return <Popover>
     <PopoverTrigger data-speed-help aria-label={t("speed.help")} onClick={event => event.stopPropagation()}
-      className={cn("relative inline-flex size-4 flex-none cursor-pointer items-center justify-center rounded-full text-muted outline-none before:absolute before:-inset-2 before:content-[''] pointer-fine:hover:bg-hover pointer-fine:hover:text-ink focus-visible:ring-2 focus-visible:ring-ink/40", className)}>
+      className={cn("relative inline-flex size-4 flex-none cursor-pointer items-center justify-center rounded-full text-muted outline-none before:absolute before:-inset-3 before:content-[''] pointer-fine:hover:bg-hover pointer-fine:hover:text-ink focus-visible:ring-2 focus-visible:ring-ink/40", className)}>
       <Icon name="help" className="size-3.5" /></PopoverTrigger>
     <PopoverContent align="end" className="w-64 p-3 text-xs font-normal" onClick={event => event.stopPropagation()}>
       <p className="m-0">{t("speed.helpSpeed")}</p>
+      {bars && <p className="m-0 mt-1">{t("speed.helpBars")}</p>}
       <p className="m-0 mt-2 border-t border-rule pt-2">{t("speed.helpZero")}</p>
     </PopoverContent>
   </Popover>;
@@ -219,10 +220,12 @@ export function HeadingTokenSpeed({ tops, compact }: { tops: readonly Task[]; co
   useLayoutEffect(() => { scaleTasks = tops; }, [tops]);
   const key = useSpeedKey(totalKey(tops));
   if (!key) return null;
-  return <span data-token-speed title={t("speed.totalTip", { count: tops.length })} className={cn("flex items-baseline whitespace-nowrap font-normal", compact ? "gap-1" : "gap-2")}>
-    <SpeedHelp className="self-center" />
+  return <span data-token-speed className={cn("flex items-baseline whitespace-nowrap font-normal", compact ? "gap-1" : "gap-2")}>
+    <SpeedHelp bars={!compact} className="self-center" />
+    <span title={t("speed.totalTip", { count: tops.length })} className={cn("flex items-baseline", compact ? "gap-1" : "gap-2")}>
     <RateNumber rate={Number(key)} live className="font-medium" />
     <span style={{ width: compact ? UNIT_WIDTH : BARS_WIDTH }} className={cn("flex-none text-muted", compact ? "text-[10px]" : "text-[11px]")}>{t("speed.unit")}</span>
+    </span>
   </span>;
 }
 
@@ -243,7 +246,7 @@ export function HeadingAgents({ tops, narrow }: { tops: readonly Task[]; narrow:
       <span aria-hidden="true"><Icon name="runningRuns" className="mr-0.5 inline size-[0.7em] align-[-0.02em]" />{agents}</span>
       <span className="sr-only">{t("status.runningRuns", { count: agents })}</span>
     </span>
-    {narrow && <><SpeedHelp className="self-center" /><NarrowTotal tops={tops} /></>}
+    {narrow && <><SpeedHelp bars={false} className="self-center" /><NarrowTotal tops={tops} /></>}
     <span aria-hidden="true" className={cn(TIME_SLOT, "invisible")}>0</span>
   </span>;
 }
