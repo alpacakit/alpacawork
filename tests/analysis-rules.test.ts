@@ -3,11 +3,13 @@ import { test } from 'node:test';
 import type { TaskLog } from '@alpacawork/raw/task-log-schema';
 import { analysisListInput, analysisTasksInput, analysisUsageInput } from '@alpacawork/contract/analysis';
 import { buckets, calendar, makeHead } from '@alpacawork/backend/test-dist/analysis/calendar.js';
-import { clocks, firstConversations, launchOf, prLinks, shareOf, taskOutcome, userQuestions,
+import { clocks, firstConversations, laterInstructions, launchOf, prLinks, shareOf, taskOutcome, userQuestions,
   type RunEvidence } from '@alpacawork/backend/test-dist/analysis/rules.js';
 import { runUsageMs } from '@alpacawork/contract';
 import { TallyParser } from '@alpacawork/backend/test-dist/agents/adapters/tally.js';
 import { warmAnalysisWhenIdle } from '@alpacawork/backend/test-dist/analysis/reads.js';
+import { splitWaits } from '@alpacawork/backend/test-dist/analysis/presence.js';
+import { CluesSum } from '@alpacawork/backend/test-dist/analysis/clues.js';
 
 const epoch = Date.parse('2026-03-08T05:00:00Z');
 const stamp = (offset: number) => new Date(epoch + offset).toISOString();
@@ -243,4 +245,118 @@ test('serve reads the analysis ahead once, when it is quiet, and not after it cl
   closed();
   t.mock.timers.tick(60_000);
   assert.equal(warmed, 1);
+});
+
+test('a question asking to take a result is a review round, and an instruction in place of its answer is rework', () => {
+  const asker = { kind: 'placement', placementId: 'synthetic' } as const;
+  const coordinator = { kind: 'main', provider: 'claude', conversationId: 'synthetic' } as const;
+  const accept = [{ decide_question: 'Take the result?', decide_kind: 'accept' }];
+  const initial = event('initial', 'request_accepted', 0, { fromState: 'todo' });
+  const asked = event('asked', 'asked', 10, { askedTo: null, actor: asker, decide: accept });
+  const fix = event('fix', 'request_accepted', 20, { fromState: 'doing', actor: coordinator });
+  const withdrawn = event('withdrawn', 'question_withdrawn', 20, { questionId: asked.id, originCauseId: fix.id, actor: coordinator });
+  const again = event('again', 'asked', 30, { askedTo: null, actor: asker, decide: accept });
+  const yes = event('yes', 'answered', 40, { questionId: again.id });
+  const submit = event('submit', 'reported', 50, { fromState: 'doing', toState: 'waiting' });
+  const approved = event('approved', 'review_approved', 60, { fromState: 'waiting', toState: 'done' });
+  const start = event('start', 'linked', 0, { fromState: 'todo', toState: 'doing' });
+  const log = [initial, start, asked, withdrawn, fix, again, yes, submit, approved];
+  const outcome = taskOutcome(log, 'done', initial.at, userQuestions(log));
+  assert.deepEqual([outcome.submits, outcome.passed, outcome.estimated], [3, false, false]);
+  assert.deepEqual(outcome.instructions, { sendBacks: 0, instructionsAtReview: 1, instructionsAfterAccept: 0, instructionsDuringWork: 0 });
+  // Answered at once: two rounds (the question and the submit), still taken as it was.
+  const clean = [initial, again, yes, submit, approved];
+  assert.equal(taskOutcome(clean, 'done', initial.at, userQuestions(clean)).passed, true);
+  // A child's question replaced in the child's own log is the unit's rework too.
+  const child = userQuestions([asked, withdrawn, fix]);
+  assert.equal(taskOutcome(clean, 'done', initial.at, [...userQuestions(clean), ...child]).passed, false);
+  // Before decide_kind was recorded, the question's words decide, and the count says it was read so.
+  const older = [initial, { ...again, decide: [{ decide_question: 'PR #1 を main にマージしてよいか' }] }, yes, submit, approved];
+  assert.deepEqual(userQuestions(older).map(({ accept, estimated }) => [accept, estimated]), [[true, true]]);
+  assert.equal(taskOutcome(older, 'done', initial.at, userQuestions(older)).estimated, true);
+  // Its open time is review time, not answer time.
+  const { time, waits } = clocks(log, userQuestions(log), [], [], epoch, epoch + 60, epoch + 60);
+  assert.deepEqual([time.review, time.answer], [10 + 10 + 10, 0]);
+  assert.deepEqual(waits, [{ from: epoch + 10, to: epoch + 20 }, { from: epoch + 30, to: epoch + 40 }, { from: epoch + 50, to: epoch + 60 }]);
+});
+
+test('a wait is split by where the user was: away after 30 idle minutes, else the task of their next action', () => {
+  const minute = 60_000, at = (m: number) => epoch + m * minute;
+  const activity = [{ at: at(-5), task: 'T1' }, { at: at(10), task: 'T2' }, { at: at(20), task: null },
+    { at: at(200), task: 'T3' }, { at: at(210), task: 'T9' }, { at: at(215), task: 'T1' }];
+  const here = (task: string) => task === 'T1' || task === 'T9';
+  // 0–10 before an action on another task, 10–20 before a message naming no task, 20–200 away, then 200–215 before
+  // actions on a task under this one and on this one.
+  assert.deepEqual(splitWaits([{ from: at(0), to: at(215) }], activity, here, at(300)),
+    { split: { away: 180 * minute, otherTasks: 20 * minute, thisTask: 15 * minute }, settled: true });
+  // A wait still open runs to now: free for this task until 30 minutes pass, away after.
+  // The same wait read before and after 30 minutes pass: it moves until then, and is settled after.
+  assert.deepEqual(splitWaits([{ from: at(216), to: at(240) }], activity, here, at(240)),
+    { split: { away: 0, otherTasks: 0, thisTask: 24 * minute }, settled: false });
+  assert.deepEqual(splitWaits([{ from: at(216), to: at(240) }], activity, here, at(300)),
+    { split: { away: 24 * minute, otherTasks: 0, thisTask: 0 }, settled: true });
+});
+
+test('clues count answers by item, replaced questions and labeled instructions, most frequent kind first', () => {
+  const question = (fields: object) => ({ id: 'q', from: 0, to: 1, answered: true, accept: false, estimated: false,
+    replacedBy: null, replacedAt: null, parts: null, recommends: [true, false], ...fields });
+  const unit = { asked: [
+    question({ parts: { source: 'user', words: false, items: [
+      { n: 1, kind: 'choice', choice: 1, recommended: true, words: false }, { n: 2, kind: 'unmatched', words: true }] } }),
+    question({}), question({ answered: false, replacedBy: 'fix' })],
+  instructions: { count: 3, labels: [{ request: 'a', kind: 'fix', fixes: ['look_feel', 'speed'] },
+    { request: 'b', kind: 'fix', fixes: ['look_feel'] }] } } as unknown as Parameters<CluesSum['add']>[0];
+  const sum = new CluesSum();
+  sum.add(unit, { away: 1, otherTasks: 2, thisTask: 3 });
+  assert.deepEqual(sum.clues(), { waits: { away: 1, otherTasks: 2, thisTask: 3 },
+    answerItems: { total: 2, choice: 1, recommended: 1, recommendable: 1, other: 0, stop: 0, unmatched: 1 },
+    answersWithoutParts: 1, questionsReplaced: 1,
+    instructions: { total: 3, unlabeled: 1, kinds: [{ kind: 'fix', count: 2 }], fixes: [{ kind: 'look_feel', count: 2 }, { kind: 'speed', count: 1 }] } });
+});
+
+test('an instruction naming a withdrawn question, a later question, labels and a done time each count where they belong', () => {
+  const asker = { kind: 'placement', placementId: 'synthetic' } as const;
+  const accept = [{ decide_question: 'Take the result?', decide_kind: 'accept' }];
+  const initial = event('initial', 'request_accepted', 0, { fromState: 'todo' });
+  const start = event('start', 'linked', 0, { fromState: 'todo', toState: 'doing' });
+  const asked = event('asked', 'asked', 10, { askedTo: null, actor: asker, decide: accept });
+  // The owner withdrew it; the user's fix names it afterwards.
+  const withdrawn = event('withdrawn', 'question_withdrawn', 15, { questionId: asked.id, actor: asker });
+  const fix = event('fix', 'request_accepted', 20, { fromState: 'doing', answers: asked.id });
+  const submit = event('submit', 'reported', 50, { fromState: 'doing', toState: 'waiting' });
+  const approved = event('approved', 'review_approved', 60, { fromState: 'waiting', toState: 'done' });
+  const log = [initial, start, asked, withdrawn, fix, submit, approved];
+  const outcome = taskOutcome(log, 'done', initial.at, userQuestions(log));
+  assert.deepEqual([outcome.passed, outcome.instructions.instructionsAtReview, userQuestions(log)[0]!.replacedBy], [false, 1, fix.id]);
+  // A question asked before the request is neither a round nor rework.
+  const early = { ...asked, at: stamp(-5) };
+  assert.equal(taskOutcome([early, initial, start, submit, approved], 'done', initial.at, userQuestions([early])).submits, 1);
+  // Only the later instructions' own labels count: the request's label does not cover an unlabeled later instruction.
+  const later = event('later', 'request_accepted', 30, { fromState: 'doing' });
+  const label = (request: string, kind: 'new_request' | 'fix') => event(`${request}:label`, 'request_labeled', 0,
+    { label: { request, kind, fixes: kind === 'fix' ? ['speed'] : [] } });
+  assert.deepEqual(laterInstructions([initial, later], [[initial, label(initial.id, 'new_request'), later]]), { count: 1, labels: [] });
+  assert.equal(laterInstructions([initial, later], [[initial, later, label(later.id, 'fix')]]).labels.length, 1);
+  // Done by its owner without acceptance: dated when it was done.
+  const done = event('done', 'reported', 40, { fromState: 'doing', toState: 'done', actor: asker });
+  assert.deepEqual(Object.values((({ outcome, doneAt, finishedAt }) => ({ outcome, doneAt, finishedAt }))(taskOutcome([initial, start, done], 'done', initial.at))),
+    ['doneUnaccepted', done.at, null]);
+});
+
+test('a replacing instruction after acceptance, a send-back label, an instruction before the request and a blank recommendation', () => {
+  const asker = { kind: 'placement', placementId: 'synthetic' } as const;
+  const initial = event('initial', 'request_accepted', 10, { fromState: 'todo' });
+  const asked = event('asked', 'asked', 20, { askedTo: null, actor: asker, decide: [{ decide_question: 'Take it?', decide_kind: 'accept',
+    decide_choices: [{ decide_choice: 'Take', decide_choice_recommended: '  ' }, { decide_choice: 'Fix' }] }] });
+  const withdrawn = event('withdrawn', 'question_withdrawn', 25, { questionId: asked.id, actor: asker });
+  const approved = event('approved', 'review_approved', 30, { fromState: 'waiting', toState: 'done' });
+  const fix = event('fix', 'request_accepted', 40, { fromState: 'done', answers: asked.id });
+  const log = [initial, asked, withdrawn, approved, fix];
+  const [question] = userQuestions(log);
+  assert.deepEqual([question!.replacedAt, question!.recommends], [epoch + 40, [false]]);
+  assert.deepEqual(Object.values(taskOutcome(log, 'done', initial.at, [question!]).instructions), [0, 0, 1, 0]);
+  const before = event('before', 'request_accepted', 0, { fromState: 'todo' });
+  const sendBack = event('back', 'review_sent_back', 50);
+  const label = event('back:label', 'request_labeled', 50, { label: { request: sendBack.id, kind: 'fix', fixes: ['speed'] } });
+  assert.deepEqual(laterInstructions([initial], [[initial, sendBack, label], [before]]), { count: 1, labels: [label.label] });
 });

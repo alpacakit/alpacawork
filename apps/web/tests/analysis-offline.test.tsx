@@ -14,13 +14,14 @@ import { indexOf, tree } from './fixtures';
 const cleanup: (() => void)[] = [];
 afterEach(() => { cleanup.splice(0).reverse().forEach(stop => stop()); vi.unstubAllGlobals(); vi.restoreAllMocks(); useConnection.setState({ offline: false }); });
 const listed = indexOf(tree()), index = { ...listed, person: { ...listed.person, settings: 'stored-settings', notices: 'stored-notices' } };
-const finished = { passed: 3, reworked: 1, stopped: 0, accepted: 4, finished: 4, share: null };
-const accepted = { leadMedianMs: 60_000, submits: 5, questions: 1, prs: 2, time: { review: 1, answer: 2, ai: 3, other: 4 } };
+const finished = { passed: 3, reworked: 1, stopped: 0, doneUnaccepted: 0, accepted: 4, finished: 4, share: null };
+const accepted = { leadMedianMs: 60_000, submits: 5, questions: 1, prs: 2, time: { review: 1, answer: 2, ai: 3, other: 4 },
+  waits: { away: 0, otherTasks: 0, thisTask: 0 }, answerItems: { total: 0, choice: 0, recommended: 0, recommendable: 0, other: 0, stop: 0, unmatched: 0 }, answersWithoutParts: 0, instructions: { total: 0, unlabeled: 0, kinds: [], fixes: [] }, questionsReplaced: 0, noQuestions: 0, passedNoQuestions: 0, submitsEstimated: 0 };
 const view: AnalysisTasksView = {
   head: { timeZone: 'UTC', today: '2026-11-25', firstDay: '2026-11-25', project: null, period: { from: '2026-11-25', to: '2026-11-25' }, previous: null },
   counts: { value: finished, previous: null }, accepted: { value: accepted, previous: null }, ever: null,
   series: { bucket: 'day', points: [{ from: '2026-11-25', to: '2026-11-25', complete: true, counts: finished, accepted }] },
-  grass: { from: '2026-11-23', finished: [0, 0, 4] }, breakdown: null,
+  grass: { from: '2026-11-23', finished: [0, 0, 4] }, breakdown: null, unfinished: { tasks: 0, time: { review: 0, answer: 0 }, waits: { away: 0, otherTasks: 0, thisTask: 0 } },
 };
 const client = () => {
   const made = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } });

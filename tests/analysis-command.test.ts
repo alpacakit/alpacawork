@@ -140,7 +140,7 @@ test('analysis commands share selection, contribution and tally rules over a sma
       };
       const base = { period: 'all', timeZone: 'UTC' }, trend = { ...base, bucket: 'week' };
       const tasks = await read<AnalysisTasksView>('tasks', { ...trend, by: 'project' });
-      assert.deepEqual(tasks.counts.value, { passed: 2, reworked: 0, stopped: 0, accepted: 2, finished: 2, share: null });
+      assert.deepEqual(tasks.counts.value, { passed: 2, reworked: 0, stopped: 0, doneUnaccepted: 0, accepted: 2, finished: 2, share: null });
       assert.equal(tasks.accepted.value.prs, 1);
       assert.equal(tasks.accepted.value.questions, 1);
       assert.equal(tasks.accepted.value.submits, 1);
@@ -184,10 +184,12 @@ test('analysis commands share selection, contribution and tally rules over a sma
       assert.deepEqual(medians, [rowId(2), rowId(3)].map(id => lead.rows.find(row => row.id === id)!.value));
       assert.equal(daily.accepted.value.leadMedianMs, (medians[0]! + medians[1]!) / 2);
       assert.deepEqual(daily.series.points.find(point => point.from === '2026-09-24')?.accepted,
-        { leadMedianMs: null, submits: 0, questions: 0, prs: 0, time: { review: 0, answer: 0, ai: 0, other: 0 } });
+        { leadMedianMs: null, submits: 0, questions: 0, prs: 0, time: { review: 0, answer: 0, ai: 0, other: 0 },
+          waits: { away: 0, otherTasks: 0, thisTask: 0 }, answerItems: { total: 0, choice: 0, recommended: 0, recommendable: 0, other: 0, stop: 0, unmatched: 0 }, answersWithoutParts: 0, instructions: { total: 0, unlabeled: 0, kinds: [], fixes: [] }, questionsReplaced: 0, noQuestions: 0, passedNoQuestions: 0, submitsEstimated: 0 });
       assert.equal(tasks.grass.finished.reduce((a, b) => a + b, 0), 2);
-      for (const set of ['passed', 'reworked', 'stopped', 'accepted', 'finished'] as const)
+      for (const set of ['passed', 'reworked', 'stopped', 'doneUnaccepted', 'accepted', 'finished'] as const)
         assert.equal((await read<AnalysisUnitList>('list', { ...base, set })).total, tasks.counts.value[set]);
+      assert.equal((await read<AnalysisUnitList>('list', { ...base, set: 'unfinished' })).total, tasks.unfinished.tasks);
       const projectRows = await read<AnalysisUnitList>('list', { ...base, set: 'passed', by: 'project', key: project, limit: '1' });
       assert.equal(projectRows.total, 2);
       assert.ok(projectRows.cursor);

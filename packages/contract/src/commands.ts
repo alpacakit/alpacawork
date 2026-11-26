@@ -1,4 +1,6 @@
 import { analysisTasksInput, analysisUsageInput, analysisUsageSeriesInput, analysisUsageSeriesViewSchema, analysisListInput, analysisTaskInput, analysisBreakdownInput, analysisBreakdownViewSchema,
+  analysisTraceInput, analysisTraceViewSchema, analysisFindingsInput, analysisFindingsViewSchema, analysisAtInput, analysisAtViewSchema,
+  analysisSpanKinds, analysisMarkKinds, analysisFindingRules, ANALYSIS_FINDING_RULE_MEANINGS, ANALYSIS_STEPS_MISSING_MEANINGS, analysisChangesInput, analysisChangesViewSchema,
   analysisTasksViewSchema, analysisUsageViewSchema, analysisUnitListSchema, analysisUnitValuesSchema,
   analysisTaskBySchema, analysisTaskValues, analysisUsageBySchema, analysisUsageValues } from './analysis.js';
 import { uiLocales } from '@alpacawork/core/ui-language';
@@ -62,7 +64,7 @@ export function commandRuleHelp(command: Command, showFlags = false): string[] {
 const groups: Readonly<Record<string, string>> = {
   dependency: 'Task execution order',
   project: 'Project management',
-  analysis: 'Counted values of finished tasks and AI use',
+  analysis: 'Counted values of finished tasks and AI use, and one task\'s timeline',
   task: 'Tasks: read, plan, request work, report and record',
   'task file': 'Files in a Task folder',
   'task attachment': 'Files attached to a request',
@@ -240,6 +242,8 @@ const analysisScope = [text('project', 'Project ID (nested projects included for
 const analysisPeriodOptions = [text('period', 'Calendar preset (today, 7d, 28d, all)'), text('end', 'Last day of the preset (YYYY-MM-DD)'),
   text('from', 'First local day of a custom range (YYYY-MM-DD)'), text('to', 'Last local day of a custom range (YYYY-MM-DD)')];
 const analysisBucket = text('bucket', 'Trend bucket (day, week, month)');
+const analysisTimelineScope = [text('task', 'Task ID (T<number>)'), text('scope', 'What a trace or an instant lists: self, the task\'s own (default); subtree, with every task under it'),
+  text('timeZone', 'IANA zone for display (default: server zone)')];
 const analysisUsageFilters = [text('model', 'Exact model name from collected results, the launch setting or the agent name, in that order'),
   text('effort', 'Exact recorded launch effort'), boolean('effortMissing', 'Only launches without a recorded effort')];
 const analysisUsageProjection = text('view', 'Trend coverage: period (selected days, default), history (whole record), or summary (period totals and rows)');
@@ -254,7 +258,7 @@ const definitions = {
   'guide': command('read', 'Read a bundled alpacawork skill document',
     z.object({ name: mcpGuideName }).strict(), [text('name', 'Skill file name; start with SKILL.md')],
     { cli: false, output: z.object({ name: mcpGuideName, text: z.string() }).strict() }),
-  'analysis/tasks': command('read', 'Count finished tasks and acceptance totals by period and trend bucket, with lifetime totals', analysisTasksInput, [
+  'analysis/tasks': command('read', 'Count finished tasks and acceptance totals by period and trend bucket, with lifetime totals and the waits of unfinished tasks as of now', analysisTasksInput, [
     ...analysisScope, ...analysisPeriodOptions, analysisBucket, text('by', `Breakdown (${analysisTaskGroups})`),
   ], { output: analysisTasksViewSchema }),
   'analysis/usage': command('read', 'Count task launches and measured AI usage', analysisUsageInput, [
@@ -271,7 +275,7 @@ const definitions = {
   ], { output: analysisBreakdownViewSchema }),
   'analysis/list': command('read', 'List the tasks counted in a selected value', analysisListInput, [
     ...analysisScope, ...analysisPeriodOptions, ...analysisUsageFilters,
-    text('set', 'Task set (passed, reworked, stopped, accepted, finished, used)'),
+    text('set', 'Task set (passed, reworked, stopped, doneUnaccepted: done by its owner without the user accepting, accepted, finished, unfinished: not ended as of now whatever the period, used)'),
     text('by', `Breakdown (used: ${analysisUsageGroups}. Other sets: ${analysisTaskGroups})`),
     text('key', 'Key from the selected row. Omit for skill, tool or MCP totals since collection began. Tool and MCP keys are JSON arrays [provider, name]'),
     text('value', `Per-task value (used: ${analysisUsageValues.join(', ')}. Other sets: ${analysisTaskValues.join(', ')}). Tokens sum output, input and cache. Use calls to sum tool or MCP calls and launches to count each matching Run once`),
@@ -280,6 +284,40 @@ const definitions = {
   'analysis/task': command('read', 'Read the analysis values behind one task', analysisTaskInput, [
     ...analysisScope, taskId,
   ], { output: analysisUnitValuesSchema }),
+  'analysis/changes': command('read', 'List when what Runs ran under changed (alpacawork\'s version, a skill, an instruction file, a ' +
+    'placement\'s agent, model or effort), each with the first Run under the new condition, over the days analysis tasks reads', analysisChangesInput, [
+    ...analysisScope, ...analysisPeriodOptions, text('cursor', 'cursor from the previous page'), number('limit', 'Most changes per page (up to 100, default 100)'),
+  ], { output: analysisChangesViewSchema, help: help(
+    'Agent, model and effort come from the launch records and compare the Runs of one placement. Version, skill and instruction-file changes ' +
+    'need the Runs\' condition records and compare each agent\'s Runs in the order they started; runs.recorded counts the period\'s Runs that have them.',
+    'An item added to or gone from a set already recorded is a change; the first conditions recorded are not.') }),
+  'analysis/trace': command('read', 'Read one task\'s timeline: lanes (the task, the tasks under it and each placement that ran), spans and ' +
+    'marks in time order, the wall time split into parts that do not overlap, the time the user was waited on, and which Runs have step times',
+    analysisTraceInput, [
+    ...analysisTimelineScope, text('from', 'Start instant, ISO (e.g. 2026-11-24T09:00:00Z; default: the task\'s creation)'),
+    text('to', 'End instant, ISO (e.g. 2026-11-24T18:00:00+09:00; default: now while the task can change, else its last record)'),
+    list('kinds', `Span and mark kinds to read (${[...analysisSpanKinds, ...analysisMarkKinds].join(', ')})`),
+    list('lanes', 'Lane IDs to read (lanes[].id, e.g. task:T12 or agent:<placement>)'),
+    text('cursor', 'cursor from the previous page'), number('limit', 'Most spans and marks per page (up to 500, default 200)'),
+  ], { output: analysisTraceViewSchema, help: help(
+    'Breakdown parts, each instant to the first that holds: owner-working, member-working, child-working, held, waiting-answer, waiting-review, queued, idle.',
+    'The breakdown, time and waits always read the task and every task under it; --scope chooses only the lanes, spans and marks listed.',
+    'time and waits follow the rule of analysis task (an open question to the user counts even while an AI works); for a top-level task they are the same numbers.',
+    'Step-level values (toolMs, thinkingMs, stepWorkMs) and thinking spans need every Run\'s step times; coverage.steps.unknown names the Runs without them: ' +
+    Object.entries(ANALYSIS_STEPS_MISSING_MEANINGS).map(([reason, meaning]) => `${reason}, ${meaning}`).join('; ') + '.',
+    'url is the screen\'s address of the same scene, relative to the screen. Read a span\'s records with run get, run steps --step, task get --question.') }),
+  'analysis/findings': command('read', 'Find places in one task\'s timeline worth a look, each by a fixed rule with its threshold and the ' +
+    'records it stands on, the longest first; always over the task and every task under it', analysisFindingsInput, [
+    ...analysisTimelineScope, list('rules', `Rules to apply (${analysisFindingRules.join(', ')}; default: all)`),
+    list('threshold', 'Threshold as rule=value: minutes for a time, a count for a repeat (e.g. long-wait=60)'),
+    number('limit', 'Most findings (up to 100, default 20)'),
+  ], { output: analysisFindingsViewSchema, help: help(
+    ...analysisFindingRules.map(rule => `${rule}: ${ANALYSIS_FINDING_RULE_MEANINGS[rule]}.`),
+    'The rule set is experimental: rule IDs stay, thresholds may change. Rules that read step times are under skipped when no Run has them.') }),
+  'analysis/at': command('read', 'Read the situation of one task at one instant: each task\'s state, the Runs running with their current, ' +
+    'previous and next steps and the instruction that started them, the queue, open questions and the last history lines', analysisAtInput, [
+    ...analysisTimelineScope, text('at', 'The instant, ISO (e.g. 2026-11-24T09:00:00Z)'),
+  ], { output: analysisAtViewSchema, help: help('Task values at that time are not recorded yet: values is null with valuesReason not-recorded.') }),
   'project/shelf': command('read', 'Read archived projects and their restore targets', emptyInput, [], { output: projectShelfSchema }),
   'task/list': command('read', 'Read the Task tree, or search Tasks with a matching excerpt', taskListInput, [
     text('under', 'Subtree root Task ID, listed first'),

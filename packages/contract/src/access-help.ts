@@ -33,6 +33,7 @@ const accessExamples: Readonly<Record<string, readonly Example[]>> = {
   'task.file-get': readUp,
   'analysis.tasks': readTree, 'analysis.usage': readTree, 'analysis.usage-series': readTree,
   'analysis.breakdown': readTree, 'analysis.list': readTree, 'analysis.task': readTree,
+  'analysis.changes': readTree, 'analysis.trace': readUp, 'analysis.findings': readUp, 'analysis.at': readUp,
   'task.list': readTree, 'run.list': readTree,
   'task.file-put': file, 'task.attachment-put': file, 'task.attachment-remove': file, 'task.attachment-move': file,
   'task.new': [
