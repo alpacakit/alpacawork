@@ -12,6 +12,7 @@ import { resources } from "@/data/resources";
 import { barLimit, type BarLimit, besideModelWindow, currentLimitWindow, limitTone, readWords, resetWords, stackPlaces, stoppedWords, windowLabel } from "@/domain/limits";
 import { AGENT_NAMES } from "@/domain/agent-names";
 import { useNow } from "@/state/clock";
+import { openSettings } from "@/state/dialog-store";
 import { cn } from "@/lib/utils";
 import { TONE_FILL, TONE_TEXT, UsageRing, percentText } from "@/components/ui/usage-ring";
 
@@ -111,7 +112,9 @@ export function LimitsMenu({ folded = false }: { folded?: boolean }) {
   const tone = limitTone(percent);
   const name = AGENT_NAMES[shown.agent.adapter].short;
   const label = barWords(shown, name, now, i18n.language, t);
+  const stackLabel = t("limits.openStack", { title: t("panels:agentSettings.aiStack.title") });
   const read = readWords(agents.map(agent => agent.observedAt).filter(at => at !== null).sort()[0] ?? null, now, t);
+  const status = refreshing ? t("limits.refreshing") : read;
   return <>
     <Button ref={trigger} variant="ghost" size="bar" data-limits-trigger data-tone={tone} aria-haspopup="dialog" aria-expanded={open}
       aria-label={label} title={label} onClick={() => setOpen(value => !value)}
@@ -129,21 +132,25 @@ export function LimitsMenu({ folded = false }: { folded?: boolean }) {
         edge as from the side. The button's box is wider than its mark, so it is pulled out to end the mark where the
         percents under it end (a phone's sheet closes with × beside it, and keeps it in). */}
     {open && <Popup open onOpenChange={setOpen} label={t("limits.title")} align="end" className="w-88 p-4 pt-3" anchorRef={trigger}
-      heading={<span className="flex items-center justify-between gap-3"><span>{t("limits.title")}</span>
-        <span className="flex items-center gap-1 text-xs font-normal text-muted">
-          <span aria-live="polite">{refreshing ? t("limits.refreshing") : read}</span>
+      heading={<span className="flex min-w-0 items-center gap-2">
+        {/* One line at every width and in every language: the title and the buttons keep their room, and when the read
+            time has too little it is cut (whole in its tooltip and to a screen reader), so a refresh never moves the height. */}
+        <span className="flex-none whitespace-nowrap">{t("limits.title")}</span>
+        <span aria-live="polite" title={status ?? undefined}
+          className="min-w-0 flex-1 truncate text-right text-xs font-normal text-muted">{status}</span>
+        <span className="flex flex-none items-center gap-1">
           <Button variant="ghost" size="icon" data-limits-refresh aria-label={t("limits.refresh")} title={t("limits.refresh")}
             disabled={refreshing} onClick={() => void refresh().catch(error =>
-              notify.failure(error, { about: "limits", text: t("limits.refreshFailed"), from: trigger.current }))} className="-mr-2 size-7 text-muted hover:text-ink narrow:mr-0 narrow:size-9">
+              notify.failure(error, { about: "limits", text: t("limits.refreshFailed"), from: trigger.current }))} className="size-7 text-muted hover:text-ink narrow:size-9">
             <Icon name="reload" className={cn("size-3.5", refreshing && "animate-spin")} /></Button>
+          {/* The order that decides the agent the bar shows is set in the settings: the gear opens them onto it. */}
+          <Button variant="ghost" size="icon" data-limits-settings aria-label={stackLabel} title={stackLabel}
+            onClick={() => { setOpen(false); openSettings("ai", "tasksAi"); }} className="-mr-2 size-7 text-muted hover:text-ink narrow:mr-0 narrow:size-9">
+            <Icon name="settings" className="size-3.5" /></Button>
         </span></span>}>
       <div data-limits-menu lang={i18n.language} className="pt-2">
-        {/* The agents in a box of their own, so the last of them is last here and ends without the space above a divider. */}
-        <div>{agents.map(agent => <AgentBlock key={agent.adapter} agent={agent} stack={limits.data!.stack} now={now}
-          shown={agent.adapter === shown.agent.adapter ? shownWindow : null} />)}</div>
-        {/* What decides the agent the bar shows, when another reads as free: the stack's order with the figures, not the figures alone. */}
-        <p className="m-0 mt-4 border-t border-line pt-3 text-xs text-pretty text-muted">
-          {t("limits.place.note", { title: t("panels:agentSettings.aiStack.title") })}</p>
+        {agents.map(agent => <AgentBlock key={agent.adapter} agent={agent} stack={limits.data!.stack} now={now}
+          shown={agent.adapter === shown.agent.adapter ? shownWindow : null} />)}
       </div>
     </Popup>}
   </>;

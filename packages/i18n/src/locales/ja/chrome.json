@@ -25,9 +25,9 @@
     "barUnknown": "AI の利用上限: {{agent}} の上限は読めていません",
     "barUnlimited": "AI の利用上限: {{agent}} にいまかかっている上限はありません",
     "none": "いまかかっている上限はありません",
+    "openStack": "設定の「{{title}}」を開く",
     "place": {
       "model": "{{role}}（{{model}}）",
-      "note": "ヘッダーの表示は、設定の「{{title}}」の順番と使用量で決まります。",
       "notListed": "「{{title}}」に含まれません"
     },
     "readAgo_other": "{{count}}分前に更新",

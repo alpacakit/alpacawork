@@ -35,6 +35,7 @@ const TABS = ["ai", "notifications", "projects", "general", "apps", "host"] as c
 
 export function SettingsBody({ initialTab = "ai", request, focus }: { initialTab?: SettingsTab; request?: number; focus?: SettingsFocus }) {
   const focusNotifications = focus === "notifications";
+  const focusStack = focus === "tasksAi" ? "tasks" : focus === "coordinatorAi" ? "coordinator" : undefined;
   const { t } = useTranslation("panels");
   const coarsePointer = useCoarsePointer();
   // The guide is read at a computer: a phone that opens this is past every step of it.
@@ -68,7 +69,7 @@ export function SettingsBody({ initialTab = "ai", request, focus }: { initialTab
     else if (chosen.right > bounds.right) row.scrollLeft += chosen.right - bounds.right;
   }, [tab]);
   return (
-    <ServerDraftProvider show={setTab} focusCoordinatorAi={focus === "coordinatorAi" ? request ?? 0 : undefined}>
+    <ServerDraftProvider show={setTab} focusStack={focusStack ? { kind: focusStack, request: request ?? 0 } : undefined}>
     <Tabs value={tab} onValueChange={(value) => setTab(value as SettingsTab)} className="min-h-0 flex-1">
       {/* The tabs stay with the head; only the tab shown scrolls under them. */}
       <div className="flex-none px-6 narrow:px-4.5">
