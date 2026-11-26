@@ -60,8 +60,8 @@
     "laterTip": "各任务首次审阅之后返工和等待的部分",
     "meant": "是否符合预期",
     "noFixes": "此期间没有已分类的修改。",
-    "noQuestions": "无提问即直接采用",
     "none": "此期间没有可显示的内容。",
+    "noQuestions": "无提问即直接采用",
     "ofFixes_one": "你要求的 {{count}} 项修改中（按类别）",
     "ofFixes_other": "你要求的 {{count}} 项修改中（按类别）",
     "ofItems_one": "已回答的 {{count}} 项中",
@@ -169,12 +169,21 @@
     "speed": "速度",
     "wording": "措辞"
   },
+  "history": {
+    "accepted": "已接受",
+    "created": "任务创建",
+    "linked": "状态变更"
+  },
   "home": {
     "label": "{{marks}}。打开分析",
     "marks_other": "今天完成 {{count}} 个（无需返工 {{passed}} 个）"
   },
   "lead": {
     "ever": "全部期间 {{value}}"
+  },
+  "legend": {
+    "failedRun": "失败或中止的运行",
+    "state": "任务状态（细线）"
   },
   "line": {
     "median": "每个的中位数",
@@ -383,30 +392,6 @@
     "points": " 个百分点",
     "prs_other": "个",
     "questions_other": "次",
-    "scales": [
-      {
-        "at": 100000000,
-        "digits": 1,
-        "unit": "亿"
-      },
-      {
-        "at": 10000,
-        "digits": 0,
-        "unit": "万"
-      }
-    ],
-    "spoken": [
-      {
-        "at": 100000000,
-        "digits": 1,
-        "unit": "亿"
-      },
-      {
-        "at": 10000,
-        "digits": 0,
-        "unit": "万"
-      }
-    ],
     "tasks_other": "个",
     "times_other": "次"
   },
@@ -473,15 +458,6 @@
     "finished_other": "已结束 {{count}} 个",
     "list": "任务列表",
     "passedOf_other": "{{count}} 个中 {{passed}} 个"
-  },
-  "legend": {
-    "failedRun": "失败或中止的运行",
-    "state": "任务状态（细线）"
-  },
-  "history": {
-    "accepted": "已接受",
-    "created": "任务创建",
-    "linked": "状态变更"
   },
   "work": {
     "aboutCause": "关于：{{cause}}",

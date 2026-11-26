@@ -197,6 +197,8 @@ export const runCompactionSchema = z.object({
   beforeTokens: z.number().int().nonnegative().safe().nullable(),
   afterTokens: z.number().int().nonnegative().safe().nullable(),
   windowTokens: z.number().int().positive().safe().nullable(),
+  /** Who set it off: the agent itself as its conversation grew (`agent`), or a request to compact before an instruction (`asked`). */
+  trigger: z.enum(['agent', 'asked']).optional(),
 }).strict();
 export type RunCompaction = z.infer<typeof runCompactionSchema>;
 /**

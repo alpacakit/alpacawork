@@ -1,4 +1,5 @@
 import { OrderTipBody, useOrderWord, useWaitedWord } from "@/features/reader/StartOrder";
+import { tokenText } from "@/domain/tokens";
 import { useViewStore } from "@/state/view-store";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
@@ -132,7 +133,7 @@ function TokenLines({ task }: { task: Task }) {
   const { t, i18n } = useTranslation("tree");
   const { tokens, unknown } = subtreeTokens(task.usage, task.usageBelow);
   if (!tokens) return null;
-  const count = new Intl.NumberFormat(i18n.language, { notation: "compact", maximumFractionDigits: 1 });
+  const count = { format: tokenText };
   const rows = (keys: readonly (keyof typeof tokens)[], quiet = false) =>
     <dl className={cn("m-0 mt-1 grid grid-cols-[auto_auto] gap-x-5 gap-y-1", quiet && "text-muted")}>{keys.map(key =>
       <div key={key} data-work-token={key} className="contents">

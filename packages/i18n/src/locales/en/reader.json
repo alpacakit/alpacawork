@@ -297,6 +297,17 @@
       "others_one": "{{count}} more below",
       "others_other": "{{count}} more below"
     },
+    "conversation": {
+      "byAgent": "The conversation grew long, so the AI compacted it by itself.",
+      "byRequest": "Compacted before the next instruction, as requested.",
+      "fillAfter": "The AI did not say the context before.",
+      "fillBefore": "The context was {{before}} before. The AI did not say the figure after.",
+      "fillUnknown": "The AI did not say the context before or after.",
+      "keeps": "Compacting replaces the exchange so far with a summary and goes on in the same conversation. Fine details may be left out of the summary.",
+      "source": "Laban et al. (2025)",
+      "startsFrom": "The old exchange is not carried over: the conversation starts from the task's records (what its Context tab shows).",
+      "why": "When an exchange spread over many turns loses its way, starting over with what was established tends to do better, a study reports."
+    },
     "copy": "Copy",
     "empty": {
       "unassigned": {
@@ -330,7 +341,10 @@
       },
       "cause": "Received “{{title}}” · {{at}}",
       "changedTo": "Set to {{state}}",
-      "compactedFill": "Context",
+      "compactedCut": "−{{tokens}} tokens",
+      "compactedFill": "Conversation context",
+      "compactedFrom": "Context before compaction",
+      "compactedTo": "Context after compaction",
       "end": {
         "again": {
           "question": "Asked the same question again",
@@ -363,7 +377,7 @@
         "comment": "Note",
         "compacted": "Compacted",
         "confirm": "Review",
-        "conversationNew": "New conversation",
+        "conversationNew": "Fresh start",
         "dialogue": "Message",
         "done": "Done",
         "error": "Stopped",
@@ -378,11 +392,11 @@
         "withdrawn": "Withdrawn"
       },
       "newBecause": {
-        "another_ai": "Started anew because the work moved to another AI",
-        "asked": "The request asked for a new conversation",
-        "handoff": "The owner switched to a new conversation at a break in the work",
-        "handoffAt": "The owner switched to a new conversation after “{{report}}”",
-        "unresumable": "Started anew because the last conversation could not be resumed"
+        "another_ai": "A fresh start, as the work moved to another AI",
+        "asked": "The request asked for a fresh start",
+        "handoff": "The owner gave the conversation a fresh start at a break in the work",
+        "handoffAt": "The owner gave the conversation a fresh start after “{{report}}”",
+        "unresumable": "A fresh start, as the last conversation could not be resumed"
       },
       "older": "Show {{n}} earlier",
       "openTask": "Open “{{task}}”",

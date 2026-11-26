@@ -181,7 +181,7 @@ export class OutputActivityReader {
       // call, whose fill is the compacted conversation's; one the Run ends before is told without it (finish).
       if (update.compacted) {
         this.tellCompaction();
-        const fill = { beforeTokens: this.context?.usedTokens ?? null, afterTokens: update.usedTokens ?? null };
+        const fill = { beforeTokens: update.compactedFrom ?? this.context?.usedTokens ?? null, afterTokens: update.usedTokens ?? null };
         if (fill.afterTokens === null) this.pendingCompaction = fill;
         else this.compacted(fill);
       } else if (this.pendingCompaction && update.usedTokens != null) this.tellCompaction(update.usedTokens);

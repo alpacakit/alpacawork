@@ -1292,11 +1292,11 @@ test("a rail mark's colour says what its record did, never which way it went, an
   expect(tone({ kind: "conversation" })).toBe("conversation");
 });
 
-test("a compaction's row shows its fill before and after as rings; a new conversation's says why in one sentence", async () => {
+test("a compaction's row shows its fill before and after with what it cut, and a fresh start says why; opened, each says what set it off and what it does", async () => {
   await inEnglish();
   const owner = { kind: "owner", profileKey: "claude", modelId: "opus", effort: "high" } as const;
   const data = screenData(tree({ tasks: [dto()], history: { T1: historyFixture([
-    { id: "R1@2026-11-26T00:00:00.000Z", kind: "conversation", author: owner, conversation: { change: "compacted", beforeTokens: 610_000, afterTokens: 140_000, windowTokens: 1_000_000 } },
+    { id: "R1@2026-11-26T00:00:00.000Z", kind: "conversation", author: owner, conversation: { change: "compacted", beforeTokens: 610_000, afterTokens: 140_000, windowTokens: 1_000_000, trigger: "agent" } },
     { id: "R2:new", kind: "conversation", author: owner, conversation: { change: "new", because: "handoff", report: "Filters reviewed" } }]) } }));
   render(<TestWorkspace data={data}><ReportFeed task={data.tasks[0]!} people={data.people} onFollow={() => {}} /></TestWorkspace>);
   const kinds = await waitFor(() => {
@@ -1304,12 +1304,35 @@ test("a compaction's row shows its fill before and after as rings; a new convers
     expect(named).toHaveLength(2);
     return named;
   });
-  expect(kinds.sort()).toEqual(["Compacted", "New conversation"]);
+  expect(kinds.sort()).toEqual(["Compacted", "Fresh start"]);
   const fill = document.querySelector<HTMLElement>("[data-compaction-fill]")!;
-  expect(fill.textContent).toBe("Context61%14%");
-  expect(fill.querySelectorAll("svg")).toHaveLength(3);
+  expect(fill.textContent).toBe("Conversation context61%14%−470k tokens");
   const words = [...document.querySelectorAll<HTMLElement>("[data-row-words]")].map(row => row.textContent);
-  expect(words).toContain("The owner switched to a new conversation after “Filters reviewed”");
+  expect(words).toContain("The owner gave the conversation a fresh start after “Filters reviewed”");
+  // Opened, a compaction says what set it off; a fresh start says what it carries over, with the study behind it.
+  for (const button of document.querySelectorAll<HTMLElement>("button[aria-expanded]")) fireEvent.click(button);
+  const details = await waitFor(() => {
+    const shown = [...document.querySelectorAll<HTMLElement>("[data-conversation-detail]")];
+    expect(shown).toHaveLength(2);
+    return shown.map(detail => detail.textContent ?? "");
+  });
+  expect(details.some(text => text.includes("the AI compacted it by itself"))).toBe(true);
+  expect(details.some(text => text.includes("starts from the task's records"))).toBe(true);
+  expect(document.querySelector<HTMLAnchorElement>('[data-conversation-detail] a')!.href).toBe("https://arxiv.org/abs/2505.06120");
+});
+
+test("a compaction whose agent gave only the figure after still shows it, and says the one before did not come", async () => {
+  await inEnglish();
+  const owner = { kind: "owner", profileKey: "codex", modelId: "gpt-6.2-sol", effort: "high" } as const;
+  const data = screenData(tree({ tasks: [dto()], history: { T1: historyFixture([
+    { id: "R1@2026-11-26T00:00:00.000Z", kind: "conversation", author: owner, conversation: { change: "compacted", beforeTokens: null, afterTokens: 66_500, windowTokens: 475_000, trigger: "asked" } }]) } }));
+  render(<TestWorkspace data={data}><ReportFeed task={data.tasks[0]!} people={data.people} onFollow={() => {}} /></TestWorkspace>);
+  const fill = await waitFor(() => document.querySelector<HTMLElement>("[data-compaction-fill]")!);
+  expect(fill.textContent).toBe("Context after compaction14%");
+  fireEvent.click(document.querySelector<HTMLElement>("button[aria-expanded]")!);
+  const detail = await waitFor(() => document.querySelector<HTMLElement>("[data-conversation-detail]")!);
+  expect(detail.textContent).toContain("Compacted before the next instruction, as requested.");
+  expect(detail.textContent).toContain("The AI did not say the context before.");
 });
 
 test("the context meter lists the task's conversation changes newest first, with what compactions cut", async () => {
@@ -1331,11 +1354,11 @@ test("the context meter lists the task's conversation changes newest first, with
   expect(rows.map(row => row.dataset.conversationChange)).toEqual(["compacted", "compacted", "new"]);
   expect(rows[0]!.textContent).toContain("50%");
   expect(rows[0]!.textContent).toContain("10%");
-  expect(rows[0]!.textContent).toContain("−400K");
+  expect(rows[0]!.textContent).toContain("−400k");
   expect(rows[2]!.textContent).toContain("owner's break");
   // What a compaction and a new conversation are is a press on the ? away.
-  fireEvent.click(list.querySelector<HTMLElement>('[aria-label="About compactions and new conversations"]')!);
-  await waitFor(() => expect(document.querySelector("[data-conversation-help]")!.textContent).toContain("the conversation starts over with the task's details"));
+  fireEvent.click(list.querySelector<HTMLElement>('[aria-label="About compactions and fresh starts"]')!);
+  await waitFor(() => expect(document.querySelector("[data-conversation-help]")!.textContent).toContain("the conversation starts again from the task's records (what its Context tab shows)"));
 });
 
 test("a stop the AI stack carried on goes to the AI that took over, closed and open alike", async () => {

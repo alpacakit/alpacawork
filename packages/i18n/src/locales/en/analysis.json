@@ -65,8 +65,8 @@
     "laterTip": "The work redone and waited on after each task's first review",
     "meant": "As you meant",
     "noFixes": "No fixes were labelled in this span.",
-    "noQuestions": "Taken as done with no question asked",
     "none": "Nothing to show in this span.",
+    "noQuestions": "Taken as done with no question asked",
     "ofFixes_one": "Of the {{count}} fix you asked for, by kind",
     "ofFixes_other": "Of the {{count}} fixes you asked for, by kind",
     "ofItems_one": "Of {{count}} answered item",
@@ -175,6 +175,11 @@
     "speed": "Speed",
     "wording": "Wording"
   },
+  "history": {
+    "accepted": "Accepted",
+    "created": "Task created",
+    "linked": "State changed"
+  },
   "home": {
     "label": "{{marks}}. Open the analysis",
     "marks_one": "Done today: {{count}} ({{passed}} with no fixes)",
@@ -182,6 +187,10 @@
   },
   "lead": {
     "ever": "All time {{value}}"
+  },
+  "legend": {
+    "failedRun": "Failed or stopped run",
+    "state": "Task state (thin line)"
   },
   "line": {
     "median": "Median per task",
@@ -399,35 +408,6 @@
     "prs_other": "PRs",
     "questions_one": "question",
     "questions_other": "questions",
-    "scales": [
-      {
-        "at": 1000000000,
-        "digits": 1,
-        "unit": "B"
-      },
-      {
-        "at": 1000000,
-        "digits": 1,
-        "unit": "M"
-      },
-      {
-        "at": 1000,
-        "digits": 0,
-        "unit": "K"
-      }
-    ],
-    "spoken": [
-      {
-        "at": 1000000000,
-        "digits": 1,
-        "unit": " billion"
-      },
-      {
-        "at": 1000000,
-        "digits": 1,
-        "unit": " million"
-      }
-    ],
     "tasks_one": "task",
     "tasks_other": "tasks",
     "times_one": "time",
@@ -500,15 +480,6 @@
     "list": "Task list",
     "passedOf_one": "{{passed}} of {{count}}",
     "passedOf_other": "{{passed}} of {{count}}"
-  },
-  "legend": {
-    "failedRun": "Failed or stopped run",
-    "state": "Task state (thin line)"
-  },
-  "history": {
-    "accepted": "Accepted",
-    "created": "Task created",
-    "linked": "State changed"
   },
   "work": {
     "aboutCause": "About: {{cause}}",
