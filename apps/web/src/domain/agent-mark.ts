@@ -7,10 +7,10 @@ import { AGENT_ADAPTERS, BUILTIN_ADAPTER_IDS, type BuiltinAdapterId } from "@alp
 
 /** Each kind's colour: agents of one kind (claude and claude-chrome) share it, and their letters tell them apart. */
 const KIND_COLOR: Record<BuiltinAdapterId, string> = {
-  claude: "#d97757", codex: "#3f8f7a", grok: "#7c8594", pi: "#8b6fd6", copilot: "#3f7fd9",
+  claude: "#b9775f", codex: "#4f8072", grok: "#737a86", pi: "#7a6aa8", copilot: "#5577a8",
 };
 /** A name of no known kind takes one of these, the same one every time. */
-const OTHER_COLORS = ["#b0855a", "#5f9aa8", "#a7708f", "#7e9a5c"];
+const OTHER_COLORS = ["#9a7d5e", "#5e8790", "#946c83", "#73865e"];
 
 /** The kind an agent's name runs, from its setting's `adapter`, or its own name when that is a kind's (claude, codex). */
 export function agentKind(name: string, adapter: string | undefined): BuiltinAdapterId | null {

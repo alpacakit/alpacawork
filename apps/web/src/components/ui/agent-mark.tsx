@@ -31,8 +31,10 @@ export const AgentMark = memo(function AgentMark({ name, model, kind: given, lab
     {logo.map((path, i) => <path key={i} d={path.d} fill={path.fill} fillRule={path.fillRule} clipRule={path.clipRule} />)}
   </svg>;
   const letters = agentLetters(who.name);
-  return <span data-agent-mark={letters} {...a11y} style={{ background: agentColor(who.name, who.kind) }}
-    className={cn("inline-flex size-[1.25em] flex-none items-center justify-center rounded-full leading-none text-white select-none", className)}>
-    <span data-letters={letters} className="text-[0.6em] font-bold tracking-[-0.02em] [text-box:trim-both_cap_alphabetic] before:content-[attr(data-letters)]" />
-  </span>;
+  // One drawing, circle and letters: the letters' middle is the circle's (their capitals' middle at 0.35em below the
+  // centre line), whatever font the page has.
+  return <svg data-agent-mark={letters} viewBox="0 0 24 24" {...a11y} className={cn("inline-block size-[1.15em] flex-none select-none", className)}>
+    <circle cx={12} cy={12} r={12} fill={agentColor(who.name, who.kind)} />
+    <text x={12} y={12} dy="0.35em" textAnchor="middle" fontSize={11} fontWeight={600} fill="#fff" letterSpacing={-0.2}>{letters}</text>
+  </svg>;
 });

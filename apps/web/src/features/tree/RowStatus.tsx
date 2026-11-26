@@ -7,6 +7,8 @@ import { Icon } from "@/components/ui/icon";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { Task } from "@/data/types";
 import { AgentCounts, NarrowTokenSpeed, TIME_SLOT } from "./token-speed";
+import { AgentMark } from "@/components/ui/agent-mark";
+import { crewOf } from "@/domain/people";
 import { useNarrow } from "@/state/view-store";
 import { useConnection } from "@/data/connection";
 import { usePeopleFor, useTaskIndexFor } from "@/data/queries";
@@ -285,6 +287,18 @@ function RowChildren({ childCount, word }: { childCount: string; word: boolean }
  * The line's weights still add up to at least one (the strut before the times), so once they are gone it does give way.
  */
 export function RowKindWord({ task }: { task: Task }) {
+  // A stop says which AI stopped, by its logo, faded: what it takes to set it going again (a limit, a sign-in) is that
+  // AI's. Other rows that wait on the reader show no AI: a logo on the list says one is at work.
+  return task.rowFacts.kind?.kind === "stopped" ? <><StoppedAgent task={task} /><KindWord task={task} /></> : <KindWord task={task} />;
+}
+
+function StoppedAgent({ task }: { task: Task }) {
+  const people = usePeopleFor(task.id, true);
+  const owner = crewOf(task.id, people).responsible;
+  return owner ? <AgentMark name={owner.profileKey} label className="size-[1.1em] flex-none self-center opacity-50 grayscale" /> : null;
+}
+
+function KindWord({ task }: { task: Task }) {
   const { t } = useTranslation("tree");
   const { t: ut } = useTranslation("ui");
   const kind = task.rowFacts.kind;

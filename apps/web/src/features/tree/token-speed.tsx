@@ -265,11 +265,12 @@ export function AgentCounts({ tasks }: { tasks: readonly Task[] }) {
   const rest = agents.slice(named.length).reduce((sum, [, count]) => sum + count, 0);
   return <span ref={box} data-agent-counts title={words} className="flex min-w-0 shrink items-center gap-2 self-center overflow-hidden whitespace-nowrap tabular-nums">
     <span className="sr-only">{`${t("status.runningRuns", { count: total })}: ${words}`}</span>
-    {named.map(([agent, count]) => <span key={agent ?? ""} data-agent aria-hidden="true" className="flex flex-none items-center gap-[3px]">
-      {agent === null ? <Icon name="runningRuns" className="size-[0.7em] text-muted" /> : <AgentMark name={agent} />}
-      <span className="text-ink/80">{count}</span>
+    {/* One agent of a kind is its logo alone; more say how many, small, beside it. */}
+    {named.map(([agent, count]) => <span key={agent ?? ""} data-agent aria-hidden="true" className="flex flex-none items-center gap-0.5">
+      {agent === null ? <Icon name="runningRuns" className="size-[0.7em] text-muted" /> : <AgentMark name={agent} className="size-[1.05em]" />}
+      {(count > 1 || agent === null) && <span className="translate-y-[0.08em] text-[0.85em] leading-none text-muted">{count}</span>}
     </span>)}
-    {rest > 0 && <span aria-hidden="true" className="flex-none text-muted">
+    {rest > 0 && <span aria-hidden="true" className="flex-none text-[0.85em] text-muted">
       {named.length ? `+${rest}` : <><Icon name="runningRuns" className="mr-0.5 inline size-[0.7em] align-[-0.02em]" />{rest}</>}
     </span>}
   </span>;
