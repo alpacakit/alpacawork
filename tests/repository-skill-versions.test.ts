@@ -7,7 +7,7 @@ import { test, type TestContext } from 'node:test';
 import { setTimeout as delay } from 'node:timers/promises';
 import { skillsLatestResponseSchema, skillsResponseSchema } from '@alpacawork/contract';
 import { InstalledSkillsStore } from '@alpacawork/core/installed-skills';
-import { FirstRunSkills } from '../test-dist/installation/first-run-skills.js';
+import { FirstRunSkills } from '@alpacawork/backend/test-dist/installation/first-run-skills.js';
 
 const first = { sha: 'a'.repeat(40), date: '2026-10-01T12:00:00Z' };
 const next = { sha: 'b'.repeat(40), date: '2026-11-01T12:00:00Z' };
