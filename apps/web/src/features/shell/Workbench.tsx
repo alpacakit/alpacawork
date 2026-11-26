@@ -31,13 +31,14 @@ import { useGlobalShortcuts } from "@/features/chrome/use-shortcuts";
 import { ListNavigationProvider } from "@/features/tree/list-navigation";
 import { TimeTree } from "@/features/tree/TimeTree";
 import { useDeviceValue } from "@/lib/device-storage";
-import { readerEdgeHeld, readerWidth, fitReaderWidth, MIN_DOCK_VIEWPORT_WIDTH, READER_MIN_WIDTH, readerListReservation, readerWidthBeside, stripHidden, urlValue, windowMargin } from "@/state/screen-settings";
+import { readerEdgeHeld, readerWidth, fitReaderWidth, MIN_DOCK_VIEWPORT_WIDTH, READER_MIN_WIDTH, readerListReservation, readerWidthBeside, stripHidden, urlValue, widestBesideAnalysis, windowMargin } from "@/state/screen-settings";
 import { VIEW_BESIDE_WIDTH } from "@/features/reader/viewer/viewer-layout";
 import { Reader, readerBox, type ReaderMode } from "@/features/reader/Reader";
 import { DialogHost } from "./DialogHost";
-import { barVars, UNDER_BAR, useBar, useBarAutoHide } from "@/state/bar";
+import { barVars, useBar, useBarAutoHide } from "@/state/bar";
 import { AWAY, Bar, BarRoom } from "@/features/chrome/Bar";
 import { CoordinatorCard, useCoordinatorShortcut } from "@/features/coordinator/CoordinatorCard";
+import { ListScroll } from "./ListScroll";
 import { GuideBalloon } from "@/features/guide/Guide";
 
 const subscribeViewport = (notify: () => void) => {
@@ -49,10 +50,8 @@ const subscribeReaderGeometry = (notify: () => void) => {
   return () => { stopWidth(); stopViewport(); };
 };
 const canFitDock = () => innerWidth >= MIN_DOCK_VIEWPORT_WIDTH;
-/** The analysis's charts keep at least this much beside a window at the page's right (its 24px left and the 36px gap aside). */
-const ANALYSIS_LEAST_WIDTH = 680;
 const analysisFitsBeside = () =>
-  innerWidth - readerListReservation(fitReaderWidth(readerWidth.get(), innerWidth), innerWidth) - 24 - 36 >= ANALYSIS_LEAST_WIDTH;
+  readerListReservation(fitReaderWidth(readerWidth.get(), innerWidth), innerWidth) <= widestBesideAnalysis(innerWidth);
 const viewportWidth = () => innerWidth;
 const readerOverlaps = () => {
   const width = fitReaderWidth(readerWidth.get(), innerWidth);
@@ -173,7 +172,7 @@ export function Workbench() {
           <div inert={covered || listAway} className={cn("contents", listAway && AWAY)}>
             {/* The analysis face stands in the list's place whatever the list would show (a search ends as it opens). */}
             {analysisShown ? <AnalysisView place={analysisShown} beside={analysisBeside} />
-              : place === "search" ? <div data-list-scroll {...UNDER_BAR} className="relative min-h-75 flex-1 basis-0 overflow-auto overscroll-contain scroll-pb-(--list-foot) pb-(--list-foot) narrow:min-h-67.5"><BarRoom /><SearchResults /></div>
+              : place === "search" ? <ListScroll room><BarRoom /><SearchResults /></ListScroll>
               : place === "lookup" && project ? <div className="flex min-h-75 flex-1 flex-col narrow:min-h-67.5"><BarRoom /><AwaitedLookup address={project} placement="list" reason={{ kind: "scope_lookup_unavailable" }} skeleton={<RegionSkeleton shape="time" />} /></div>
               : place === "no-projects" ? <div className="flex-1"><BarRoom /><NoProjects onOpenArchive={() => openSettings("projects")} onCreateProject={() => useDialogStore.getState().openProject()} /></div>
               : <TimeTree entering={leavingAnalysis} />}
@@ -224,7 +223,8 @@ function PageFrame({ docked, viewing, barHeight, barHidden, children }: {
   const laidOut = useRef(width);
   if (!held) laidOut.current = width;
   useLayoutEffect(() => {
-    const reader = document.querySelector<HTMLElement>('aside[data-reader-mode="docked"]');
+    // The window being resized: the docked reader, or else what a number of the analysis opens beside its charts.
+    const reader = document.querySelector<HTMLElement>('aside[data-reader-mode="docked"]') ?? document.querySelector<HTMLElement>("aside[data-analysis-panel]");
     if (held && reader) reader.style.width = `${width}px`;
     return () => { reader?.style.removeProperty("width"); };
   }, [held, width, docked]);

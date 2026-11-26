@@ -197,7 +197,8 @@
     "more_other": "显示其余 {{count}} 个",
     "outcome": "结果",
     "task": "任务",
-    "usedTitle": "{{name}}的任务"
+    "usedTitle": "{{name}}的任务",
+    "resize": "宽度（左右方向键）"
   },
   "look": {
     "label": "显示",

@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Icon, shareIcon } from "@/components/ui/icon";
 import { BarRoom } from "@/features/chrome/Bar";
-import { UNDER_BAR } from "@/state/bar";
+import { ListScroll } from "@/features/shell/ListScroll";
 import { useViewStore } from "@/state/view-store";
 import { cn } from "@/lib/utils";
 import { useAnalysisFreshness, useLaunchReads, useTasksView, useUsageView } from "./data";
@@ -68,11 +68,10 @@ export function AnalysisView({ place, beside }: { place: AnalysisPlace; beside: 
   const step = (direction: -1 | 1) => { const to = direction < 0 ? earlier : later; if (to) show({ span: to, list: null, card: null }); };
   const canEarlier = !!earlier, canLater = !!later;
 
-  // The page scrolls as the list does, under the bar and clear of what stands at the screen's foot (--list-foot). It
-  // scrolls down only: everything on it fits its width (the calendar scrolls sideways on its own), and what reaches a
-  // little past its edges unseen (the tabs' wider press area at its right) must not let it slide sideways.
-  return <><div ref={setRoot} data-list-scroll {...UNDER_BAR}
-    className="relative min-h-75 flex-1 basis-0 overflow-x-hidden overflow-y-auto overscroll-contain scroll-pb-(--list-foot) pb-(--list-foot) narrow:min-h-67.5">
+  // The page scrolls as the list does (ListScroll), its scrollbar beside the charts, not over them. It scrolls down
+  // only: everything on it fits its width (the calendar scrolls sideways on its own), and what reaches a little past its
+  // edges unseen (the tabs' wider press area at its right) must not let it slide sideways.
+  return <><ListScroll ref={setRoot} room className="overflow-x-hidden overflow-y-auto">
     <div className="pb-12"><BarRoom />
     <div className="flex flex-wrap items-center gap-x-6 gap-y-2 pt-1 pb-8">
       <Seg label={t("look.label")} value={place.look} onChange={look => { useChoices.getState().choose({ all: false, grow: useChoices.getState().grow + 1 }); show({ look }); }}
@@ -104,7 +103,7 @@ export function AnalysisView({ place, beside }: { place: AnalysisPlace; beside: 
           : <UsageLook view={first as UsageView} span={place.span} root={root} tasks={finished as TasksView} days={days} open={open} zone={zoneName(head.timeZone)}
             series={series} />}
     </ReadPart>
-    </div></div>
+    </div></ListScroll>
     <AnalysisLayers place={place} project={project} days={days} beside={beside} />
     <PointerTip root={root} />
   </>;

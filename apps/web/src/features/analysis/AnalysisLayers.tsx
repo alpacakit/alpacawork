@@ -9,7 +9,9 @@ import { useScreenHeight } from "@/features/reader/TaskSheet";
 import { failedAddress } from "@/lib/failed-address";
 import { giveFocusBack, openerChain } from "@/lib/focus-return";
 import { cn } from "@/lib/utils";
+import { DOCKED_WINDOW, WindowWidthHandle } from "@/features/shell/docked-window";
 import { closeAnalysisLayer } from "@/state/history-step";
+import { widestBesideAnalysis } from "@/state/screen-settings";
 import { readerShows, useNarrow, useViewStore } from "@/state/view-store";
 import { CardPreview, CardSkeleton } from "./CardPreview";
 import { useCardReads } from "./data";
@@ -140,10 +142,12 @@ export function AnalysisLayers({ place, project, days, beside }: {
           className="z-(--layer-reader) animate-sheet rounded-t-pane border-t-hairline border-lit-line bg-lit shadow-float">
           {contents}
         </PhoneSheet>
-      : <aside ref={setSurface} role="dialog" data-analysis-panel={narrow ? undefined : ""} aria-label={label}
-          className={cn("fixed z-(--layer-reader) flex flex-col border-hairline border-lit-line bg-lit shadow-float",
-            narrow ? "inset-x-0 top-[18%] bottom-0 animate-sheet rounded-t-pane before:absolute before:top-1.5 before:left-1/2 before:-ms-4.5 before:h-1 before:w-9 before:rounded-xs before:bg-lit-line"
-              : cn("top-window right-window bottom-window animate-side rounded-pane", beside ? "w-(--window-reserve)" : "w-[min(548px,calc(100%-24px))]"))}>
+      : <aside ref={setSurface} role="dialog" data-analysis-panel={narrow ? undefined : ""} data-window={narrow ? undefined : ""} aria-label={label}
+          className={narrow ? "fixed inset-x-0 top-[18%] bottom-0 z-(--layer-reader) flex animate-sheet flex-col rounded-t-pane border-hairline border-lit-line bg-lit shadow-float before:absolute before:top-1.5 before:left-1/2 before:-ms-4.5 before:h-1 before:w-9 before:rounded-xs before:bg-lit-line"
+            // The window the reader stands in (DOCKED_WINDOW): beside the charts as wide as the page keeps for it, and its
+            // edge resizes it as the reader's does, no wider than leaves the charts their least.
+            : cn(DOCKED_WINDOW, "animate-side", beside ? "w-(--window-reserve)" : "w-[min(548px,calc(100%-24px))]")}>
+          {beside && <WindowWidthHandle label={t("list.resize")} widest={widestBesideAnalysis} fills={false} />}
           {contents}
         </aside>}
   </div>;

@@ -123,6 +123,46 @@ test("the share card keeps room at its foot for the coordinator only where the c
   await expect.poll(async () => { const over = await edges(); return over.inputRight > over.panelLeft && over.bodyBottom <= over.inputTop; }).toBe(true);
 });
 
+test("the analysis keeps its scrollbar's room beside its charts, not over them", async ({ page, runtime }) => {
+  await page.goto(`${runtime.origin}/?face=analysis`);
+  const face = page.locator("[data-list-scroll]");
+  await expect(face.locator("[data-answer] [data-row]").first()).toBeVisible();
+  // A scrollbar drawn over what scrolls (a Mac's) stands in the scroller's last 12px: nothing of the face is there.
+  const room = await face.evaluate(node => node.getBoundingClientRect().left + node.clientWidth - node.querySelector("[data-answer]")!.getBoundingClientRect().right);
+  expect(room).toBeGreaterThanOrEqual(12);
+});
+
+test("the window beside the analysis's charts is resized by its edge, no wider than leaves the charts their room", async ({ page, runtime }) => {
+  await page.setViewportSize({ width: 1600, height: 900 });
+  await page.goto(`${runtime.origin}/?face=analysis`);
+  // The card stands in the window a number's tasks open in.
+  await page.getByRole("button", { name: "Make a card", exact: true }).click();
+  const panel = page.locator("aside[data-analysis-panel]");
+  await expect(panel).toBeVisible();
+  await settleMotion(page, panel);
+  const width = async () => Math.round((await panel.boundingBox())!.width);
+  const start = await width(), from = (await panel.locator("[data-window-width]").boundingBox())!;
+  const drag = async (to: number) => {
+    const edge = (await panel.locator("[data-window-width]").boundingBox())!;
+    await page.mouse.move(edge.x + edge.width / 2, edge.y + 200);
+    await page.mouse.down();
+    await page.mouse.move(to, edge.y + 200, { steps: 6 });
+    await page.mouse.up();
+  };
+  await drag(from.x + from.width / 2 - 80);
+  // It widens as far as the pointer went.
+  await expect.poll(width).toBeGreaterThan(start + 60);
+  expect(await width()).toBeLessThan(start + 100);
+  // Far past what the charts can give: it stops where they keep their room, and stays beside them.
+  await drag(40);
+  await expect.poll(width).toBe(1600 - 24 - 36 - 680);
+  // Let go, the charts are laid out again beside it.
+  await expect.poll(async () => {
+    const charts = (await page.locator("[data-chart-row]").first().boundingBox())!;
+    return charts.x + charts.width <= (await panel.boundingBox())!.x;
+  }).toBe(true);
+});
+
 test.describe("phone", () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 

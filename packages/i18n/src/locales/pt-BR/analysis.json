@@ -215,7 +215,8 @@
     "more_other": "Mostrar mais {{count}}",
     "outcome": "Resultado",
     "task": "Tarefa",
-    "usedTitle": "{{name}}"
+    "usedTitle": "{{name}}",
+    "resize": "Largura (setas para a esquerda e para a direita)"
   },
   "look": {
     "label": "Visualização",
