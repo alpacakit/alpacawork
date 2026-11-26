@@ -27,7 +27,8 @@ import { assignedSession, readAgentsSettings, type AgentsSettings } from '../age
 import { agentEnvironment } from '../runs/env.js';
 import { StopDeliveryOwner, coordinatorCwd } from '../runs/execution-control.js';
 import { createCoordinatorReadState } from '../receiver/person-state.js';
-import { assertSkillInvocations, coordinatorSkills } from './skills.js';
+import { assertSkillInvocations } from './skill-invocations.js';
+import { coordinatorSkills } from './skills.js';
 import { coordinatorInputText, coordinatorLaunchFor, coordinatorReplyLanguage, coordinatorTurnNumber, prepareCoordinatorStart } from './continuation.js';
 import { activeCoordinatorRuns, visible } from './requests.js';
 import { coordinatorBoundary, coordinatorResetMemo, pendingCoordinatorReset, replayCoordinatorReset, reserveCoordinatorReset } from './resets.js';

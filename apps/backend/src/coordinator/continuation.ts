@@ -12,7 +12,7 @@ import { z } from 'zod';
 import { languageLine, savedReplyLanguage } from '../receiver/person-state.js';
 import { coordinatorBoundary, pendingCoordinatorReset, reserveCoordinatorReset, startCoordinatorReset } from './resets.js';
 import { readRunActivityView } from '../agents/context-limits.js';
-import { assertSkillInvocations } from './skills.js';
+import { assertSkillInvocations } from './skill-invocations.js';
 import { visible } from './requests.js';
 
 const HANDOVER_BYTES = 8 * 1024;
