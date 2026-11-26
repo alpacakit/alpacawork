@@ -19,7 +19,7 @@ A report contains:
 
 Each kind of action has a fixed name. Text you type and task titles are never included. Size, display speed and failure counts are sent as rough ranges such as `10-19`.
 
-This PC's ID is a random value created when you first choose to send. It is not made from any information about the PC or the user. It is used to count how many days the same PC stays in use, and to let you delete sent data later. If you stop sending and start again, the same ID is used.
+This PC's ID is a random UUID (version 4), made with a cryptographically secure random generator when you first choose to send. It is not made from names, accounts, or any information about the PC or the user. It is used to count how many days the same PC stays in use, and to let you delete sent data later. If you stop sending and start again, or delete what was sent, the same ID is used; it is never made again. It is kept for each user account on the PC (by default in `~/.config/alpacawork/telemetry.json`).
 
 You can see the actual report exactly as it will be sent ("See what is sent" below).
 
@@ -29,18 +29,20 @@ You can see the actual report exactly as it will be sent ("See what is sent" bel
 - Names of files and folders, repository URLs
 - PC and user names, email addresses
 - The text of errors (only how many times errors occurred is counted)
+- AI model names and token counts
+- Anything from other tools' files, such as their settings or credentials (usage data doesn't read them)
 
 IP addresses are not included in reports, and the receiver doesn't keep them. However, Cloudflare, which hosts the receiver, handles them in transit ([Cloudflare's privacy policy](https://www.cloudflare.com/privacypolicy/)).
 
 ## Choosing whether to send, and stopping
 
-You choose in the second step of the setup screen, which a new installation opens on. Nothing is sent until you choose; without a choice (for example in a workspace made before the setup screen existed), nothing is sent and the screen does not ask.
+You choose in the second step of the setup screen, which a new installation opens on. The checkbox there starts checked; uncheck it and nothing is sent. Nothing is sent or counted until you choose; without a choice (for example in a workspace made before the setup screen existed), nothing is sent and the screen does not ask.
 
 To change your choice later, use the "Send usage data to help improve alpacawork" switch in Settings → General. Turning it off stops sending; turning it on starts it. If you only want to stop, you can also run `alpacawork telemetry off`.
 
 When you stop, data not yet sent is deleted without being sent. Data already sent isn't deleted just by stopping ("Delete what was sent" below).
 
-If you update to a version that adds a kind of information to what is sent, or changes how it is sent, a window asks you to agree again when you open the screen, only if you had chosen to send. It lists the fields added. Nothing is sent until you answer. Each kind of information is a field of the report (for example `shape.tasks`); your choice records the fields it covered, so a field added later is always asked about.
+If you update to a version that adds a kind of information to what is sent, or changes how it is sent, a window asks you to agree again when you open the screen, only if you had chosen to send. It lists the fields added. Nothing is sent or counted until you answer. Each kind of information is a field of the report (for example `shape.tasks`); your choice records the fields it covered, so a field added later is always asked about. A new kind of action, or a new value of an existing field (such as a new kind of AI), is counted without asking again.
 
 In some cases, such as when alpacawork runs in CI or inside a container, nothing is sent even if you chose to send. The switch then can't be changed, and the reason appears under it.
 
@@ -51,7 +53,7 @@ Nothing is sent either while the environment variable `ALPACAWORK_TELEMETRY_DISA
 - Screen: "See what's sent" under the usage data switch in Settings → General shows today's draft, reports waiting to send, and the requests made by alpacawork. Each attempt records the destination, the exact content, and the result if known, including retries and in-app deletion requests.
 - Command: `alpacawork telemetry show` shows the same history and the list of names and values that can be sent.
 
-Each attempt is recorded before sending and remains on this PC for 13 weeks, even if you turn sending off or ask to delete data at the receiver. If the response could not be recorded, the history shows that the outcome is unknown.
+Each attempt is recorded before sending, and only what was recorded is sent, so the history shows exactly what left the PC. The record remains on this PC for 13 weeks, even if you turn sending off or ask to delete data at the receiver. If the response could not be recorded, the history shows that the outcome is unknown.
 
 The `alpacawork telemetry` commands work only when a person types them in a terminal on this PC.
 

@@ -19,7 +19,7 @@ Um relatório contém:
 
 Cada tipo de ação tem um nome fixo. O texto que você digita e os títulos das tarefas nunca passam a fazer parte de um nome. O tamanho, a velocidade de exibição e as contagens de falhas são enviados em faixas aproximadas, como `10-19`.
 
-O ID deste PC é um valor aleatório criado quando você escolhe enviar pela primeira vez. Ele não é gerado a partir de nenhuma informação sobre o PC ou o usuário. É usado para contar por quantos dias o mesmo PC continua em uso e para permitir que você exclua depois os dados enviados. Se você parar de enviar e começar de novo, o mesmo ID é usado.
+O ID deste PC é um UUID aleatório (versão 4), criado com um gerador aleatório criptograficamente seguro quando você escolhe enviar pela primeira vez. Ele não é gerado a partir de nomes, contas ou qualquer informação sobre o PC ou o usuário. É usado para contar por quantos dias o mesmo PC continua em uso e para permitir que você exclua depois os dados enviados. Se você parar de enviar e começar de novo, ou excluir o que foi enviado, o mesmo ID é usado; ele nunca é criado de novo. Ele é guardado para cada conta de usuário do PC (por padrão, em `~/.config/alpacawork/telemetry.json`).
 
 Você pode ver o relatório real exatamente como ele será enviado (“Ver o que é enviado”, abaixo).
 
@@ -29,29 +29,31 @@ Você pode ver o relatório real exatamente como ele será enviado (“Ver o que
 - Nomes de arquivos e pastas, URLs de repositórios
 - Nomes do PC e do usuário, endereços de e-mail
 - O texto dos erros (só se conta quantas vezes ocorreram erros)
+- Nomes de modelos de IA e quantidades de tokens
+- Nada dos arquivos de outras ferramentas, como suas configurações ou credenciais (os dados de uso não os leem)
 
 Os endereços IP não são incluídos nos relatórios, e o serviço de recebimento não os armazena. No entanto, a Cloudflare, que hospeda o serviço de recebimento, lida com eles durante a transmissão ([política de privacidade da Cloudflare](https://www.cloudflare.com/pt-br/privacypolicy/)).
 
 ## Escolher se quer enviar e parar o envio
 
-Você escolhe na segunda etapa da tela de configuração inicial, que é onde uma nova instalação abre. Nada é enviado até você escolher; sem uma escolha (por exemplo, em um espaço de trabalho criado antes de a tela de configuração inicial existir), nada é enviado e a tela não pergunta.
+Você escolhe na segunda etapa da tela de configuração inicial, que é onde uma nova instalação abre. A caixa dessa etapa começa marcada; desmarque-a e nada é enviado. Nada é enviado nem contado até você escolher; sem uma escolha (por exemplo, em um espaço de trabalho criado antes de a tela de configuração inicial existir), nada é enviado e a tela não pergunta.
 
 Para mudar sua escolha depois, use a chave “Enviar dados de uso para ajudar a melhorar o alpacawork”, em Configurações → Geral. Desativá-la interrompe o envio; ativá-la o inicia. Se você só quer parar, também pode executar `alpacawork telemetry off`.
 
 Quando você para, os dados ainda não enviados são excluídos sem serem enviados. Os dados já enviados não são excluídos só por você parar (“Excluir o que foi enviado”, abaixo).
 
-Se você atualizar para uma versão que acrescenta um tipo de informação ao que é enviado, ou muda como é enviado, uma janela pede sua concordância de novo ao abrir a tela, somente se você tinha escolhido enviar. A janela lista os campos acrescentados. Nada é enviado até você responder. Cada tipo de informação é um campo do relatório (por exemplo `shape.tasks`); sua escolha registra os campos que cobria, então um campo acrescentado depois sempre é perguntado.
+Se você atualizar para uma versão que acrescenta um tipo de informação ao que é enviado, ou muda como é enviado, uma janela pede sua concordância de novo ao abrir a tela, somente se você tinha escolhido enviar. A janela lista os campos acrescentados. Nada é enviado nem contado até você responder. Cada tipo de informação é um campo do relatório (por exemplo `shape.tasks`); sua escolha registra os campos que cobria, então um campo acrescentado depois sempre é perguntado. Um novo tipo de ação, ou um novo valor de um campo existente (como um novo tipo de IA), é contado sem perguntar de novo.
 
 Em alguns casos, como quando o alpacawork é executado em CI ou dentro de um contêiner, nada é enviado mesmo que você tenha escolhido enviar. Nesses casos, a chave não pode ser alterada, e o motivo aparece abaixo dela.
 
-Também não é enviado nada enquanto a variável de ambiente `ALPACAWORK_TELEMETRY_DISABLED=1` ou `DO_NOT_TRACK=1` estiver definida para o servidor. No entanto, quando você a remove, todos os dados não enviados dos últimos 7 dias são enviados. Além disso, variáveis de ambiente definidas em um terminal não chegam ao servidor que inicia automaticamente. Para garantir que o envio pare, use a tela ou o comando.
+Também não é enviado nada enquanto a variável de ambiente `ALPACAWORK_TELEMETRY_DISABLED=1` ou `DO_NOT_TRACK=1` estiver definida para o servidor. Os dias em que o servidor funcionou com ela também não são enviados depois que você a remove. Além disso, variáveis de ambiente definidas em um terminal não chegam ao servidor que inicia automaticamente. Para garantir que o envio pare, use a tela ou o comando.
 
 ## Ver o que é enviado
 
 - Tela: “Ver o que é enviado”, abaixo da chave de dados de uso em Configurações → Geral, mostra o rascunho de hoje, os relatórios pendentes e as solicitações feitas pelo alpacawork. Cada tentativa mostra o destino, o conteúdo exato e o resultado, quando conhecido. Isso inclui novas tentativas de envio e solicitações de exclusão feitas pelo aplicativo.
 - Comando: `alpacawork telemetry show` mostra o mesmo histórico e a lista de nomes e valores que podem ser enviados.
 
-Cada tentativa é registrada antes do envio e fica neste PC por 13 semanas, mesmo que você desative o envio ou solicite a exclusão de dados no receptor. Se a resposta não pôde ser registrada, o histórico mostra que o resultado é desconhecido.
+Cada tentativa é registrada antes do envio, e só o que foi registrado é enviado, então o histórico mostra exatamente o que saiu do PC. O registro fica neste PC por 13 semanas, mesmo que você desative o envio ou solicite a exclusão de dados no receptor. Se a resposta não pôde ser registrada, o histórico mostra que o resultado é desconhecido.
 
 Os comandos `alpacawork telemetry` só funcionam quando uma pessoa os digita em um terminal neste PC.
 

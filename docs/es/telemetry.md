@@ -19,7 +19,7 @@ El informe incluye lo siguiente:
 
 Los tipos de operación son solo nombres definidos de antemano. Nunca se incluye el texto que escribiste ni los títulos de las tareas. La escala, la velocidad de la pantalla y el número de fallos se envían como rangos aproximados, como `10-19`.
 
-El ID de este PC es un valor aleatorio que se crea la primera vez que eliges enviar, y no se genera a partir de datos del PC ni del usuario. Sirve para contar cuántos días seguidos se usa el mismo PC y para poder eliminar después los datos enviados. Si dejas de enviar y vuelves a empezar, se usa el mismo ID.
+El ID de este PC es un UUID aleatorio (versión 4), creado con un generador aleatorio criptográficamente seguro la primera vez que eliges enviar. No se genera a partir de nombres, cuentas ni datos del PC o del usuario. Sirve para contar cuántos días seguidos se usa el mismo PC y para poder eliminar después los datos enviados. Si dejas de enviar y vuelves a empezar, o eliminas los datos enviados, se usa el mismo ID; nunca se vuelve a crear. Se guarda para cada cuenta de usuario del PC (por defecto, en `~/.config/alpacawork/telemetry.json`).
 
 Puedes ver el informe real tal como se enviará (“Ver lo que se envía”, más abajo).
 
@@ -29,29 +29,31 @@ Puedes ver el informe real tal como se enviará (“Ver lo que se envía”, má
 - Los nombres de archivos y carpetas, y las URL de los repositorios
 - Los nombres del PC y del usuario, y las direcciones de correo electrónico
 - El texto de los errores (solo se cuenta cuántas veces ocurren)
+- Los nombres de los modelos de IA y la cantidad de tokens
+- Nada de los archivos de otras herramientas, como su configuración o sus credenciales (los datos de uso no los leen)
 
 Las direcciones IP no se incluyen en el informe, y el receptor tampoco las conserva. Sin embargo, Cloudflare, que aloja el receptor, las procesa en tránsito ([política de privacidad de Cloudflare](https://www.cloudflare.com/es-es/privacypolicy/)).
 
 ## Elegir si enviar o dejar de enviar
 
-Se elige en el segundo paso de la pantalla de configuración que se abre al instalarlo por primera vez. No se envía nada hasta que eliges. Si no has elegido (por ejemplo, en un espacio de trabajo creado antes de que existiera la pantalla de configuración), tampoco se envía nada, y la pantalla no te lo pregunta.
+Se elige en el segundo paso de la pantalla de configuración que se abre al instalarlo por primera vez. La casilla de ese paso empieza marcada; si la desmarcas, no se envía nada. No se envía ni se cuenta nada hasta que eliges. Si no has elegido (por ejemplo, en un espacio de trabajo creado antes de que existiera la pantalla de configuración), tampoco se envía nada, y la pantalla no te lo pregunta.
 
 Para cambiarlo después, usa el interruptor “Enviar datos de uso para ayudar a mejorar alpacawork”, en Configuración → General. Al desactivarlo se deja de enviar, y al activarlo se empieza. Si solo quieres dejar de enviar, también puedes usar el comando `alpacawork telemetry off`.
 
 Al dejar de enviar, lo que aún no se ha enviado se elimina sin enviarlo. Lo ya enviado no se elimina solo por dejar de enviar (“Eliminar los datos enviados”, más abajo).
 
-Si actualizas a una versión que añade un tipo de información a lo que se envía, o cambia la forma de enviarlo, una ventana vuelve a pedir tu consentimiento al abrir la pantalla, solo en los PC que habían elegido enviar. La ventana muestra los campos añadidos. No se envía nada hasta que respondes. Cada tipo de información es un campo del informe (por ejemplo `shape.tasks`); tu elección registra los campos que cubría, así que siempre se pregunta por un campo añadido después.
+Si actualizas a una versión que añade un tipo de información a lo que se envía, o cambia la forma de enviarlo, una ventana vuelve a pedir tu consentimiento al abrir la pantalla, solo en los PC que habían elegido enviar. La ventana muestra los campos añadidos. No se envía ni se cuenta nada hasta que respondes. Cada tipo de información es un campo del informe (por ejemplo `shape.tasks`); tu elección registra los campos que cubría, así que siempre se pregunta por un campo añadido después. Un nuevo tipo de acción, o un nuevo valor de un campo existente (como un nuevo tipo de IA), se cuenta sin volver a preguntar.
 
 En algunos casos no se envía aunque hayas elegido enviar, como cuando se ejecuta en CI o en un contenedor. Entonces no puedes usar el interruptor, y el motivo aparece debajo.
 
-Mientras la variable de entorno `ALPACAWORK_TELEMETRY_DISABLED=1` o `DO_NOT_TRACK=1` esté configurada en el servidor, tampoco se envía. Pero, al quitarla, se envía lo de los últimos 7 días que aún no se haya enviado. Además, las variables de entorno que configuras en una terminal no llegan al servidor que se inicia automáticamente. Para dejar de enviar con seguridad, usa la pantalla o el comando.
+Mientras la variable de entorno `ALPACAWORK_TELEMETRY_DISABLED=1` o `DO_NOT_TRACK=1` esté configurada en el servidor, tampoco se envía. Los días en que el servidor funcionó con ella tampoco se envían después de quitarla. Además, las variables de entorno que configuras en una terminal no llegan al servidor que se inicia automáticamente. Para dejar de enviar con seguridad, usa la pantalla o el comando.
 
 ## Ver lo que se envía
 
 - Pantalla: con “Ver lo que se envía”, debajo del interruptor de datos de uso en Configuración → General, puedes ver el borrador de hoy, los informes pendientes y las solicitudes que hace alpacawork. Cada intento muestra el destino, el contenido exacto y el resultado si se conoce. También aparecen los reintentos y las solicitudes de eliminación hechas desde la aplicación.
 - Comando: `alpacawork telemetry show` muestra el mismo historial y la lista de nombres y valores que se pueden enviar.
 
-Cada intento se registra antes del envío y queda en este PC durante 13 semanas, aunque desactives el envío o solicites la eliminación de datos en el receptor. Si no se pudo registrar la respuesta, el historial muestra que se desconoce el resultado.
+Cada intento se registra antes del envío, y solo se envía lo registrado, así que el historial muestra exactamente lo que salió del PC. El registro queda en este PC durante 13 semanas, aunque desactives el envío o solicites la eliminación de datos en el receptor. Si no se pudo registrar la respuesta, el historial muestra que se desconoce el resultado.
 
 Los comandos `alpacawork telemetry` solo funcionan cuando una persona los escribe desde una terminal en este PC.
 
