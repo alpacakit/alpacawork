@@ -14,9 +14,6 @@ import { createContext, memo, useCallback, useContext, useEffect, useLayoutEffec
 import { followReference, noteReaderRows, readerHistoryPosition } from "@/state/reader-position";
 import { usePeopleFor, useTaskHistory } from "@/data/queries";
 import { useTranslation } from "react-i18next";
-import { contextPercent } from "@alpacawork/contract/agent-context";
-import { percentText, UsageRing } from "@/components/ui/usage-ring";
-import { limitTone } from "@/domain/limits";
 import type { TFunction } from "i18next";
 import { compareHistoryEvents, inGallery, reportEmbed } from "@alpacawork/contract";
 import type { ControlRunDTO, HistoryCrewDTO, TaskHistoryDTO } from "@alpacawork/contract/control";
@@ -53,6 +50,7 @@ import { StepList, WorkLine, stepCount, useRunSteps } from "@/features/people/Ru
 import { tookSteps } from "@alpacawork/contract/run";
 import { AgentLabel } from "@/features/people/AgentLabel";
 import { ContextMeter } from "@/features/people/ContextMeter";
+import { ConversationDetail, conversationLine } from "./ConversationDetail";
 import { sameForFeed } from "@/domain/people";
 import { reportCopy, taskCopy, textClip } from "@/lib/clipboard";
 import { finishedBy } from "@/domain/tasks";
@@ -84,7 +82,7 @@ const isCard = (report: ReportEvent) => !!(report.mark || report.userQuestion) &
  * it holds the Coordinator's words (the record with its reply, or the reply's row), not where its body is your words.
  */
 /** A row says more open than who it was between: its words, a note, a question, causes, its repeats. Only such a row stands open unpressed. */
-const saysMore = (row: HistoryRow) => Boolean(row.report.description || row.report.note || row.report.question || row.report.causes?.length || row.sameTitle || row.older.length);
+const saysMore = (row: HistoryRow) => Boolean(row.report.conversation || row.report.description || row.report.note || row.report.question || row.report.causes?.length || row.sameTitle || row.older.length);
 const canStand = (report: ReportEvent) => !report.mark && !report.changed && !!report.description
   && ((report.by !== undefined && (isInstruction(report) || report.kind === "answer")) || report.kind === "dialogue" && (report.replyTo !== undefined || report.description !== report.text));
 
@@ -574,7 +572,7 @@ function RecordRow({ row, line, open, onToggle, task, gallery, onFollow }: Recor
   const names = useContext(AgentNames);
   const words = same ? t("reportFeed.row.sameTitle")
     : report.carriedOn ? carriedOnWords(report, names, t, ui)
-    : report.conversation ? conversationFill(report.conversation, t, locale)
+    : report.conversation ? conversationLine(report.conversation, t, locale)
     : report.changed ? t("reportFeed.row.changedTo", { state: stateWords(report.changed) })
     : report.cause ? causeReason(report.cause, ui)
     : report.kind === "error" || report.kind === "run_end" ? t(`history.reasons.${report.text}`, { defaultValue: t("history.reasons.unknown") })
@@ -586,7 +584,8 @@ function RecordRow({ row, line, open, onToggle, task, gallery, onFollow }: Recor
   const wordsLine = useRef<HTMLSpanElement>(null);
   const leaving = useHandOver(bodySaysIt, wordsLine);
   // The head's words are its open heading only where they stay in it; handed over, they are always the closed line.
-  const heading = open && !handsOver;
+  // A conversation row's line is its figures or its reason, never a title: it keeps its weight open as closed.
+  const heading = open && !handsOver && !report.conversation;
   const yours = !!report.userQuestion || outcome?.kind === "waiting" && outcome.on === "you";
   // Closed, weight says what is yours to do; open, the words are the head of what is read under them.
   const strong = yours || report.kind === "urgent";
@@ -622,7 +621,8 @@ function RecordRow({ row, line, open, onToggle, task, gallery, onFollow }: Recor
       {same && <p className="mb-2 text-base font-medium">{report.text}</p>}
       {row.asks && <p data-row-asks className="mb-2 text-xs text-muted">{t("reportFeed.row.answerTo", { question: row.asks })}</p>}
       {report.quote && report.kind === "answer" && <p className="mb-2">{report.quote}</p>}
-      {report.note?.description
+      {report.conversation ? <ConversationDetail conversation={report.conversation} t={t} language={locale} />
+        : report.note?.description
         ? <><MarkdownBody text={report.note.description} task={task} onFollow={onFollow} gallery={gallery} galleryReportKey={`${report.key}:note`} />
           <BodyCopy text={() => reportCopy(report.note!.title, report.note!.description)} beside={received} />
           <RowFold label={t("reportFeed.sentBody")}><RecordBody report={report} {...context} /></RowFold></>
@@ -880,26 +880,6 @@ const CONVERSATION_MARK = { new: { kind: "anew", tone: "conversation" }, compact
   Record<NonNullable<ReportEvent["conversation"]>["change"], NonNullable<ReportEvent["mark"]>>;
 /** A conversation row is named by what happened to the conversation; its rail mark is the same picture. */
 const CONVERSATION_KIND = { new: "conversationNew", compacted: "compacted" } as const;
-/**
- * A compaction's row shows how full the conversation was before and after, as the context meter draws it (the ring and
- * its figure); nothing when its agent did not say. A new conversation's row says in one sentence why it started anew,
- * when the Run that started it says.
- */
-function conversationFill(conversation: NonNullable<ReportEvent["conversation"]>, t: TFunction<"reader">, language: string): ReactNode {
-  if (conversation.change === "new") return !conversation.because ? null : conversation.because === "handoff"
-    ? conversation.report ? t("reportFeed.row.newBecause.handoffAt", { report: conversation.report }) : t("reportFeed.row.newBecause.handoff")
-    : t(`reportFeed.row.newBecause.${conversation.because}`);
-  const { beforeTokens: before, afterTokens: after, windowTokens: window } = conversation;
-  if (before === null || after === null) return null;
-  const figure = (tokens: number) => {
-    const percent = window ? contextPercent({ usedTokens: tokens, windowTokens: window })! : null;
-    const shown = percent !== null ? percentText(percent)
-      : new Intl.NumberFormat(language, { notation: "compact", maximumFractionDigits: 1 }).format(tokens);
-    return <span className="inline-flex items-center gap-1 tabular-nums">
-      <UsageRing percent={percent ?? 0} tone={limitTone(percent ?? 0)} open={percent === null} className="size-3.5" />{shown}</span>;
-  };
-  return <span data-compaction-fill className="inline-flex items-center gap-1.5"><span className="text-soft">{t("reportFeed.row.compactedFill")}</span>{figure(before)}<Icon name="arrowRight" className="size-3.5 text-muted" />{figure(after)}</span>;
-}
 const carriedOnAgent = (agent: NonNullable<ReportEvent["recipient"]>) =>
   runAgentLabel({ agent: agent.profileKey, modelId: agent.modelId ?? null, effort: agent.effort ?? null });
 function carriedOnWords(report: ReportEvent, names: readonly ModelName[], t: TFunction<"reader">, ui: TFunction<"ui">): string {

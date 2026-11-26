@@ -138,3 +138,25 @@ test('a compaction whose agent does not say the fill after it is kept with the n
   activity.finish(folder, 'done');
   assert.deepEqual(told.at(-1), { beforeTokens: 60_000, afterTokens: null }, 'a Run that ends first keeps it without the fill after');
 });
+
+test('each agent that says how full its conversation was before a compaction is taken at its word', () => {
+  // Claude and Copilot say both figures; pi says the one before, and the next fill read gives the one after.
+  assert.deepEqual(adapters.claude.context({ type: 'system', subtype: 'compact_boundary', compact_metadata: { trigger: 'auto', pre_tokens: 610_000, post_tokens: 140_000 } }),
+    { usedTokens: 140_000, compacted: true, compactedFrom: 610_000 });
+  assert.deepEqual(copilotContext('session.compaction_complete', { success: true, preCompactionTokens: 500_000, postCompactionTokens: 90_000 }),
+    { usedTokens: 90_000, compacted: true, compactedFrom: 500_000 });
+  assert.deepEqual(piContext({ type: 'compaction_end', result: { summary: 'Kept', tokensBefore: 120_000 }, aborted: false }),
+    { usedTokens: null, compacted: true, compactedFrom: 120_000 });
+});
+
+test('the fill an agent says it had before a compaction stands over the last fill read', t => {
+  const folder = mkdtempSync(join(tmpdir(), 'agent-compaction-before-'));
+  t.after(() => rmSync(folder, { recursive: true, force: true }));
+  const told: { beforeTokens: number | null; afterTokens: number | null }[] = [];
+  const activity = new OutputActivityReader(adapters.claude, undefined, () => {}, fill => told.push(fill));
+  const rows = [{ type: 'assistant', parent_tool_use_id: null, message: { content: [], usage: { input_tokens: 100_000, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, output_tokens: 0 } } },
+    { type: 'system', subtype: 'compact_boundary', compact_metadata: { trigger: 'auto', pre_tokens: 610_000, post_tokens: 140_000 } }];
+  for (const row of rows) appendFileSync(join(folder, 'stdout.log'), JSON.stringify(row) + '\n');
+  activity.poll(folder);
+  assert.deepEqual(told, [{ beforeTokens: 610_000, afterTokens: 140_000 }]);
+});

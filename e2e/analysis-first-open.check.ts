@@ -85,6 +85,29 @@ test("the analysis does not slide sideways when everything on it fits", async ({
   await noSidewaysSlide(page, runtime.origin);
 });
 
+test("the share card keeps room at its foot for the coordinator only where the coordinator stands over it", async ({ page, runtime }) => {
+  await page.setViewportSize({ width: 1024, height: 640 });
+  await page.goto(`${runtime.origin}/?face=analysis`);
+  await page.getByRole("button", { name: "Make a card", exact: true }).click();
+  const card = page.getByRole("dialog", { name: "Make a card" });
+  await expect(card.getByRole("button", { name: "Share on X" })).toBeVisible();
+  await settleMotion(page, card);
+  // The coordinator's input at the screen's foot, the card, and the card's scrolling part.
+  const edges = () => page.evaluate(() => {
+    const box = (selector: string) => document.querySelector(selector)!.getBoundingClientRect();
+    const input = box("[data-coordinator-card] :is([data-coordinator-capsule], [data-composer-frame])");
+    const panel = box("[data-analysis-panel]"), body = box("[data-analysis-layer]");
+    return { inputRight: input.right, inputTop: input.top, panelLeft: panel.left, panelBottom: panel.bottom, bodyBottom: body.bottom };
+  });
+  // Beside it: what scrolls goes on to the card's foot.
+  const beside = await edges();
+  expect(beside.inputRight).toBeLessThanOrEqual(beside.panelLeft);
+  expect(beside.panelBottom - beside.bodyBottom).toBeLessThan(24);
+  // Too narrow for both: the input stands over the card, and what scrolls ends above it.
+  await page.setViewportSize({ width: 760, height: 540 });
+  await expect.poll(async () => { const over = await edges(); return over.inputRight > over.panelLeft && over.bodyBottom <= over.inputTop; }).toBe(true);
+});
+
 test.describe("phone", () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 

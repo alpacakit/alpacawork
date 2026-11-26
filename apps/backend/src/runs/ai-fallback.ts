@@ -1,14 +1,15 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { isDeepStrictEqual } from 'node:util';
-import { aiStackSchema, type AiRow } from '@alpacawork/contract';
+import { aiStackSchema, type AiRow, type Selection } from '@alpacawork/contract';
 import { DELIVERY_STATE } from '@alpacawork/contract/control';
 import { PROTOCOL_LIMITS } from '@alpacawork/contract/run-protocol';
 import { runNumber, type RuntimeRunRecord } from '@alpacawork/contract/run';
 import { Problem } from '@alpacawork/core';
 import { compareRequestOrder, currentRequestRun, type RunStore, type RunTransaction } from '@alpacawork/runs';
-import { assignedSession, coordinatorLaunchSnapshot, launchSnapshot, readAgentsSettings, type AgentsSettings } from '../agents-settings.js';
+import { assignedSession, coordinatorLaunchSnapshot, launchIfResumable, launchSnapshot, readAgentsSettings, type AgentsSettings } from '../agents-settings.js';
 import { messageCarrier } from '../coordinator/messages.js';
 import { queuedStart } from './execution-control.js';
+import { appliedSessionValues, isConversationAgent } from './session-continuation.js';
 import type { EndObservation } from './result-observation.js';
 
 /** Previous answers come from the conversation's stored Requests and Runs, never a provider transcript. */
@@ -61,7 +62,14 @@ function nextPrompt(db: DatabaseSync, run: RuntimeRunRecord, cause: string): str
 }
 
 type Rebinding = { run: RuntimeRunRecord; rows?: AiRow[]; prompt?: string };
-type SessionBinding = AiRow & { adapter: string; session: RuntimeRunRecord['session'] };
+type SessionBinding = AiRow & { adapter: string; session: RuntimeRunRecord['session']; applied: Selection };
+
+function taskBindingLaunch(config: AgentsSettings, path: string, row: AiRow, previous: SessionBinding | undefined) {
+  const resume = previous
+    ? launchIfResumable(() => launchSnapshot(config, row.agent, 'resume', path, row.values, previous)) : undefined;
+  return resume ? { snapshot: resume, resumes: true } :
+    { snapshot: launchSnapshot(config, row.agent, 'start', path, row.values), resumes: false };
+}
 
 /** Rebind an undelivered continuation, preserving the next request's own admissible selections. */
 function rebindPending(db: DatabaseSync, config: AgentsSettings, lane: readonly RuntimeRunRecord[], previous: RuntimeRunRecord,
@@ -78,33 +86,39 @@ function rebindPending(db: DatabaseSync, config: AgentsSettings, lane: readonly 
     const saved = typeof row.ai_stack === 'string' ? aiStackSchema.parse(JSON.parse(row.ai_stack)) : undefined;
     const position = saved?.findIndex(item => item.agent === predecessor.agent && isDeepStrictEqual(item.values, predecessor.values)) ?? -1;
     const matched = run.agent === predecessor.agent && isDeepStrictEqual(run.launch.values, predecessor.values);
-    const canResume = matched || row.ai_explicit !== 1 && position >= 0;
-    const mode = canResume ? 'resume' : 'start';
-    const { agent } = canResume ? predecessor : run;
-    const values = canResume ? predecessor.values : run.launch.values;
-    const history = canResume ? { adapter: predecessor.adapter, values } : undefined;
+    const adoptsRow = !matched && row.ai_explicit !== 1 && position >= 0;
+    const { agent } = adoptsRow ? predecessor : run;
+    const values = adoptsRow ? predecessor.values : run.launch.values;
+    const sameAgent = isConversationAgent(predecessor, agent);
+    const coordinatorResumes = matched || adoptsRow;
     let updated: RuntimeRunRecord;
+    let resumes: boolean;
     try {
       const path = run.launch.path;
-      const coordinator = run.role === 'coordinator' ? coordinatorLaunchSnapshot(config, agent, mode, path, values, history) : undefined;
-      const snapshot = coordinator ?? launchSnapshot(config, agent, mode, path, values, history);
+      const coordinator = run.role === 'coordinator' ? coordinatorLaunchSnapshot(config, agent,
+        coordinatorResumes ? 'resume' : 'start', path, values, coordinatorResumes ? predecessor : undefined) : undefined;
+      const prepared = coordinator ? { snapshot: coordinator, resumes: coordinatorResumes } :
+        taskBindingLaunch(config, path, { agent, values }, sameAgent ? predecessor : undefined);
+      const { snapshot } = prepared;
       if (snapshot.ok === false) return undefined;
       const launch = snapshot.launch;
-      const session = canResume ? predecessor.session : assignedSession(launch, agent);
-      const resumes = canResume ? run.resumes : null;
-      // A Run that was to resume its conversation starts one anew with the other AI.
-      const newConversation = !canResume && run.resumes !== null ? { because: 'another_ai' as const } : run.newConversation;
+      resumes = prepared.resumes;
+      const session = resumes ? predecessor.session : assignedSession(launch, agent);
+      const resumeFrom = resumes ? run.resumes : null;
+      const newConversation = resumes ? run.newConversation :
+        { because: run.role !== 'coordinator' && sameAgent ? 'unresumable' as const : 'another_ai' as const };
       const opened = newConversation ? { newConversation } : {};
       updated = run.role === 'coordinator' && coordinator?.ok ?
-        { ...run, agent, launch, resumes, session, ...opened, restartArgv: coordinator.restartArgv } :
-        { ...run, agent, launch, resumes, session, ...opened };
-      changed.set(run.id, { agent, values: launch.values, session, adapter: launch.adapter });
+        { ...run, agent, launch, resumes: resumeFrom, session, ...opened, restartArgv: coordinator.restartArgv } :
+        { ...run, agent, launch, resumes: resumeFrom, session, ...opened };
+      changed.set(run.id, { agent, values: launch.values, session, adapter: launch.adapter,
+        applied: appliedSessionValues(launch, resumes ? predecessor : undefined) });
     } catch (error) {
       if (error instanceof Problem) return undefined;
       throw error;
     }
-    const prompt = !canResume && typeof row.prompt === 'string' ? newConversationText(row.prompt) : undefined;
-    bindings.push({ run: updated, rows: !matched && canResume ? saved?.slice(position) : undefined, prompt });
+    const prompt = !resumes && typeof row.prompt === 'string' ? newConversationText(row.prompt) : undefined;
+    bindings.push({ run: updated, rows: adoptsRow ? saved?.slice(position) : undefined, prompt });
   }
   return bindings;
 }
@@ -150,7 +164,8 @@ export function reserveAiFallback(store: RunStore, tx: RunTransaction, run: Runt
     if (prepared.ok === false || !isDeepStrictEqual(prepared.launch.values, values)) continue;
     const launch = prepared.launch;
     const session = assignedSession(launch, agent);
-    const bindings = rebindPending(db, settings.config, lane, run, { agent, values, session, adapter: launch.adapter });
+    const bindings = rebindPending(db, settings.config, lane, run, { agent, values, session, adapter: launch.adapter,
+      applied: appliedSessionValues(launch) });
     if (!bindings) continue;
     const common = { requestId: run.requestId, attempt, firstRunId: run.firstRunId ?? run.id, agent, resumes: null,
       session, cwd: run.cwd, launch };

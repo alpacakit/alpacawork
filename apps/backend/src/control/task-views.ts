@@ -16,6 +16,7 @@ import { instructionKinds } from './instruction-labels.js';
 import { Problem, PROBLEM_CODE, hasCode, type ProblemReason } from '@alpacawork/core';
 import { PROJECT_SUMMARY, questionText, reviewTarget, sumUsage, type ControlRunDTO } from '@alpacawork/contract';
 import { taskGetRunOf } from '@alpacawork/contract/control';
+import { contextPercent } from '@alpacawork/contract/agent-context';
 import { taskFileRoute } from '@alpacawork/contract/task-file-route';
 import type { ReadRunRecord } from '@alpacawork/contract/run';
 import { isRunEnded, compareRunIds, hasContinuableSession } from '@alpacawork/contract/run';
@@ -252,7 +253,9 @@ export function taskView(source: ControlSource, id: string, options: TaskViewOpt
   const agents = candidates.map(item => {
     const headRunId = source.conversationHeads.get(item.id) ?? null;
     const head = headRunId ? source.runRecords.find(run => run.id === headRunId) : undefined;
-    return { ...item, headRunId, context: head ? lastContext(source, head) : null,
+    const context = head ? lastContext(source, head) : null;
+    const usedPercent = context ? contextPercent(context) : null;
+    return { ...item, headRunId, context: context && usedPercent !== null ? { ...context, usedPercent } : context,
       ...(source.errors.some(error => error.code === PROBLEM_CODE.runsUnavailable) || headRunId && !head
         ? {} : { previousValues: head && hasContinuableSession(head) ? { ...head.launch.values } : null }) };
   });

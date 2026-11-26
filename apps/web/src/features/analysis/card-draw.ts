@@ -38,7 +38,7 @@ const fit = (look: CardLook, words: string, size: number, weight: number, room: 
  */
 function figure(look: CardLook, x: number, y: number, size: number, item: Figure, room: number) {
   const base = item.words ? Math.round(size * 0.72) : size, weight = item.words ? 700 : 750;
-  // The unit beside the lead number is a third of it, so the number leads and a broad glyph (億) does not compete.
+  // The unit beside the lead number is a third of it, so the number leads and a broad glyph (M) does not compete.
   const unitShare = base >= 120 ? 0.36 : 0.6, gap = item.words || item.spaced ? 0.25 : 0.05;
   const wide = look.measure(item.value, base, weight) + (item.unit ? base * gap + look.measure(item.unit, base * unitShare, 700) : 0);
   const at = Math.max(1, Math.floor(Math.min(base, base * room / Math.max(1, wide))));

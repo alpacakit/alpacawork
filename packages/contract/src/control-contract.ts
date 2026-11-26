@@ -214,6 +214,12 @@ export const placementSchema = z.object({
   context: contextViewSchema.nullable().optional(),
   runtime: placementRuntimeSchema,
 }).strict().superRefine(checkPlacement);
+export const taskGetPlacementSchema = placementSchema.safeExtend({
+  context: contextViewSchema.extend({
+    /** Percentage of the context window used, present when both token counts are known. */
+    usedPercent: z.number().min(0).max(100).optional(),
+  }).nullable().optional(),
+});
 export const controlRunSchema = z.object({
   id: runIdSchema, taskId: taskIdSchema, placementId: z.string().min(1),
   agent: agentNameSchema, modelId: z.string().min(1).nullable(), effort: z.string().min(1).nullable(),

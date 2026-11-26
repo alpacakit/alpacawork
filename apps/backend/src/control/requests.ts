@@ -11,13 +11,12 @@ import { aiStackPrefixSchema, currentReview, reviewTarget, startsEstimateRound }
 import { DELIVERY_STATE, requestReceiptSchema, requestInputSchema,
   type RequestInput, type RequestReceipt } from '@alpacawork/contract/control';
 import type { RunRecord } from '@alpacawork/contract/run';
-import type { Selection } from '@alpacawork/contract/agent-settings';
 import { RunStore, admittedDelivery, automaticLimitReached, checkRunLimits, isUnfinished,
   type NewRequest, type RunTransaction, type StoredRequest } from '@alpacawork/runs';
 import { ControlStore } from '@alpacawork/db';
 import { speaksForUser, type ChildObservations, type InstructionLabel, type TaskActor } from '@alpacawork/raw';
 import { FileWriter } from '../raw/storage.js';
-import { assignedSession, launchSnapshot, readAgentsSettings } from '../agents-settings.js';
+import { assignedSession, launchIfResumable, readAgentsSettings } from '../agents-settings.js';
 import { TaskRepository, TaskTree, controlSnapshotView } from './task-store.js';
 import { readTaskContexts } from './task-context.js';
 import { TaskTransition } from './task-transition.js';
@@ -30,11 +29,10 @@ import { requestCompaction } from '../runs/compactions.js';
 import { verifyRequestAttachments } from './task-files.js';
 import { launchDirectory } from './launch-directory.js';
 import { launchCwd } from './project-settings.js';
-import { aiRows, freezeAiStack, standingAiRows } from '../ai-stack.js';
+import { freezeAiStack } from '../ai-stack.js';
 import { initialPlacementValues } from './placement-launch-values.js';
+import { requestAiPlan } from './request-ai.js';
 import { deliverable, isServerRequest, seatFactsOf, seatSettings, seatSourceOf } from './wake.js';
-
-const selectedInstructionRule = 'Launch choices come with an instruction; a field left out keeps the conversation\'s value';
 
 /**
  * Who sends a Request, and what its admission does besides. A person, the coordinator or a placement's Run sends as
@@ -130,7 +128,7 @@ export class RequestService {
     const cwd = input.cwd === undefined ? undefined : launchDirectory(this.root, input.cwd);
     // Whoever may instruct the placement chooses what its next Run starts with; automatic returns do not.
     if (input.selected !== undefined && context.purpose === 'return_continuation')
-      throw new Problem(PROBLEM_CODE.invalidInput, selectedInstructionRule, undefined,
+      throw new Problem(PROBLEM_CODE.invalidInput, 'Launch choices come with an instruction or a send-back', undefined,
         { reason: { kind: 'launch_choices_come_with_instruction_or_send_back_field_left_out_keeps_conversation_s_value' } });
     const author = authorOf(context, input.targetPlacementId);
     const fromPlacement = context.purpose !== 'return_continuation' && context.actor.kind === 'placement';
@@ -206,35 +204,24 @@ export class RequestService {
             refuse(PROBLEM_CODE.notResumable, 'There is no conversation to compact yet', { kind: 'compaction_without_conversation' });
           if (input.expectedHeadRunId !== undefined && input.expectedHeadRunId !== (head?.id ?? null))
             refuse(PROBLEM_CODE.conflict, 'Conversation head changed; reload before retrying', { kind: 'conversation_head_changed' });
-          const storedPrefix = db.prepare('SELECT ai_prefix FROM placements WHERE id=?').get(placement.id)?.ai_prefix;
-          const placementPrefix = typeof storedPrefix === 'string' ? aiStackPrefixSchema.parse(JSON.parse(storedPrefix)) : undefined;
-          const plan = aiRows(settings.config, input.aiStack, placementPrefix);
-          const requestedRow = input.aiStack?.[0] && input.aiStack[0] !== 'stop' ? plan[0] : undefined;
-          // An explicit starting row chooses the AI by itself. A stop before the placement's fallbacks leaves only its
-          // configured start and any already adopted valid row relevant to the current session.
-          const standing = !input.aiStack ? plan : requestedRow ? [] : standingAiRows(settings.config, placementPrefix);
-          const placedRow = !requestedRow && placementPrefix?.[0] && placementPrefix[0] !== 'stop' &&
-            standing[0]?.agent === placement.profileKey ? standing[0] : undefined;
-          const matchesHead = (row: { agent: string; values: Selection }) =>
-            !!head && row.agent === head.agent && isDeepStrictEqual(row.values, head.launch.values);
-          const standingPosition = standing.findIndex(matchesHead);
-          const headRequest = head ? db.prepare('SELECT ai_explicit,ai_prefix FROM requests WHERE id=?').get(head.requestId) : undefined;
-          const requestScopedHead = !!head && standingPosition < 0 &&
-            (typeof headRequest?.ai_prefix === 'string' || head.attempt !== undefined ||
-              headRequest?.ai_explicit === 1 && settings.config.aiStack !== undefined);
-          const carriesFallback = standingPosition >= 0 && runs.some(run => run.attempt !== undefined && matchesHead({ agent: run.agent, values: run.launch.values }) &&
-            (run.id === head?.id || run.started_at !== null));
-          const keepHead = !!head && !requestScopedHead && (input.mode !== 'new' || carriesFallback);
-          const profile = requestedRow?.agent ?? (keepHead ? head.agent : placedRow?.agent ?? placement.profileKey);
+          const plan = requestAiPlan(db, settings.config, placement, input, head, runs);
+          const profile = plan.agent;
           const setting = settings.config.agents[profile];
-          const resumable = setting?.enabled !== false && !!setting;
-          const explicitChange = !!head && (requestedRow ? !matchesHead(requestedRow) : requestScopedHead);
           const handoff = placement.responsible ? handoffForRequest({ store: store!, runs: tx }, task, placement.id, runs) : null;
-          const { mode, rotationFrom, unsentNew, newConversation } = conversationForRequest({ rotation, handoff, resolvesUnknown,
-            anotherAi: explicitChange, explicit: input.compact ? 'continue' : input.mode, head, direct: !fromPlacement, resumable });
+          const facts: Parameters<typeof conversationForRequest>[0] = { rotation, handoff, resolvesUnknown,
+            agent: plan.continuationAgent, explicit: input.compact ? 'continue' : input.mode, head, direct: !fromPlacement,
+            resume: setting && setting.enabled !== false ? 'available' : 'profile_unavailable' };
+          const preferred = conversationForRequest(facts);
+          const snapshotLaunch = (mode: 'new' | 'continue') => plan.snapshot(mode, process.env.PATH ?? '',
+            () => initialPlacementValues(task.meta.log, placement.id, tx.runsOfTask(task.id), input.mode));
+          const automaticReset = context.purpose === 'return_continuation' && plan.returnsToConfiguredValues &&
+            preferred.mode === 'continue';
+          const preparedResume = automaticReset ? launchIfResumable(() => snapshotLaunch('continue')) : undefined;
+          const { mode, rotationFrom, unsentNew, newConversation } = automaticReset && !preparedResume
+            ? conversationForRequest({ ...facts, resume: 'choices_unavailable' }) : preferred;
           // A compaction continues the same conversation, as the sender asked or as the seat's last report prepared it.
           // Asked for, it follows the rules of a new conversation: it is no reservation for after a Run ends.
-          if (input.compact && (mode !== 'continue' || explicitChange))
+          if (input.compact && mode !== 'continue')
             refuse(PROBLEM_CODE.notResumable, 'This request starts a new conversation (another AI, or an unsent new one), so there is nothing to compact',
               { kind: 'compaction_with_new_conversation' });
           if (input.compact && runs.some(isUnfinished))
@@ -276,16 +263,7 @@ export class RequestService {
             { kind: 'request_would_exceed_allowed_child_run_depth_continue_existing_run_or_simplify_delegation_chain' });
           if (limit) refuse(limit, 'This parent has reached its total child-run limit; completed children still count toward this limit.',
             { kind: 'parent_has_reached_total_child_run_limit_completed_children_still_count_toward_limit' });
-          const placedValues = placedRow?.agent === profile ? placedRow.values : undefined;
-          const rowValues = requestedRow?.values ?? (carriesFallback ? head!.launch.values : placedValues) ??
-            settings.config.aiStack?.find(row => row.agent === profile)?.values;
-          const launchMode = mode === 'continue' ? 'resume' : 'start';
-          const launch = launchSnapshot(settings.config, profile, launchMode,
-            process.env.PATH ?? '', input.selected ?? {},
-            mode === 'continue' ? head?.launch : {
-              values: { ...rowValues, ...(!requestedRow
-                ? initialPlacementValues(task.meta.log, placement.id, tx.runsOfTask(task.id), input.mode) : undefined) },
-            });
+          const launch = preparedResume ?? snapshotLaunch(mode);
           if (!launch.ok) refuse(launch.code === 'not_resumable' ? PROBLEM_CODE.notResumable : PROBLEM_CODE.responsibleMissing, 'Responsible profile cannot launch this request', { kind: 'responsible_profile_cannot_launch_request' });
           const session = mode === 'continue' ? head!.session : assignedSession(launch.launch, profile);
           const deliveryState = admittedDelivery(mode === 'continue', session, runs);
@@ -302,7 +280,7 @@ export class RequestService {
             aiExplicit: input.aiStack !== undefined || Object.keys(input.selected ?? {}).length > 0,
             aiPrefix: input.aiStack,
             aiStack: freezeAiStack(settings.config, { agent: profile, values: launch.launch.values },
-              carriesFallback && !input.aiStack ? plan.slice(standingPosition + 1) : plan),
+              plan.following),
             answersQuestion: context.purpose === 'instruction' ? context.answersQuestion?.id ?? null : null };
           // Project inherited work before inserting this admission: its Request has no Run/caller witness yet.
           const openObligations = placement.responsible ? lifecycle.openObligations(task.id) : undefined;

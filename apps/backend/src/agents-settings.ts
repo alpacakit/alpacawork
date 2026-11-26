@@ -118,24 +118,34 @@ function admission<T>(run: () => T): T {
   }
 }
 /** Share lookup and the tagged admission; coordinator restart facts stay in its own preparation. */
+type PreviousLaunch = Pick<RunRecord['launch'], 'adapter' | 'values'> & { selectionBase?: Selection; applied?: Selection };
 function snapshotAdmission(config: AgentsSettings, agentName: string, mode: 'start' | 'resume', path: string,
-  selected: Selection, previous?: Pick<RunRecord['launch'], 'adapter' | 'values'> | { values: Selection }) {
+  selected: Selection, previous?: PreviousLaunch | { values: Selection }) {
   const setting = Object.hasOwn(config.agents, agentName) ? config.agents[agentName] : undefined;
   if (!setting) return { ok: false as const, code: 'not_found' as const };
   let input: LaunchAdmission;
   if (mode === 'resume') {
     if (!previous || !('adapter' in previous)) return { ok: false as const, code: 'not_resumable' as const };
-    input = { mode, path, explicit: selected, previous: { adapter: previous.adapter, values: previous.values } };
+    input = { mode, path, explicit: selected, previous: { adapter: previous.adapter, values: previous.values, applied: previous.applied },
+      ...(previous.selectionBase === undefined ? {} : { initial: previous.selectionBase }) };
   } else input = { mode, path, explicit: selected, ...(previous ? { initial: previous.values } : {}) };
   return { ok: true as const, compiled: compileAgentSetting(agentName, setting), input };
 }
 export function launchSnapshot(config: AgentsSettings, agentName: string, mode: 'start' | 'resume', path: string,
-  selected: Selection = {}, previous?: Pick<RunRecord['launch'], 'adapter' | 'values'> | { values: Selection }) {
+  selected: Selection = {}, previous?: PreviousLaunch | { values: Selection }) {
   const prepared = snapshotAdmission(config, agentName, mode, path, selected, previous);
   if (prepared.ok === false) return prepared;
   const result = admission(() => prepareAgentLaunch(prepared.compiled, prepared.input));
   pinCommand(result.launch, prepared.compiled.setting);
   return { ok: true as const, launch: result.launch };
+}
+/** An automatic launch may start fresh when the resume command cannot carry the planned choices. */
+export function launchIfResumable<T>(prepare: () => T): T | undefined {
+  try { return prepare(); }
+  catch (error) {
+    if (!(error instanceof Problem) || error.reason?.kind !== 'selection_required' ||
+        !error.reason.problems.every(problem => problem.recovery === 'new_conversation')) throw error;
+  }
 }
 /** Freezes the coordinator's start alternative on resume. */
 export function coordinatorLaunchSnapshot(config: AgentsSettings, agentName: string, mode: 'start' | 'resume', path: string,

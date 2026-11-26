@@ -247,7 +247,7 @@ export class RunEventImporter {
       if (state !== 'not_sent' && input.state === 'reserved') throw new Error('Receipt before transfer attempt');
       recordReceipt(db, tx, input, state, event.payload, run.id, event.occurredAt);
     } else if (event.type === 'compacted') {
-      recordCompaction(tx, this.store.root, run, event.payload, event.occurredAt);
+      recordCompaction(tx, db, this.store.root, run, event.payload, event.occurredAt);
     } else if (event.type === 'completed') {
       const observation = event.payload;
       const outcome = { state: observation.outcome.state, ...(observation.outcome.reason ? { reason: observation.outcome.reason } : {}) } as Outcome;

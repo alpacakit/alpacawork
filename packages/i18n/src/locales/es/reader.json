@@ -76,8 +76,8 @@
     "after": "Espera a",
     "analysis": "Análisis",
     "context": "Contexto",
-    "count_many": "{{count}}",
     "count_one": "{{count}}",
+    "count_many": "{{count}}",
     "count_other": "{{count}}",
     "dependencies": "Dependencias",
     "files": "Archivos",
@@ -313,6 +313,17 @@
       "others_many": "{{count}} más abajo",
       "others_other": "{{count}} más abajo"
     },
+    "conversation": {
+      "byAgent": "La conversación se alargó y la IA la compactó por sí misma.",
+      "byRequest": "Se compactó antes de la siguiente instrucción, según lo solicitado.",
+      "fillAfter": "La IA no dio el contexto de antes.",
+      "fillBefore": "El contexto era {{before}} antes. La IA no dio la cifra de después.",
+      "fillUnknown": "La IA no dio el contexto de antes ni de después.",
+      "keeps": "Compactar reemplaza lo hablado por un resumen y sigue en la misma conversación. Algunos detalles pueden quedar fuera del resumen.",
+      "source": "Laban et al. (2025)",
+      "startsFrom": "No se arrastra lo hablado: la conversación empieza desde los registros de la tarea (lo que muestra su pestaña Contexto).",
+      "why": "Cuando un intercambio repartido en muchos turnos pierde el rumbo, empezar de nuevo con lo establecido suele dar mejores resultados, según un estudio."
+    },
     "copy": "Copiar",
     "empty": {
       "unassigned": {
@@ -348,7 +359,10 @@
       },
       "cause": "Recibido: “{{title}}” · {{at}}",
       "changedTo": "Cambió a {{state}}",
-      "compactedFill": "Contexto",
+      "compactedCut": "−{{tokens}} tokens",
+      "compactedFill": "Contexto de la conversación",
+      "compactedFrom": "Contexto antes de compactar",
+      "compactedTo": "Contexto después de compactar",
       "end": {
         "again": {
           "question": "Se hizo de nuevo la misma pregunta",
@@ -381,7 +395,7 @@
         "comment": "Nota",
         "compacted": "Compactación",
         "confirm": "Revisión",
-        "conversationNew": "Conversación nueva",
+        "conversationNew": "Nuevo comienzo",
         "dialogue": "Mensaje",
         "done": "Completada",
         "error": "Detención",
@@ -396,11 +410,11 @@
         "withdrawn": "Retirada"
       },
       "newBecause": {
-        "another_ai": "Empezó de nuevo porque el trabajo pasó a otra IA",
-        "asked": "La solicitud pidió una conversación nueva",
-        "handoff": "El responsable pasó a una conversación nueva en una pausa del trabajo",
-        "handoffAt": "El responsable pasó a una conversación nueva después de «{{report}}»",
-        "unresumable": "Empezó de nuevo porque no se pudo retomar la conversación anterior"
+        "another_ai": "Nuevo comienzo, porque el trabajo pasó a otra IA",
+        "asked": "La solicitud pidió un nuevo comienzo",
+        "handoff": "El responsable dio a la conversación un nuevo comienzo en una pausa del trabajo",
+        "handoffAt": "El responsable dio a la conversación un nuevo comienzo después de «{{report}}»",
+        "unresumable": "Nuevo comienzo, porque no se pudo retomar la conversación anterior"
       },
       "older": "Mostrar anteriores ({{n}})",
       "openTask": "Abrir “{{task}}”",
