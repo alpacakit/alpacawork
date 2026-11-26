@@ -4,7 +4,8 @@ import { valuesText, historyEventKey, joinBusy, reportDisplay, reportMark, runSp
 import { isFinished } from '@alpacawork/contract/branch';
 import { closedPageScope, finishedBy, standingRecord, type ControlRunDTO, type PlacementDTO, type TaskPageRowDTO, type TaskTimelineAxisDTO,
   type TaskProjectedPageDTO, type TaskProjectedSearchDTO, type TaskTimelineLaneDTO, type TaskTimelineLanesDTO, type TaskProjectedTimelineAxisDTO,
-  type ProjectionResourceKind, type ProjectionVersion, type ControlTreeDTO, type TaskRowDTO } from '@alpacawork/contract/control';
+  type ProjectionResourceKind, type ProjectionVersion, type ControlTreeDTO, type TaskRowDTO, type TaskTimelineLanePatchDTO,
+  diffTimelineItems } from '@alpacawork/contract/control';
 import { byMoved } from '@alpacawork/contract/moved';
 import { PROBLEM_CODE, Problem } from '@alpacawork/core';
 import { lineWithText, matchesTaskText } from '../control/task-views.js';
@@ -71,7 +72,7 @@ export function timelineAxis(state: PageReadState, lanes: readonly string[]): Ta
 }
 
 type TimelineEvent = TaskTimelineLaneDTO['events'][number];
-type TimelineLane = Omit<TaskTimelineLaneDTO, 'row' | 'generation' | 'sourcePv'>;
+type TimelineLane = Omit<TaskTimelineLaneDTO, 'row' | 'generation' | 'sourcePv' | 'token'>;
 /**
  * Each requested row's strip over [from, to], made from that row's own subtree alone (its History events, log entries,
  * Runs and placements, and the ended Runs below it), so a row's strip changes only with what changes in its subtree.
@@ -148,16 +149,28 @@ const lanesVersion = (frame: PublishedFrame, lanes: readonly string[]) =>
   `${frame.generation}:${Math.max(0, ...lanes.map(id => frame.requiredPv.timeline[id] ?? 0))}`;
 const invalidLanes = () => new Problem(PROBLEM_CODE.invalidInput, 'Invalid visible Task IDs', undefined, { reason: { kind: 'invalid_visible_task_ids' } });
 
+/** Strips kept to send changes against: per row, and in all. */
+const SENT_PER_ROW = 4, SENT_STRIPS = 512;
 /** Server-prepared time and search resources expire only when their rows' or scope's requiredPv changes. */
 export class ProjectedPages {
   private generation: string | undefined;
   private readonly axes = new Map<string, { lanes: string[]; version: string; value: TaskProjectedTimelineAxisDTO }>();
   private readonly lanes = new Map<string, { lane: string; version: string; value: TaskTimelineLaneDTO }>();
   private readonly searches = new Map<string, { scope: string; version: string; sourcePv: ProjectionVersion; ids: string[] }>();
+  /**
+   * The strips sent lately, by their token, so a reader holding one is sent only what changed since (any range): a few
+   * per row, as a row's strip can be large and each reader holds the newest it was sent; an older one is sent whole.
+   */
+  private readonly sent = new Map<string, TaskTimelineLaneDTO>();
+  private readonly sentOf = new Map<string, string[]>();
+  /** Strips made so far: with the generation's head, a token no strip of an earlier server run can have had. */
+  private made = 0;
+  /** Each item's text, written once per item object: a strip kept for its version shares its items with the next. */
+  private readonly texts = new WeakMap<object, string>();
 
   private invalidate(frame: PublishedFrame): void {
     if (this.generation !== frame.generation) {
-      this.axes.clear(); this.lanes.clear(); this.searches.clear(); this.generation = frame.generation;
+      this.axes.clear(); this.lanes.clear(); this.searches.clear(); this.sent.clear(); this.sentOf.clear(); this.generation = frame.generation;
     }
     for (const [key, cached] of this.axes)
       if (cached.version !== lanesVersion(frame, cached.lanes)) this.axes.delete(key);
@@ -283,11 +296,32 @@ export class ProjectedPages {
     return value;
   }
 
+  private keep(value: TaskTimelineLaneDTO): void {
+    const tokens = (this.sentOf.get(value.lane) ?? []).filter(token => token !== value.token && this.sent.has(token));
+    tokens.push(value.token);
+    for (const token of tokens.splice(0, Math.max(0, tokens.length - SENT_PER_ROW))) this.sent.delete(token);
+    this.sent.delete(value.token); this.sent.set(value.token, value); this.sentOf.set(value.lane, tokens);
+    while (this.sent.size > SENT_STRIPS) this.sent.delete(this.sent.keys().next().value!);
+  }
+
+  /** What `value` changes in the strip the reader holds (`base`), or the whole strip when that one is no longer kept. */
+  private patch(value: TaskTimelineLaneDTO, base: string | undefined): TaskTimelineLanePatchDTO {
+    const held = base === undefined ? undefined : this.sent.get(base);
+    if (!held || held.lane !== value.lane) return { ...value, base: null, drop: [] };
+    const text = (item: object) => {
+      let written = this.texts.get(item);
+      if (written === undefined) { written = JSON.stringify(item); this.texts.set(item, written); }
+      return written;
+    };
+    return { ...value, ...diffTimelineItems(held, value, text), base: held.token };
+  }
+
   /**
-   * Rows' strips over one range, each whole and as new as its own version: a strip already made for its row's current
-   * version is not made again. Rows are answered in the order asked until about `limit` events (at least one row).
+   * Rows' strips over one range, each as new as its own version: a strip already made for its row's current version is
+   * not made again. A row whose held strip is named in `bases` is sent only what changed from it. Rows are answered in
+   * the order asked until about `limit` events (at least one row).
    */
-  timeline(frame: PublishedFrame, input: { lanes: string; from: string; to: string; limit?: number }): TaskTimelineLanesDTO {
+  timeline(frame: PublishedFrame, input: { lanes: string; bases?: string; from: string; to: string; limit?: number }): TaskTimelineLanesDTO {
     this.invalidate(frame);
     const asked = [...new Set(input.lanes.split(',').filter(Boolean))];
     if (asked.length > 200) throw invalidLanes();
@@ -304,18 +338,24 @@ export class ProjectedPages {
     if (missing.length) for (const [id, lane] of timelineLanes(this.readState(frame, missing), missing, from, to)) {
       // The row as the list holds it: what its current state is drawn from (a held row has derived facts, readsRow). Its
       // chronology is the strip's own events.
-      const value = { ...lane, row: liveRow(frame.derived(id)!.row), generation: frame.generation, sourcePv: frame.pv };
+      const value = { ...lane, row: liveRow(frame.derived(id)!.row), token: `${frame.generation.slice(0, 8)}.${(++this.made).toString(36)}`, generation: frame.generation, sourcePv: frame.pv };
       values.set(id, value);
       this.lanes.set(key(id), { lane: id, version: lanesVersion(frame, [id]), value });
     }
     while (this.lanes.size > 512) this.lanes.delete(this.lanes.keys().next().value!);
-    const answered: TaskTimelineLaneDTO[] = [], budget = input.limit ?? 2000;
+    const bases = new Map((input.bases ?? '').split(',').flatMap(item => {
+      const at = item.indexOf(':');
+      return at > 0 ? [[item.slice(0, at), item.slice(at + 1)] as const] : [];
+    }));
+    const answered: TaskTimelineLanePatchDTO[] = [], budget = input.limit ?? 2000;
     let events = 0;
     for (const id of asked) {
       const value = values.get(id);
       if (!value) continue;
-      if (answered.length && events + value.events.length > budget) break;
-      answered.push(value); events += value.events.length;
+      const sent = this.patch(value, bases.get(id));
+      if (answered.length && events + sent.events.length > budget) break;
+      answered.push(sent); events += sent.events.length;
+      this.keep(value);
     }
     return { lanes: answered, gone: asked.filter(id => !values.has(id)) };
   }

@@ -4,7 +4,7 @@ import { analysisTraceViewSchema, analysisUnitListSchema, analysisUnitValuesSche
 /** The most pages of one timeline read at once (500 spans and marks each). */
 const TRACE_PAGES = 20;
 import { AGENT_CHECK_READ_MS, foldersSchema, hostEpisodeMinutesSchema, hostStatusSchema, noticeStateResponseSchema, personalSettingsResponseSchema, placeHomeRows, pushDevicesSchema, pushKeySchema, serverSettingsSchema } from "@alpacawork/contract";
-import { projectedIndexSchema, controlRunFilesSchema, projectShelfSchema, taskProjectedPageSchema, taskRowFields, taskProjectedSearchSchema, taskShelvedDetailSchema, taskProjectedTimelineAxisSchema, taskTimelineLanesSchema, type ProjectedIndexDTO, type ControlTaskHeadDTO, type IndexPatchDTO, type TaskRowDTO, type TaskProjectedViewDTO } from "@alpacawork/contract/control";
+import { projectedIndexSchema, controlRunFilesSchema, projectShelfSchema, taskProjectedPageSchema, taskRowFields, taskProjectedSearchSchema, taskShelvedDetailSchema, taskProjectedTimelineAxisSchema, taskTimelineLanesSchema, applyTimelinePatch, type TaskTimelineLaneDTO, type ProjectedIndexDTO, type ControlTaskHeadDTO, type IndexPatchDTO, type TaskRowDTO, type TaskProjectedViewDTO } from "@alpacawork/contract/control";
 import { CancelledError, QueryObserver, infiniteQueryOptions, keepPreviousData, queryOptions, type QueryClient, type QueryKey, type Query as QueryRecord } from "@tanstack/react-query";
 import { ApiError, createApi, retryOf } from "./client";
 import { readCoordinator, type CoordinatorSnapshot } from './coordinator';
@@ -124,14 +124,16 @@ export const resources = {
   }),
   /**
    * One row's time strip over a range, whole. It is read again only when its row's version moves; the rows asked for
-   * together go out as one read (lane-batch).
+   * together go out as one read (lane-batch), and each names the strip it holds so only what changed is sent.
    */
   timelineLane: (root: string, lane: string, from: string, to: string) => queryOptions({
     queryKey: ["task-timeline", root, "lane", lane, from, to] as const,
-    queryFn: ({ client, queryKey, signal }) => readTimeline(client, queryKey, [lane], () => {
+    queryFn: ({ client, queryKey, signal }) => readTimeline(client, queryKey, [lane], async () => {
       // A strip read again waits out the gap from its last arrival (lane-batch).
-      const held = readQuery(client, queryKey)?.state;
-      return readTimelineLane(lane, from, to, signal, held?.data === undefined ? 0 : held.dataUpdatedAt + LANE_READ_GAP);
+      const own = readQuery(client, queryKey)?.state;
+      const held = heldLane(client, root, lane);
+      const patch = await readTimelineLane(lane, from, to, signal, own?.data === undefined ? 0 : own.dataUpdatedAt + LANE_READ_GAP, held?.token ?? null);
+      return applyTimelinePatch(patch.base === null ? null : held ?? null, patch);
     }),
     // The batch the row is read in retries as one read (lane-batch).
     staleTime: Infinity, retry: false,
@@ -488,6 +490,15 @@ export function admitResourceRead(client: QueryClient, started: ReturnType<typeo
     return false;
   }
   return true;
+}
+/**
+ * The newest strip this list holds for a row, of any range: the server compares item by item, so what another range
+ * adds, leaves out or shows otherwise comes as changes like any other.
+ */
+function heldLane(client: QueryClient, root: string, lane: string): TaskTimelineLaneDTO | undefined {
+  return client.getQueryCache().findAll({ queryKey: ['task-timeline', root, 'lane', lane] })
+    .filter(query => query.queryKey.length === 6 && query.state.data !== undefined)
+    .sort((a, b) => b.state.dataUpdatedAt - a.state.dataUpdatedAt)[0]?.state.data as TaskTimelineLaneDTO | undefined;
 }
 /** A lane selection belongs to the server's current rows. An index can retire it before React replaces the
  * observer's key; refreshing that old selection would ask the server for IDs it has already removed. */

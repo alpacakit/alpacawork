@@ -1,7 +1,7 @@
-import type { TaskTimelineLaneDTO, TaskTimelineLanesDTO } from '@alpacawork/contract/control';
+import type { TaskTimelineLanePatchDTO, TaskTimelineLanesDTO } from '@alpacawork/contract/control';
 import { ApiError, READ_RETRIES, readDeadlinePassed, readRetryDelay } from './client';
 
-type Waiter = { lane: string; signal?: AbortSignal; resolve: (lane: TaskTimelineLaneDTO) => void; reject: (error: unknown) => void };
+type Waiter = { lane: string; base: string | null; signal?: AbortSignal; resolve: (lane: TaskTimelineLanePatchDTO) => void; reject: (error: unknown) => void };
 /** The most rows one answer is asked for (the server's bound). */
 const LANES_PER_READ = 200;
 /**
@@ -24,7 +24,8 @@ function rowError(error: unknown): Error {
 }
 /**
  * Transport only: the rows' strips asked for in the same turn over the same range go out as one read, and each row's
- * own read (its Query) receives its row. A row the answer leaves out for its size is asked again; a row the server does
+ * own read (its Query) receives its row, as what changed from the strip it named as held (`base`) or whole. Rows asked
+ * twice in one read with different held strips are asked without one, as the answer holds one strip per row. A row the answer leaves out for its size is asked again; a row the server does
  * not hold is refused as a missing Task. A read the server stayed silent on is asked again as the same one read (its
  * rows' Queries do not retry on their own), so a busy server is not met with one read per row. Nothing here touches the
  * cache.
@@ -48,7 +49,13 @@ export function laneBatches(request: (path: string, signal: AbortSignal) => Prom
     const controller = new AbortController(), dropped = () => { if (waiters.every(waiter => waiter.signal?.aborted)) controller.abort(); };
     for (const waiter of waiters) waiter.signal?.addEventListener('abort', dropped);
     const lanes = [...new Set(waiters.map(waiter => waiter.lane))];
-    request(`task/timeline?lanes=${encodeURIComponent(lanes.join(','))}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, controller.signal)
+    const bases = lanes.flatMap(lane => {
+      const held = new Set(waiters.filter(waiter => waiter.lane === lane).map(waiter => waiter.base));
+      const [base] = held;
+      return held.size === 1 && base !== null && base !== undefined ? [`${lane}:${base}`] : [];
+    });
+    request(`task/timeline?lanes=${encodeURIComponent(lanes.join(','))}${bases.length ? `&bases=${encodeURIComponent(bases.join(','))}` : ''}`
+      + `&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, controller.signal)
       .then(answer => {
         const answered = new Map(answer.lanes.map(lane => [lane.lane, lane])), gone = new Set(answer.gone);
         // Only an answer holding a row asked for moves on: one holding none of them is asked no further.
@@ -89,9 +96,9 @@ export function laneBatches(request: (path: string, signal: AbortSignal) => Prom
   };
   // `notBefore`: a row read again goes no earlier (LANE_READ_GAP); what changes meanwhile comes in the one read. The wait
   // is never longer than the gap, so a clock that was ahead when a strip arrived cannot hold its row back.
-  return (lane: string, from: string, to: string, signal?: AbortSignal, notBefore = 0) =>
-    new Promise<TaskTimelineLaneDTO>((resolve, reject) => {
-      const waiter = { lane, signal, resolve, reject }, range = JSON.stringify([from, to]);
+  return (lane: string, from: string, to: string, signal?: AbortSignal, notBefore = 0, base: string | null = null) =>
+    new Promise<TaskTimelineLanePatchDTO>((resolve, reject) => {
+      const waiter = { lane, base, signal, resolve, reject }, range = JSON.stringify([from, to]);
       const wait = Math.min(notBefore - Date.now(), LANE_READ_GAP);
       if (wait > 0) later(range, waiter, wait); else enqueue(range, waiter);
     });

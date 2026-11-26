@@ -181,6 +181,7 @@ const timelineAxis = withAct(defineEntryEndpoint(timelineAxisEntry, {
 }), SCREEN);
 const timelineEntry = defineEntry({ name: 'timeline', parameters: [
   query('lanes', 'Row Task IDs'), query('from', 'Visible range start'), query('to', 'Visible range end'),
+  defineParameter({ name: 'bases', description: 'Strips held, as row:token by commas, answered with what changed', requirement: optional(), codec: codecs.string() }),
   defineParameter({ name: 'limit', description: 'Events per answer up to 2000', requirement: optional(), codec: codecs.string() }),
 ], project: ({ values }) => values });
 const timeline = withAct(defineEntryEndpoint(timelineEntry, {
