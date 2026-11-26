@@ -85,6 +85,15 @@ test('view reads only its own row and ancestor headings, without descendant aggr
   assert.equal(actual.userReviews?.[0]?.summary, 'Ready for review');
 });
 
+test('view row carries what the list row draws and the latest report, not the whole log', () => {
+  const notes = Array.from({ length: 50 }, (_, n) => entry(`Lnote${n}`, n + 2));
+  const records = new FakeRecords([bundle('P1'), bundle('T1', 'P1',
+    [entry('Lstart', 1, { fromState: 'todo', toState: 'doing', title: '' }), ...notes], { baseState: 'doing' })]);
+  const ids = projectedView(frame(records), 'T1').row.stateLog.map(item => item.id);
+  assert.ok(ids.includes('Lstart') && ids.includes('Lnote49'), ids.join());
+  assert.ok(ids.length <= 3, ids.join());
+});
+
 test('activity-file changes leave the opened view unchanged while durable execution status remains available', () => {
   const project = bundle('P1'), own = bundle('T1');
   const raw = record('R10', { task: 'T1', placementId: 'placed', state: 'running', started_at: at(1) });
