@@ -39,7 +39,7 @@ function workingRoom(ceiling: number, widest: number): Room {
  * The panels docked on a computer's page: the reader, a file or diff read beside it (not a still copy leaving), and what
  * a number of the analysis opens (its list of tasks, the share card).
  */
-const DOCKED = 'aside[data-reader-mode="docked"], [data-viewer-place="page"]:not([data-still-copy]), aside[data-analysis-panel]';
+const DOCKED = 'aside[data-reader-mode="docked"], [data-viewer-place="page"]:not([data-still-copy]), aside[data-analysis-panel="docked"]';
 /** The panel standing at the window's right edge (atRight), as laid out (not as a move draws it): its left edge and width. */
 const docked = () => [...document.querySelectorAll<HTMLElement>(DOCKED)];
 const panelAtRight = (panels: HTMLElement[]) => atRight(panels.map(element => ({ element, left: element.offsetLeft })));

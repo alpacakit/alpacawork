@@ -162,7 +162,7 @@ export function Rules({ children }: { children: ReactNode }) {
   return <section aria-labelledby={RULES} className="mt-16 narrow:mt-12">
     {narrow
       ? <details className="group/rules">
-        <DisclosureSummary className="flex min-h-11 items-center gap-2"><Caret className="group-open/rules:rotate-90" />{heading}</DisclosureSummary>
+        <DisclosureSummary className="min-h-11 gap-2"><Caret className="group-open/rules:rotate-90" />{heading}</DisclosureSummary>
         {cards}</details>
       : <>{heading}{cards}</>}
   </section>;

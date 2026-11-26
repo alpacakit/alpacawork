@@ -222,7 +222,7 @@ function PageFrame({ docked, viewing, barHeight, barHidden, children }: {
   if (!held) laidOut.current = width;
   useLayoutEffect(() => {
     // The window being resized: the docked reader, or else what a number of the analysis opens beside its charts.
-    const reader = document.querySelector<HTMLElement>('aside[data-reader-mode="docked"]') ?? document.querySelector<HTMLElement>("aside[data-analysis-panel]");
+    const reader = document.querySelector<HTMLElement>('aside[data-reader-mode="docked"]') ?? document.querySelector<HTMLElement>('aside[data-analysis-panel="docked"]');
     if (held && reader) reader.style.width = `${width}px`;
     return () => { reader?.style.removeProperty("width"); };
   }, [held, width, docked]);

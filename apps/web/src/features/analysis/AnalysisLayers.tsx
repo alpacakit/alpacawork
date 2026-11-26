@@ -88,7 +88,7 @@ export function AnalysisLayers({ place, project, days, mode, canDock }: {
   const depth = analysisSurfaces(place).length;
   const content = useLayerContent();
   const reading = useViewStore(state => readerShows(state) !== null);
-  // Back to the layer under it, where there is one; × and a press behind close them all.
+  // Back to the layer under it, where there is one; × closes them all.
   const back = depth > 1;
   useEffect(() => {
     if (!depth || reading) return;
@@ -141,7 +141,7 @@ export function AnalysisLayers({ place, project, days, mode, canDock }: {
           className="z-(--layer-reader) animate-sheet rounded-t-pane border-t-hairline border-lit-line bg-lit shadow-float">
           {contents}
         </PhoneSheet>
-      : <aside ref={setSurface} role="dialog" data-analysis-panel={narrow ? undefined : ""} data-window={narrow ? undefined : ""} aria-label={label}
+      : <aside ref={setSurface} role="dialog" data-analysis-panel={narrow ? undefined : mode} data-window={narrow ? undefined : ""} aria-label={label}
           onKeyDown={mode === "overlay" ? keepFocusInside : undefined}
           className={narrow ? "fixed inset-x-0 top-[18%] bottom-0 z-(--layer-reader) flex animate-sheet flex-col rounded-t-pane border-hairline border-lit-line bg-lit shadow-float before:absolute before:top-1.5 before:left-1/2 before:-ms-4.5 before:h-1 before:w-9 before:rounded-xs before:bg-lit-line"
             : cn(windowBox(mode === "overlay" ? "overlay" : "docked"), "animate-side")}>

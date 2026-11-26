@@ -112,15 +112,16 @@ test("the share card keeps room at its foot for the coordinator only where the c
     const box = (selector: string) => document.querySelector(selector)!.getBoundingClientRect();
     const input = box("[data-coordinator-card] :is([data-coordinator-capsule], [data-composer-frame])");
     const panel = box("[data-analysis-panel]"), body = box("[data-analysis-layer]");
-    return { inputRight: input.right, inputTop: input.top, panelLeft: panel.left, panelBottom: panel.bottom, bodyBottom: body.bottom };
+    return { inputLeft: input.left, inputRight: input.right, inputTop: input.top, panelLeft: panel.left, panelBottom: panel.bottom, bodyBottom: body.bottom };
   });
   // Beside it: what scrolls goes on to the card's foot.
   const beside = await edges();
   expect(beside.inputRight).toBeLessThanOrEqual(beside.panelLeft);
   expect(beside.panelBottom - beside.bodyBottom).toBeLessThan(24);
-  // Too narrow for both: the input stands over the card, and what scrolls ends above it.
+  // Too narrow for both: the card covers the page as the details window does, the input stands over it at its usual
+  // width (not squeezed left of a window that starts at the screen's edge), and what scrolls ends above it.
   await page.setViewportSize({ width: 760, height: 540 });
-  await expect.poll(async () => { const over = await edges(); return over.inputRight > over.panelLeft && over.bodyBottom <= over.inputTop; }).toBe(true);
+  await expect.poll(async () => { const over = await edges(); return over.inputRight > over.panelLeft && over.inputRight - over.inputLeft > 400 && over.bodyBottom <= over.inputTop; }).toBe(true);
 });
 
 test("the analysis keeps its scrollbar's room beside its charts, not over them", async ({ page, runtime }) => {
