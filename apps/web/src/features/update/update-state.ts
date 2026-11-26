@@ -241,6 +241,9 @@ export function continueUpdate(status: Extract<UpdateStatus, { kind: "attention"
   }, "update continue", () => i18n.t("panels:update.continueFailed"));
 }
 
+/** Whether an update has anything to show: offered, under way, stopped, failed or done (not the latest, not withdrawn). */
+export const updateHasNews = (status: UpdateStatus) => status.kind !== "none" && status.kind !== "withdrawn";
+
 /**
  * What keeps this page from loading the new version by itself once an update is done: unsaved work that only lives in
  * the page (the settings' draft). Drafts of the inputs are kept in the browser and come back after loading again.
@@ -263,9 +266,18 @@ export function useReloadWhenUpdated() {
   const status = useUpdateStatus();
   const held = useReloadHolds((state) => state.holds.size > 0);
   useEffect(() => {
-    if (status.kind === "done" && !held) reloadForVersion();
+    if (status.kind !== "done" || held) return;
+    // Said once by the page that loads: a reload takes away the card that said it.
+    try { sessionStorage.setItem(UPDATED_KEY, status.version); } catch { /* the page still loads; it only says less */ }
+    reloadForVersion();
   }, [status.kind, held]);
+  useEffect(() => {
+    let to: string | null = null;
+    try { to = sessionStorage.getItem(UPDATED_KEY); sessionStorage.removeItem(UPDATED_KEY); } catch { return; }
+    if (to === APP_VERSION) notify.info(i18n.t("panels:update.card.done"), { detail: i18n.t("panels:update.resumeHint") });
+  }, []);
 }
+const UPDATED_KEY = "alpacawork:updated-to";
 
 /** The page is opened again by itself for a new version at most once a minute: a page that still does not match says so. */
 const VERSION_RELOAD_KEY = "alpacawork:reloaded-for-version";

@@ -22,7 +22,6 @@ import { STACK_FIELDS, serverAgentDraftSchema, serverAgentsYaml, stackKind, type
 import { apiError } from "@/data/client";
 import type { WriteBasis } from "@/data/connection";
 import { RegionSkeleton } from "@/components/ui/skeleton";
-import { useReloadHolds } from "@/features/update/update-state";
 import { useAgentStatus, useSaveServerSettings, useServerSettings, useWorkspaceInfo, useWriteDisabled } from "@/data/queries";
 import { intentKey, useWriteIntent } from "@/data/write-intent";
 import { useAnswerGuard } from "@/features/forms/answer-guard";
@@ -149,9 +148,6 @@ export function ServerDraftProvider({ show, focusCoordinatorAi, children }: {
   const capture = useAnswerGuard(form);
   const [reloading, setReloading] = useState(false);
   const { isSubmitting, isDirty } = useFormState({ control: form.control });
-  // Unsaved settings hold the page from loading a new version by itself.
-  const holdReload = useReloadHolds((state) => state.hold);
-  useEffect(() => { holdReload("server-settings", isDirty); return () => holdReload("server-settings", false); }, [isDirty]);
   const loaded = server.data && !server.data.error && server.data.hash ? server.data : undefined;
   // The draft starts from a read of config.yaml made for this opening, not a cached one; later reads do not move it.
   useEffect(() => {

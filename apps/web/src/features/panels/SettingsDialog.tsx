@@ -80,7 +80,6 @@ export function SettingsBody({ initialTab = "ai", request, focus, inDialog = fal
   return (
     <ServerDraftProvider show={setTab} focusCoordinatorAi={focus === "coordinatorAi" ? request ?? 0 : undefined}>
     <Tabs value={tab} orientation={narrow ? "horizontal" : "vertical"} onValueChange={(value) => setTab(value as SettingsTab)} className={cn("min-h-0 flex-1", !narrow && "flex-row")}>
-      {/* A computer lists the sections down the side, under the title; a phone keeps them in a row that scrolls sideways. */}
       {/* A computer lists the sections down a tinted side, the dialog's title on its top line; a phone keeps them in a
           row that scrolls sideways, under the title. */}
       <div className={cn("flex-none px-6 narrow:px-4.5", !narrow && "flex w-56 flex-col border-e border-line bg-[color:color-mix(in_oklab,var(--ink)_3%,transparent)] px-3")}>
@@ -89,7 +88,7 @@ export function SettingsBody({ initialTab = "ai", request, focus, inDialog = fal
         <div className={cn("border-b border-line", !narrow && "border-b-0 pt-1")}>
           <TabsList ref={list} className={cn("-mx-1 border-b-0", !narrow && "mx-0 flex-col items-stretch gap-0.5 overflow-visible py-0")}>
             {/* Mapped over TABS itself: i18n:extract reads each `settings.tabs.*` key from this constant list, not a filtered copy. */}
-            {TABS.map((value) => availableTabs.includes(value) && <TabsTrigger key={value} value={value} className={cn("", !narrow && "h-8 justify-start",
+            {TABS.map((value) => availableTabs.includes(value) && <TabsTrigger key={value} value={value} className={cn(!narrow && "h-8 justify-start",
               // Update carries the gear's mark while something there waits for the person.
               value === "update" && updateMarked && "pe-5 before:absolute before:end-2 before:top-1/2 before:size-2 before:-translate-y-1/2 before:rounded-full before:bg-new")}>
               {t(`settings.tabs.${value}`)}

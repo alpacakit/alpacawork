@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { SKILL_OFFERS, type SkillJob } from "@alpacawork/contract";
+import { SKILL_OFFERS, canSelectSkill, type SkillJob } from "@alpacawork/contract";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { FieldError } from "@/components/ui/field";
@@ -50,7 +50,7 @@ export function SkillsSettingsTab() {
             </div>
             <div className="flex flex-col items-end gap-2 narrow:min-h-11 narrow:flex-row-reverse narrow:items-center narrow:justify-between">
               {press || working
-                ? <Button data-skill-action variant={failed ? "outline" : "default"} className="min-w-24 narrow:min-h-11" disabled={busy || !status.installed && !canInstall(status)}
+                ? <Button data-skill-action variant={failed ? "outline" : "default"} className="min-w-24 narrow:min-h-11" disabled={busy || !canSelectSkill(status)}
                   onClick={() => void start([offer.name])}>
                   {working ? <><Icon name="pending" className="size-4 animate-spin [animation-duration:1.4s]" />{state.kind === "absent" ? t("settings.skills.installing") : t("settings.skills.updating")}</>
                     : failed ? t("settings.skills.retry") : state.kind === "absent" ? t("settings.skills.install") : t("settings.skills.update")}</Button>
@@ -68,10 +68,6 @@ export function SkillsSettingsTab() {
   </div>;
 }
 
-/** A skill from GitHub can always be fetched; one that comes with alpacawork only where this release carries it. */
-const canInstall = (status: { available: "yes" | "no" | "unknown"; name: string }) =>
-  SKILL_OFFERS.some(offer => offer.name === status.name && (offer.from.kind === "repo" || status.available === "yes"));
-
 /**
  * A GitHub skill's days, under its action: the day it was installed from (or that it is not known), and the latest in
  * ink when it would bring a change; while the latest is read, or when it could not be, that is said in its place.
@@ -80,7 +76,7 @@ function Versions({ installed, installedAt, latestAt, behind, checking }: {
   installed: boolean; installedAt: string | null; latestAt: string | null; behind: boolean; checking: boolean;
 }) {
   const { t, i18n } = useTranslation("panels");
-  const day = (iso: string) => formatCalendarDate(Date.parse(iso), Date.now(), i18n.language);
+  const day = (iso: string) => t("settings.skills.versions.day", { date: formatCalendarDate(Date.parse(iso), Date.now(), i18n.language) });
   return <span className="flex flex-col items-end gap-0.5 text-xs whitespace-nowrap text-soft tabular-nums narrow:items-start">
     {installed && <span>{t("settings.skills.versions.installed", { version: installedAt ? day(installedAt) : t("settings.skills.versions.unknown") })}</span>}
     {latestAt ? (behind || !installed) && <span className={cn(installed && "font-semibold text-ink")}>{t("settings.skills.versions.latest", { version: day(latestAt) })}</span>

@@ -18,7 +18,7 @@ import { APP_VERSION } from "@/lib/app-version";
 import { cn } from "@/lib/utils";
 import { CopyButton } from "@/components/ui/copy-button";
 import { textClip } from "@/lib/clipboard";
-import { approveStart, continueUpdate, postponeUpdate, pressUpdate, retryUpdate, useReloadHolds, useUpdateLocal, useUpdateStatus, useWaitingForUpdate,
+import { approveStart, continueUpdate, postponeUpdate, pressUpdate, retryUpdate, updateHasNews, useReloadHolds, useUpdateLocal, useUpdateStatus, useWaitingForUpdate,
   type Confirmation, type UpdateStatus } from "./update-state";
 
 const CUT = "ring-2 ring-[color:var(--bg)]";
@@ -142,13 +142,12 @@ export function VersionLine() {
 }
 
 /** Whether the gear's mark asks for the person: the settings then open on Update, where it is read and pressed. */
-const MARKED = new Set<UpdateStatus["kind"]>(["available", "fetching", "waiting", "applying", "recovering", "failed", "attention", "done"]);
 /** Whether Update's place in the settings carries the gear's mark: something there waits for the person. */
-export const useUpdateMarked = () => MARKED.has(useUpdateStatus().kind);
+export const useUpdateMarked = () => updateHasNews(useUpdateStatus());
 /** What pressing the gear opens: Update while its mark shows something, else the section last open. */
 export function useOpenSettingsFromGear() {
-  const kind = useUpdateStatus().kind;
-  return () => useDialogStore.getState().open("settings", MARKED.has(kind) ? { tab: "update" } : undefined);
+  const status = useUpdateStatus();
+  return () => useDialogStore.getState().open("settings", updateHasNews(status) ? { tab: "update" } : undefined);
 }
 
 /**
@@ -163,7 +162,7 @@ export function UpdateSettingsTab() {
   const status = useUpdateStatus();
   const skills = useSkills().data?.skills;
   const bundled = SKILL_OFFERS.filter(offer => offer.from.kind === "bundled" && skills?.find(each => each.name === offer.name)?.installed);
-  const latest = status.kind === "none" || status.kind === "withdrawn";
+  const latest = !updateHasNews(status);
   // The version an update offered or under way brings, whatever its state; none once it is running or none is offered.
   const next = !latest && status.kind !== "done" && "version" in status ? status.version : null;
   const items = [{ name: t("update.page.app"), kind: null },
@@ -240,7 +239,7 @@ const CARD_MARK: Record<Card["tone"], { icon: IconName; className: string }> = {
 export function UpdateCard({ quiet = false }: { quiet?: boolean }) {
   const status = useUpdateStatus(), sending = useUpdateLocal((local) => local.sending);
   const card = useCard(status);
-  if (quiet && (status.kind === "none" || status.kind === "withdrawn")) return null;
+  if (quiet && !updateHasNews(status)) return null;
   const mark = CARD_MARK[card.tone];
   return <section data-update-card={status.kind} role="status" aria-live="polite" className="flex flex-wrap items-start gap-x-4 gap-y-4 rounded-lg border border-line px-5 py-4">
     {/* On a phone the mark stands in the title's line, so the words keep the card's width. */}

@@ -518,22 +518,6 @@
       "save": "保存",
       "yamlExample": "将要保存的内容（YAML）"
     },
-    "skills": {
-      "install": "安装",
-      "installing": "正在安装",
-      "retry": "重试",
-      "update": "更新",
-      "updating": "正在更新",
-      "upToDate": "已是最新",
-      "versions": {
-        "checking": "正在检查最新版本…",
-        "installed": "已安装 {{version}}",
-        "latest": "最新 {{version}}",
-        "unchecked": "无法检查最新版本",
-        "unknown": "未知"
-      },
-      "withApp": "随 alpacawork 一起更新"
-    },
     "status": {
       "dirty": "有未保存的更改",
       "dirtyIn": "有未保存的更改（{{places}}）",
@@ -552,7 +536,24 @@
       "update": "更新"
     },
     "title": "设置",
-    "up": "上移"
+    "up": "上移",
+    "skills": {
+      "install": "安装",
+      "installing": "正在安装",
+      "retry": "重试",
+      "update": "更新",
+      "updating": "正在更新",
+      "upToDate": "已是最新",
+      "versions": {
+        "checking": "正在检查最新版本…",
+        "day": "{{date}} 更新",
+        "installed": "已安装 {{version}}",
+        "latest": "最新 {{version}}",
+        "unchecked": "无法检查最新版本",
+        "unknown": "未知"
+      },
+      "withApp": "随 alpacawork 一起更新"
+    }
   },
   "telemetry": {
     "blocked": {
@@ -571,14 +572,50 @@
     "delete": "删除已发送的数据",
     "deleteBody": "从接收端删除以这台电脑的 ID 发送的数据。不含该 ID 的汇总数据无法删除。",
     "deleteConfirm": "删除",
-    "deleted": "已发送的数据已删除",
     "deleteElsewhere": "请记下这个 ID：即使以后无法打开 alpacawork，也可以在删除页面输入它来删除数据。",
     "deleteFailed": "无法删除已发送的数据。",
     "deleteKeepSending": "如果继续发送，今后的数据仍会以同一个 ID 发送。",
     "deletePage": "删除页面",
     "deleteRequest": "删除已发送数据的请求",
+    "deleted": "已发送的数据已删除",
     "empty": "还没有可发送的使用数据。",
     "example": "例如：{{value}}",
+    "fields": {
+      "schema": "报告格式编号",
+      "id": "仅用于这台电脑使用数据的随机编号",
+      "day": "报告对应的日期（UTC）",
+      "version": "alpacawork 版本",
+      "os": "操作系统类型",
+      "arch": "CPU 类型",
+      "node": "Node 主版本",
+      "events": "每种操作的使用次数",
+      "events_device": "操作来自的设备类型和系统",
+      "events_via": "操作者（界面上的人、AI 或终端）",
+      "events_lang": "界面显示语言",
+      "events_theme": "界面主题",
+      "failures": "AI 工作中途失败的次数（大致范围）",
+      "failures_exit": "AI 进程异常退出的次数",
+      "failures_output": "无法读取 AI 输出的次数",
+      "failures_timeout": "AI 工作超时的次数",
+      "failures_launch": "无法启动 AI 的次数",
+      "failures_conversation_busy": "对话正在使用而无法继续的次数",
+      "failures_attachment_save": "无法保存附件的次数",
+      "failures_manager_lost": "失去对 AI 工作跟踪的次数",
+      "shape": "工作规模（大致范围）",
+      "shape_projects": "项目数",
+      "shape_tasks": "任务数",
+      "shape_open": "未完成的任务数",
+      "shape_depth": "任务树的最大深度",
+      "shape_children": "一个任务下子任务的最大数量",
+      "shape_top": "一个项目下直接任务的最大数量",
+      "shape_turns": "AI 在一个任务上工作的最多次数",
+      "shape_talk": "最长对话（往来次数）",
+      "shape_parallel": "同时运行的 AI 的最大数量",
+      "times": "界面显示所需时间（大致范围）",
+      "times_open": "从打开界面到显示列表（一般、最慢）",
+      "times_task": "从打开任务到显示内容（一般、最慢）",
+      "agents": "使用的 AI 种类（仅 claude、codex 等固定名称）"
+    },
     "fieldsNote": "各字段的含义：",
     "hintAsk": "尚未选择。在你选择之前不会发送任何内容。",
     "hintOn": "发送版本、操作系统、任务的大致数量等使用数据。绝不会发送你的对话、任务内容或文件。",
@@ -588,9 +625,17 @@
     "idLabel": "这台电脑的编号",
     "label": "发送使用数据，帮助改进 alpacawork",
     "more": "了解详情",
-    "nothingSent": "尚未发送任何内容。",
     "notSendingUpcoming": "由于未发送使用统计数据，没有待发送的内容。",
+    "nothingSent": "尚未发送任何内容。",
     "olderReport": "旧格式的报告",
+    "outcome": {
+      "accepted": "已送达",
+      "notAccepted": "未被接受",
+      "noResponse": "无响应（可能已送达）",
+      "deleted": "已删除",
+      "deleteFailed": "未能删除",
+      "deleteNoResponse": "无响应（不确定是否已删除）"
+    },
     "readFailed": "无法读取使用数据的设置。",
     "reaskAdded": "使用数据中增加了以下字段。同意后，将包含这些字段继续发送；不同意则停止发送。在你回答之前不会发送任何内容。",
     "reaskChanged": "发送的内容或发送方式已改变。同意后，将按新方式继续发送；不同意则停止发送。在你回答之前不会发送任何内容。",
@@ -609,28 +654,6 @@
     "waiting": "等待发送（{{time}} 之后发送）"
   },
   "update": {
-    "card": {
-      "afterRuns": "智能体停止后即可安装",
-      "afterRunsBody_other": "此版本需在正在工作的智能体（{{count}} 个）停止后才能安装。把暂停指示发给协调者，它会在合适的时机让它们停下。",
-      "applying": "正在切换到新版本…",
-      "applyingBody": "界面会暂时不可用，结束后恢复。",
-      "attention": "切换中途停止了",
-      "attentionBody": "继续会从停下的地方接着进行。",
-      "available": "有新版本",
-      "done": "已是新版本",
-      "doneBody": "重新加载后此界面也会变为新版本。如果为更新暂停了智能体，请让协调者恢复它们。",
-      "doneHeld": "此页面会重新加载为新版本。由于设置有未保存的更改，正在等待：请保存或放弃后重新加载。",
-      "failed": "更新未完成",
-      "fetching": "正在下载…",
-      "latest": "已是最新版本",
-      "recovering": "正在撤销切换…",
-      "runsActive": "智能体工作期间无法切换",
-      "runsActiveBody_other": "正在工作的智能体（{{count}} 个）完成后即可切换。把暂停指示发给协调者，待它们停下后重试。你可以继续使用当前版本。",
-      "waiting": "正在等待智能体完成工作",
-      "waitingBody_other": "正在工作的智能体（{{count}} 个）完成后会自动切换。",
-      "withdrawn": "{{version}} 已撤回，因此保持当前版本。",
-      "withdrawnBefore": "之前的 {{version}} 已撤回。"
-    },
     "changed": "更新状态已变化。请查看当前显示的内容。",
     "confirm": {
       "body": "切换期间界面会暂时无法使用。",
@@ -652,14 +675,6 @@
       "wait": "结束后界面会恢复。"
     },
     "notes": "版本说明",
-    "page": {
-      "app": "alpacawork 本体",
-      "appSkill": "使用 alpacawork 的技能",
-      "handEdits": "如果你手动改过这些技能，新版本会覆盖你的修改。",
-      "skill": "技能",
-      "targets": "更新会换新的内容",
-      "targetsNote": "alpacawork 及其附带的技能会一起换成新版本，无需逐个更新技能。"
-    },
     "pauseInstruction": "我要把 alpacawork 更新到 {{version}}。请搁置有智能体正在工作的任务，让它们在合适的节点停下（正在运行的先做完手头的事）。",
     "postpone": "推迟",
     "reload": "重新加载",
@@ -670,7 +685,42 @@
       "on": "未能保存开启“下次仍显示此确认”这一更改。请先检查之前的保存，然后在“通用”标签页开启“更新前确认”。"
     },
     "start": "更新",
-    "unavailable": "现在无法开始更新。请稍后重试。"
+    "unavailable": "现在无法开始更新。请稍后重试。",
+    "card": {
+      "afterRuns": "智能体停止后即可安装",
+      "afterRunsBody_other": "此版本需在正在工作的智能体（{{count}} 个）停止后才能安装。把暂停指示发给协调者，它会在合适的时机让它们停下。",
+      "applying": "正在切换到新版本…",
+      "applyingBody": "界面会暂时不可用，结束后恢复。",
+      "attention": "切换中途停止了",
+      "attentionBody": "继续会从停下的地方接着进行。",
+      "available": "有新版本",
+      "done": "已是新版本",
+      "doneBody": "重新加载后此界面也会变为新版本。如果为更新暂停了智能体，请让协调者恢复它们。",
+      "doneHeld": "此页面会重新加载为新版本。由于有尚未保存的输入，正在等待：请保存或放弃后重新加载。",
+      "failed": "更新未完成",
+      "fetching": "正在下载…",
+      "latest": "已是最新版本",
+      "recovering": "正在撤销切换…",
+      "runsActive": "智能体工作期间无法切换",
+      "runsActiveBody_other": "正在工作的智能体（{{count}} 个）完成后即可切换。把暂停指示发给协调者，待它们停下后重试。你可以继续使用当前版本。",
+      "waiting": "正在等待智能体完成工作",
+      "waitingBody_other": "正在工作的智能体（{{count}} 个）完成后会自动切换。",
+      "withdrawn": "{{version}} 已撤回，因此保持当前版本。",
+      "withdrawnBefore": "之前的 {{version}} 已撤回。",
+      "failedBody": {
+        "network": "下载失败。请检查这台电脑的网络连接后重试。你可以继续使用当前版本。",
+        "disk": "这台电脑的磁盘空间不足。请腾出空间后重试。你可以继续使用当前版本。",
+        "other": "请重试。你可以继续使用当前版本。"
+      }
+    },
+    "page": {
+      "app": "alpacawork 本体",
+      "appSkill": "使用 alpacawork 的技能",
+      "handEdits": "如果你手动改过这些技能，新版本会覆盖你的修改。",
+      "skill": "技能",
+      "targets": "更新会换新的内容",
+      "targetsNote": "alpacawork 及其附带的技能会一起换成新版本，无需逐个更新技能。"
+    }
   },
   "workspaceStop": {
     "failed": "无法显示界面。",

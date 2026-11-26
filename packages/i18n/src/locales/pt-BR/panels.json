@@ -532,22 +532,6 @@
       "save": "Salvar",
       "yamlExample": "O que será salvo (YAML)"
     },
-    "skills": {
-      "install": "Instalar",
-      "installing": "Instalando",
-      "retry": "Tentar de novo",
-      "update": "Atualizar",
-      "updating": "Atualizando",
-      "upToDate": "Atualizada",
-      "versions": {
-        "checking": "Verificando a mais recente…",
-        "installed": "Instalada {{version}}",
-        "latest": "Mais recente {{version}}",
-        "unchecked": "Não foi possível verificar a mais recente",
-        "unknown": "desconhecida"
-      },
-      "withApp": "Atualizada com o alpacawork"
-    },
     "status": {
       "dirty": "Alterações não salvas",
       "dirtyIn": "Alterações não salvas ({{places}})",
@@ -566,7 +550,24 @@
       "update": "Atualização"
     },
     "title": "Configurações",
-    "up": "Subir"
+    "up": "Subir",
+    "skills": {
+      "install": "Instalar",
+      "installing": "Instalando",
+      "retry": "Tentar de novo",
+      "update": "Atualizar",
+      "updating": "Atualizando",
+      "upToDate": "Atualizada",
+      "versions": {
+        "checking": "Verificando a mais recente…",
+        "day": "{{date}}",
+        "installed": "Instalada {{version}}",
+        "latest": "Mais recente {{version}}",
+        "unchecked": "Não foi possível verificar a mais recente",
+        "unknown": "desconhecida"
+      },
+      "withApp": "Atualizada com o alpacawork"
+    }
   },
   "telemetry": {
     "blocked": {
@@ -585,14 +586,50 @@
     "delete": "Excluir dados enviados",
     "deleteBody": "Exclui, do local para onde foram enviados, os dados enviados com o ID deste PC. Os totais que não incluem o ID não podem ser excluídos.",
     "deleteConfirm": "Excluir",
-    "deleted": "Dados enviados excluídos",
     "deleteElsewhere": "Anote este ID: mesmo que você não consiga abrir o alpacawork depois, é possível excluir os dados informando-o na página de exclusão.",
     "deleteFailed": "Não foi possível excluir os dados enviados.",
     "deleteKeepSending": "Se você continuar enviando, os dados a partir de agora serão enviados com o mesmo ID.",
     "deletePage": "Página de exclusão",
     "deleteRequest": "Pedido para excluir os dados enviados",
+    "deleted": "Dados enviados excluídos",
     "empty": "Ainda não há dados de uso prontos para envio.",
     "example": "ex.: {{value}}",
+    "fields": {
+      "schema": "Número do formato do relatório",
+      "id": "Um ID aleatório usado só para os dados de uso deste PC",
+      "day": "O dia a que o relatório se refere (UTC)",
+      "version": "Versão do alpacawork",
+      "os": "Tipo de sistema operacional",
+      "arch": "Tipo de CPU",
+      "node": "Versão principal do Node",
+      "events": "Quantas vezes cada tipo de ação foi usado",
+      "events_device": "Tipo de dispositivo e sistema da ação",
+      "events_via": "Quem agiu (uma pessoa na tela, uma IA ou o terminal)",
+      "events_lang": "Idioma da tela",
+      "events_theme": "Tema da tela",
+      "failures": "Quantas vezes o trabalho de uma IA falhou no meio (faixa aproximada)",
+      "failures_exit": "Vezes em que o processo de uma IA terminou de forma anormal",
+      "failures_output": "Vezes em que a saída de uma IA não pôde ser lida",
+      "failures_timeout": "Vezes em que o trabalho de uma IA esgotou o tempo",
+      "failures_launch": "Vezes em que uma IA não pôde ser iniciada",
+      "failures_conversation_busy": "Vezes em que uma conversa estava ocupada e não pôde continuar",
+      "failures_attachment_save": "Vezes em que um anexo não pôde ser salvo",
+      "failures_manager_lost": "Vezes em que o acompanhamento do trabalho de uma IA se perdeu",
+      "shape": "Tamanho do trabalho (faixa aproximada)",
+      "shape_projects": "Número de projetos",
+      "shape_tasks": "Número de tarefas",
+      "shape_open": "Número de tarefas não concluídas",
+      "shape_depth": "Nível mais profundo da árvore de tarefas",
+      "shape_children": "Máximo de subtarefas sob uma tarefa",
+      "shape_top": "Máximo de tarefas diretamente sob um projeto",
+      "shape_turns": "Máximo de vezes que uma IA trabalhou em uma tarefa",
+      "shape_talk": "Conversa mais longa (número de trocas)",
+      "shape_parallel": "Máximo de IAs rodando ao mesmo tempo",
+      "times": "Tempo que a tela levou para aparecer (faixa aproximada)",
+      "times_open": "Da abertura da tela até a lista (típico, mais lento)",
+      "times_task": "Da abertura de uma tarefa até o conteúdo (típico, mais lento)",
+      "agents": "Tipos de IA usados (só nomes fixos como claude e codex)"
+    },
     "fieldsNote": "O que cada campo significa:",
     "hintAsk": "Você ainda não fez sua escolha. Até lá, nenhum dado é enviado.",
     "hintOn": "Envia dados de uso, como a versão, o sistema operacional e a quantidade aproximada de tarefas. Suas conversas, o conteúdo das tarefas e seus arquivos nunca são enviados.",
@@ -602,9 +639,17 @@
     "idLabel": "ID deste PC",
     "label": "Enviar dados de uso para ajudar a melhorar o alpacawork",
     "more": "Saiba mais",
-    "nothingSent": "Nada foi enviado ainda.",
     "notSendingUpcoming": "Nada aguarda envio porque os dados de uso não estão sendo enviados.",
+    "nothingSent": "Nada foi enviado ainda.",
     "olderReport": "Relatório em um formato anterior",
+    "outcome": {
+      "accepted": "Recebido",
+      "notAccepted": "Não aceito",
+      "noResponse": "Sem resposta (pode ter chegado)",
+      "deleted": "Excluído",
+      "deleteFailed": "Não foi possível excluir",
+      "deleteNoResponse": "Sem resposta (não se sabe se foi excluído)"
+    },
     "readFailed": "Não foi possível ler a configuração dos dados de uso.",
     "reaskAdded": "Estes campos foram acrescentados aos dados de uso. Se concordar, o envio continua incluindo-os. Se não, o envio para. Nada é enviado até você responder.",
     "reaskChanged": "O que é enviado ou como é enviado mudou. Se concordar, o envio continua do novo jeito. Se não, o envio para. Nada é enviado até você responder.",
@@ -623,34 +668,6 @@
     "waiting": "Aguardando (enviado após {{time}})"
   },
   "update": {
-    "card": {
-      "afterRuns": "Pode ser instalada quando os agentes pararem",
-      "afterRunsBody_one": "Esta versão só é instalada depois que o agente em execução parar. Envie ao coordenador a instrução de pausa e ele o para em um bom momento.",
-      "afterRunsBody_many": "Esta versão só é instalada depois que os {{count}} agentes em execução pararem. Envie ao coordenador a instrução de pausa e ele os para em um bom momento.",
-      "afterRunsBody_other": "Esta versão só é instalada depois que os {{count}} agentes em execução pararem. Envie ao coordenador a instrução de pausa e ele os para em um bom momento.",
-      "applying": "Trocando para a nova versão…",
-      "applyingBody": "A tela fica indisponível por um momento e volta ao terminar.",
-      "attention": "A troca parou no meio",
-      "attentionBody": "Continuar retoma de onde parou.",
-      "available": "Há uma nova versão",
-      "done": "Você está na nova versão",
-      "doneBody": "Recarregue para levar esta tela a ela também. Se você pausou agentes para a atualização, peça ao coordenador para retomá-los.",
-      "doneHeld": "Esta página recarrega na nova versão. Está aguardando porque as configurações têm mudanças não salvas: salve ou descarte e recarregue.",
-      "failed": "A atualização não foi concluída",
-      "fetching": "Baixando…",
-      "latest": "Você está na versão mais recente",
-      "recovering": "Desfazendo a troca…",
-      "runsActive": "Não é possível trocar enquanto agentes trabalham",
-      "runsActiveBody_one": "Poderá trocar quando o trabalho acabar (há um agente trabalhando). Envie ao coordenador a instrução de pausa e tente de novo quando ele parar. Você pode continuar usando esta versão.",
-      "runsActiveBody_many": "Poderá trocar quando o trabalho acabar (há {{count}} agentes trabalhando). Envie ao coordenador a instrução de pausa e tente de novo quando pararem. Você pode continuar usando esta versão.",
-      "runsActiveBody_other": "Poderá trocar quando o trabalho acabar (há {{count}} agentes trabalhando). Envie ao coordenador a instrução de pausa e tente de novo quando pararem. Você pode continuar usando esta versão.",
-      "waiting": "Aguardando os agentes terminarem",
-      "waitingBody_one": "Troca sozinha quando o agente em execução terminar.",
-      "waitingBody_many": "Troca sozinha quando os {{count}} agentes em execução terminarem.",
-      "waitingBody_other": "Troca sozinha quando os {{count}} agentes em execução terminarem.",
-      "withdrawn": "A {{version}} foi retirada, então esta versão continua.",
-      "withdrawnBefore": "A {{version}} anterior foi retirada."
-    },
     "changed": "O status da atualização mudou. Verifique o que ele mostra agora.",
     "confirm": {
       "body": "A tela fica indisponível por um momento durante a troca de versão.",
@@ -676,14 +693,6 @@
       "wait": "A tela volta quando isso terminar."
     },
     "notes": "Notas da versão",
-    "page": {
-      "app": "alpacawork",
-      "appSkill": "A habilidade para usar o alpacawork",
-      "handEdits": "Se você editou alguma dessas habilidades à mão, a nova versão substitui suas edições.",
-      "skill": "Habilidade",
-      "targets": "O que uma atualização renova",
-      "targetsNote": "O alpacawork e as habilidades que vêm com ele passam juntos para a nova versão. Nenhuma habilidade precisa ser atualizada sozinha."
-    },
     "pauseInstruction": "Estou atualizando o alpacawork para a versão {{version}}. Adie as tarefas que têm agentes trabalhando, para que eles parem em um momento adequado (deixe os que estão em execução terminarem o que estão fazendo).",
     "postpone": "Mais tarde",
     "reload": "Recarregar",
@@ -694,7 +703,48 @@
       "on": "Não foi possível salvar a ativação de “Mostrar esta confirmação na próxima vez”. Verifique o salvamento anterior e ative “Confirmar antes de atualizar” na aba Geral."
     },
     "start": "Atualizar",
-    "unavailable": "Não é possível iniciar a atualização agora. Tente novamente em alguns instantes."
+    "unavailable": "Não é possível iniciar a atualização agora. Tente novamente em alguns instantes.",
+    "card": {
+      "afterRuns": "Pode ser instalada quando os agentes pararem",
+      "afterRunsBody_one": "Esta versão só é instalada depois que o agente em execução parar. Envie ao coordenador a instrução de pausa e ele o para em um bom momento.",
+      "afterRunsBody_many": "Esta versão só é instalada depois que os {{count}} agentes em execução pararem. Envie ao coordenador a instrução de pausa e ele os para em um bom momento.",
+      "afterRunsBody_other": "Esta versão só é instalada depois que os {{count}} agentes em execução pararem. Envie ao coordenador a instrução de pausa e ele os para em um bom momento.",
+      "applying": "Trocando para a nova versão…",
+      "applyingBody": "A tela fica indisponível por um momento e volta ao terminar.",
+      "attention": "A troca parou no meio",
+      "attentionBody": "Continuar retoma de onde parou.",
+      "available": "Há uma nova versão",
+      "done": "Você está na nova versão",
+      "doneBody": "Recarregue para levar esta tela a ela também. Se você pausou agentes para a atualização, peça ao coordenador para retomá-los.",
+      "doneHeld": "Esta página recarrega na nova versão. Está aguardando porque há algo digitado não salvo: salve ou descarte e recarregue.",
+      "failed": "A atualização não foi concluída",
+      "fetching": "Baixando…",
+      "latest": "Você está na versão mais recente",
+      "recovering": "Desfazendo a troca…",
+      "runsActive": "Não é possível trocar enquanto agentes trabalham",
+      "runsActiveBody_one": "Poderá trocar quando o trabalho acabar (há um agente trabalhando). Envie ao coordenador a instrução de pausa e tente de novo quando ele parar. Você pode continuar usando esta versão.",
+      "runsActiveBody_many": "Poderá trocar quando o trabalho acabar (há {{count}} agentes trabalhando). Envie ao coordenador a instrução de pausa e tente de novo quando pararem. Você pode continuar usando esta versão.",
+      "runsActiveBody_other": "Poderá trocar quando o trabalho acabar (há {{count}} agentes trabalhando). Envie ao coordenador a instrução de pausa e tente de novo quando pararem. Você pode continuar usando esta versão.",
+      "waiting": "Aguardando os agentes terminarem",
+      "waitingBody_one": "Troca sozinha quando o agente em execução terminar.",
+      "waitingBody_many": "Troca sozinha quando os {{count}} agentes em execução terminarem.",
+      "waitingBody_other": "Troca sozinha quando os {{count}} agentes em execução terminarem.",
+      "withdrawn": "A {{version}} foi retirada, então esta versão continua.",
+      "withdrawnBefore": "A {{version}} anterior foi retirada.",
+      "failedBody": {
+        "network": "O download falhou. Verifique a conexão deste PC com a internet e tente de novo. Você pode continuar usando esta versão.",
+        "disk": "Falta espaço em disco neste PC. Libere espaço e tente de novo. Você pode continuar usando esta versão.",
+        "other": "Tente de novo. Você pode continuar usando esta versão."
+      }
+    },
+    "page": {
+      "app": "alpacawork",
+      "appSkill": "A habilidade para usar o alpacawork",
+      "handEdits": "Se você editou alguma dessas habilidades à mão, a nova versão substitui suas edições.",
+      "skill": "Habilidade",
+      "targets": "O que uma atualização renova",
+      "targetsNote": "O alpacawork e as habilidades que vêm com ele passam juntos para a nova versão. Nenhuma habilidade precisa ser atualizada sozinha."
+    }
   },
   "workspaceStop": {
     "failed": "Não foi possível mostrar a tela.",
