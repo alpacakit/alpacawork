@@ -65,6 +65,23 @@ const rereadStatus = () => queryClient.invalidateQueries({ queryKey: ["update-st
  * The bar's gear is drawn before the first index, so the root is read from the frame. While an update holds the
  * workspace (its switch not ended), nothing else can be read, the frame never comes, and the status is read alone.
  */
+/** Whether the status has been read at all: until then, and when it cannot be read, nothing is said of it. */
+export function useUpdateStatusKnown(): boolean {
+  const root = useFrameSelector((data) => data?.info.root ?? null);
+  return useQuery(updateStatusQuery(root ?? "")).data !== undefined;
+}
+
+/**
+ * The skills an update to the candidate offered replaces, by name, as its confirmation says them (the release decides
+ * them from what it installed); null while none is offered or not read yet.
+ */
+export function useUpdateTargets(candidateId: string | null): string[] | null {
+  const root = useFrameSelector((data) => data?.info.root ?? null);
+  const review = useQuery({ queryKey: ["update-review", root, candidateId] as const, enabled: !!candidateId,
+    queryFn: () => readReview(candidateId!), staleTime: 60_000 });
+  return review.data?.kind === "ready" ? review.data.skills : null;
+}
+
 export function useUpdateStatus(): UpdateStatus {
   const root = useFrameSelector((data) => data?.info.root ?? null);
   const status = useQuery(updateStatusQuery(root ?? "")).data ?? NONE;
@@ -269,8 +286,8 @@ export function useReloadWhenUpdated() {
     if (status.kind !== "done" || held) return;
     // Said once by the page that loads: a reload takes away the card that said it.
     try { sessionStorage.setItem(UPDATED_KEY, status.version); } catch { /* the page still loads; it only says less */ }
-    reloadForVersion();
-  }, [status.kind, held]);
+    reloadForVersion(status.version);
+  }, [status.kind, status.kind === "done" ? status.version : null, held]);
   useEffect(() => {
     let to: string | null = null;
     try { to = sessionStorage.getItem(UPDATED_KEY); sessionStorage.removeItem(UPDATED_KEY); } catch { return; }
@@ -279,16 +296,18 @@ export function useReloadWhenUpdated() {
 }
 const UPDATED_KEY = "alpacawork:updated-to";
 
-/** The page is opened again by itself for a new version at most once a minute: a page that still does not match says so. */
+/**
+ * The page is opened again by itself for a new version at most once a minute for the same version: a page that still
+ * does not match says so. `version` is the one it opens for (unknown when serve only answered that it is another).
+ */
 const VERSION_RELOAD_KEY = "alpacawork:reloaded-for-version";
 const VERSION_RELOAD_MS = 60_000;
-/** Opens the page again for serve's new version, unless it was just done (the reload did not bring a matching page). */
-export function reloadForVersion(): boolean {
+export function reloadForVersion(version = "?", reload: () => void = () => location.reload()): boolean {
   try {
-    const last = Number(sessionStorage.getItem(VERSION_RELOAD_KEY) ?? 0);
-    if (Date.now() - last < VERSION_RELOAD_MS) return false;
-    sessionStorage.setItem(VERSION_RELOAD_KEY, String(Date.now()));
+    const [last = "", at = "0"] = (sessionStorage.getItem(VERSION_RELOAD_KEY) ?? "").split("@");
+    if (last === version && Date.now() - Number(at) < VERSION_RELOAD_MS) return false;
+    sessionStorage.setItem(VERSION_RELOAD_KEY, `${version}@${Date.now()}`);
   } catch { return false; } // No storage to stop a loop with: the person reloads.
-  location.reload();
+  reload();
   return true;
 }

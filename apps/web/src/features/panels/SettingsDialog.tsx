@@ -3,7 +3,8 @@ import { useTranslation } from "react-i18next";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCoarsePointer } from "@/lib/input-capabilities";
 import { FieldHint } from "@/components/ui/field";
-import { useDialogStore, type SettingsFocus, type SettingsTab } from "@/state/dialog-store";
+import { useDialogBack, useDialogStore, type SettingsFocus, type SettingsTab } from "@/state/dialog-store";
+import { BackButton } from "@/components/ui/back-button";
 import { HostTab } from "./HostTab";
 import { DialogBody, DialogCloseButton, DialogTitle } from "@/components/ui/dialog";
 import { PanelDialog } from "./PanelDialog";
@@ -47,6 +48,8 @@ export function SettingsBody({ initialTab = "ai", request, focus, inDialog = fal
   const coarsePointer = useCoarsePointer();
   const narrow = useNarrow();
   const updateMarked = useUpdateMarked();
+  const back = useDialogBack();
+  const { t: tt } = useTranslation();
   // The guide is read at a computer: a phone that opens this is past every step of it.
   const availableTabs = TABS.filter((value) => value !== "apps" || !coarsePointer);
   const [selected, setTab] = useState<SettingsTab>(initialTab);
@@ -99,8 +102,10 @@ export function SettingsBody({ initialTab = "ai", request, focus, inDialog = fal
       </div>
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       {/* The section's name on the title's line, at the title's size, with the close button at its end. */}
-      {!narrow && <div className={cn(HEAD_ROW, "justify-between gap-3 px-8 pe-5")}>
-        <h3 className="m-0 min-w-0 text-lg font-semibold">{t(`settings.tabs.${tab}`)}</h3>{inDialog && <DialogCloseButton />}</div>}
+      {!narrow && <div className={cn(HEAD_ROW, "gap-1 px-8 pe-5")}>
+        {/* Opened from another dialog, Back leads to it, as every dialog's head does. */}
+        {inDialog && back && <BackButton data-dialog-back label={tt("dialog.back")} onClick={back} className="-ms-2 me-1" />}
+        <h3 className="m-0 me-auto min-w-0 text-lg font-semibold">{t(`settings.tabs.${tab}`)}</h3>{inDialog && <DialogCloseButton />}</div>}
       <DialogBody ref={body} className={cn("flex flex-col border-t-0 pt-5", !narrow && "pt-1 [--pane-side:--spacing(8)]")}>
       {/* The two tabs showing the draft stay mounted while hidden, so a refused save can take the eye into either. */}
       <TabsContent value="ai" forceMount hidden={tab !== "ai"}>

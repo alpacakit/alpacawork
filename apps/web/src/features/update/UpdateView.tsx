@@ -12,13 +12,14 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { ConsequenceNote } from "@/components/ui/consequence-note";
 import { Message } from "@/components/ui/message";
+import { RegionSkeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogBody, DialogClose, DialogContent, DialogFooter, DialogHeading } from "@/components/ui/dialog";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { APP_VERSION } from "@/lib/app-version";
 import { cn } from "@/lib/utils";
 import { CopyButton } from "@/components/ui/copy-button";
 import { textClip } from "@/lib/clipboard";
-import { approveStart, continueUpdate, postponeUpdate, pressUpdate, retryUpdate, updateHasNews, useReloadHolds, useUpdateLocal, useUpdateStatus, useWaitingForUpdate,
+import { approveStart, continueUpdate, postponeUpdate, pressUpdate, retryUpdate, updateHasNews, useReloadHolds, useUpdateLocal, useUpdateStatus, useUpdateStatusKnown, useUpdateTargets, useWaitingForUpdate,
   type Confirmation, type UpdateStatus } from "./update-state";
 
 const CUT = "ring-2 ring-[color:var(--bg)]";
@@ -159,21 +160,24 @@ export function useOpenSettingsFromGear() {
 export function UpdateSettingsTab() {
   const { t } = useTranslation("panels");
   const { t: setup } = useTranslation("setup");
-  const status = useUpdateStatus();
+  const status = useUpdateStatus(), known = useUpdateStatusKnown();
   const skills = useSkills().data?.skills;
-  const bundled = SKILL_OFFERS.filter(offer => offer.from.kind === "bundled" && skills?.find(each => each.name === offer.name)?.installed);
   const latest = !updateHasNews(status);
   // The version an update offered or under way brings, whatever its state; none once it is running or none is offered.
   const next = !latest && status.kind !== "done" && "version" in status ? status.version : null;
-  const items = [{ name: t("update.page.app"), kind: null },
-    { name: t("update.page.appSkill"), kind: t("update.page.skill") },
-    ...bundled.map(offer => ({ name: setup(`skills.items.${offer.name}.title`), kind: t("update.page.skill") }))];
+  // What a candidate replaces is what its confirmation names; with none offered, what this PC has that comes with alpacawork.
+  const targets = useUpdateTargets("candidateId" in status ? status.candidateId : null)
+    ?? (skills ? ["alpacawork", ...SKILL_OFFERS.filter(offer => offer.from.kind === "bundled" && skills.find(each => each.name === offer.name)?.installed).map(offer => offer.name)] : null);
+  const skillName = (name: string) => name === "alpacawork" ? t("update.page.appSkill")
+    : SKILL_OFFERS.some(offer => offer.name === name) ? setup(`skills.items.${name}.title`) : name;
+  const items = [{ name: t("update.page.app"), kind: null }, ...(targets ?? []).map(name => ({ name: skillName(name), kind: t("update.page.skill") }))];
+  if (!known) return <RegionSkeleton shape="settingRows" rows={4} />;
   return <div data-settings-update className="space-y-8">
     <UpdateCard />
     <section>
       <h4 className="m-0 text-base font-semibold">{t("update.page.targets")}</h4>
       <p className="m-0 mt-1 text-sm text-muted [word-break:auto-phrase]">{t("update.page.targetsNote")}</p>
-      <ul className="m-0 mt-3 list-none border-t border-line p-0">
+      {targets === null ? <RegionSkeleton shape="settingRows" rows={3} className="mt-3" /> : <ul className="m-0 mt-3 list-none border-t border-line p-0">
         {items.map(item => <li key={item.name} className="flex min-h-12 items-center gap-3 border-b border-line py-2">
           <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-0.5">
             <span className="text-sm [word-break:auto-phrase]">{item.name}</span>
@@ -182,7 +186,7 @@ export function UpdateSettingsTab() {
           <span className="w-28 flex-none text-end text-xs text-soft tabular-nums">
             {status.kind === "done" ? status.version : next ? <>{APP_VERSION}<Icon name="arrowRight" className="mx-1 inline size-3 align-[-1px]" /><span className="font-semibold text-ink">{next}</span></> : APP_VERSION}</span>
         </li>)}
-      </ul>
+      </ul>}
       <p className="m-0 mt-3 text-xs text-soft [word-break:auto-phrase]">{t("update.page.handEdits")}</p>
     </section>
   </div>;

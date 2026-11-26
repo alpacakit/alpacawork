@@ -8,7 +8,6 @@ import { Switch } from "@/components/ui/switch";
 import { FaceSwitch } from "@/features/analysis/FaceSwitch";
 import { UpdateMark, useGearLabel, useOpenSettingsFromGear } from "@/features/update/UpdateView";
 import { countUse } from "@/features/telemetry/count";
-import { useDialogStore } from "@/state/dialog-store";
 import { useTimeView } from "@/state/time-view";
 import { useNarrow } from "@/state/view-store";
 import { cn } from "@/lib/utils";

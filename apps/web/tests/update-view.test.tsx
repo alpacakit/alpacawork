@@ -82,7 +82,6 @@ test("waiting for Runs: the ring mark, one phrase and Postpone, which cancels th
   state.status = { kind: "waiting", opId, version: "0.10.0", runs: 2 };
   const { container } = render(<Places />);
   expect(container.querySelector("[data-update-mark]")?.getAttribute("data-update-mark")).toBe("busy");
-  expect(container.querySelector("[data-update-button]")).toBeNull();
   expect(container.querySelector("[data-update-state]")?.textContent).toContain("エージェントの作業が終わるのを待っています");
   fireEvent.click(screen.getByRole("button", { name: "延期する" }));
   expect(postponeUpdate).toHaveBeenCalledWith(opId);

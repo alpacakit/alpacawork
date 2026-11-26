@@ -10,6 +10,9 @@ import { useSkillInstall, useSkillLatest, useSkills } from "@/data/skills";
 import { formatCalendarDate } from "@/domain/time";
 import { skillVersionState } from "@/domain/skill-version";
 import { SkillOfferText } from "@/features/setup/SkillOfferRow";
+import { FailureLine } from "@/features/setup/parts";
+import { problemText } from "@/features/forms/problem-text";
+import { useEffect } from "react";
 
 /**
  * The skills setup offers, here to install one or bring it up to date at any time: each row as setup shows it, and at
@@ -23,12 +26,14 @@ export function SkillsSettingsTab() {
   const { t: setup } = useTranslation("setup");
   const skills = useSkills();
   const latest = useSkillLatest();
-  const { install, start } = useSkillInstall();
+  const { install, start, follow } = useSkillInstall();
+  // An install still running when the page opens (started elsewhere, or before it was closed) is followed, not offered again.
+  const server = skills.data?.job && !skills.data.job.finished ? skills.data.job : null;
+  useEffect(() => { if (server && install.phase === "idle") void follow(server); }, [server?.id]);
   if (skills.isError) return <ReadFailure what={t("settings.tabs.skills")} error={skills.error} retry={() => void skills.refetch()} />;
   if (!skills.data) return <RegionSkeleton shape="skills" />;
-  const server = skills.data.job && !skills.data.job.finished ? skills.data.job : null;
   const job: SkillJob | null = install.phase === "running" || install.phase === "finished" ? install.job : server;
-  const busy = install.phase === "running" || !!server;
+  const busy = install.phase === "running" || install.phase === "sending" || !!server;
   return <div data-settings-skills>
     <p className="mt-0 mb-2 text-sm text-muted [word-break:auto-phrase]">{setup("skills.lead")}</p>
     <ul className="m-0 list-none p-0">
@@ -48,7 +53,7 @@ export function SkillsSettingsTab() {
               {failed && <FieldError className="mt-2 mb-0 [overflow-wrap:anywhere]">{setup("skills.failed", { reason: setup(`skills.reason.${failed.reason}`) })}
                 {failed.reason === "other" && failed.detail && <span className="block text-xs text-soft">{failed.detail}</span>}</FieldError>}
             </div>
-            <div className="flex flex-col items-end gap-2 narrow:min-h-11 narrow:flex-row-reverse narrow:items-center narrow:justify-between">
+            <div className="flex flex-col items-end gap-2 narrow:min-h-11 narrow:flex-row-reverse narrow:flex-wrap narrow:items-center narrow:justify-between narrow:gap-x-4">
               {press || working
                 ? <Button data-skill-action variant={failed ? "outline" : "default"} className="min-w-24 narrow:min-h-11" disabled={busy || !canSelectSkill(status)}
                   onClick={() => void start([offer.name])}>
@@ -64,6 +69,7 @@ export function SkillsSettingsTab() {
         </li>;
       })}
     </ul>
+    {install.phase === "failed" && <FailureLine text={setup("skills.failedRequest")} detail={problemText(install.error)} />}
     <p className="mt-4 mb-0 text-xs text-soft [overflow-wrap:anywhere] [word-break:auto-phrase]">{setup("skills.where", { place: skills.data.place })}</p>
   </div>;
 }
@@ -77,9 +83,9 @@ function Versions({ installed, installedAt, latestAt, behind, checking }: {
 }) {
   const { t, i18n } = useTranslation("panels");
   const day = (iso: string) => t("settings.skills.versions.day", { date: formatCalendarDate(Date.parse(iso), Date.now(), i18n.language) });
-  return <span className="flex flex-col items-end gap-0.5 text-xs whitespace-nowrap text-soft tabular-nums narrow:items-start">
+  return <span className="flex min-w-0 flex-col items-end gap-0.5 text-xs text-soft tabular-nums narrow:items-start">
     {installed && <span>{t("settings.skills.versions.installed", { version: installedAt ? day(installedAt) : t("settings.skills.versions.unknown") })}</span>}
-    {latestAt ? (behind || !installed) && <span className={cn(installed && "font-semibold text-ink")}>{t("settings.skills.versions.latest", { version: day(latestAt) })}</span>
+    {latestAt ? <span className={cn(behind && "font-semibold text-ink")}>{t("settings.skills.versions.latest", { version: day(latestAt) })}</span>
       : <span>{checking ? t("settings.skills.versions.checking") : t("settings.skills.versions.unchecked")}</span>}
   </span>;
 }

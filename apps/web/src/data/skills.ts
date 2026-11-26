@@ -34,6 +34,8 @@ export function useSkillLatest() {
 /** Where an install stands: not asked; running or finished (its rows); or a request whose answer did not come. */
 export type SkillInstall =
   | { phase: "idle" }
+  /** Asked, its answer not come yet: nothing else is asked meanwhile. */
+  | { phase: "sending" }
   | { phase: "running" | "finished"; job: SkillJob }
   | { phase: "failed"; error: unknown };
 
@@ -73,6 +75,7 @@ export function useSkillInstall() {
     const same = sent.current && sent.current.names.join() === names.join() ? sent.current : null;
     const request = same ?? { names: [...names], opId: crypto.randomUUID() };
     sent.current = request;
+    setInstall({ phase: "sending" });
     let job: SkillJob;
     try {
       ({ job } = await api.request("skills/install", skillInstallResponseSchema, undefined,

@@ -27,8 +27,6 @@ const heldByUpdate = (status: UpdateStatus) => status.kind === "applying" || sta
 /** The frame is drawn as soon as language and theme are known; what it shows from the index follows the projection. */
 export function Workspace({ children }: { children: ReactNode }) {
   useApplyTheme();
-  // A finished update brings this page to the new version by itself, unless unsaved settings hold it.
-  useReloadWhenUpdated();
   const client = useQueryClient();
   const { t } = useTranslation("panels");
   const feed = useWorkspace();
@@ -132,10 +130,13 @@ export function Workspace({ children }: { children: ReactNode }) {
 
 type Stop = "version" | "unreachable" | "failed";
 
+/** A finished update brings this page to the new version by itself, unless something typed and not saved holds it. */
+function ReloadWhenUpdated() { useReloadWhenUpdated(); return null; }
+
 /** The store is made with the first projection and follows it; while there is none the frame waits without it. */
 function WorkspaceProvider({ data, children }: { data: WorkspaceData | null; children: ReactNode }) {
   const [store, setStore] = useState<WorkspaceStore | null>(null);
   if (!data !== !store) setStore(data ? createWorkspaceStore(data) : null);
   useLayoutEffect(() => { if (store && data) publishWorkspace(store, data); }, [store, data]);
-  return <WorkspaceContext value={store}>{children}</WorkspaceContext>;
+  return <WorkspaceContext value={store}><ReloadWhenUpdated />{children}</WorkspaceContext>;
 }

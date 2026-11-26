@@ -32,7 +32,7 @@ export function SkillsStep({ onBack, onNext }: { onBack: () => void; onNext: () 
   useEffect(() => { if (running && install.phase === "idle") void follow(running); }, [running?.id]);
   // The rows' install state: the job running, or the one just finished.
   const job: SkillJob | null = install.phase === "running" || install.phase === "finished" ? install.job : null;
-  const installing = install.phase === "running" || !!running;
+  const installing = install.phase === "running" || install.phase === "sending" || !!running;
   // Every chosen skill went in: said once, as the setup moves on (a failure stays here, on its row).
   useEffect(() => {
     if (install.phase !== "finished" || !install.job.items.every(item => item.state === "done")) return;
