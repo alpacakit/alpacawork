@@ -16,9 +16,9 @@ test("opening a share card shows its loading state and starts reading its number
   try {
     await page.goto(runtime.origin);
     await page.getByRole("button", { name: "Analysis", exact: true }).click();
-    const open = page.getByRole("button", { name: "Make a card", exact: true });
+    const open = page.getByRole("button", { name: "Share", exact: true });
     await open.click();
-    const card = page.getByRole("dialog", { name: "Make a card" });
+    const card = page.getByRole("dialog", { name: "Share" });
     await expect(card.getByRole("status", { name: "Loading" })).toBeVisible();
     await expect.poll(() => usageView).toBe("summary");
     await page.keyboard.press("Escape");
@@ -42,8 +42,8 @@ test("in a short window the share card's picture keeps its size when its code ar
       await route.continue();
     });
     await page.goto(`${runtime.origin}/?face=analysis`);
-    await page.getByRole("button", { name: "Make a card", exact: true }).click();
-    const card = page.getByRole("dialog", { name: "Make a card" });
+    await page.getByRole("button", { name: "Share", exact: true }).click();
+    const card = page.getByRole("dialog", { name: "Share" });
     const frame = card.getByRole("status", { name: "Loading" }).locator("..");
     await expect(frame).toBeVisible();
     await settleMotion(page, card, true);
@@ -55,7 +55,7 @@ test("in a short window the share card's picture keeps its size when its code ar
     releaseCardCode();
     const picture = card.getByRole("img", { name: /^Work handed to AI/ });
     await expect(picture).toBeVisible();
-    await expect(card.getByRole("button", { name: "Share on X" })).toBeVisible();
+    await expect(card.getByRole("button", { name: "Post to X" })).toBeVisible();
     // The picture and its controls overflow the window, so the bar is really there once they have come.
     expect(await scroll()).toEqual([barWhileWaiting, true]);
     expect(barWhileWaiting).toBeGreaterThan(0);
@@ -85,12 +85,27 @@ test("the analysis does not slide sideways when everything on it fits", async ({
   await noSidewaysSlide(page, runtime.origin);
 });
 
+test("each service's button opens that service's post screen with the card's sentence", async ({ page, context, runtime }) => {
+  await context.route(/^https:\/\/(x\.com|bsky\.app|www\.threads\.com)\//, route => route.fulfill({ body: "" }));
+  await page.goto(`${runtime.origin}/?face=analysis`);
+  await page.getByRole("button", { name: "Share", exact: true }).click();
+  const card = page.getByRole("dialog", { name: "Share" });
+  await expect(card.getByRole("img", { name: /^Work handed to AI/ })).toBeVisible();
+  for (const [name, start] of [["X", "https://x.com/intent/post?text="], ["Bluesky", "https://bsky.app/intent/compose?text="], ["Threads", "https://www.threads.com/intent/post?text="]] as const) {
+    const opened = page.waitForEvent("popup");
+    await card.getByRole("button", { name: `Post to ${name}` }).click();
+    const url = (await opened).url();
+    expect(url.startsWith(start)).toBe(true);
+    expect(decodeURIComponent(url.slice(start.length))).toMatch(/#alpacawork$/);
+  }
+});
+
 test("the share card keeps room at its foot for the coordinator only where the coordinator stands over it", async ({ page, runtime }) => {
   await page.setViewportSize({ width: 1024, height: 640 });
   await page.goto(`${runtime.origin}/?face=analysis`);
-  await page.getByRole("button", { name: "Make a card", exact: true }).click();
-  const card = page.getByRole("dialog", { name: "Make a card" });
-  await expect(card.getByRole("button", { name: "Share on X" })).toBeVisible();
+  await page.getByRole("button", { name: "Share", exact: true }).click();
+  const card = page.getByRole("dialog", { name: "Share" });
+  await expect(card.getByRole("button", { name: "Post to X" })).toBeVisible();
   await settleMotion(page, card);
   // The coordinator's input at the screen's foot, the card, and the card's scrolling part.
   const edges = () => page.evaluate(() => {
@@ -117,8 +132,8 @@ test.describe("phone", () => {
 
   test("flicking the share card down closes it and keeps the analysis open", async ({ page, runtime }) => {
     await page.goto(`${runtime.origin}/?face=analysis`);
-    await page.getByRole("button", { name: "Make a card", exact: true }).tap();
-    const card = page.getByRole("dialog", { name: "Make a card" });
+    await page.getByRole("button", { name: "Share", exact: true }).tap();
+    const card = page.getByRole("dialog", { name: "Share" });
     await expect(card).toBeVisible();
     await settleMotion(page, card);
     const grip = (await card.getByRole("separator").boundingBox())!;
@@ -130,8 +145,8 @@ test.describe("phone", () => {
 
   test("a share card made shorter by hand opens at its full height the next time", async ({ page, runtime }) => {
     await page.goto(`${runtime.origin}/?face=analysis`);
-    const open = page.getByRole("button", { name: "Make a card", exact: true });
-    const card = page.getByRole("dialog", { name: "Make a card" });
+    const open = page.getByRole("button", { name: "Share", exact: true });
+    const card = page.getByRole("dialog", { name: "Share" });
     const height = async () => (await card.boundingBox())!.height;
     await open.tap();
     await settleMotion(page, card);

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
-import { Icon } from "@/components/ui/icon";
+import { Icon, shareIcon } from "@/components/ui/icon";
 import { BarRoom } from "@/features/chrome/Bar";
 import { UNDER_BAR } from "@/state/bar";
 import { useViewStore } from "@/state/view-store";
@@ -110,9 +110,9 @@ export function AnalysisView({ place, beside }: { place: AnalysisPlace; beside: 
   </>;
 }
 
-/** The analysis's way to the card: over the page, for the span and the project in view. */
+/** The analysis's way to share it: the card over the page, for the span and the project in view, drawn as this device draws sharing. */
 function ShareCardButton({ place }: { place: AnalysisPlace }) {
   const { t } = useTranslation("analysis");
-  return <Button variant="outline" className="flex-none" onClick={() => useViewStore.getState().showAnalysis({ ...place, list: null, card: cardSpanOf(place.span) })}>
-    <Icon name="image" className="size-3.5" />{t("card.make")}</Button>;
+  return <Button variant="outline" className="flex-none gap-1.5 rounded-full px-3.5 font-semibold" onClick={() => useViewStore.getState().showAnalysis({ ...place, list: null, card: cardSpanOf(place.span) })}>
+    <Icon name={shareIcon()} className="size-3.5" />{t("card.make")}</Button>;
 }
