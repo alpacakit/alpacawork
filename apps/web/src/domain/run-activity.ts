@@ -7,7 +7,7 @@ export const outputIsQuiet = (lastOutput: number | null, now: number): lastOutpu
 
 /** Commands that only set up or tidy around what is waited on: the program the agent waits on is another one. */
 const SETUP = new Set(['cd', 'pushd', 'popd', 'export', 'set', 'source', '.', 'unset', 'mkdir', 'rm', 'cp', 'mv', 'ln', 'touch',
-  'chmod', 'echo', 'printf', 'ls', 'true', 'false', ':', 'trap', 'local', 'declare', 'done', 'fi', 'esac', '}', ')']);
+  'chmod', 'echo', 'printf', 'ls', 'true', 'false', ':', '[', '[[', 'test', 'trap', 'local', 'declare', 'done', 'fi', 'esac', '}', ')']);
 /** Words that open a command without being it: wrappers and the shell's own words before a command. */
 const OPENERS = new Set(['sudo', 'env', 'nohup', 'time', 'exec', 'command', 'nice', 'stdbuf', 'until', 'while', 'if', 'then',
   'do', 'else', 'elif', '!', '{', '(']);

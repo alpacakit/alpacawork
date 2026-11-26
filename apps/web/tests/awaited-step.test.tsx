@@ -14,6 +14,7 @@ describe("what a silent Run waits on", () => {
     expect(programOf("until gh run view 1 --json status | grep -q completed; do sleep 30; done")).toBe("gh");
     expect(programOf("for v in a b; do ffmpeg -i $v.mov $v.mp4; done")).toBe("ffmpeg");
     expect(programOf("bash -lc 'cd /repo && ffmpeg -y -i in.mov out.mp4'")).toBe("ffmpeg");
+    expect(programOf("if [ -f x ]; then pnpm build; fi")).toBe("pnpm");
     expect(programOf("ls -la")).toBe("ls");
   });
 
