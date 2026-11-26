@@ -288,14 +288,14 @@
   },
   {
     "file": "apps/backend/src/control/task-store.ts",
-    "sql": "INSERT INTO tasks(id,kind,number,parent_id,project_task_id,title,lifecycle,base_state,hold, user_requested,settings,revision,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+    "sql": "INSERT INTO tasks(id,kind,number,parent_id,project_task_id,title,lifecycle,base_state,hold, user_requested,settings,analysis_subject,revision,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
     "table": "tasks",
     "line": 429,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/control/task-store.ts",
-    "sql": "UPDATE tasks SET parent_id=?,kind=?,title=?,lifecycle=?,base_state=?,hold=?,user_requested=?,settings=?, revision=?,updated_at=? WHERE id=?",
+    "sql": "UPDATE tasks SET parent_id=?,kind=?,title=?,lifecycle=?,base_state=?,hold=?,user_requested=?,settings=?,analysis_subject=?, revision=?,updated_at=? WHERE id=?",
     "table": "tasks",
     "line": 477,
     "status": "touch"

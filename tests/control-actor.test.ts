@@ -180,6 +180,8 @@ test('every HTTP act of the table lets exactly its callers through the public en
       allow: ['A', ...proxies], note: 'a held Task\'s Run writes no values' },
     { act: 'task.update.values', call: post('/api/commands/task/update', { ...task(f.project), values: { project_policy: 'New policy' } }, true),
       allow: proxies, note: 'a project\'s policy is the user\'s words' },
+    { act: 'task.update.analysisSubject', call: post('/api/commands/task/update',
+      { ...task(C.id), analysisSubject: { kind: 'cause', key: 'look_feel' } }, true), allow: ['C', 'A', ...proxies] },
     { act: 'task.update.cwd', call: post('/api/commands/task/update', { ...task(f.project), cwd: tmpdir() }, true),
       allow: proxies },
     { act: 'task.update.color', call: post('/api/commands/task/update', { ...task(f.project), color: '#abcdef' }, true),

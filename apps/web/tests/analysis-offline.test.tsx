@@ -21,7 +21,7 @@ const view: AnalysisTasksView = {
   head: { timeZone: 'UTC', today: '2026-11-25', firstDay: '2026-11-25', project: null, period: { from: '2026-11-25', to: '2026-11-25' }, previous: null },
   counts: { value: finished, previous: null }, accepted: { value: accepted, previous: null }, ever: null,
   series: { bucket: 'day', points: [{ from: '2026-11-25', to: '2026-11-25', complete: true, counts: finished, accepted }] },
-  grass: { from: '2026-11-23', finished: [0, 0, 4] }, breakdown: null, unfinished: { tasks: 0, time: { review: 0, answer: 0 }, waits: { away: 0, otherTasks: 0, thisTask: 0 } },
+  grass: { from: '2026-11-23', finished: [0, 0, 4] }, breakdown: null, activeWork: [], unfinished: { tasks: 0, time: { review: 0, answer: 0 }, waits: { away: 0, otherTasks: 0, thisTask: 0 } },
 };
 const client = () => {
   const made = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } });
@@ -32,7 +32,9 @@ const row = { id: 'T2', title: 'Fictional task', project: 'P1', outcome: 'passed
 const listed_ = { head, total: 1, rows: [row], cursor: null };
 const unit = { head, unit: { ...row, requestedAt: '2026-11-25T00:00:00.000Z', asked: 'T2' }, band: [], marks: [], time: accepted.time,
   submits: 1, questions: 0, sendBacks: 0, instructionsAtReview: 0, instructionsAfterAccept: 0, instructionsDuringWork: 0, answers: 0,
-  workers: 0, children: 0, usage: counts, models: [], prs: [], skills: [], tools: [], tallied: { runs: 0, of: 0, since: '2026-11-25' } };
+  workers: 0, children: 0, usage: counts, waits: accepted.waits, answerItems: accepted.answerItems,
+  answersWithoutParts: 0, instructions: accepted.instructions, questionsReplaced: 0, submitsEstimated: false,
+  models: [], prs: [], skills: [], tools: [], tallied: { runs: 0, of: 0, since: '2026-11-25' } };
 const listOptions = () => resources.analysisList(index.root, { project: null, period: 'today', set: 'finished', limit: '100' });
 const options = () => resources.analysisView(index.root, 'tasks', { project: null, period: 'today', bucket: 'day', by: null }, analysisTasksViewSchema);
 

@@ -1,3 +1,4 @@
+import { analysisSubjectSchema } from '@alpacawork/raw/analysis-subject';
 import { analysisTasksInput, analysisUsageInput, analysisUsageSeriesInput, analysisUsageSeriesViewSchema, analysisListInput, analysisTaskInput, analysisBreakdownInput, analysisBreakdownViewSchema,
   analysisTraceInput, analysisTraceViewSchema, analysisFindingsInput, analysisFindingsViewSchema, analysisAtInput, analysisAtViewSchema,
   analysisSpanKinds, analysisMarkKinds, analysisFindingRules, ANALYSIS_FINDING_RULE_MEANINGS, ANALYSIS_STEPS_MISSING_MEANINGS, analysisChangesInput, analysisChangesViewSchema,
@@ -162,6 +163,8 @@ const PROJECT_VALUES_GUIDE = `${TASK_VALUES_GUIDE}; a project's own values, ${PR
 /** A write's values: only the fields it changes, as `guide` describes them. */
 const valuesFile = (description: string, guide = TASK_VALUES_GUIDE) => file('values', MAX_CONTROL_BODY, `${description}: JSON from field IDs to values. ` +
   `Omit to keep or use null to clear. Lists replace (${guide})`, true);
+const subjectOption = 'Analysis or improvement subject as JSON: {"kind":"cause","key":"long-wait"}, ' +
+  '{"kind":"task","task":"T12"}, or {"kind":"period","from":"2026-11-01","to":"2026-11-07"}';
 const urgent = (what: string) => text('urgent', `Why the requester must read ${what} now (one line)`);
 const schemaTask = text('task', 'Task ID. Omit for the Run’s own Task, the resolved project or the default schema.',
   { cliDetail: 'See the cwd rule in alpacawork -h.' });
@@ -171,7 +174,7 @@ const taskGetResultSchema = z.looseObject({
     id: taskIdSchema, kind: taskKindSchema, parentId: taskIdSchema.nullable(), projectId: taskIdSchema,
     title: z.string(), state: taskStateSchema, baseState: taskStateSchema, hold: z.boolean(),
     lifecycle: taskLifecycleSchema, hash: digestSchema, folder: z.string(),
-    values: z.record(z.string(), z.json()).optional(),
+    values: z.record(z.string(), z.json()).optional(), analysisSubject: analysisSubjectSchema.optional(),
   }),
   shelf: projectShelfInfoSchema,
   agents: z.array(placementSchema),
@@ -258,7 +261,7 @@ const definitions = {
   'guide': command('read', 'Read a bundled alpacawork skill document',
     z.object({ name: mcpGuideName }).strict(), [text('name', 'Skill file name; start with SKILL.md')],
     { cli: false, output: z.object({ name: mcpGuideName, text: z.string() }).strict() }),
-  'analysis/tasks': command('read', 'Count finished tasks and acceptance totals by period and trend bucket, with lifetime totals and the waits of unfinished tasks as of now', analysisTasksInput, [
+  'analysis/tasks': command('read', 'Count finished tasks and acceptance totals by period and trend bucket, with lifetime totals, unfinished waits and active analysis work', analysisTasksInput, [
     ...analysisScope, ...analysisPeriodOptions, analysisBucket, text('by', `Breakdown (${analysisTaskGroups})`),
   ], { output: analysisTasksViewSchema }),
   'analysis/usage': command('read', 'Count task launches and measured AI usage', analysisUsageInput, [
@@ -357,7 +360,8 @@ const definitions = {
       text('expectedParentHash', 'Current parent Task SHA-256 hash'),
       valuesFile('Field values', PROJECT_VALUES_GUIDE),
       file('plan', MAX_CONTROL_BODY, 'Sibling Tasks made at once under the parent, with one mark: ' +
-        'a JSON array of {"title", "values"?}', true),
+        'a JSON array of {"title", "values"?, "analysisSubject"?}', true),
+      json('analysisSubject', subjectOption),
       fromUser, quote, sourceRequest,
     ], { rules: taskCreateRules, output: z.union([taskWriteResultSchema, taskPlanResultSchema]), help: help(
       'A Run creates below its own Task, with --parent and --expected-parent-hash; its Tasks are internal.',
@@ -365,10 +369,11 @@ const definitions = {
       'A person\'s Task is the user\'s unless --no-from-user; the coordinator supplies --from-user or ' +
         '--no-from-user.',
       'The coordinator records the user’s words with --quote when creating a project for them.') }),
-  'task/update': command('write', 'Change a Task\'s title or field values, a project\'s code location or color, or whether the ' +
+  'task/update': command('write', 'Change a Task\'s title, field values or analysis subject, a project\'s code location or color, or whether the ' +
     'user asked for the Task, in one save', taskUpdateInput, [
     taskId,
     text('title', 'New title'),
+    json('analysisSubject', subjectOption + '; null clears it, omission keeps it'),
     valuesFile('Changed field values', PROJECT_VALUES_GUIDE),
     text('cwd', 'A project\'s code location on this PC (absolute, or ~/…); empty turns it off; null inherits', { nullable: true }),
     text('color', 'Project color: six lowercase hex digits #rrggbb; omitted keeps the current color'),

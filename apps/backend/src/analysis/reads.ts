@@ -5,7 +5,7 @@ import { sumRunUsage } from '@alpacawork/contract';
 import type { ChangeLog } from '@alpacawork/db';
 import { hasAnalysisUsageFilters, isAnalysisTallyBy, type AnalysisAcceptedTotals, type AnalysisBucket, type AnalysisDays, type AnalysisHead,
   type AnalysisBreakdownInput, type AnalysisBreakdownView, type AnalysisListInput, type AnalysisListRow, type AnalysisModel, type AnalysisTallyBy, type AnalysisTaskInput, type AnalysisTaskBy,
-  type AnalysisTaskCounts, type AnalysisTasksInput, type AnalysisTasksView, type AnalysisUnitList,
+  type AnalysisTaskCounts, type AnalysisTasksInput, type AnalysisTasksView, type AnalysisWork, type AnalysisUnitList,
   type AnalysisUnitValues, type AnalysisUsageBy, type AnalysisUsageCounts, type AnalysisUsageFilters, type AnalysisUsageInput,
   type AnalysisUsageSeriesInput, type AnalysisUsageSeriesView, type AnalysisUsageView } from '@alpacawork/contract/analysis';
 import { authorize, type Caller } from '../control/authorize.js';
@@ -363,7 +363,7 @@ class ScopedAnalysis {
 
   /** `view`: the scope's units and launches, for the reads that count over them (one task's values need none). */
   constructor(private readonly facts: AnalysisFacts, private readonly view: ScopeView | null, first: number, readonly project: string | null,
-    private readonly allows: (project: string) => boolean, private readonly timeZone: string, readonly now: number,
+    readonly allows: (project: string) => boolean, private readonly timeZone: string, readonly now: number,
     tallySince: number, private readonly tallies: ReadonlyMap<string, Tally>, private readonly models: ReadonlyMap<string, string>,
     readonly date: ReturnType<typeof calendar>) {
     this.today = date(now);
@@ -575,7 +575,7 @@ class ScopedAnalysis {
     return this.openClocksMade = made;
   }
 
-  async tasks(input: AnalysisTasksInput, slices: Slices): Promise<AnalysisTasksView> {
+  async tasks(input: AnalysisTasksInput, slices: Slices): Promise<Omit<AnalysisTasksView, 'activeWork'>> {
     const head = this.head(input), lifetime = this.head({}).period;
     const taskTotals = this.taskTotals;
     const prCounts = creditAcceptedPrs(this.datedUnits);
@@ -878,7 +878,12 @@ export class AnalysisReader {
     await this.tasks({ period: '7d', bucket: 'day' }, person);
     await this.usage({ period: '7d', bucket: 'day', view: 'history' }, person);
   }
-  tasks(input: AnalysisTasksInput, caller: Caller) { return this.scoped(input, caller, 'scope', (view, slices) => view.tasks(input, slices)); }
+  tasks(input: AnalysisTasksInput, caller: Caller,
+    readWork?: (allows: (project: string) => boolean, slices: Slices) => Promise<AnalysisWork[]>): Promise<AnalysisTasksView> {
+    return this.scoped(input, caller, 'scope', async (view, slices) => ({
+      ...await view.tasks(input, slices), activeWork: await readWork?.(view.allows, slices) ?? [],
+    }));
+  }
   usage(input: AnalysisUsageInput, caller: Caller) {
     return this.scoped(input, caller, 'scope', (view, slices) => view.usage(input, slices));
   }

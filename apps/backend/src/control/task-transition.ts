@@ -12,7 +12,7 @@ import { Problem, PROBLEM_CODE, type ProblemReason } from '@alpacawork/core';
 import { awaitsReview, startsEstimateRound } from '@alpacawork/contract';
 import { activeBelow, type FinishedBranchIssue } from '@alpacawork/contract/branch';
 import type { RunId } from '@alpacawork/contract/fields';
-import { digest, openQuestions, questionsOf, speaksForUser, taskMetadata, userRequestedOf, type TaskBaseState, type ControlMetadata, type ControlTask, type ProjectSettings,
+import { digest, openQuestions, questionsOf, speaksForUser, taskMetadata, validateAnalysisSubject, userRequestedOf, type TaskBaseState, type ControlMetadata, type ControlTask, type ProjectSettings,
   type TaskActor, type TaskLifecycle, type TaskLog, type TaskState, type ConversationCheckpoint, type TaskValues } from '@alpacawork/raw';
 import { RunStore, type RunTransaction, type StoredRequest } from '@alpacawork/runs';
 import { ControlStore } from '@alpacawork/db';
@@ -140,6 +140,7 @@ type Transition = { actor: TaskActor; taskId: string; at: string; record?: Trans
 /** What a record changes of its Task besides the log: its title or values, its parent, its lifecycle, a project's settings. */
 type DocumentChange = {
   title?: string; values?: TaskValues; parentId?: string; lifecycle?: TaskLifecycle; settings?: ProjectSettings | null;
+  analysisSubject?: ControlMetadata['analysisSubject'] | null;
 };
 
 /** What caused a linked state change: when (a Run's start or end time, for its boundary) and whose record it was. */
@@ -314,6 +315,7 @@ export class TaskTransition {
     meta.log.push(...entries);
     meta.userRequested = userRequestedOf(meta.log);
     if (change?.title !== undefined) meta.title = change.title;
+    if (change?.analysisSubject !== undefined) meta.analysisSubject = validateAnalysisSubject(meta.kind, change.analysisSubject);
     if (change?.parentId !== undefined) meta.parentId = change.parentId;
     if (change?.lifecycle !== undefined) meta.lifecycle = change.lifecycle;
     this.write(read, [{ task, meta, values: change?.values, settings: change?.settings,

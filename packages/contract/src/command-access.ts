@@ -53,7 +53,7 @@ export type Facts = {
   message?: string;
 };
 
-type UpdateField = 'title' | 'values' | 'cwd' | 'color' | 'userRequested';
+type UpdateField = 'title' | 'values' | 'cwd' | 'color' | 'userRequested' | 'analysisSubject';
 /** What the caller asks to do, with what decides who may do it. */
 export type Action =
   /** One Task: task get, task returns, a question's text, a file read; run get reads its Run's Task. */
@@ -129,6 +129,7 @@ export const ACTIONS = {
   'task.update.title': { grants: [['own'], ['parent'], ['user']] },
   /** A Task's values; a project's are its summary and its policy. */
   'task.update.values': { grants: [['own'], ['parent'], ['user']] },
+  'task.update.analysisSubject': { grants: [['own'], ['parent'], ['user']] },
   'task.update.cwd': { grants: [['user']] },
   'task.update.color': { grants: [['user']] },
   'task.update.userRequested': { grants: [['user']] },
@@ -329,7 +330,7 @@ export function decide(caller: Caller, action: Action, facts: Facts): Decision |
 export type AccessCommand = 'task.new' | 'task.update' | 'task.report' | 'task.request' | 'task.comment' |
   'task.move' | 'task.archive' | 'task.delete' | 'task.restore' | 'agent.assign' | 'agent.handover' | 'agent.release' | 'run.stop';
 export type CommandFacts = { worker?: boolean; askedTo?: string | null; closed?: boolean; to?: readonly string[] };
-const UPDATE_FIELDS: readonly UpdateField[] = ['title', 'values', 'cwd', 'color', 'userRequested'];
+const UPDATE_FIELDS: readonly UpdateField[] = ['title', 'values', 'cwd', 'color', 'userRequested', 'analysisSubject'];
 
 /**
  * Translate validated command input once, for both the entry and help examples. Database facts must be supplied

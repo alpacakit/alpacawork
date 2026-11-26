@@ -27,7 +27,7 @@ import { inspectServerSettings, readServerSettings, saveServerSettings } from '.
 import { PROBLEM_CODE, Problem, parseInput } from '@alpacawork/core';
 import { ControlStore } from '@alpacawork/db';
 import { RunStore } from '@alpacawork/runs';
-import { type TaskActor } from '@alpacawork/raw';
+import type { AnalysisSubject, TaskActor } from '@alpacawork/raw';
 import { requestStop } from './runs/entry.js';
 import { readRunFiles } from './runs/view.js';
 import { readRunStepIndex } from './runs/run-steps.js';
@@ -339,6 +339,12 @@ function lifecycleCommand(action: 'archive' | 'delete' | 'restore'): ServerComma
   };
 }
 
+/** A Task reference in a write carries the same read grant as task get. */
+function authorizeAnalysisSubject(root: string, context: Context, subject: AnalysisSubject | null | undefined): void {
+  if (subject?.kind === 'task')
+    authorizeRead(root, context, { name: 'task.read' }, subject.task);
+}
+
 export const taskCommands = {
   'task/get': {
     run: async (root, input, context) => {
@@ -374,11 +380,12 @@ export const taskCommands = {
     run: async (root, input, context) => {
       const parentId = readControl(root, db =>
         creationParent(root, db, input.parent, requireCaller(context), context.cwd ?? null));
-      const { plan } = input;
+      const drafts = input.plan ?? [{ title: input.title!, values: input.values, analysisSubject: input.analysisSubject }];
+      for (const draft of drafts) authorizeAnalysisSubject(root, context, draft.analysisSubject);
       const { tasks } = await new ControlTaskCommands(root, requireActor(context)).create({ kind: input.kind, color: input.color, parentId,
-        userRequested: input.fromUser ?? null, tasks: plan ?? [{ title: input.title!, values: input.values }],
+        userRequested: input.fromUser ?? null, tasks: drafts,
         expectedParentHash: input.expectedParentHash });
-      if (plan !== undefined) return { tasks };
+      if (input.plan !== undefined) return { tasks };
       const task = tasks[0]!;
       if (input.cwd !== undefined) await writeProjectLocation(root, task.id, input.cwd, locationOperation(context));
       return { task };
@@ -388,8 +395,9 @@ export const taskCommands = {
   'task/update': {
     act: input => taskAct('task.update', input),
     run: async (root, input, context) => {
+      authorizeAnalysisSubject(root, context, input.analysisSubject);
       const { task } = await new ControlTaskCommands(root, requireActor(context)).update({ id: input.task,
-        title: input.title, values: input.values, color: input.color, userRequested: input.fromUser,
+        title: input.title, values: input.values, color: input.color, userRequested: input.fromUser, analysisSubject: input.analysisSubject,
         expectedTaskHash: input.expectedTaskHash });
       if (input.cwd !== undefined) await writeProjectLocation(root, input.task, input.cwd, locationOperation(context));
       return { task };
