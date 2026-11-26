@@ -3,7 +3,7 @@ import { tokenStep } from "@/domain/tokens";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { RegionSkeleton } from "@/components/ui/skeleton";
-import { daysBetween, delta, format, tokenColumn, unitOf as unitWord, type Kind } from "./format";
+import { dayLabel, daysBetween, delta, format, tokenColumn, unitOf as unitWord, type Kind } from "./format";
 import { BreakdownTable } from "./BreakdownTable";
 import { cell, head, useFinishedParts, type Open } from "./TasksLook";
 import { BarChart, ChartGroup, DayAxis, inSpanOf, Lead, Leads, lineTop, Parts, Row, RowName, spanMost, useLineLabel, useScale, type DayList, type RowSay } from "./rows";
@@ -179,7 +179,8 @@ export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days
         </div>
         <LaunchControls launches={launches} />
         <div className={cn("transition-opacity duration-(--motion-base)", !launches.current && "opacity-50")}><Parts items={[...launchesParts(launches, open), ...launches.shownFiltered ? [] : [{ color: "", name: t("usage.newConversations"),
-          ...part("times", now.newConversations, { set: "used", value: "newConversations" }) }]]}
+          ...part("times", now.newConversations, { set: "used", value: "newConversations" }),
+          share: now.launches ? `${Math.round(now.newConversations / now.launches * 100)}%` : "" }]]}
           line={launches.shownFiltered ? undefined : perEntry("launches")} /></div>
       </>}>
         {/* Each bin's launches stacked by model or effort, the most used at the foot; in one colour where the series does
@@ -195,6 +196,7 @@ export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days
             : callsBefore ? <><RowName>{calls.name}</RowName><p className="mt-1 text-soft">{t("usage.none")}</p></>
             : <Num className="" label={calls.name} kind="times" value={calls.total} previous={calls.previous} length={length}
               onOpen={() => open({ set: "used", value: "calls", group: calls.by, member: null })} />}
+          {calls.answered && !callsBefore && calls.since && <p className="mt-1 text-xs text-soft">{t("breakdown.since", { date: dayLabel(calls.since) })}</p>}
         </div>
         <CallsControls calls={calls} />
         <div className={cn("transition-opacity duration-(--motion-base)", !calls.current && "opacity-50")}><Parts items={calls.spanParts(open)} /></div>
@@ -230,7 +232,8 @@ export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days
         <Rule name={t("def.skillName")}>{t("def.skillText")}</Rule>
         <Rule name={t("def.toolName")}>{t("def.toolText")}</Rule>
         <Rule name={t("usage.by.mcp")}>{t("def.mcpText")}</Rule>
-        <Rule name={t("usage.calls")}>{t("def.callsText")}</Rule></RuleCard>
+        <Rule name={t("usage.calls")}>{t("def.callsText")}</Rule>
+        {calls.since && <Rule name={t("def.sinceName")}>{t("def.sinceText", { date: dayLabel(calls.since) })}</Rule>}</RuleCard>
       <RuleCard><Rule name={t("def.everName")}>{t("def.everText")}</Rule>
         <Rule name={t("def.dayName")}>{zone}</Rule></RuleCard>
     </Rules>
@@ -263,8 +266,8 @@ function Breakdown({ span, root, group, days, open, choose }: {
   const steps = Object.fromEntries(tokenKeys.map(key => [key, tokenColumn(rows.map(row => tokenRead[key](row.counts)))])) as Record<typeof tokenKeys[number], ReturnType<typeof tokenColumn>>;
   const tokenHead = (key: typeof tokenKeys[number]) => steps[key].unit ? t("table.head", { name: t(`usage.${key}`), unit: steps[key].unit }) : t(`usage.${key}`);
   // The model and the AI kind lead with the tokens, the use's first number above; the rest lead with their own count.
-  const columns = by === "skill" ? [head(t("usage.skillUses"), "times"), head(t("usage.tasks"), "tasks")]
-    : counted ? [head(t("usage.calls"), "times"), head(t("usage.launches"), "times"), head(t("usage.tasks"), "tasks")]
+  const columns = by === "skill" ? [head(t("usage.usedLaunches"), "times"), head(t("usage.tasks"), "tasks")]
+    : counted ? [head(t("usage.calls"), "times"), head(t("usage.usedLaunches"), "times"), head(t("usage.tasks"), "tasks")]
       : [...tokenKeys.map(tokenHead), head(t("usage.launches"), "times"), head(t("usage.runMs"), "hours"),
         head(t("usage.newConversations"), "times"), head(t("usage.tasks"), "tasks")];
   const table = rows.map(row => {
