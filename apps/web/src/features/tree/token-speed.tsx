@@ -212,13 +212,11 @@ export const TIME_SLOT = "inline-block min-w-[4.5em] text-right narrow:min-w-[3.
 /** The speed's slot on a phone, held while agents run so the columns stay put before a count arrives. */
 const NARROW_SPEED_SLOT = "inline-block min-w-[5ch] text-right tabular-nums";
 
-/** The most logos a stack shows; the total counts the rest. */
-const STACK = 3;
-
 /**
- * Which AIs run and how many, as a list has room for: their logos laid over one another, most first, each on a faint
- * disc ringed in the row's ground so each disc's edge shows, then the total past one. Its press lists each agent's count,
- * and a reader hears the total and each agent's name and count. A Run no read has brought counts in the total only.
+ * Which AIs run and how many, as a list has room for: each AI's logo, most first, with how many of it as a small "×4"
+ * at its upper right past one. Logos stand side by side, never over one another: they are their makers' marks. Its
+ * press lists each agent's count, and a reader hears the total and each agent's name and count. Runs no read has
+ * brought stand as the square with their count.
  */
 export function AgentCounts({ tasks }: { tasks: readonly Task[] }) {
   const { t } = useTranslation("tree");
@@ -227,17 +225,12 @@ export function AgentCounts({ tasks }: { tasks: readonly Task[] }) {
   if (!agents.length) return null;
   const total = agents.reduce((sum, [, count]) => sum + count, 0);
   const words = agents.map(([agent, count]) => `${agent ?? "?"} ${count}`).join(", ");
-  const shown = agents.flatMap(([agent]) => agent === null ? [] : [agent]).slice(0, STACK);
-  return <span data-agent-counts title={words} className="flex flex-none items-center gap-1 self-center whitespace-nowrap tabular-nums">
+  return <span data-agent-counts title={words} className="flex flex-none items-center gap-1.5 self-center whitespace-nowrap tabular-nums">
     <span className="sr-only">{`${t("status.runningRuns", { count: total })}: ${words}`}</span>
-    <span aria-hidden="true" className="flex items-center">
-      {shown.length ? shown.map((agent, i) => <span key={agent} data-agent style={{ zIndex: STACK - i }}
-        className={cn("relative grid size-[1.45em] place-items-center overflow-hidden rounded-full ring-2 ring-[var(--row-ground,var(--bg))]",
-          "bg-[color-mix(in_oklab,var(--color-ink)_13%,var(--row-ground,var(--bg)))] [&>svg:has(circle)]:size-full", i > 0 && "-ml-[0.28em]")}>
-        <AgentMark name={agent} className="size-[0.85em]" />
-      </span>) : <Icon name="runningRuns" className="size-[0.7em] text-muted" />}
-    </span>
-    {(total > 1 || !shown.length) && <span aria-hidden="true" className="text-[0.9em] leading-none text-muted">{total}</span>}
+    {agents.map(([agent, count]) => <span key={agent ?? ""} data-agent aria-hidden="true" className="flex flex-none items-start">
+      {agent === null ? <Icon name="runningRuns" className="size-[0.7em] self-center text-muted" /> : <AgentMark name={agent} className="size-[1.05em]" />}
+      {(count > 1 || agent === null) && <span className="-mt-[0.3em] ml-px text-[0.72em] leading-none text-muted">×{count}</span>}
+    </span>)}
   </span>;
 }
 
