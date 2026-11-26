@@ -22,7 +22,7 @@ import { attachmentResultSchema, taskGetPlacementSchema, startOrderSchema, taskL
   taskRequestResultSchema, taskPlacementResultSchema, taskGetRunSchema, controlRunFilesSchema, workspaceUrlSchema } from './control-contract.js';
 import { serverSettingsSchema } from './server-settings.js';
 import { z } from 'zod';
-import { coordinatorReplyGetInput } from './coordinator-contract.js';
+import { COORDINATOR_MEMO_LIMIT, coordinatorMemoSchema, coordinatorMemoSetInputSchema, coordinatorReplyGetInput } from './coordinator-contract.js';
 import { taskValuesAtSchema, fieldGetResultSchema, fieldListResultSchema, fieldSetResultSchema, fieldDeleteResultSchema, PROJECT_SCHEMA, PROJECT_SUMMARY } from './task-schema.js';
 import { ESTIMATE_MINUTES, MAX_CONTROL_BODY, MAX_DETAIL_LENGTH, MAX_INSTRUCTION_BYTES } from '@alpacawork/raw/values';
 import { FIX_KIND_MEANINGS, INSTRUCTION_KINDS } from '@alpacawork/raw/task-log-schema';
@@ -73,6 +73,7 @@ const groups: Readonly<Record<string, string>> = {
   run: 'Unfinished Runs, Run results and stopping',
   coordinator: 'Coordinator conversation references',
   'coordinator reply': 'Answers referenced by the current Run’s messages',
+  'coordinator memo': 'Memo carried into the next coordinator session',
   field: 'The fields Tasks write: read a Task\'s, choose a project\'s, define the ones every project shares',
   config: 'Server settings in config.yaml',
   settings: 'Display, notification and reply-language settings (one set per server)',
@@ -583,6 +584,10 @@ const definitions = {
     text('timeZone', 'Browser time zone'),
   ], { output: personalSettingsResponseSchema, help: help(settingsHelp,
     'The values the server keeps itself (push.mutedUntil, push.quietResumedUntil) are refused. The screen shows a saved change at once.') }),
+  'coordinator/memo/get': command('read', 'Read the current coordinator memo', emptyInput, [],
+    { output: coordinatorMemoSchema }),
+  'coordinator/memo/set': command('write', 'Save the memo carried into the next coordinator session', coordinatorMemoSetInputSchema,
+    [file('text', COORDINATOR_MEMO_LIMIT * 4, 'Memo (up to 2,000 characters)')], { output: coordinatorMemoSchema }),
   'coordinator/reply/get': command('read', 'Read an answer referenced by a message delivered to the current screen Run (1,200 characters)', coordinatorReplyGetInput,
     [text('message', 'Reply source Request ID'), number('from', 'First character, starting at 1')], { output: replyPageSchema }),
   'operation/get': command('read', 'Read what a write saved, by its op-id', z.object({ opId: z.string().min(1) }),

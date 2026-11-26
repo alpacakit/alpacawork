@@ -131,21 +131,6 @@ export const coordinatorTurnSchema = z.object({
 /** The agent and selected values actually passed in the next message's launch arguments. */
 export const coordinatorNextLaunchSchema = z.object({ agent: aiRowSchema.shape.agent, values: launchArgumentValuesSchema }).strict();
 export type CoordinatorNextLaunch = z.infer<typeof coordinatorNextLaunchSchema>;
-/**
- * `warm`: how far the background first turn of a new conversation, which loads its instructions, has come: none asked
- * yet, still `preparing`, `ready`, or `failed` (ended any other way). It is not one of the turns.
- * `nextLaunch`: the agent and values passed in the next message's launch arguments, or null if no row can run.
- * `cancelled`: the messages withdrawn before they went.
- */
-export const coordinatorConversationSchema = z.object({
-  id: z.string().min(1), nextLaunch: coordinatorNextLaunchSchema.nullable(), warm: z.enum(['none', 'preparing', 'ready', 'failed']),
-  /** A message admitted at the end of this conversation now would wait behind its work or delivery. */
-  busy: z.boolean(),
-  cancelled: z.array(z.string()), turns: z.array(coordinatorTurnSchema),
-});
-/** One server snapshot, with the scope and digest of that exact conversation object. */
-export const coordinatorSnapshotSchema = z.object({ root: z.string().min(1), generation: z.string().min(1),
-  revision: digestSchema, conversation: coordinatorConversationSchema }).strict();
 const coordinatorMessageId = z.string().min(1).max(256);
 export const COORDINATOR_RECENT_TURNS = 20;
 export const COORDINATOR_HISTORY_PAGE = 50;
@@ -188,12 +173,18 @@ export const coordinatorMessageStatusSchema = z.object({
 export type CoordinatorMessageStatus = z.infer<typeof coordinatorMessageStatusSchema>;
 
 /** The bounded snapshot, including any active turns and the usage of the current session. */
-export const coordinatorResetConversationSchema = coordinatorConversationSchema.omit({ warm: true, cancelled: true }).extend({
+export const coordinatorConversationSchema = z.object({
+  id: z.string().min(1), nextLaunch: coordinatorNextLaunchSchema.nullable(), busy: z.boolean(),
+  turns: z.array(coordinatorTurnSchema),
   earlier: z.object({ count: z.number().int().positive(), before: coordinatorMessageId }).strict().nullable(),
   resets: z.array(coordinatorResetSchema), context: contextViewSchema.nullable(),
   autoReset: z.object({ tokens: z.number().int().nonnegative(), percent: z.number().int().min(0).max(100) }).strict(),
 });
-export const coordinatorResetSnapshotSchema = coordinatorSnapshotSchema.extend({ conversation: coordinatorResetConversationSchema });
+/** One server snapshot, with the scope and digest of that exact conversation object. */
+export const coordinatorSnapshotSchema = z.object({ root: z.string().min(1), generation: z.string().min(1),
+  revision: digestSchema, conversation: coordinatorConversationSchema }).strict();
+export const coordinatorResetConversationSchema = coordinatorConversationSchema;
+export const coordinatorResetSnapshotSchema = coordinatorSnapshotSchema;
 export const coordinatorMessageResponseSchema = coordinatorResetSnapshotSchema.extend({ message: coordinatorMessageStatusSchema });
 export const coordinatorResetResponseSchema = coordinatorResetSnapshotSchema.extend({ reset: coordinatorResetSchema });
 export const coordinatorMarkerSchema = z.object({ id: z.string().min(1), revision: digestSchema }).strict();

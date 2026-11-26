@@ -1,7 +1,7 @@
 import { parse, stringify } from 'yaml';
 import { fixtureAgentSetting, installAgentStub } from './agent-stub.ts';
 /** Shared setup only; each case owns its root, server and cleanup. */
-import { coordinatorSnapshotSchema } from "@alpacawork/contract/coordinator";
+import { coordinatorMessageResponseSchema, coordinatorSnapshotSchema, type CoordinatorConversation } from "@alpacawork/contract/coordinator";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { cpSync, mkdirSync, mkdtempSync, realpathSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -16,13 +16,11 @@ import { attemptOf } from "@alpacawork/backend/test-dist/runs/execution-control.
 
 export const fake = new URL('../fixtures/fake-coordinator-agent.mjs', import.meta.url).pathname;
 
-export const messagePart = (prompt: string) => prompt.replace(/^Request ID of this input: [^\n]+\n/m, '');
-
-export const WARM = 'Load the alpacawork skill and its coordinator reference, and do nothing else. Reply only with: ready';
+export const messagePart = (prompt: string) => prompt.split(/^Request ID of this input: [^\n]+\n/m).at(-1)!;
 
 export type Turn = { id: string; status: string; ask: string; intent?: unknown; answers?: unknown; answer: string | null; error: string | null };
 
-export type View = { id: string; nextLaunch: import('@alpacawork/contract/coordinator').CoordinatorNextLaunch | null; warm: string; cancelled: string[]; turns: Turn[] };
+export type View = CoordinatorConversation;
 
 export async function eventually<T>(check: () => T | null | undefined | false | Promise<T | null | undefined | false>,
   message: string, timeout = 20_000): Promise<T> {
@@ -40,13 +38,11 @@ export function records(root: string, conversationId: string) {
   assert.ok(store);
   try {
     const db = store.connection;
-    const warm = db.prepare('SELECT warm_request_id FROM coordinator_conversations WHERE id = ?').get(conversationId)?.warm_request_id;
     return db.prepare('SELECT id, body, delivery_state FROM requests WHERE conversation_id = ? ORDER BY submitted_at, rowid')
       .all(conversationId).map(row => {
         const id = String(row.id), number = db.prepare('SELECT id FROM runs WHERE request_id = ?').get(id);
         const run = number ? store.runtimeGet(`R${number.id}`) : null, text = run ? store.getText(run.id) : null;
-        return { id, body: String(row.body), deliveryState: String(row.delivery_state), warm: id === warm,
-          run, prompt: text?.prompt ?? null, result: text?.result ?? null, launch: run ? attemptOf(store, run.id) : null };
+        return { id, body: String(row.body), deliveryState: String(row.delivery_state), run, prompt: text?.prompt ?? null, result: text?.result ?? null, launch: run ? attemptOf(store, run.id) : null };
       });
   } finally { store.close(); }
 }
@@ -130,7 +126,7 @@ export async function assertQuestionContext(h: Awaited<ReturnType<typeof fixture
   const previous = h.records(input.conversationId).map(row => ({ id: row.id, run: row.run?.id }));
   const response = await h.post('/api/coordinator/messages', input);
   assert.equal(response.status, 200, await response.clone().text());
-  const received = coordinatorSnapshotSchema.parse(await response.json());
+  const received = coordinatorMessageResponseSchema.parse(await response.json());
   assert.deepEqual(received.conversation.turns.find(turn => turn.id === input.id)?.answers, input.answers,
     'the HTTP receipt retains the exact Task and question identity');
   assert.deepEqual(boundaryEvidence(h.root, task, input.conversationId).canonical, before.canonical,

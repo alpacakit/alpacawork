@@ -274,8 +274,7 @@ function run(input: unknown, path: string, notices: MigrationNotice[]): ObjectVa
     reject(at(path, 'state'), 'live_run', 'Only ended Runs can cross the format boundary; needs_review is a blocker');
   if (!['owner', 'worker', 'coordinator'].includes(String(old.role))) reject(at(path, 'role'), 'unknown_role', 'Unknown Run role');
   if (Object.hasOwn(old, 'restartArgv')) reject(at(path, 'restartArgv'), 'already_migrated', 'Expected old format; do not re-migrate a partly converted bundle');
-  const target = { ...structuredClone(old), launch: launch(old.launch, at(path, 'launch'), notices),
-    ...(old.role === 'coordinator' ? { restartArgv: null } : {}) };
+  const target = { ...structuredClone(old), launch: launch(old.launch, at(path, 'launch'), notices) };
   return object(checked(runtimeRunRecordSchema, target, path), path);
 }
 export function migrateEndedRun(input: unknown, path = '$.run'): MigrationResult<ObjectValue> {

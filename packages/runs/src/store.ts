@@ -29,11 +29,11 @@ export type NewRequest = Omit<StoredRequest, 'runId' | 'aboutRunId'> & {
 /** A person's message to the coordinator conversation: a Request with no Task or placement, always the person's own. */
 interface StoredConversationRequest {
   id: string; conversationId: string; headRunId: RunId | null; mode: RequestMode; body: string;
-  submittedAt: string; deliveryState: DeliveryState; replyTo?: string | null; aiStack?: readonly AiRow[]; aiExplicit?: boolean;
+  submittedAt: string; deliveryState: DeliveryState; replyTo?: string | null; coordinatorInput?: { text: string; language: string }; aiStack?: readonly AiRow[]; aiExplicit?: boolean;
 }
 /** What a coordinator Run is created with; it has no Task, placement or caller and never continues work by itself. */
 export type CreateCoordinatorRunFields = Pick<CoordinatorRunRecord, 'conversationId' | 'requestId' | 'agent' | 'resumes' | 'session' |
-  'cwd' | 'launch' | 'message' | 'restartArgv' | 'attempt' | 'firstRunId'>;
+  'cwd' | 'launch' | 'message' | 'attempt' | 'firstRunId'>;
 /** What a write transaction does, beyond its reads (`transactionReads`). */
 interface RunWrites {
   create(fields: CreateRunFields, prompt: string): RunRecord;
@@ -72,8 +72,8 @@ function whileLive(reads: TransactionReads, check: () => void): TransactionReads
 }
 const immutable = ['id', 'task', 'agent', 'role', 'placementId', 'requestId', 'resumes', 'continues', 'caller', 'cwd', 'launch', 'created_at', 'attempt', 'firstRunId'] as const;
 /** A coordinator Run's creation fields beyond a Task Run's. */
-const coordinatorOf = (record: RuntimeRunRecord, rebind: boolean) =>
-  record.role === RUN_ROLE.coordinator ? { conversationId: record.conversationId, message: record.message, restartArgv: rebind ? null : record.restartArgv } : null;
+const coordinatorOf = (record: RuntimeRunRecord) =>
+  record.role === RUN_ROLE.coordinator ? { conversationId: record.conversationId, message: record.message } : null;
 /** The person who writes every Request to the coordinator conversation. */
 const CONVERSATION_AUTHOR = JSON.stringify({ kind: 'human' } satisfies TaskActor);
 export class RunStore {
@@ -249,10 +249,15 @@ export class RunStore {
           check();
           // CHECK constraints refuse the enumerated columns; triggers refuse a head outside the conversation.
           const changes = storageOperation(() => this.db.prepare(`INSERT INTO requests
-            (id, conversation_id, head_run_id, mode, body, purpose, author, submitted_at, delivery_state, reply_to, ai_stack, ai_explicit)
-            SELECT ?, id, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? FROM coordinator_conversations WHERE id = ?`).run(request.id,
+            (id, conversation_id, head_run_id, mode, body, purpose, author, submitted_at, delivery_state, reply_to, ai_stack, ai_explicit,
+             coordinator_input, coordinator_turn_no)
+            SELECT ?, id, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+              CASE WHEN ? <> 'aborted' THEN coalesce((SELECT max(coordinator_turn_no)
+                FROM requests WHERE conversation_id=c.id AND coordinator_turn_no IS NOT NULL),0)+1 END
+            FROM coordinator_conversations c WHERE id = ?`).run(request.id,
             request.headRunId, request.mode, request.body, requestPurposeSchema.enum.instruction, CONVERSATION_AUTHOR,
-            request.submittedAt, request.deliveryState, request.replyTo ?? null, request.aiStack ? JSON.stringify(request.aiStack) : null, Number(request.aiExplicit ?? false), request.conversationId).changes);
+            request.submittedAt, request.deliveryState, request.replyTo ?? null, request.aiStack ? JSON.stringify(request.aiStack) : null, Number(request.aiExplicit ?? false),
+            request.coordinatorInput ? JSON.stringify(request.coordinatorInput) : null, request.deliveryState, request.conversationId).changes);
           if (Number(changes) !== 1) throw new Problem(PROBLEM_CODE.notFound, 'Coordinator conversation does not exist', undefined, { reason: { kind: 'coordinator_conversation_does_not_exist' } });
           touch(this.db, { kind: 'request', id: request.id });
         },
@@ -346,7 +351,7 @@ export class RunStore {
     const before = parseRuntimeRow(row);
     const fixed = (key: (typeof immutable)[number]) => !rebind || (key !== 'agent' && key !== 'launch' && key !== 'resumes');
     if (immutable.some(key => fixed(key) && !isDeepStrictEqual(before[key], record[key])) ||
-      !isDeepStrictEqual(coordinatorOf(before, rebind), coordinatorOf(record, rebind)))
+      !isDeepStrictEqual(coordinatorOf(before), coordinatorOf(record)))
       throw new Problem(PROBLEM_CODE.conflict, 'Run creation fields are immutable', undefined, { reason: { kind: 'run_creation_fields_immutable' } });
     // A queued Run may take a fresh session (its predecessor's first launch failed); a launched Run keeps its own.
     if (before.session !== null && before.state !== 'queued' && !isDeepStrictEqual(before.session, record.session))

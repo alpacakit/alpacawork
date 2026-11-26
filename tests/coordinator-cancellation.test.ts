@@ -30,24 +30,25 @@ const reason = (kind: string) => (error: any) => error.reason?.kind === kind;
 test('unreceived withdraw stores one aborted Request, no Run, and projects cancelled without a turn', t => {
   const f = fixture(t), id = randomUUID();
   const view = f.conversation.withdraw(f.cid, id);
-  assert.deepEqual(view.cancelled, [id]); assert.deepEqual(view.turns, []);
+  assert.equal(f.conversation.messageStatus(id).status, 'withdrawn'); assert.deepEqual(view.turns, []);
   assert.equal(f.rows().length, 1); assert.equal(f.rows()[0]!.delivery_state, 'aborted');
   assert.equal(f.db.prepare('SELECT count(*) AS n FROM runs').get()!.n, 0);
 });
 test('cancellation wins over late admission', t => {
   const f = fixture(t), id = randomUUID(); f.conversation.withdraw(f.cid, id);
   const before = f.rows(); const next = f.ask(id, 'different words');
-  assert.deepEqual(next.cancelled, [id]); assert.deepEqual(next.turns, []); assert.deepEqual(f.rows(), before);
+  assert.equal(f.conversation.messageStatus(id).status, 'withdrawn'); assert.deepEqual(next.turns, []); assert.deepEqual(f.rows(), before);
   assert.equal(f.db.prepare('SELECT count(*) AS n FROM runs').get()!.n, 0);
 });
 test('duplicate unreceived withdraw is durable and leaves its timestamp and single row unchanged', t => {
   const f = fixture(t), id = randomUUID(); f.conversation.withdraw(f.cid, id); const before = f.rows();
   f.conversation.withdraw(f.cid, id); assert.deepEqual(f.rows(), before);
-  assert.deepEqual(new CoordinatorConversation(f.root).read().cancelled, [id]);
+  assert.equal(new CoordinatorConversation(f.root).messageStatus(id).status, 'withdrawn');
 });
 test('admission first: queued withdrawal aborts its Run, and changed-payload replay stays cancelled', t => {
   const f = fixture(t), id = randomUUID(); f.ask(id); const run = f.run(id);
-  f.conversation.withdraw(f.cid, id); assert.deepEqual(f.ask(id, 'changed').cancelled, [id]);
+  f.conversation.withdraw(f.cid, id); f.ask(id, 'changed');
+  assert.equal(f.conversation.messageStatus(id).status, 'withdrawn');
   assert.equal(f.store.runtimeGet(run.id)!.state, 'cancelled');
   assert.equal(f.db.prepare('SELECT count(*) AS n FROM runs').get()!.n, 1);
 });
@@ -68,14 +69,14 @@ for (const state of ['reserved', 'attempted', 'uncertain']) test(`handover ${sta
   assert.throws(() => f.conversation.withdraw(f.cid, id), reason('message_has_already_been_sent'));
   assert.deepEqual(f.rows(), before);
 });
-test('warm ID, other conversation ID, closed conversation and invalid IDs never write cancellation records', t => {
-  const f = fixture(t); f.conversation.warm(f.cid);
-  const warm = String(f.db.prepare('SELECT warm_request_id FROM coordinator_conversations WHERE id=?').get(f.cid)!.warm_request_id);
-  const before = f.rows(); assert.throws(() => f.conversation.withdraw(f.cid, warm), reason('coordinator_message_not_conversation')); assert.deepEqual(f.rows(), before);
+test('other conversation IDs, closed conversations and invalid IDs never write cancellations', t => {
+  const f = fixture(t), prior = randomUUID();
+  f.ask(prior);
+  const before = f.rows();
   for (const id of ['bad', '../escape', '']) { assert.throws(() => f.conversation.withdraw(f.cid, id), reason('invalid_coordinator_request_id')); assert.deepEqual(f.rows(), before); }
   f.conversation.clear(f.cid); const next = f.conversation.read().id;
   const count = f.db.prepare('SELECT count(*) AS n FROM requests').get()!.n;
-  assert.throws(() => f.conversation.withdraw(next, warm), reason('coordinator_message_not_conversation'));
+  assert.throws(() => f.conversation.withdraw(next, prior), reason('coordinator_message_not_conversation'));
   assert.throws(() => f.conversation.withdraw(f.cid, randomUUID()), reason('conversation_has_changed'));
   assert.equal(f.db.prepare('SELECT count(*) AS n FROM requests').get()!.n, count);
 });
@@ -106,8 +107,7 @@ test('HTTP lost cancellation answer is recovered by GET and duplicate withdraw, 
   const id = randomUUID(), input = { conversationId: f.cid, id };
   const upload = await fetch(new URL(`/api/coordinator/attachments?conversationId=${f.cid}&requestId=${id}&name=note.txt`, server.url), { method: 'POST', headers: { 'X-Alpacawork-Op-Id': randomUUID() }, body: 'keep' }); assert.equal(upload.status, 200);
   const lost = await post('messages/withdraw', input); await lost.arrayBuffer(); assert.equal(lost.status, 200);
-  const read = await (await fetch(new URL('/api/coordinator', server.url))).json() as any;
-  assert.deepEqual(read.conversation.cancelled, [id]);
+  assert.deepEqual(await (await fetch(new URL(`/api/coordinator/messages/${id}/status`, server.url))).json(), { id, status: 'withdrawn' });
   assert.equal((await post('messages/withdraw', input)).status, 200);
   const late = await post('messages', { ...input, text: 'delayed', attachments: [] });
   assert.equal(late.status, 200); assert.deepEqual((await late.json() as any).conversation.turns, []);

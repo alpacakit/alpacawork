@@ -11,7 +11,7 @@ const unavailable = () => new Problem(PROBLEM_CODE.conflict, 'Reply target is un
 export function replySource(db: DatabaseSync, conversation: string, id: string): ReplySource {
   const row = db.prepare(`SELECT r.result, json_extract(r.record,'$.ended_at') AS ended_at FROM requests q JOIN runs r ON r.id = (${currentRequestRun('q.id')})
     JOIN coordinator_conversations c ON c.id = q.conversation_id
-    WHERE q.id = ? AND c.id = ? AND c.cleared_at IS NULL AND c.warm_request_id IS NOT q.id
+    WHERE q.id = ? AND c.id = ? AND c.cleared_at IS NULL AND q.coordinator_turn_no IS NOT NULL
     AND q.delivery_state <> 'aborted' AND r.state = 'succeeded' AND r.result_state = 'present'
     AND r.result IS NOT NULL AND json_extract(r.record,'$.ended_at') IS NOT NULL`).get(id, conversation);
   if (!row) throw unavailable();

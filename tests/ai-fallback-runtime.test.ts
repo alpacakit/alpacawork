@@ -251,7 +251,10 @@ test('a queued coordinator message follows the replacement conversation using th
     await until(() => receipts(h.root).some(item => item.pid === h.store.runtimeGet(active.id)?.pids.agent), 'the replacement receives the prompt');
     assert.equal(sourceMessage(h.store.connection, active.id, joined), joined);
     assert.throws(() => sourceMessage(h.store.connection, active.id, pending), { code: 'invalid_input' });
-    assert.match(receipts(h.root).find(item => item.pid === h.store.runtimeGet(active.id)?.pids.agent)!.prompt, /An extra instruction/);
+    const fallbackPrompt = receipts(h.root).find(item => item.pid === h.store.runtimeGet(active.id)?.pids.agent)!.prompt;
+    assert.equal(fallbackPrompt.split('An extra instruction').length, 2);
+    assert.equal(fallbackPrompt.split('Read the alpacawork skill').length, 2);
+    assert.deepEqual(conversation.read().resets, [], 'switching within one reply creates no separate history row');
     h.release('answer');
     await until(() => conversation.read().turns.filter(turn => turn.status === 'succeeded').length === 2, 'both replies arrive in order');
     const turns = conversation.read().turns;

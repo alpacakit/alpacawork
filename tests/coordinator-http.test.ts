@@ -1,6 +1,6 @@
 import { parse, stringify } from 'yaml';
 /** Real coordinator HTTP core cases; independent private fixtures. */
-import { coordinatorSnapshotSchema } from '@alpacawork/contract/coordinator';
+import { coordinatorSnapshotSchema, coordinatorMessageResponseSchema, coordinatorResetResponseSchema } from '@alpacawork/contract/coordinator';
 import { AGENT_ADAPTERS, optionsBase } from '@alpacawork/contract/agent-adapters';
 import { stopGroup } from './helpers/process-groups.ts';
 import { cliRun, httpStatus } from './helpers/http-cli.ts';
@@ -8,7 +8,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -18,44 +18,27 @@ import { openIndexStream } from './index-stream.ts';
 import { CoordinatorConversation } from '@alpacawork/backend/test-dist/coordinator/conversation.js';
 import { StopDeliveryOwner } from '@alpacawork/backend/test-dist/runs/execution-control.js';
 import { ServeLifecycle } from '@alpacawork/backend/test-dist/receiver/lifecycle.js';
-import { messagePart, WARM, type View, eventually, records, fixture } from './helpers/coordinator-http-fixture.ts';
+import { messagePart, type View, eventually, records, fixture } from './helpers/coordinator-http-fixture.ts';
 
-test('a message is admitted at once as its Request and coordinator Run, with one index publication at most before the answer', async t => {
-  const h = await fixture(t), app = h.app(), feed = app.feed()!;
+test('message admission records its Request and Run and publishes the updated conversation', async t => {
+  const h = await fixture(t);
   const abort = new AbortController(); t.after(() => abort.abort());
   const stream = await openIndexStream(new URL('/api/events', h.url()), abort.signal);
   const before = await stream.index();
-  const events: string[] = [], update = feed.update.bind(feed), republish = feed.republish.bind(feed);
-  // A conversation change publishes through a fresh tree read or, when no tree changed, a republish of the last one.
-  t.mock.method(feed, 'update', (...args: Parameters<typeof feed.update>) => {
-    if (args[1].coordinator !== before.person.coordinator) events.push('publish');
-    return update(...args);
-  });
-  t.mock.method(feed, 'republish', (...args: Parameters<typeof feed.republish>) => {
-    if (args[0].coordinator !== before.person.coordinator) events.push('publish');
-    return republish(...args);
-  });
-  app.server.on('request', (req, res) => {
-    if (req.url === '/api/coordinator/messages') res.once('finish', () => events.push('response'));
-  });
   const conversation = await h.get(), id = crypto.randomUUID(), gate = join(h.root, 'publication-gate');
   const input = { conversationId: conversation.id, id, text: `wait:${gate}`, attachments: [] };
   try {
     const response = await h.post('/api/coordinator/messages', input);
     assert.equal(response.status, 200);
-    const accepted = (coordinatorSnapshotSchema.parse(await response.json()).conversation as View);
+    const accepted = (coordinatorMessageResponseSchema.parse(await response.json()).conversation);
     assert.equal(accepted.turns.find(turn => turn.id === id)?.status, 'queued', 'serve answers with the admitted message; the Run layer starts it');
     const [stored, ...rest] = h.records(conversation.id);
     assert.deepEqual(rest, []);
     assert.equal(stored?.body, input.text, 'acceptance is durable as the Request, in the words the screen sent');
     assert.equal(stored?.run?.role, 'coordinator'); assert.equal(messagePart(stored!.prompt!), input.text);
     assert.match(stored!.prompt!, new RegExp(`Request ID of this input: ${id}.*--source-request ${id}`));
-    assert.ok(events.includes('response'));
-    assert.ok(events.slice(0, events.indexOf('response')).filter(event => event === 'publish').length <= 1,
-      'one acceptance must not rebuild the index separately for its Request, its Run and their launch');
     let changed = await stream.index();
-    while (changed.person.coordinator === before.person.coordinator) changed = await stream.index();
-    assert.ok(events.includes('publish'), 'SSE carries the changed conversation');
+    while (changed.person.coordinator?.revision === before.person.coordinator?.revision) changed = await stream.index();
     await eventually(async () => (await h.get()).turns.find(turn => turn.id === id)?.status === 'running', 'the Run starts');
   } finally {
     writeFileSync(gate, 'release');
@@ -106,7 +89,6 @@ test('a first Codex message can write through the real CLI without warming the c
   assert.equal(write.code, 0, write.stderr);
   const created = JSON.parse(write.stdout).task;
   assert.equal(created.title, 'Cold-start task');
-  assert.equal((await h.get()).warm, 'none');
   const [record, ...rest] = h.records(conversation.id);
   assert.deepEqual(rest, []);
   assert.equal(record!.run?.resumes, null);
@@ -119,125 +101,7 @@ test('a first Codex message can write through the real CLI without warming the c
     'an unowned conversation cannot claim a screen Request');
 });
 
-test('a new conversation warms up once in the background, hidden, and its first message goes on in that session', async t => {
-  const h = await fixture(t);
-  const conversation = await h.get();
-  assert.equal((await h.post('/api/coordinator/warm', { conversationId: 'other' })).status, 409);
-  const warming = (coordinatorSnapshotSchema.parse(await (await h.post('/api/coordinator/warm', { conversationId: conversation.id })).json()).conversation as View);
-  assert.equal(warming.warm, 'preparing'); assert.deepEqual(warming.turns, []);
-  // Sent while the warm-up runs, the message waits behind it.
-  const id = crypto.randomUUID(), gate = join(h.root, 'first-gate'), text = `wait:${gate}`;
-  assert.equal((await h.post('/api/coordinator/messages', { conversationId: conversation.id, id, text, attachments: [] })).status, 200);
-  // The Request remains the message identity while its Run works and after completion.
-  await h.agentOf(conversation.id, id);
-  assert.equal(h.records(conversation.id).find(record => record.id === id)?.run?.state, 'running');
-  writeFileSync(gate, 'release');
-  const first = JSON.parse((await h.done(id)).answer!);
-  assert.equal(first.mode, 'resume'); assert.equal(messagePart(first.prompt), text);
-  const after = await h.get();
-  assert.equal(after.warm, 'ready'); assert.deepEqual(after.turns.map(turn => turn.id), [id]);
-  // A conversation that has had a turn does not warm up again.
-  const again = (coordinatorSnapshotSchema.parse(await (await h.post('/api/coordinator/warm', { conversationId: conversation.id })).json()).conversation as View);
-  assert.equal(again.warm, 'ready');
-  const [warm, message, ...rest] = h.records(conversation.id);
-  assert.deepEqual(rest, []);
-  assert.equal(warm!.warm, true); assert.equal(warm!.body, WARM, 'the warm-up asks only that the skills be read');
-  assert.equal(warm!.run?.state, 'succeeded'); assert.equal(warm!.run?.session?.id, first.session);
-  assert.equal(message!.id, id); assert.equal(message!.run?.resumes, warm!.run?.id);
-});
-
-test('coordinator inputs reach the agent unchanged on warm-up, direct start and restart after a failed warm-up', async t => {
-  const h = await fixture(t);
-  const marks = join(h.root, '.alpacawork/coordinator');
-  t.after(() => { rmSync(join(marks, '.warm-hold'), { force: true }); });
-  const send = async (conversationId: string) => {
-    const id = crypto.randomUUID(), text = 'T3 1-choice';
-    assert.equal((await h.post('/api/coordinator/messages', { conversationId, id, text, attachments: [] })).status, 200);
-    return id;
-  };
-  const answer = async (id: string) => JSON.parse((await h.done(id)).answer!) as { mode: string; prompt: string };
-  let conversation = await h.get();
-  await h.post('/api/coordinator/warm', { conversationId: conversation.id });
-  const resumed = await answer(await send(conversation.id));
-  assert.equal(resumed.mode, 'resume'); assert.equal(messagePart(resumed.prompt), 'T3 1-choice');
-  // The fake agent reports the actual prompt it received, the hidden warm-up's included.
-  const [warm] = h.records(conversation.id);
-  assert.equal(warm!.warm, true); assert.equal(JSON.parse(warm!.result!).prompt, WARM);
-  assert.match(warm!.body, /Reply only with: ready/);
-
-  conversation = (coordinatorSnapshotSchema.parse(await (await h.post('/api/coordinator/clear', { conversationId: conversation.id })).json()).conversation as View);
-  const direct = await answer(await send(conversation.id));
-  assert.equal(direct.mode, 'start'); assert.equal(messagePart(direct.prompt), 'T3 1-choice');
-
-  // A failed warm-up restarts the waiting message without adding instructions.
-  conversation = (coordinatorSnapshotSchema.parse(await (await h.post('/api/coordinator/clear', { conversationId: conversation.id })).json()).conversation as View);
-  mkdirSync(marks, { recursive: true });
-  writeFileSync(join(marks, '.warm-hold'), ''); writeFileSync(join(marks, '.warm-fail'), '');
-  await h.post('/api/coordinator/warm', { conversationId: conversation.id });
-  await eventually(() => h.records(conversation.id).find(record => record.warm)?.run?.state === 'running', 'warm-up runs');
-  const waiting = await send(conversation.id);
-  rmSync(join(marks, '.warm-hold'));
-  const fallback = await answer(waiting);
-  assert.equal(fallback.mode, 'start'); assert.equal(messagePart(fallback.prompt), 'T3 1-choice');
-});
-
-test('clearing repeatedly warms and sends with an omitted launch option, without reusing the cleared session', async t => {
-  const h = await fixture(t, true, '', 'codex');
-  let conversation = await h.get(), previousSession: string | undefined;
-  for (let cycle = 0; cycle < 3; cycle++) {
-    const old = conversation.id;
-    const cleared = await h.post('/api/coordinator/clear', { conversationId: old });
-    assert.equal(cleared.status, 200);
-    conversation = coordinatorSnapshotSchema.parse(await cleared.json()).conversation as View;
-    assert.notEqual(conversation.id, old);
-    const warm = { conversationId: conversation.id };
-    const responses = await Promise.all([h.post('/api/coordinator/warm', warm), h.post('/api/coordinator/warm', warm)]);
-    for (const response of responses) assert.equal(response.status, 200, await response.clone().text());
-    assert.equal((await h.post('/api/coordinator/warm', { conversationId: old })).status, 409,
-      'a late warm-up cannot change the new conversation');
-    const id = crypto.randomUUID();
-    assert.equal((await h.post('/api/coordinator/messages', {
-      conversationId: conversation.id, id, text: 'Synthetic follow-up', attachments: [],
-    })).status, 200);
-    const finished = await h.done(id);
-    assert.equal(finished.status, 'succeeded');
-    const answer = JSON.parse(finished.answer!);
-    assert.equal(answer.mode, 'resume');
-    assert.notEqual(answer.session, previousSession);
-    previousSession = answer.session;
-    const records = h.records(conversation.id), warms = records.filter(record => record.warm);
-    assert.equal(warms.length, 1, 'duplicate warm requests admit one preparation');
-    assert.equal(warms[0]!.run?.state, 'succeeded');
-    assert.equal(warms[0]!.run?.launch.values.fast, null);
-    assert.equal((await h.get()).warm, 'ready');
-    assert.equal((await h.post('/api/coordinator/warm', {
-      ...warm, selected: { fast: false },
-    })).status, 400, 'a client cannot override the configured row');
-  }
-});
-
-test('clear stops a held warm-up', async t => {
-  // A message waiting behind a warm-up is the first test's; a turn outliving serve and a failed first Run starting anew
-  // are their own tests' and continuation's.
-  const h = await fixture(t);
-  const marks = join(h.root, '.alpacawork', 'coordinator');
-  mkdirSync(marks, { recursive: true });
-  // A failed assertion must not leave the fake agent held.
-  t.after(() => { rmSync(join(marks, '.warm-hold'), { force: true }); });
-  const warmRun = (conversationId: string, state: string) => eventually(() => {
-    const run = h.records(conversationId).find(record => record.warm)?.run;
-    return run?.state === state && (state !== 'running' || run.pids.agent !== null) && run;
-  }, `Warm-up did not reach ${state}`);
-  writeFileSync(join(marks, '.warm-hold'), '');
-  const conversation = await h.get();
-  await h.post('/api/coordinator/warm', { conversationId: conversation.id });
-  const held = (await warmRun(conversation.id, 'running')).pids.agent!;
-  assert.equal((await h.post('/api/coordinator/clear', { conversationId: conversation.id })).status, 200);
-  await eventually(() => !platform.run.signalGroup(held, 0), 'the cleared warm-up stops');
-  assert.equal((await warmRun(conversation.id, 'cancelled')).reason, 'stopped');
-});
-
-test('warm-up and messages use the saved coordinator row, including a setting change on the same session', async t => {
+test('one model resumes and a model change starts a new session on the same profile', async t => {
   const h = await fixture(t, true), config = parse(h.config), path = join(h.root, 'config.yaml');
   const choose = (model: string, effort: string) => {
     const row = { agent: 'fake', values: { model, effort } };
@@ -254,12 +118,13 @@ test('warm-up and messages use the saved coordinator row, including a setting ch
     assert.equal(sent.status, 200, await sent.text());
     return { input, answer: JSON.parse((await h.done(input.id)).answer!) };
   };
-  const warm = await h.post('/api/coordinator/warm', { conversationId });
-  assert.equal(warm.status, 200);
   const first = await send('first');
-  assert.equal(first.answer.mode, 'resume');
+  assert.equal(first.answer.mode, 'start');
   assert.deepEqual(first.answer.args, ['fable', 'max']);
-  assert.deepEqual(h.records(conversationId).find(record => record.warm)?.run?.launch.values, firstRow.values);
+  assert.deepEqual(h.records(conversationId)[0]?.run?.launch.values, firstRow.values);
+  const same = await send('same model');
+  assert.equal(same.answer.mode, 'resume');
+  assert.equal(same.answer.session, first.answer.session);
 
   const live = async () => (await (await fetch(new URL('/api/workspace/live', h.url()))).json()).person.coordinator.revision;
   const snapshot = async () => coordinatorSnapshotSchema.parse(await (await fetch(new URL('/api/coordinator', h.url()))).json());
@@ -271,12 +136,15 @@ test('warm-up and messages use the saved coordinator row, including a setting ch
   assert.notEqual(after.revision, before.revision);
   await eventually(async () => (await live()) === after.revision, 'a settings edit republishes the coordinator marker');
   const next = await send('second');
-  assert.equal(next.answer.mode, 'resume');
-  assert.equal(next.answer.session, first.answer.session);
+  assert.equal(next.answer.mode, 'start');
+  assert.notEqual(next.answer.session, first.answer.session);
+  const reset = (await h.get()).resets.at(-1);
+  assert.equal(reset?.reason.kind, 'another_ai');
+  assert.equal(reset?.beforeRequestId, next.input.id);
   assert.deepEqual(next.answer.args, ['opus', 'high']);
   assert.equal((await h.post('/api/coordinator/messages', first.input)).status, 200, 'an admitted message can be replayed after a settings change');
   assert.equal((await h.post('/api/coordinator/messages', { ...first.input, id: crypto.randomUUID(), selected: firstRow.values })).status, 400);
-  assert.equal((await h.get()).turns.length, 2);
+  assert.equal((await h.get()).turns.length, 3);
 
   const options = AGENT_ADAPTERS.claude.options;
   config.agents.fake.options = { base: optionsBase('claude'), start: options.start,
@@ -500,45 +368,70 @@ test('a configured agent change starts a fresh session, then resumes within that
   assert.equal(second.mode, 'start'); assert.notEqual(second.session, first.session);
   assert.deepEqual(second.args, ['sol', 'low']);
   await h.restart();
-  const third = await send('other', 'astra', 'xhigh');
+  const third = await send('other', 'sol', 'xhigh');
   assert.equal(third.mode, 'resume'); assert.equal(third.session, second.session);
-  assert.deepEqual(third.args, ['astra', 'xhigh']);
+  assert.deepEqual(third.args, ['sol', 'xhigh']);
   const fourth = await send('fake', 'fable', 'high');
   assert.equal(fourth.mode, 'start'); assert.notEqual(fourth.session, first.session);
   assert.equal((await h.get()).turns.length, 4, 'display history remains, but session context does not cross adapters');
 });
 
-test('a queued adapter switch after warm-up uses its defaults and a failed switch leaves the last working session intact', async t => {
-  const h = await fixture(t, true);
-  const config = parse(h.config);
-  config.agents.other = { ...config.agents.fake, params: { ...config.agents.fake.params, model: ['sol', 'astra'], effort: ['low', 'xhigh'] } };
+test('a waiting message starts on the newly configured adapter with one memo and the original input', async t => {
+  const h = await fixture(t, true), config = parse(h.config);
+  config.agents.other = { ...config.agents.fake, adapter: 'codex', params: { model: [], effort: [], fast: [] } };
+  // One stub per adapter, both confined to the fixture root.
+  const { installAgentStub } = await import('./helpers/agent-stub.ts');
+  const { fake } = await import('./helpers/coordinator-http-fixture.ts');
+  process.env.PATH = installAgentStub(h.root, 'alpacawork-agent', [process.execPath, fake, '--fixture-bridge']);
+  const conversationId = (await h.get()).id, first = crypto.randomUUID(), next = crypto.randomUUID();
+  const gate = join(h.root, 'switch-gate');
+  t.after(() => { if (existsSync(h.root)) writeFileSync(gate, 'release'); });
+  assert.equal((await h.post('/api/coordinator/messages', { conversationId, id: first, text: `wait:${gate}`, attachments: [] })).status, 200);
+  await h.agentOf(conversationId, first);
+  const session = h.records(conversationId).find(record => record.id === first)!.run!.session!.id;
+  const caller = { CLAUDE_CODE_SESSION_ID: session };
+  const saved = await cliRun(h.url(), ['coordinator', 'memo', 'set', '--text-file', '-'], caller, 'Keep the selected direction');
+  assert.equal(saved.code, 0, saved.stderr);
+  const memo = JSON.parse(saved.stdout);
+  const repeated = await cliRun(h.url(), ['coordinator', 'memo', 'set', '--text-file', '-'], caller, memo.text);
+  assert.equal(repeated.code, 0, repeated.stderr);
+  assert.deepEqual(JSON.parse(repeated.stdout), memo, 'identical text keeps its timestamp');
+  const get = await cliRun(h.url(), ['coordinator', 'memo', 'get'], caller);
+  assert.equal(get.code, 0, get.stderr);
+  assert.deepEqual(JSON.parse(get.stdout), memo);
+  assert.notEqual((await cliRun(h.url(), ['coordinator', 'memo', 'get'])).code, 0, 'an outside caller cannot read the memo');
+  const resetInput = { conversationId, opId: crypto.randomUUID() };
+  const busy = await h.post('/api/coordinator/reset', resetInput);
+  assert.equal(busy.status, 409);
+  assert.equal((await busy.json()).error.code, 'coordinator_busy');
+
+  assert.equal((await h.post('/api/coordinator/messages', { conversationId, id: next, text: 'Continue the selected direction', attachments: [] })).status, 200);
+  config.coordinatorAiStack = [{ agent: 'other', values: {} }];
   writeFileSync(join(h.root, 'config.yaml'), stringify(config, { aliasDuplicateObjects: false }));
-  const conversationId = (await h.get()).id;
-  const marks = join(h.root, '.alpacawork/coordinator'), gate = join(marks, '.warm-hold');
-  mkdirSync(marks, { recursive: true });
-  writeFileSync(gate, '');
-  t.after(() => { rmSync(gate, { force: true }); });
-  const choose = (agent: string, values = {}) => {
-    config.coordinatorAiStack = [{ agent, values }];
-    writeFileSync(join(h.root, 'config.yaml'), stringify(config, { aliasDuplicateObjects: false }));
+  writeFileSync(gate, 'release');
+  const answer = JSON.parse((await h.done(next)).answer!);
+  assert.equal(answer.mode, 'start');
+  assert.equal(answer.prompt.split('Read the alpacawork skill').length, 2);
+  assert.equal(answer.prompt.split(memo.text).length, 2);
+  assert.equal(answer.prompt.split('Continue the selected direction').length, 2);
+  assert.equal((await h.get()).resets.at(-1)?.beforeRequestId, next);
+
+  const body = async (input: typeof resetInput) => {
+    const response = await h.post('/api/coordinator/reset', input);
+    assert.equal(response.status, 200, await response.clone().text());
+    return coordinatorResetResponseSchema.parse(await response.json());
   };
-  choose('fake', { model: 'fable', effort: 'max' });
-  assert.equal((await h.post('/api/coordinator/warm', { conversationId })).status, 200);
-  const id = crypto.randomUUID();
-  choose('other');
-  assert.equal((await h.post('/api/coordinator/messages', { conversationId, id, text: 'queued switch', attachments: [] })).status, 200);
-  rmSync(gate);
-  const first = JSON.parse((await h.done(id)).answer!);
-  assert.equal(first.mode, 'start'); assert.deepEqual(first.args, ['sol','low']);
-  const fail = crypto.randomUUID();
-  choose('fake');
-  assert.equal((await h.post('/api/coordinator/messages', { conversationId, id: fail, text: 'fail-exit', attachments: [] })).status, 200);
-  assert.equal((await h.done(fail)).status, 'failed');
-  const back = crypto.randomUUID();
-  choose('other');
-  assert.equal((await h.post('/api/coordinator/messages', { conversationId, id: back, text: 'back', attachments: [] })).status, 200);
-  const next = JSON.parse((await h.done(back)).answer!);
-  assert.equal(next.mode,'resume'); assert.equal(next.session,first.session);
+  const one = await body(resetInput), two = await body({ ...resetInput, opId: crypto.randomUUID() });
+  assert.equal(one.reset.id, two.reset.id);
+  assert.equal(one.reset.beforeRequestId, null);
+  assert.equal(one.conversation.context, null);
+  const memoUrl = new URL(`/api/coordinator/resets/${one.reset.id}/memo`, h.url());
+  assert.deepEqual(await (await fetch(memoUrl)).json(), memo);
+  const last = crypto.randomUUID();
+  assert.equal((await h.post('/api/coordinator/messages', { conversationId, id: last, text: 'Start after manual reset', attachments: [] })).status, 200);
+  assert.equal(JSON.parse((await h.done(last)).answer!).mode, 'start');
+  assert.equal((await body(resetInput)).reset.beforeRequestId, last, 'replay reads the same reset after it was used');
+  assert.equal((await h.get()).resets.length, 2);
 });
 
 test('a completion publication fault is classified separately and records its cause once through HTTP', async t => {
@@ -568,4 +461,32 @@ test('a completion publication fault is classified separately and records its ca
   // The public contract carries only the safe classification, never the exception or a ready file.
   const state = JSON.stringify(await h.get()); assert.equal(state.includes(fault.message), false);
   assert.equal(await httpStatus(new URL(`/api/coordinator/file?requestId=${id}&name=note.txt&area=answers`, h.url())), 404);
+});
+
+test('a completed reply crossing the context threshold reserves the next session', async t => {
+  const h = await fixture(t, false, 'limits: {coordinator_reset_tokens: 100, coordinator_reset_percent: 0}\n');
+  const conversationId = (await h.get()).id;
+  const send = async (used: number) => {
+    const id = crypto.randomUUID();
+    const response = await h.post('/api/coordinator/messages', { conversationId, id, text: `usage:${used}`, attachments: [] });
+    assert.equal(response.status, 200);
+    assert.equal((await h.done(id)).status, 'succeeded');
+    return id;
+  };
+  await send(40);
+  let view = await h.get();
+  assert.equal(view.context?.usedTokens, 40);
+  assert.deepEqual(view.resets, []);
+  await send(100);
+  view = await h.get();
+  const reset = view.resets[0]!;
+  assert.deepEqual(reset.reason, { kind: 'context', over: { tokens: 100 } });
+  assert.equal(reset.beforeRequestId, null);
+  assert.equal(view.context, null);
+  const id = await send(20);
+  view = await h.get();
+  assert.equal(view.resets.length, 1);
+  assert.equal(view.resets[0]?.id, reset.id);
+  assert.equal(view.resets[0]?.beforeRequestId, id);
+  assert.equal(view.context?.usedTokens, 20);
 });

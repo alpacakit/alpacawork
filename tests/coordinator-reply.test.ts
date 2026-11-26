@@ -61,7 +61,7 @@ test('reply admission stores only its Request reference, builds the bounded prom
   f.conversation.withdraw(f.id, message.id);
   assert.doesNotThrow(() => f.conversation.ask(message));
   const cancelled = f.conversation.ask({ ...message, replyTo: second });
-  assert.ok(cancelled.cancelled.includes(message.id), 'cancellation wins over any delayed input with this ID');
+  assert.equal(cancelled.turns.some(turn => turn.id === message.id), false, 'cancellation wins over any delayed input with this ID');
   assert.equal(cancelled.turns.some(turn => turn.id === message.id), false);
   assert.equal(db.prepare('SELECT reply_to FROM requests WHERE id = ?').get(message.id)!.reply_to, source,
     'late input cannot rewrite the stored reply reference');

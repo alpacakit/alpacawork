@@ -39,7 +39,6 @@ test('admission fixes native and bridge paths including restart; a missing expli
   const first = launchSnapshot(settings, 'codex', 'start', f.bin); assert.ok(first.ok);
   assert.deepEqual(first.launch.argv.slice(0, 4), ['alpacawork-agent', 'codex', '--command', external]);
   const resume = coordinatorLaunchSnapshot(settings, 'codex', 'resume', f.bin, {}, first.launch); assert.ok(resume.ok);
-  assert.deepEqual(resume.restartArgv?.slice(0, 4), first.launch.argv.slice(0, 4));
   assert.equal(launchSnapshot(settings, 'claude', 'start', f.bin).launch?.argv[0], native);
   const saved = structuredClone(first.launch);
   settings.agents.codex!.command = join(f.root, 'missing');

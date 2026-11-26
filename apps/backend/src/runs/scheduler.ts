@@ -4,19 +4,15 @@ import { releaseAdmission } from '../release/journal.js';
 /** One transaction owns liveness and slot decisions; spawning follows commit. */
 import { closeSync, constants, existsSync, statSync, writeSync, mkdirSync } from 'node:fs';
 import { setTimeout as delay } from 'node:timers/promises';
-import { hasCode, platform, tryLock } from '@alpacawork/core';
-import { RUN_FILES, runNumber, type CoordinatorRunRecord, type RunRecord, type RuntimeRunRecord } from '@alpacawork/contract/run';
+import { hasCode, platform, Problem, tryLock } from '@alpacawork/core';
+import { RUN_FILES, runNumber, type RunRecord, type RuntimeRunRecord } from '@alpacawork/contract/run';
 import { DELIVERY_STATE } from '@alpacawork/contract/control';
 import { taskBaseStateSchema, type RunId } from '@alpacawork/contract/fields';
 import { RunStore, compareRequestOrder, conversationInUse, isEnded, usesSlot, laneAhead, type RunTransaction } from '@alpacawork/runs';
-import { readAgentsSettings, type AgentsSettingsResult } from '../agents-settings.js';
-import { agentLaunchSchema } from '@alpacawork/contract/agent-launch';
-import { AGENT_ADAPTERS, builtinAdapterIdSchema } from '@alpacawork/contract/agent-adapters';
-import { randomUUID } from 'node:crypto';
+import { assignedSession, readAgentsSettings, type AgentsSettingsResult } from '../agents-settings.js';
 import { failedDeliveryBlocked, seatFailed, seatRunBefore } from '../control/wake.js';
 import { agentEnvironment } from './env.js';
-import { continuationSession } from './session-continuation.js';
-import { processUnit, type AgentInvocation } from './launch-agent.js';
+import { processUnit } from './launch-agent.js';
 import { openRunFile } from './files.js';
 import { RunEventImporter, releaseReserved } from './event-importer.js';
 import { attemptOf, coordinatorCwd, reserveAttempt, planInputs, publishCommands, publishAttempt, queuedInputReservations,
@@ -29,6 +25,9 @@ import { RunReviewState } from './reviews.js';
 import { dirname, join } from 'node:path';
 import { releaseForEntry } from '@alpacawork/core';
 import { settleCompaction } from './compactions.js';
+import { coordinatorInput, coordinatorLaunchFor, coordinatorTurnNumber, prepareCoordinatorStart } from '../coordinator/continuation.js';
+import { reserveCoordinatorReset, startCoordinatorReset } from '../coordinator/resets.js';
+import { assertSkillInvocations } from '../coordinator/skills.js';
 
 interface SettleSummary { launched: RunId[]; lost: RunId[]; closed: RunId[]; failed: RunId[]; skipped: { run: RunId; reason: string }[] }
 export interface RunLaunch { id: RunId; lockFd: number; attemptId?: string; releaseLock?: () => void }
@@ -67,21 +66,6 @@ function seatFailedBefore(store: RunStore, tx: RunTransaction, run: RunRecord): 
 /** Whether the returns a seat's continuation still carries (its unreleased deliveries) make it the server's (W0). */
 const carriedRows = (tx: RunTransaction, run: RunRecord) => tx.returns(undefined, [run.task])
   .filter(row => row.deliveries.some(delivery => delivery.wakeRequestId === run.requestId && !delivery.releasedAt));
-/**
- * The coordinator's conversation has no session to continue when no turn before succeeded in one (its first
- * launch failed): this turn starts it anew with the same agent and choices, rather than waiting for a session that
- * never comes. Undefined when the agent can no longer start as the coordinator.
- */
-function freshStart(run: CoordinatorRunRecord): AgentInvocation | undefined {
-  if (run.restartArgv === null) return undefined;
-  const checked = agentLaunchSchema.safeParse({ ...run.launch, argv: run.restartArgv });
-  if (!checked.success) return undefined;
-  const launch = checked.data;
-  const id = builtinAdapterIdSchema.safeParse(launch.adapter);
-  const session = id.success && AGENT_ADAPTERS[id.data].system.start.includes('session')
-    ? { provider: run.agent, id: randomUUID() } : null;
-  return { launch, mode: 'start', session };
-}
 /** Writes that must not be lost retry busy; finite SQLite waits let Node keep servicing other events. */
 export async function retryBusy<T>(operation: () => T | Promise<T>, signal?: AbortSignal): Promise<T> {
   for (;;) {
@@ -192,26 +176,16 @@ export function decide(tx: RunTransaction, context: SettleContext): SettleSummar
     // Requests in one lane are serialized even when `mode=new` selected a
     // different session. A queued reply waits for its predecessor to finish.
     if (laneAhead(runs, run, blocked, reservations)) continue;
-    let restart: AgentInvocation | undefined;
-    if (run.resumes) {
+    if (run.role !== 'coordinator' && run.resumes) {
       const predecessor = runs.find(other => other.id === run.resumes);
       if (!predecessor || predecessor.state === 'queued' || usesSlot(predecessor)) continue;
-      const session = continuationSession(runs, predecessor, { kind: 'launch', coordinator: run.role === 'coordinator' });
-      if (session) {
-        if (!run.session || run.role === 'coordinator' && run.session.id !== session.id) {
-          const bound = { ...run, session };
-          tx.update(bound);
-          runs = runs.map(other => other.id === run.id ? bound : other);
-          run = bound;
-        }
-      } else {
-        // A Task's continuation waits for its conversation's session; the coordinator's starts anew.
-        if (run.role !== 'coordinator') continue;
-        restart = freshStart(run);
-        if (!restart) {
-          result.skipped.push({ run: run.id, reason: 'agent cannot start a coordinator conversation' });
-          continue;
-        }
+      const session = predecessor.session;
+      if (!session) continue;
+      if (!run.session) {
+        const bound = { ...run, session };
+        tx.update(bound);
+        runs = runs.map(other => other.id === run.id ? bound : other);
+        run = bound;
       }
     }
     if (run.session && conversationInUse(runs, run.session.id)) continue;
@@ -233,8 +207,43 @@ export function decide(tx: RunTransaction, context: SettleContext): SettleSummar
     try {
       held = tryLock(fd);
       if (!held) continue;
+      if (run.role === 'coordinator' && (run.attempt ?? 0) === 0) {
+        const db = store.connection;
+        const turn = coordinatorTurnNumber(db, run.requestId);
+        const next = coordinatorLaunchFor(db, settings.config, run.conversationId, turn, run.launch.path);
+        if (next.kind === 'unavailable') {
+          result.skipped.push({ run: run.id, reason: next.error.message });
+          continue;
+        }
+        const session = next.continued ? next.continued.session : assignedSession(next.launch, next.row.agent);
+        if (session && conversationInUse(runs, session.id)) continue;
+        const current = coordinatorInput(db, run.requestId);
+        const prompt = next.kind === 'start' ? prepareCoordinatorStart(db, run.conversationId, turn, [current])
+          : [current.language, current.text].filter(Boolean).join('\n');
+        if (prompt === undefined) {
+          tx.update({ ...run, state: 'failed', reason: 'launch', ended_at: new Date().toISOString() });
+          result.failed.push(run.id);
+          continue;
+        }
+        if (run.message.skills?.length) {
+          const row = db.prepare('SELECT body FROM requests WHERE id=?').get(run.requestId);
+          try { assertSkillInvocations(next.launch.adapter, String(row?.body), run.message.skills); }
+          catch (error) {
+            if (!(error instanceof Problem)) throw error;
+            tx.update({ ...run, state: 'failed', reason: 'launch', ended_at: new Date().toISOString() });
+            result.failed.push(run.id);
+            continue;
+          }
+        }
+        run = { ...run, agent: next.row.agent, launch: next.launch, resumes: next.continued?.id ?? null, session };
+        tx.rebindQueued(run, { aiStack: [next.row, ...next.following], prompt });
+        if (next.kind === 'start' && next.reset) {
+          const reset = reserveCoordinatorReset(db, run.conversationId, next.reset, new Date().toISOString());
+          startCoordinatorReset(db, reset, run);
+        }
+      }
       // Register ownership before any later operation can throw.
-      const attempt = reserveAttempt(store, tx, run, managerScript, limits, restart);
+      const attempt = reserveAttempt(store, tx, run, managerScript, limits);
       launches.push({ id: run.id, lockFd: fd, attemptId: attempt.attemptId, releaseLock }); retained = true;
       // A conversation started anew holds the session its attempt starts.
       const running = { ...run, session: attempt.invocation.session, state: 'running' as const, started_at: new Date().toISOString() };

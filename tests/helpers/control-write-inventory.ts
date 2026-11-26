@@ -36,9 +36,10 @@ export const routingFiles = new Set(['apps/backend/src/control/return-router.ts'
 export const unobservedTables = new Set(['agents', 'cli_operations', 'file_path_reservations', 'file_operations',
   'run_commands', 'task_sequence', 'run_sequence', 'workspace_identity', 'control_migration_sources',
   'control_migration_evidence', 'control_schema_migrations', '__drizzle_migrations', 'task_value_versions',
-  'task_value_versions_since']);
+  'task_value_versions_since', 'coordinator_reset_ops']);
 /** These columns carry protocol progress, not screen or seat facts. */
 export const unobservedColumns: Record<string, string[]> = {
+  coordinator_conversations: ['visible_turns'],
   run_attempts: ['next_seq', 'last_digest', 'claimed', 'spawn_intent', 'started_json', 'completed_digest', 'dirty', 'acked_seq'],
 };
 export const protocolOnly = (site: WriteSite) => {

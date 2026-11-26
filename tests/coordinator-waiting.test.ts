@@ -44,24 +44,6 @@ test('a running predecessor, including needs_review holding execution, blocks th
   f.store.write(tx => tx.update({ ...f.run(first, tx), reason: 'conversation_busy' }));
   assert.equal(f.read().turns.find(turn => turn.id === next)!.waiting, false);
 });
-test('hidden warm-up uses the same lane order; waiting is withdrawable and warming is not counted as a chat message', t => {
-  const f = fixture(t); f.conversation.warm(f.id);
-  assert.equal(f.read().busy, true); const message = f.ask();
-  assert.equal(f.read().warm, 'preparing'); assert.equal(f.read().turns.length, 1);
-  assert.equal(f.read().turns[0]!.waiting, true);
-  f.conversation.withdraw(f.id, message); assert.deepEqual(f.read().turns, []);
-});
-test('the warm-up says how far it has come: none, preparing while queued or running, then ready or failed', t => {
-  for (const [state, reason, said] of [['succeeded', null, 'ready'], ['failed', 'exit', 'failed'], ['cancelled', 'stopped', 'failed']] as const) {
-    const f = fixture(t); assert.equal(f.read().warm, 'none');
-    f.conversation.warm(f.id); assert.equal(f.read().warm, 'preparing');
-    const warm = (tx: import('@alpacawork/runs').RunTransaction) => tx.coordinatorRuns(f.id)[0]!;
-    f.store.write(tx => tx.update({ ...warm(tx), state: 'running', started_at: new Date().toISOString() }));
-    assert.equal(f.read().warm, 'preparing');
-    f.store.write(tx => tx.finish({ ...warm(tx), state, reason, ended_at: new Date().toISOString() }, { state: 'present', text: 'ready' }));
-    assert.equal(f.read().warm, said); assert.deepEqual(f.read().turns, []);
-  }
-});
 test('a successful predecessor with uncertain input holds the next until its receipt settles, even without running work', t => {
   const f = fixture(t), first = f.ask();
   f.store.write(tx => { const run = f.run(first, tx); reserveAttempt(f.store, tx, run, managerScript, { run_minutes: 5, coordinator_run_minutes: 5, coordinator_command_seconds: 10 }); tx.update({ ...run, state: 'running', started_at: new Date().toISOString() }); });
@@ -100,9 +82,11 @@ test('send-now is visible while queued, then the unsettled input owns the projec
 test('send-now before reservation can be cancelled, and neither send-now nor late ask revives that ID', t => {
   const f = fixture(t), first = f.ask(); f.running(first); const next = f.ask();
   f.conversation.sendNow(f.id, next);
-  assert.deepEqual(f.conversation.withdraw(f.id, next).cancelled, [next]);
+  f.conversation.withdraw(f.id, next);
+  assert.equal(f.conversation.messageStatus(next).status, 'withdrawn');
   assert.throws(() => f.conversation.sendNow(f.id, next), (error: any) => error.reason?.kind === 'message_has_already_left_queue');
-  assert.deepEqual(f.conversation.ask({ conversationId: f.id, id: next, text: 'late words', attachments: [] }).cancelled, [next]);
+  f.conversation.ask({ conversationId: f.id, id: next, text: 'late words', attachments: [] });
+  assert.equal(f.conversation.messageStatus(next).status, 'withdrawn');
   assert.equal(f.store.connection.prepare('SELECT count(*) AS n FROM runs WHERE request_id=?').get(next)!.n, 1);
 });
 

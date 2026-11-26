@@ -184,7 +184,7 @@ function coordinatorMessages(db: DatabaseSync, ids?: readonly string[]) {
   const sql = `SELECT q.id, q.submitted_at AS at, t.external_id AS task FROM requests q
       JOIN coordinator_conversations c ON c.id=q.conversation_id
       LEFT JOIN task_dialogues d ON d.request_id=q.id LEFT JOIN tasks t ON t.id=d.task_uuid
-    WHERE c.warm_request_id IS NOT q.id AND q.body <> ''`;
+    WHERE q.coordinator_turn_no IS NOT NULL AND q.body <> ''`;
   const rows = ids ? db.prepare(sql + ' AND q.id IN (SELECT value FROM json_each(?))').all(JSON.stringify(ids)) : db.prepare(sql).all();
   const messages = new Map<string, Activity[]>();
   for (const row of rows) {

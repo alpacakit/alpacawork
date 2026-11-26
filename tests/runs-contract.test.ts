@@ -7,7 +7,7 @@ import { record, time } from './runs-fixtures.ts';
 
 /** A coordinator Run answering a message in the screen's conversation: no Task, placement or caller. */
 const coordinator = (fields: Record<string, unknown> = {}) => ({ ...record('R2'), task: null, placementId: null, role: 'coordinator',
-  caller: null, restartArgv: null, conversationId: '0b6f7e52-5a1d-4c7e-9b8a-3f2d1c0e9a77', message: { context: 'T3', attachments: ['a.png'],
+  caller: null, conversationId: '0b6f7e52-5a1d-4c7e-9b8a-3f2d1c0e9a77', message: { context: 'T3', attachments: ['a.png'],
     intent: { task: 'T3', action: 'approve', aboutRun: 'R1' } }, ...fields });
 
 test('complete run record and every state/reason pair', () => {

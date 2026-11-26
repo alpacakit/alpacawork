@@ -91,7 +91,7 @@ else event({type:'result',session_id:session,is_error:false,result:'synthetic re
     const run = store.write(tx => {
       if (coordinator) {
         tx.insertConversationRequest({ id: requestId, conversationId, headRunId: null, mode: 'new', body: 'synthetic coordinator', submittedAt, deliveryState: 'queued' });
-        return tx.createCoordinatorRun({ conversationId, requestId, agent: 'fake', resumes, session, restartArgv: null,
+        return tx.createCoordinatorRun({ conversationId, requestId, agent: 'fake', resumes, session,
           cwd: workspace, launch: selected.launch, message: { context: null, attachments: [], intent: null } }, 'synthetic coordinator');
       }
       tx.insertRequest({ id: requestId, taskId: task.id, placementId: placement.id, placementRevision: 1, taskHash: task.hash,

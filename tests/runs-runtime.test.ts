@@ -238,10 +238,10 @@ function continueAfter(h: Runtime, previous: CoordinatorRunRecord, body: string)
   const requestId = randomUUID();
   const run = h.store.write(tx => {
     tx.insertConversationRequest({ id: requestId, conversationId: latest.conversationId, headRunId: latest.id, mode: 'continue',
-      body, submittedAt: now(), deliveryState: latest.session === null ? DELIVERY_STATE.waiting_for_session
+      body, coordinatorInput: { text: body, language: '' }, submittedAt: now(), deliveryState: latest.session === null ? DELIVERY_STATE.waiting_for_session
         : isUnfinished(latest) ? DELIVERY_STATE.waiting_for_run : DELIVERY_STATE.queued });
     return tx.createCoordinatorRun({ conversationId: latest.conversationId, requestId, agent: latest.agent, resumes: latest.id,
-      session: latest.session, cwd: coordinatorCwd(h.root), restartArgv: resume.restartArgv, launch: resume.launch,
+      session: latest.session, cwd: coordinatorCwd(h.root), launch: resume.launch,
       message: { context: null, attachments: [], intent: null } }, body);
   });
   h.store.prepareFolder(run.id);
@@ -257,6 +257,7 @@ async function reserve(h: Runtime) {
 function addInputAgent(h: Runtime): void {
   const path = join(h.root, 'config.yaml'), config = parse(readFileSync(path, 'utf8')) as { agents: Record<string, unknown> };
   config.agents.stdin = fixtureAgentSetting('codex');
+  Object.assign(config, { coordinatorAiStack: [{ agent: 'stdin', values: {} }] });
   writeFileSync(path, stringify(config));
 }
 /**

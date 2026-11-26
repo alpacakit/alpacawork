@@ -6,7 +6,7 @@ import { optionsBase } from '@alpacawork/contract/agent-adapters';
 import { resolveAgentLaunchArgv } from '@alpacawork/contract/agent-launch';
 import { stringify } from 'yaml';
 import { parseAgentsSettings } from '@alpacawork/backend/test-dist/agents-settings.js';
-import { coordinatorNextLaunch } from '@alpacawork/backend/test-dist/coordinator/continuation.js';
+import { automaticCoordinatorReset, coordinatorNextLaunch } from '@alpacawork/backend/test-dist/coordinator/continuation.js';
 
 test('the next coordinator turn follows the saved order and the latest observed limits', () => {
   const row = (agent: string, model: string): AiRow => ({ agent, values: { model, effort: null } });
@@ -17,7 +17,7 @@ test('the next coordinator turn follows the saved order and the latest observed 
     unavailable: { ...setting, command: '/nonexistent-alpacawork-fixture-command' } };
   const run = (id: number, row: AiRow, cause?: 'session_limit' | 'model_capacity') => ({
     id: `R${id}`, agent: row.agent, state: cause ? 'failed' : 'succeeded',
-    started_at: new Date(id * 1000).toISOString(), session: { provider: row.agent, id: 'thread' },
+    started_at: new Date(id * 1000).toISOString(), ended_at: new Date(id * 1000 + 1).toISOString(), session: { provider: row.agent, id: 'thread' },
     launch: { adapter: 'claude', values: row.values }, ...(cause ? { availability: { cause } } : {}),
   }) as CoordinatorRunRecord;
   const limited = run(1, first, 'session_limit'), resumed = run(2, second);
@@ -36,7 +36,7 @@ test('the next coordinator turn follows the saved order and the latest observed 
     { name: 'current fallback', rows: [first, second, last], runs: [limited, resumed], selected: second, continued: resumed, following: [last] },
     { name: 'new row above the exhausted one', rows: [last, first, second], runs: [limited, resumed], selected: last, continued: null, following: [second] },
     { name: 'moving an untried row first', rows: [last, second], runs: [resumed], selected: last, continued: null, following: [second] },
-    { name: 'new values for the same agent', rows: [revised, last], runs: [resumed], selected: revised, continued: resumed, following: [last], modelArg: 'one' },
+    { name: 'new values for the same agent', rows: [revised, last], runs: [resumed], selected: revised, continued: null, following: [last], modelArg: 'one' },
     { name: 'a changed model that resume cannot pass starts a new session', profiles: startModelOnly, rows: [noEffort, last],
       runs: [run(3, oldModel)], selected: noEffort, continued: null, following: [last], modelArg: 'two' },
     { name: 'resume can keep the same model without an option for it', profiles: startModelOnly, rows: [noEffort, last],
@@ -55,7 +55,7 @@ test('the next coordinator turn follows the saved order and the latest observed 
   ];
   for (const { name, profiles, rows, runs, selected, continued, following, modelArg } of cases) {
     const settings = parseAgentsSettings(stringify({ agents: profiles ?? agents, aiStack: [task], coordinatorAiStack: rows }, { aliasDuplicateObjects: false }));
-    const next = coordinatorNextLaunch(settings, runs, '/bin');
+    const next = coordinatorNextLaunch(settings, runs, '/bin', { now: 60_000 });
     assert.deepEqual(next.row, selected, name);
     if (next.row === null) {
       assert.equal(next.error.reason?.kind, 'no_configured_agents', name);
@@ -100,4 +100,30 @@ test('an unsaved coordinator stack uses one row with the default agent starting 
       assert.deepEqual(next.following, [], name);
     }
   }
+});
+
+test('the automatic reset uses a known fill and tracks a limit reset only until the reported time', () => {
+  const limits = { coordinator_reset_tokens: 200_000, coordinator_reset_percent: 50 };
+  const at = '2026-11-01T00:00:00Z';
+  const context = (usedTokens: number | null, windowTokens: number | null) =>
+    ({ observedAt: at, usedTokens, windowTokens, windowFrom: null, compacted: false });
+  assert.equal(automaticCoordinatorReset(context(null, 100), limits), null);
+  assert.equal(automaticCoordinatorReset(context(49, 100), limits), null);
+  assert.deepEqual(automaticCoordinatorReset(context(50, 100), limits), { kind: 'context', over: { percent: 50 } });
+  assert.equal(automaticCoordinatorReset(context(199_999, null), limits), null);
+  assert.deepEqual(automaticCoordinatorReset(context(200_000, null), limits), { kind: 'context', over: { tokens: 200_000 } });
+
+  const primary = { agent: 'first', values: {} }, spare = { agent: 'second', values: {} };
+  const setting = { adapter: 'claude', command: process.execPath, params: {} };
+  const config = parseAgentsSettings(stringify({ agents: { first: setting, second: setting }, coordinatorAiStack: [primary, spare] }, { aliasDuplicateObjects: false }));
+  const resetsAt = '2026-11-01T00:10:00Z';
+  const failed = { id: 'R1', agent: 'first', state: 'failed', started_at: at, ended_at: at, session: null,
+    launch: { adapter: 'claude', values: config.coordinatorAiStack![0]!.values }, availability: { cause: 'session_limit', resetsAt } } as CoordinatorRunRecord;
+  const until = Date.parse(resetsAt);
+  assert.equal(coordinatorNextLaunch(config, [failed], '/bin', { now: until - 1 }).row?.agent, 'second');
+  assert.equal(coordinatorNextLaunch(config, [failed], '/bin', { now: until }).row?.agent, 'first');
+  delete failed.availability!.resetsAt;
+  const hour = Date.parse(at) + 3_600_000;
+  assert.equal(coordinatorNextLaunch(config, [failed], '/bin', { now: hour - 1 }).row?.agent, 'second');
+  assert.equal(coordinatorNextLaunch(config, [failed], '/bin', { now: hour }).row?.agent, 'first');
 });

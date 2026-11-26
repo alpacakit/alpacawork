@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { stringify } from 'yaml';
@@ -17,6 +17,7 @@ import { TaskReportService } from '@alpacawork/backend/test-dist/control/report.
 import { writeFieldDef, deleteFieldDef, writeProjectSchema, writeTaskValues } from '@alpacawork/backend/test-dist/control/task-values-store.js';
 import { CoordinatorConversation } from '@alpacawork/backend/test-dist/coordinator/conversation.js';
 import { ReturnLifecycle } from '@alpacawork/backend/test-dist/control/return-lifecycle.js';
+import { setCoordinatorMemo } from '@alpacawork/backend/test-dist/coordinator/memo.js';
 import { linkMessage, refuse } from '@alpacawork/backend/test-dist/coordinator/messages.js';
 import { reserveAttempt, resolveUncertainInputs, planInputs } from '@alpacawork/backend/test-dist/runs/execution-control.js';
 import { managerScript, settleTransaction, launch } from '@alpacawork/backend/test-dist/runs/scheduler.js';
@@ -142,7 +143,20 @@ test('seeded real operations cover writers and every committed row change has it
 
   const coordinator = new CoordinatorConversation(root);
   const conversation = await step('open conversation', () => coordinator.read());
-  await step('warm conversation', () => coordinator.warm(conversation.id));
+  const archivedMessage = randomUUID();
+  await step('admit an older coordinator message', () => coordinator.ask({
+    conversationId: conversation.id, id: archivedMessage, text: 'Earlier exchange', attachments: [],
+  }));
+  await step('finish the older exchange', () => runs.write(tx => {
+    const run = tx.coordinatorHead(conversation.id)!;
+    const at = new Date().toISOString();
+    tx.update({ ...run, state: 'running', started_at: at });
+    tx.finish({ ...run, state: 'succeeded', started_at: at, ended_at: at }, { state: 'present', text: 'Earlier reply' });
+  }));
+  const folder = join(root, '.alpacawork', 'coordinator', conversation.id, 'attachments', archivedMessage);
+  mkdirSync(folder, { recursive: true });
+  writeFileSync(join(folder, 'note.txt'), 'Synthetic attachment');
+  await step('reserve a coordinator reset', () => coordinator.reset(conversation.id, randomUUID()));
   const messageId = randomUUID();
   await step('coordinator message', () => coordinator.ask({ id: messageId, conversationId: conversation.id,
     text: 'Inspect the synthetic task', attachments: [], tasks: [second.id] }));
@@ -159,6 +173,10 @@ test('seeded real operations cover writers and every committed row change has it
   const decision = await step('reserve queued launches', () => settleTransaction(runs, readAgentsSettings(root)),
     ['wait_cycle', 'return', 'delivery', 'resolution', 'input']);
   assert.ok(decision.launches.length > 0, 'the fixture reaches the real launch reservation');
+  await step('save the active coordinator memo', () => write(db => setCoordinatorMemo(db, {
+    kind: 'coordinator', source: 'screen', provider: 'claude', conversation: conversation.id, runId: messageRun.id,
+  }, 'Keep the synthetic direction')));
+  await step('expire an older attachment', () => coordinator.sweepAttachments(Date.now() + 31 * 86400_000));
   await step('record failed manager launch', () => launch(runs, decision, { script: join(root, 'absent-manager.mjs') }),
     ['wait_cycle', 'return', 'delivery', 'resolution', 'input']);
   await step('clear conversation', () => coordinator.clear(conversation.id));

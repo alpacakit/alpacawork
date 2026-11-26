@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, symlinkSync, linkSync, mkdtempSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { CoordinatorConversation } from '@alpacawork/backend/test-dist/coordinator/conversation.js';
 import { coordinatorCwd } from '@alpacawork/backend/test-dist/runs/execution-control.js';
 import { messagePart, type View, eventually, records, fixture } from './helpers/coordinator-http-fixture.ts';
 
@@ -273,4 +274,46 @@ test('answer capture bounds files and counts, ignores code and delivery URLs, an
   }).join('\n'));
   assert.equal(count.filter(file => file.state === 'ready').length, 20);
   assert.deepEqual(count.at(-1), { state: 'unavailable', href: join(source, '20.txt'), reason: 'limit' });
+});
+
+test('both attachment folders expire only after the turn is old and behind a started reset', async t => {
+  const h = await fixture(t), conversationId = (await h.get()).id;
+  const first = crypto.randomUUID(), next = crypto.randomUUID();
+  const upload = (id: string) => httpStatus(new URL(`/api/coordinator/attachments?conversationId=${conversationId}&requestId=${id}&name=note.txt`, h.url()), {
+    method: 'POST', headers: { 'X-Alpacawork-Op-Id': crypto.randomUUID() }, body: 'attached evidence',
+  });
+  const source = realpathSync(mkdtempSync(join(tmpdir(), 'coordinator-expiry-source-')));
+  t.after(() => rmSync(source, { recursive: true, force: true }));
+  const note = join(source, 'note.txt'), reply = join(h.root, 'reply.md');
+  writeFileSync(note, 'copied by the reply');
+  writeFileSync(reply, `[Note](${note})`);
+  const send = async (id: string) => {
+    assert.equal(await upload(id), 200);
+    assert.equal((await h.post('/api/coordinator/messages', {
+      conversationId, id, text: `answer-from:${reply}`, attachments: ['note.txt'],
+    })).status, 200);
+    const turn = await h.done(id);
+    const file = turn.answerFiles?.[0];
+    assert.equal(file?.state, 'ready');
+    return file.name;
+  };
+  await send(first);
+  const retained = (id: string) => ['attachments', 'answers'].map(area => join(h.root, '.alpacawork', 'coordinator', conversationId, area, id, 'note.txt'));
+  const owner = new CoordinatorConversation(h.root);
+  const future = Date.now() + 31 * 86400_000;
+  owner.sweepAttachments(future);
+  assert.ok(retained(first).every(existsSync), 'age cannot expire files in the current session');
+  assert.equal((await h.post('/api/coordinator/reset', { conversationId, opId: crypto.randomUUID() })).status, 200);
+  owner.sweepAttachments(future);
+  assert.ok(retained(first).every(existsSync), 'a pending reset has not opened the next session');
+  const nextAnswer = await send(next);
+  owner.sweepAttachments();
+  assert.ok(retained(first).every(existsSync), 'the boundary alone does not expire a recent file');
+  owner.sweepAttachments(future);
+  assert.ok(retained(first).every(path => !existsSync(path)));
+  assert.ok(retained(next, nextAnswer).every(existsSync));
+  assert.equal((await h.get()).turns.find(turn => turn.id === first)?.filesExpired, true);
+  const readFile = (query: string) => httpStatus(new URL(`/api/coordinator/file?requestId=${first}&${query}`, h.url()));
+  assert.equal(await readFile('name=note.txt'), 404);
+  assert.equal(await readFile(`name=${encodeURIComponent(answerName)}&area=answers`), 404);
 });

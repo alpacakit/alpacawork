@@ -159,6 +159,8 @@ export function accessHelp(command: string): string {
   if (command === 'open') return '\nAccess: local; starts a browser on this PC and grants no server permissions.';
   if (unrestricted.has(command)) return '\nAccess: no role restriction at this entry; caller identification still applies.';
   if (command === 'run.stop-local') return `\nAccess: ${localStopCaller.help}`;
+  if (command === 'coordinator memo.get' || command === 'coordinator memo.set')
+    return `\nAccess: Only ${SEAT_TEXT.screen_coordinator} in the open conversation.`;
   if (command === 'coordinator reply.get') return `\nAccess: ${replyAccess.help}`;
   if (command === 'operation.get') return `\nAccess: ${operationReadHelp}\n  Referenced Tasks: only ${permissionText({ label: 'Referenced Tasks', action: operationReadActions(['T3'])[0]!.action })}.\n  No Task: only ${permissionText({ label: 'No Task', action: operationReadActions([])[0]!.action })}.`;
   const examples = accessExamples[command];

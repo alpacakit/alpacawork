@@ -26,6 +26,7 @@ const keyOf: Record<string, (row: Row) => ChangeKey> = {
   return_deliveries: r => ({ kind: 'delivery', id: JSON.stringify([r.return_id, r.wake_request_id]) }),
   return_resolutions: r => ({ kind: 'resolution', id: String(r.return_id) }),
   task_dialogues: r => ({ kind: 'dialogue', id: JSON.stringify([r.task_uuid, r.request_id]) }),
+  coordinator_resets: r => ({ kind: 'conversation', id: String(r.conversation_id) }),
   coordinator_conversations: r => ({ kind: 'conversation', id: String(r.id) }),
   coordinator_refusals: r => ({ kind: 'refusal', id: JSON.stringify([r.request_id, r.task_uuid]) }),
   field_defs: r => ({ kind: 'field_def', id: String(r.id) }),

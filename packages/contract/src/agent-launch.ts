@@ -40,17 +40,9 @@ export function carriedAgentLaunchValues(values: Selection, previous: AppliedLau
   return previous.values.model === values.model
     ? Object.fromEntries(Object.entries(previous.applied).filter(([key, value]) => values[key] === value)) : {};
 }
-/** No restartArgv in the manager-facing invocation or shared launch. mode describes this execution. */
+/** Mode describes this execution. */
 export const agentInvocationSchema = z.object({ mode: launchModeSchema, launch: agentLaunchSchema }).strict();
 export type AgentInvocation = z.infer<typeof agentInvocationSchema>;
-/** Composed only into CoordinatorRunRecord, at its root. Saved once and immutable after admission.
- * Resume admission computes start argv from the SAME selections for a first-failure restart.
- * Normal start / migrated ended coordinator runs have null. Members never compose this extension.
- * A fresh restart creates a mode=start invocation, without mutating the saved resume launch/restartArgv.
- */
-export const coordinatorRestartSchema = z.object({ restartArgv: launchArgvSchema.nullable() }).strict();
-export type CoordinatorRestart = z.infer<typeof coordinatorRestartSchema>;
-
 export class ConversationAdapterMismatch extends Error {
   readonly code = 'new_conversation_required';
   constructor(readonly previous: string, readonly current: BuiltinAdapterId) {
@@ -129,15 +121,10 @@ export function prepareAgentLaunch(compiled: CompiledAgentSetting, admission: La
   return { launch, choices: valid.resolved.choices };
 }
 
-/** Live coordinator admission: a resume must capture its fresh-start alternative now.
- * The saved-record extension above also accepts null for migrated ended records.
- */
-const coordinatorAdmissionFields = { launch: agentLaunchSchema, appliedValues: launchArgumentValuesSchema };
-export const coordinatorLaunchAdmissionSchema = z.discriminatedUnion('mode', [
-  z.object({ ...coordinatorAdmissionFields, mode: z.literal('start'), restartArgv: z.null() }).strict(),
-  z.object({ ...coordinatorAdmissionFields, mode: z.literal('resume'), restartArgv: launchArgvSchema }).strict(),
-]);
-export type CoordinatorLaunchAdmission = z.infer<typeof coordinatorLaunchAdmissionSchema>;
+const coordinatorLaunchAdmissionSchema = z.object({
+  launch: agentLaunchSchema, appliedValues: launchArgumentValuesSchema, mode: launchModeSchema,
+}).strict();
+type CoordinatorLaunchAdmission = z.infer<typeof coordinatorLaunchAdmissionSchema>;
 export function prepareCoordinatorLaunch(compiled: CompiledAgentSetting, admission: LaunchAdmission): CoordinatorLaunchAdmission {
   const valid = resolveAdmission(compiled, admission);
   const launch = snapshot(compiled, valid.admission, valid.resolved);
@@ -145,7 +132,5 @@ export function prepareCoordinatorLaunch(compiled: CompiledAgentSetting, admissi
   const appliedValues = appliedLaunchValues(launch.argv.slice(adapter.prefix.length), valid.resolved.effective);
   if (valid.admission.mode === 'resume')
     assertResumeSelections(valid.admission.previous.values, valid.resolved, new Set(Object.keys(appliedValues)));
-  const restartArgv = valid.admission.mode === 'start' ? null : [...adapter.prefix,
-    ...prepareLaunchOptions(compiled.options.start, valid.resolved.effective, adapter.system.start)];
-  return coordinatorLaunchAdmissionSchema.parse({ mode: valid.admission.mode, launch, appliedValues, restartArgv });
+  return coordinatorLaunchAdmissionSchema.parse({ mode: valid.admission.mode, launch, appliedValues });
 }

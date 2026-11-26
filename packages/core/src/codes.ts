@@ -26,6 +26,7 @@ export const PROBLEM_CODE = {
   notResumable: 'not_resumable',
   responsibleMissing: 'responsible_missing',
   conversationBusy: 'conversation_busy',
+  coordinatorBusy: 'coordinator_busy',
   handoffPending: 'handoff_pending',
   handoverRequired: 'handover_required',
   automaticLimit: 'automatic_limit',
@@ -110,6 +111,7 @@ export const PROBLEM_RULE: { readonly [code in ProblemCode]: { readonly status: 
   /** Another conversation holds the Task's claim for its turn; the claim ends with that turn or its expiry. */
   automatic_limit: rule(409, RETRY.fix),
   conversation_busy: rule(409, RETRY.later),
+  coordinator_busy: rule(409, RETRY.later),
   responsible_missing: rule(409, RETRY.later),
   parent_unavailable: rule(409, RETRY.later),
   runs_unavailable: rule(503, RETRY.later),

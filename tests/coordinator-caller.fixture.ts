@@ -255,7 +255,7 @@ export function callerWorkspace(t: TestContext) {
           submittedAt: input.submittedAt ?? now(), deliveryState: 'queued' });
         return tx.createCoordinatorRun({ conversationId: conversation, requestId, agent, resumes: null,
           session: input.session === null ? null : { provider: agent, id: input.session }, cwd: coordinatorCwd(root),
-          restartArgv: null, launch: snapshot.launch, message: { context: null, attachments: [], intent: null, ...(input.tasks ? { tasks: input.tasks } : {}) } }, input.words);
+          launch: snapshot.launch, message: { context: null, attachments: [], intent: null, ...(input.tasks ? { tasks: input.tasks } : {}) } }, input.words);
       }), { running: input.running ?? true, attempt: input.running ?? true });
       return { ...held, conversation };
     },
