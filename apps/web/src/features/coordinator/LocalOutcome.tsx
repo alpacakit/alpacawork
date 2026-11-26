@@ -11,7 +11,7 @@ import { useConversation } from "./coordinator";
 import { canTakeBack, takeBack, cancelUnsent, useOutbox } from "./editor/outbox";
 import { focusCoordinator } from "./editor/draft";
 import { localDeliveryText } from './delivery-copy';
-import { useShownConversation, type LocalTurn } from "./shown";
+import type { LocalTurn } from "./shown";
 import { LINE_ACTION } from './delivery-presentation';
 import { cn } from '@/lib/utils';
 
@@ -24,14 +24,13 @@ export function LocalOutcome({ turn, cancellation = 'inline' }: { turn: LocalTur
   const destination = conversationId ? draftKey(root, 'coordinator', conversationId) : null;
   const back = useDraftStore(state => (turn.stage === "refused" || turn.stage === 'cancelled') && canTakeBack(state.entries, root, turn.id, destination));
   const inlineCancellation = cancellation === 'inline';
-  const preparing = useShownConversation().preparing;
   // Its words whole or not at all where the row is narrow: a line too short for them wraps them out of sight, and Undo,
   // first on the line (order), stays beside the ring.
   if (turn.stage === 'waiting') return <div role="status" className="flex min-w-0 items-center gap-1.5 text-muted"><SoonRing until={turn.due} />
     <span className="flex h-[1lh] min-w-0 flex-row-reverse flex-wrap justify-end overflow-hidden"><span className="flex-none">{t('coordinatorCard.soon')}</span>
     {inlineCancellation && <button type="button" data-coordinator-cancel-unsent className={cn(LINE_ACTION, 'order-first flex-none focus-visible:outline-offset-[-2px]')}
       onClick={() => { try { if (cancelUnsent(root, turn.id) === 'cancelled') { takeBack(root, turn.id, destination); focusCoordinator(); } } catch (error) { notify.failure(error, { about: 'cancel unsent message', from: 'coordinator' }); } }}>{i18n.t('undo.toast.undo')}</button>}</span></div>;
-  const text = localDeliveryText(turn, t, preparing);
+  const text = localDeliveryText(turn, t);
   const withdraw = async () => {
     try { await useConversation.getState().messageAction('withdraw', turn.id); }
     catch (error) { recordFailure(error, 'coordinator withdraw'); }

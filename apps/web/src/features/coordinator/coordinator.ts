@@ -9,7 +9,7 @@ import { queryClient } from '@/data/query-client';
 import type { WriteBasis } from '@/data/connection';
 import { notify, recordFailure } from "@/lib/notify";
 import { ownsReaderSend, reconcileReaderSends, dismissRecoveredReaderSends, closeReaderConversation, observeReaderConversation } from './reader-send';
-import { awaitsDrawing, isolateConflicts, reconcileOutbox, rejectWithdrawal, beginWithdrawal, confirmStarted, cancelOutgoing, cancelBeforeSend, outgoingKey, resumeQueuedOutgoing, settleInterrupted, useOutbox } from './editor/outbox';
+import { awaitsDrawing, isolateConflicts, outgoing, reconcileOutbox, rejectWithdrawal, beginWithdrawal, confirmStarted, cancelOutgoing, cancelBeforeSend, outgoingKey, resumeQueuedOutgoing, settleInterrupted, useOutbox } from './editor/outbox';
 import { draftKey, useDraftStore } from '@/features/forms/draft-store';
 import { withdrawalStarted } from './delivery-copy';
 import { clearingConversation } from './press';
@@ -19,7 +19,7 @@ import { create } from "zustand";
 import { coordinatorAnswersInputSchema, type CoordinatorAnswers, type CoordinatorIntent } from "@alpacawork/contract/coordinator";
 import { onBackInReach, useConnection } from "@/data/connection";
 import { allRead, hasAnswer, learn, opening, type Opening } from "./read-boundary";
-import { askCoordinator, coordinatorMessageAction, clearCoordinator, markCoordinatorSeen, warmCoordinator, type CoordinatorConversation, type CoordinatorSnapshot } from "@/data/coordinator";
+import { askCoordinator, coordinatorMessageAction, clearCoordinator, resetCoordinator, readCoordinatorMessage, markCoordinatorSeen, type CoordinatorConversation, type CoordinatorSnapshot, type CoordinatorMessageResponse } from "@/data/coordinator";
 
 /** One question's answer in the input: its task, the asking it answers and its number there. */
 export type AnswerAt = { task: string; question: string; n: string };
@@ -57,7 +57,7 @@ type View = {
   written: number;
   /**
    * The person has turned to it (written in its input, opened its conversation, pressed its microphone):
-   * from then on what only writing needs is loaded (the skill catalog, the background warm-up).
+   * from then on what only writing needs is loaded (the skill catalog).
    */
   engaged: boolean;
   /** The one line's microphone pressed: the input comes up and records as soon as it can take the words. */
@@ -71,8 +71,11 @@ type View = {
   trying: boolean;
   /** How many requests this page has sent (ask: from the input, or sent again): the conversation goes to its end. */
   asked: number;
-  /** The conversation whose warm-up this page asked for and could not have taken (refused, or its answer lost). */
-  warmRefused: string | null;
+  /**
+   * The messages this page has learnt were withdrawn, in their conversation: serve's snapshot names none, so a send's
+   * or a withdrawal's answer, or a status check, says so (`learnWithdrawn`), and the conversation carries them.
+   */
+  withdrawn: { conversationId: string; ids: readonly string[] } | null;
   /** The last read failed: said by its toast (READ_FAILURE) until a read succeeds. */
   error: string | null;
   /** Closing the input folds the conversation too. */
@@ -94,7 +97,8 @@ type View = {
     intent?: CoordinatorIntent; answers?: CoordinatorAnswers; replyTo?: string | null; retryOf?: string }, basis?: WriteBasis, keepalive?: boolean) => Promise<boolean>;
   messageAction: (action: "withdraw" | "send-now", id: string) => Promise<void>;
   clear: () => Promise<void>;
-  warm: () => Promise<void>;
+  /** The coordinator starts again from the next message, with its memo; the conversation stays. */
+  reset: () => Promise<void>;
 };
 let revision = 0;
 /**
@@ -156,19 +160,25 @@ const currentInputKey = () => {
   return conversation ? draftKey(root, 'coordinator', conversation.id) : null;
 };
 /** One recovery rule for a pressed operation: one read, then fulfilled, still pending, or unknown. */
-type Action = 'send-now' | 'withdraw' | 'clear';
+type Action = 'send-now' | 'withdraw' | 'clear' | 'reset';
 type ActionResult = 'done' | 'pending' | 'unknown';
 function actionResult(action: Action, conversationId: string, id: string | undefined, next: CoordinatorConversation | null): ActionResult {
   if (!next) return 'unknown';
   if (next.id !== conversationId || id && next.cancelled.includes(id)) return 'done';
   if (action === 'clear') return 'pending';
+  // A reset not used yet stands at the conversation's end until the next message starts the coordinator.
+  if (action === 'reset') return next.resets.some(reset => reset.beforeRequestId === null) ? 'done' : 'pending';
   const turn = next.turns.find(turn => turn.id === id);
   if (!turn) return 'unknown';
   if (turn.status !== 'queued' || action === 'send-now' && turn.joinRequested && !turn.deliveryError) return 'done';
   return 'pending';
 }
 async function checkAction(action: Action, conversationId: string, id?: string): Promise<ActionResult> {
-  try { await readConversationSnapshot(); }
+  try {
+    // A withdrawal is settled by the message's own status: a snapshot holds the open turns only.
+    if (action === 'withdraw' && id) learnStatus(conversationId, await readCoordinatorMessage(id));
+    await readConversationSnapshot();
+  }
   catch (error) {
     recordFailure(error, 'coordinator action check');
     // A newer accepted snapshot may already prove completion even if this read failed.
@@ -182,6 +192,8 @@ function sayActionFailure(action: Action, result: ActionResult, error: unknown, 
     ? result === 'pending' ? i18n.t('ui:coordinatorCard.withdrawFailed') : i18n.t('ui:coordinatorCard.withdrawUnknown')
     : action === 'clear'
     ? result === 'unknown' ? i18n.t('ui:coordinatorCard.clearUnknown') : i18n.t('ui:coordinatorCard.clearFailed')
+    : action === 'reset'
+    ? result === 'unknown' ? i18n.t('ui:coordinatorCard.reset.unknown') : i18n.t('ui:coordinatorCard.reset.failed')
     : result === 'unknown' ? i18n.t('ui:coordinatorCard.sendNowUnknown') : i18n.t('ui:coordinatorCard.sendNowFailed');
   // This Owner has checked the operation's result; the original transport retry no longer classifies its words.
   tell(text);
@@ -190,7 +202,7 @@ function sayActionFailure(action: Action, result: ActionResult, error: unknown, 
  * Send-now and clear: one POST answered by a snapshot. No automatic POST again: one read may recover an answer lost
  * after commit. This Owner says the checked outcome; callers only record the fault it propagates.
  */
-async function checkedAction(action: 'send-now' | 'clear', conversationId: string, id: string | undefined, post: () => Promise<CoordinatorSnapshot>, replace = false): Promise<void> {
+async function checkedAction(action: 'send-now' | 'clear' | 'reset', conversationId: string, id: string | undefined, post: () => Promise<CoordinatorSnapshot>, replace = false): Promise<void> {
   const origin = sending();
   try {
     if (takeSnapshot(await post(), origin, replace) === 'satisfied') await useConversation.getState().refresh();
@@ -216,9 +228,10 @@ async function withdraw(root: string, conversation: CoordinatorConversation, mes
   const origin = sending();
   try {
     const next = await coordinatorMessageAction('withdraw', id, messageId);
-    const holdsTurn = next.conversation.turns.some(turn => turn.id === messageId);
-    if (next.conversation.id === id && !next.conversation.cancelled.includes(messageId) && !holdsTurn)
+    if (next.conversation.id === id && next.message.id !== messageId)
       throw new ApiError('Withdrawal response does not identify this request', 'invalid_response', 'check');
+    learnStatus(next.conversation.id, next.message);
+    const holdsTurn = next.message.status !== 'withdrawn' && next.message.status !== 'missing';
     if (next.root === origin.root && next.conversation.id === id && holdsTurn) confirmStarted(root, messageId);
     if (takeSnapshot(next, origin) === 'satisfied') await useConversation.getState().refresh();
   } catch (error) {
@@ -246,8 +259,27 @@ async function withdraw(root: string, conversation: CoordinatorConversation, mes
     throw error;
   } finally { withdrawal.finish(); }
 }
+/** Serve's conversation with the withdrawals this page knows of in it. */
+export function withWithdrawn(conversation: CoordinatorSnapshot['conversation'], known = useConversationUi.getState().withdrawn): CoordinatorConversation {
+  return { ...conversation, cancelled: known?.conversationId === conversation.id ? known.ids : [] };
+}
+/**
+ * One sent message's status read from serve, for a send whose answer was lost: what it says is kept (learnStatus), and
+ * the conversation given is returned with it.
+ */
+export async function withStatus(conversation: CoordinatorSnapshot['conversation'], id: string): Promise<CoordinatorConversation> {
+  learnStatus(conversation.id, await readCoordinatorMessage(id));
+  return withWithdrawn(conversation);
+}
+/** What one message's status says: withdrawn is kept for its conversation (a new conversation starts with none). */
+function learnStatus(conversationId: string, message: CoordinatorMessageResponse['message']) {
+  if (message.status !== 'withdrawn') return;
+  const known = useConversationUi.getState().withdrawn, ids = known?.conversationId === conversationId ? known.ids : [];
+  if (!ids.includes(message.id)) useConversationUi.setState({ withdrawn: { conversationId, ids: [...ids, message.id] } });
+}
 type Taken = 'shown' | 'satisfied' | 'scope-lost';
-function take(next: CoordinatorConversation, origin: Sending, replace = false, drawable = true): Taken {
+function take(received: CoordinatorSnapshot['conversation'], origin: Sending, replace = false, drawable = true): Taken {
+  const next = withWithdrawn(received);
   const conflict = i18n.t('ui:coordinatorCard.conflict');
   // Facts are received even when this snapshot loses the display race; a turn under a sent request's ID with other
   // words is not a fact about that request.
@@ -310,7 +342,7 @@ const useConversationUi = create<Ui>((set) => {
   const get = () => useConversation.getState();
   return ({
   root: '', opening: null,
-  seen: new Set(), pendingSeen: new Set(), seenError: null, open: false, expanded: false, focusRequested: false, written: 0, engaged: false, listen: false, wanted: false, asked: 0, warmRefused: null, error: null,
+  seen: new Set(), pendingSeen: new Set(), seenError: null, open: false, expanded: false, focusRequested: false, written: 0, engaged: false, listen: false, wanted: false, asked: 0, withdrawn: null, error: null,
   observeSeen: ids => {
     if (isAgentView() || readScope(queryClient)?.restored) return;
     const state = get(), valid = new Set(state.conversation?.turns.filter(hasAnswer).map(turn => turn.id));
@@ -373,8 +405,9 @@ const useConversationUi = create<Ui>((set) => {
       throw new ApiError(i18n.t('ui:input.questionsChanged'), 'conflict', 'reread');
     set(state => ({ asked: state.asked + 1 }));
     const next = await askCoordinator({ ...message, ...captured ? { answers: captured.data } : {} }, basis, keepalive);
-    if (next.conversation.id !== input.conversationId || !next.conversation.turns.some(turn => turn.id === input.id) && !next.conversation.cancelled.includes(input.id))
+    if (next.conversation.id !== input.conversationId || next.message.id !== input.id || next.message.status === 'missing')
       throw new ApiError('Coordinator response does not identify this request', 'unavailable', 'check');
+    learnStatus(next.conversation.id, next.message);
     takeSnapshot(next, origin);
     return inScope(origin);
   },
@@ -390,30 +423,17 @@ const useConversationUi = create<Ui>((set) => {
     revision++;
     await checkedAction('clear', id, undefined, () => clearCoordinator(id), true);
   },
-  /**
-   * Opened on a conversation with no message yet, the server loads the coordinator's instructions in the background.
-   * Only a speed-up: when it cannot start, the first message loads them itself.
-   */
-  warm: async () => {
-    const { conversation, open } = get();
-    if (!open || !conversation || conversation.turns.length || conversation.warm !== "none") return;
-    const origin = sending();
-    try {
-      const next = await warmCoordinator(conversation.id);
-      // A message sent meanwhile is newer than this answer; the next read brings both.
-      takeSnapshot(next, origin);
-      if (get().warmRefused === conversation.id) set({ warmRefused: null });
-    }
-    catch (error) {
-      recordFailure(error, "coordinator warm-up");
-      // An earlier conversation's late refusal says nothing of the one shown now, nor takes its own away.
-      if (get().conversation?.id === conversation.id) set({ warmRefused: conversation.id });
-    }
+  reset: async () => {
+    const id = get().conversation?.id;
+    if (!id) return;
+    // One press is one reset: asked again after a lost answer, the same operation names the same one.
+    const opId = crypto.randomUUID();
+    await checkedAction('reset', id, undefined, () => resetCoordinator(id, opId));
   },
 });
 });
 /** The sole displayed conversation is a projection of QueryCache and session ACK evidence. */
-let projected: { ui: Ui; root: string; data: CoordinatorConversation | null; trying: boolean; view: View } | undefined;
+let projected: { ui: Ui; root: string; data: CoordinatorSnapshot['conversation'] | null; trying: boolean; view: View } | undefined;
 function conversationView(): View {
   const ui = useConversationUi.getState();
   const root = ui.root || readIndex(queryClient)?.root || '';
@@ -421,8 +441,9 @@ function conversationView(): View {
   const data = coordinatorReadState(queryClient, root).snapshot?.conversation ?? null;
   const trying = !!query && query.state.fetchStatus !== 'idle';
   if (projected?.ui === ui && projected.root === root && projected.data === data && projected.trying === trying) return projected.view;
-  const conversation = data && data.turns.some(turn => !turn.seen && ui.seen.has(turn.id))
-    ? { ...data, turns: data.turns.map(turn => ui.seen.has(turn.id) && !turn.seen ? { ...turn, seen: true } : turn) } : data;
+  const known = data && withWithdrawn(data, ui.withdrawn);
+  const conversation = known && known.turns.some(turn => !turn.seen && ui.seen.has(turn.id))
+    ? { ...known, turns: known.turns.map(turn => ui.seen.has(turn.id) && !turn.seen ? { ...turn, seen: true } : turn) } : known;
   const view: View = { ...ui, root, conversation, read: allRead(conversation), trying };
   projected = { ui, root, data, trying, view }; return view;
 }
@@ -578,7 +599,31 @@ useConversation.subscribe((next, before) => {
 const recoverOutbox = (root: string) => {
   settleInterrupted(root, i18n.t('ui:coordinatorCard.interrupted'));
   resumeQueuedOutgoing(root);
+  void askAbsentSends(root);
 };
+/**
+ * A send serve took that its snapshot no longer holds was withdrawn (here or on another page), or has ended among the
+ * turns older than the snapshot's: its own status says which, asked once a page. Withdrawn, it settles as a withdrawal
+ * answered here would.
+ */
+const statusAsked = new Set<string>();
+async function askAbsentSends(root: string) {
+  const conversation = useConversation.getState().conversation;
+  if (!conversation) return;
+  const absent = outgoing(useDraftStore.getState().entries, root, conversation.id).filter(item => (item.stage === 'posted' || item.stage === 'accepted')
+    && !statusAsked.has(item.requestId) && !conversation.turns.some(turn => turn.id === item.requestId) && !conversation.cancelled.includes(item.requestId));
+  for (const item of absent) {
+    statusAsked.add(item.requestId);
+    try { learnStatus(conversation.id, await readCoordinatorMessage(item.requestId)); }
+    catch (error) { statusAsked.delete(item.requestId); recordFailure(error, 'coordinator message status'); return; }
+  }
+  const now = useConversation.getState();
+  if (absent.length && now.root === root && now.conversation?.id === conversation.id) {
+    const result = reconcileOutbox(now.conversation, root, currentInputKey());
+    for (const id of result.restored) dismissRecoveredReaderSends(id, { root, conversationId: conversation.id });
+    reconcileReaderSends(now.conversation, root);
+  }
+}
 useConversation.subscribe((next, before) => {
   if (next.conversation && (next.root !== before.root || next.conversation !== before.conversation)) recoverOutbox(next.root);
 });

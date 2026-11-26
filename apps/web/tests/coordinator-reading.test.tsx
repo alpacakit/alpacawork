@@ -1,4 +1,4 @@
-import { setConversationState } from './conversation-fixture';
+import { setConversationState, SERVED } from './conversation-fixture';
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { act, cleanup, render } from "@testing-library/react";
 import { useConversationReading, opening } from "../src/features/coordinator/read-boundary";
@@ -11,7 +11,7 @@ const reply = (id: string, seen = false): CoordinatorTurn => ({ id, at: "", ask:
 let observed: ReturnType<typeof vi.fn<(ids: readonly string[]) => void>>, flushed: ReturnType<typeof vi.fn<(keepalive?: boolean) => void>>;
 let visibility: DocumentVisibilityState;
 function Harness() { useConversationReading(document, "fixture", "conversation"); return null; }
-const conversation = (turns: CoordinatorTurn[]) => ({ id: "conversation", nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns });
+const conversation = (turns: CoordinatorTurn[]) => ({ id: "conversation", nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, cancelled: [], turns });
 const read = () => observed.mock.calls.flatMap(call => call[0]);
 const touch = (type = "pointerdown") => act(() => { document.dispatchEvent(new Event(type)); });
 // Mounted folded, then opened by a press: the opening is the first action.

@@ -1,7 +1,7 @@
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { i18n, startI18n } from '@alpacawork/i18n';
-import { snapshotJson, setConversationState } from './conversation-fixture';
+import { snapshotJson, setConversationState, SERVED } from './conversation-fixture';
 import { TestWorkspace, screenData, tree } from './fixtures';
 import { CoordinatorCard } from '../src/features/coordinator/CoordinatorCard';
 import { ShownConversationProvider } from '../src/features/coordinator/shown';
@@ -23,7 +23,7 @@ const root = '/fixture', cid = 'ack-conversation';
 const turn = (id: string, status: CoordinatorTurn['status']): CoordinatorTurn => ({ id, status, ask: id, at: '2026-10-31T15:00:00Z',
   attachments: [], waiting: status === 'queued' || status === 'sending', answer: null, answeredAt: null, error: null, result: null, seen: false });
 const work = turn('working', 'running'), queued = turn('waiting', 'queued');
-const conversation = (turns = [work, queued], cancelled: string[] = []) => ({ id: cid, nextLaunch: { agent: 'fake', values: {} }, warm: 'none' as const, busy: true, turns, cancelled });
+const conversation = (turns = [work, queued], cancelled: string[] = []) => ({ id: cid, nextLaunch: { agent: 'fake', values: {} }, ...SERVED, busy: true, turns, cancelled });
 const response = (value: unknown) => new Response(snapshotJson(value));
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(done => { resolve = done; }); return { promise, resolve }; }
 function Rows() { return <WaitingRows queue={useWaiting()} open={() => {}} />; }

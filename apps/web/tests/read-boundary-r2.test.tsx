@@ -8,13 +8,13 @@ import { readDemandStamp, readRecoveryPending, requestReadRecovery, requestRead,
 import { rowWriteBasis, detailWriteBasis, writeAccess, useConnection } from '../src/data/connection';
 import { requireWriteAccess } from '../src/data/client';
 import { dto, tree, indexOf, served0, viewsOf, screenData, TestWorkspace } from './fixtures';
-import { conversationSnapshot } from './conversation-fixture';
+import { conversationSnapshot, SERVED } from './conversation-fixture';
 beforeEach(() => { client.clear(); useConnection.setState({ state: 'live', offline: false }); });
 afterEach(() => { client.clear(); vi.restoreAllMocks(); });
 for (const later of [false, true]) test(`coordinator receipt cannot complete a GET demand; later demand=${later}`, async () => {
   const index = indexOf(tree()); receiveFullIndex(client, index);
   const key: QueryKey = ['coordinator', index.root];
-  const snapshot = conversationSnapshot({ id: 'C1', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [] });
+  const snapshot = conversationSnapshot({ id: 'C1', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, cancelled: [], turns: [] });
   const query = client.getQueryCache().build(client, { queryKey: key });
   requestRead(query); requestReadRecovery(query);
   const served = readDemandStamp(query);

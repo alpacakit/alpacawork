@@ -1,4 +1,4 @@
-import { snapshotJson } from './conversation-fixture';
+import { snapshotJson, SERVED } from './conversation-fixture';
 import { setConversationState } from './conversation-fixture';
 import { canSendWrites, detailWriteBasis } from '../src/data/connection';
 import { getReadProof, readQuery, recordReadProof } from '../src/data/read-model';
@@ -21,7 +21,7 @@ import { queryClient } from '../src/data/query-client';
 import { notify, useToasts } from '../src/lib/notify';
 const root='/fixture', cid='review-recovery', key=draftKey(root,'coordinator',cid);
 const originalHash='c'.repeat(64), currentHash='d'.repeat(64);
-const conv=()=>({id:cid,nextLaunch: { agent: 'claude', values: {} },warm: 'none' as const,busy:false,cancelled:[],turns:[]});
+const conv=()=>({id:cid,nextLaunch: { agent: 'claude', values: {} },...SERVED,busy:false,cancelled:[],turns:[]});
 beforeAll(async()=>{await startI18n();await i18n.changeLanguage('en');});
 afterEach(()=>{cleanup();for(const toast of useToasts.getState().toasts)notify.dismiss(toast.id);queryClient.clear();vi.unstubAllGlobals();useDraftStore.setState({entries:{}});useReaderSend.setState({receipts:new Map(),post:null});useOutbox.setState({live:new Set(),resend:null});setConversationState(useConversation.getInitialState());});
 function setup({restored=true, changed=false, changedTurn=false, changedPlacement=false, action='sendback', ordinary=false, snapshot=false, failFirst=false, unknownFirst=false}:

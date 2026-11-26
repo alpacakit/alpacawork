@@ -15,22 +15,35 @@ export function returnFromReply() {
   if (back) useReplyNavigation.setState({ jump: { id: back.id ?? 'input' }, back: null });
 }
 
-/** Consume once, reveal, then resolve against that committed rendering. Missing targets are discarded, never deferred. */
+/**
+ * Where a reply's target is: drawn once revealed (`here`), to be read first (`later`: asked again at each drawing until
+ * it is here or gone), or not in the conversation (`gone`).
+ */
+export type Revealed = 'here' | 'later' | 'gone';
+/** Consume once, reveal, then resolve against that committed rendering. Missing targets are discarded. */
 export function useReplyNavigationOwner(root: RefObject<HTMLElement | null>, scope: string | undefined, asked: number,
-  reveal: (id: string) => void) {
+  reveal: (id: string) => Revealed) {
   const jump = useReplyNavigation(state => state.jump);
   const back = useReplyNavigation(state => state.back);
   const [pending, setPending] = useState<Jump | null>(null);
+  const [later, setLater] = useState<Jump | null>(null);
   const revealNow = useRef(reveal); revealNow.current = reveal;
   const [flash, setFlash] = useState<HTMLElement | null>(null);
+  const resolve = (target: Jump) => {
+    const revealed = revealNow.current(target.id);
+    setLater(revealed === 'later' ? target : null);
+    if (revealed === 'here') setPending(target);
+  };
   useLayoutEffect(() => {
-    useReplyNavigation.setState({ jump: null, back: null }); setPending(null); setFlash(null);
+    useReplyNavigation.setState({ jump: null, back: null }); setPending(null); setLater(null); setFlash(null);
   }, [scope, asked]);
   useLayoutEffect(() => {
     if (!jump) return;
     useReplyNavigation.setState({ jump: null });
-    revealNow.current(jump.id); setPending(jump);
+    resolve(jump);
   }, [jump]);
+  // Read first: each drawing may hold it now.
+  useLayoutEffect(() => { if (later) resolve(later); });
   useLayoutEffect(() => {
     if (!pending) return;
     setPending(null);

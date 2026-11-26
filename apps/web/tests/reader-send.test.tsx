@@ -1,4 +1,4 @@
-import { setConversationState } from './conversation-fixture';
+import { setConversationState, SERVED } from './conversation-fixture';
 import { answerTask } from './fixtures';
 import { useConversation } from '../src/features/coordinator/coordinator';
 import { labelled } from './fixtures';
@@ -53,7 +53,7 @@ const wrote = (kind: Write['kind'], more: Partial<Write> = {}): Write => ({ task
 /** The answer that closed `question` on T3. */
 const answered = (question: string) => result([wrote('answered', { question })]);
 const conversation = (id: string, status: CoordinatorTurn['status'] = 'running', outcome: CoordinatorResult | null = null) =>
-  ({ id: 'c', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [{ id, at: '', ask: '', attachments: [], status, waiting: status === "queued" || status === "sending", answer: null, seen: false, answeredAt: null, error: null, result: outcome }] });
+  ({ id: 'c', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, cancelled: [], turns: [{ id, at: '', ask: '', attachments: [], status, waiting: status === "queued" || status === "sending", answer: null, seen: false, answeredAt: null, error: null, result: outcome }] });
 const receiptOf = (id: string) => [...useReaderSend.getState().receipts.values()].find(receipt=>receipt.root===scope.root&&receipt.conversationId===scope.conversationId&&receipt.id===id);
 /** The Run that answers the message ended, and the server says it wrote the answer that closed Q1. */
 const confirm = (id: string) => reconcileReaderSends(conversation(id, 'succeeded', answered('Q1')));
@@ -178,9 +178,9 @@ for (const move of ['close', 'reopen', 'other', 'other-and-back'] as const) test
 });
 test('cancellation releases only its pending receipt and cannot be rewound by a later queued snapshot', () => {
   captureReaderSend(doc, tasks, 'r1')();
-  reconcileReaderSends({ id: 'c', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: ['old'], turns: [] });
+  reconcileReaderSends({ id: 'c', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, cancelled: ['old'], turns: [] });
   expect(useSitting.getState().departures[task.id]).toBeDefined();
-  reconcileReaderSends({ id: 'c', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: ['r1'], turns: [] });
+  reconcileReaderSends({ id: 'c', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, cancelled: ['r1'], turns: [] });
   reconcileReaderSends(conversation('r1', 'queued'));
   expect(useSitting.getState().departures[task.id]?.status()).toBe('refused');
   expect(confirmedAnswers()).toEqual([]); expect(useSitting.getState().sent).toBeNull();

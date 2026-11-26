@@ -1,7 +1,7 @@
 import { freeze, outgoingKey, cancelUnsent, canTakeBack, takeBack, reconcileOutbox } from '../src/features/coordinator/editor/outbox';
 import { consumeInput } from '../src/features/coordinator/editor/input-ownership';
 import { serialize, draftDocument, filterDocument, parseDocument } from '../src/features/coordinator/editor/document';
-import { snapshotJson } from './conversation-fixture';
+import { snapshotJson, SERVED } from './conversation-fixture';
 import { setConversationState } from './conversation-fixture';
 import { afterEach, beforeAll, beforeEach, expect, onTestFinished, test, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -33,7 +33,7 @@ const current = () => (screen.getByRole('textbox') as HTMLElement & { editor: Ed
 const hintText = () => document.querySelector('[data-draft-hint]')?.getAttribute('data-draft-hint')
   ?? document.querySelector('[data-placeholder]')?.getAttribute('data-placeholder');
 beforeAll(() => startI18n());
-beforeEach(async () => { onSend.mockClear(); await i18n.changeLanguage('en'); setConversationState({ conversation: { id: 'editor-tests', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [] } }); });
+beforeEach(async () => { onSend.mockClear(); await i18n.changeLanguage('en'); setConversationState({ conversation: { id: 'editor-tests', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, cancelled: [], turns: [] } }); });
 afterEach(() => { cleanup(); setConversationState({ conversation: null, open: false }); });
 const mount = () => render(<TestWorkspace><Harness /></TestWorkspace>);
 
@@ -119,7 +119,7 @@ test('choices made during conversation loading transfer to the real draft with t
   setConversationState({ conversation: null }); mount();
   act(() => input.change(() => ({ type: 'doc', content: [{ type: 'paragraph', content: [taskLabel({ id: 'T1', title: 'Task one' }), { type: 'answerLabel', attrs: { question: 'Q1', task: 'T1', n: '1', name: 'Choice', answer: '1-Choice' } }] }] })));
   const requestId = input.entry.values.requestId;
-  act(() => setConversationState({ conversation: { id: 'loaded-conversation', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [] } }));
+  act(() => setConversationState({ conversation: { id: 'loaded-conversation', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, cancelled: [], turns: [] } }));
   expect(current().getText()).toContain('1-Choice'); expect(input.entry.values.requestId).toBe(requestId);
   expect(Object.keys(useDraftStore.getState().entries).some(key => JSON.parse(key)[2] === 'loading')).toBe(false);
 });
@@ -129,7 +129,7 @@ test('a seed into the loading draft does not reach a draft the person already wr
   act(() => input.change(() => textDocument('Retained words')));
   act(() => setConversationState({ conversation: null }));
   act(() => input.observe({ panel: { id: 'T1', title: 'Task one' }, project: null }));
-  act(() => setConversationState({ conversation: { id: 'editor-tests', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [] } }));
+  act(() => setConversationState({ conversation: { id: 'editor-tests', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, cancelled: [], turns: [] } }));
   expect(current().getText()).toBe('Retained words'); expect(input.entry.values.phase).toBe('composing');
 });
 test('a selection made immediately after mount is not reset by a deferred autofocus timer', () => {
@@ -250,7 +250,7 @@ test.each(['#T', '/al'])('a press outside the %s list closes it and leaves the w
 test('the project Task the screen is narrowed to seeds a task badge, removable like any, and no project badge', async () => {
   vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(snapshotJson(url.startsWith('/api/coordinator/skills')
     ? { status: 'unavailable', profile: 'claude', skills: [], reason: 'test' }
-    : { id: 'editor-tests', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [] }))));
+    : { id: 'editor-tests', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, cancelled: [], turns: [] }))));
   onTestFinished(() => { vi.unstubAllGlobals(); useViewStore.setState(useViewStore.getInitialState()); });
   useViewStore.setState({ project: PROJECT_TASK, selected: null, navigationReady: true });
   setConversationState({ open: true, read: true, error: null });
@@ -339,7 +339,7 @@ test('loading draft merge keeps one reply reference and the retained reply wins'
   // QueryCache delivers removals through its scheduled subscription; edit only once the loading draft is actually shown.
   await waitFor(() => expect(JSON.parse(input.key)[2]).toBe('loading'));
   act(() => input.change(() => replyTo(textDocument('Loading words'), incoming)));
-  act(() => setConversationState({ conversation: { id: 'editor-tests', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [] } }));
+  act(() => setConversationState({ conversation: { id: 'editor-tests', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, cancelled: [], turns: [] } }));
   expect(replyIn(input.doc)).toEqual(retained);
   expect(inlines(input.doc).filter(node => node.type === 'replyLabel')).toHaveLength(1);
   expect(current().getText()).toContain('Retained words'); expect(current().getText()).toContain('Loading words');
@@ -543,7 +543,7 @@ test.each(['clear before cancelling', 'keep until manual recovery', 'send newer 
       const nextId = input.entry.values.requestId!;
       act(() => {
         expect(freeze('/fixture', { conversationId: 'editor-tests', text: 'next words', replyTo: 'answer-two', attachments: [] }, input.entry.values, { from: key })).toBe(nextId);
-        reconcileOutbox({ id: 'editor-tests', nextLaunch: { agent: 'claude', values: {} }, warm: 'none', busy: true, cancelled: [], turns: [{ id: nextId, at: '', ask: 'next words', replyTo: { id: 'answer-two', answeredAt: '2026-11-05T00:01:00Z', head: '' }, attachments: [], status: 'queued', waiting: true, answer: null, answeredAt: null, seen: false, error: null, result: null }] }, '/fixture', key);
+        reconcileOutbox({ id: 'editor-tests', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: true, cancelled: [], turns: [{ id: nextId, at: '', ask: 'next words', replyTo: { id: 'answer-two', answeredAt: '2026-11-05T00:01:00Z', head: '' }, attachments: [], status: 'queued', waiting: true, answer: null, answeredAt: null, seen: false, error: null, result: null }] }, '/fixture', key);
       });
     } else act(clearReply);
     expect(serialize(input.doc)).toBe('');

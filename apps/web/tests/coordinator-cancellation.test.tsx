@@ -2,7 +2,7 @@
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { i18n, startI18n } from '@alpacawork/i18n';
-import { conversationSnapshot, setConversationState, snapshotJson } from './conversation-fixture';
+import { conversationSnapshot, setConversationState, snapshotJson, SERVED } from './conversation-fixture';
 import { TestWorkspace, screenData, tree } from './fixtures';
 import { CoordinatorInput } from '../src/features/coordinator/CoordinatorInput';
 import { LastWordsPill } from '../src/features/coordinator/LastWords';
@@ -20,7 +20,7 @@ const root = '/fixture', cid = 'cancel-conversation', key = draftKey(root, 'coor
 const values = (text = '', requestId: string = crypto.randomUUID()) => ({ doc: JSON.stringify(textDocument(text)), requestId });
 const fixed = (text = 'words') => ({ conversationId: cid, text, agent: 'claude', attachments: [] });
 const turn = (id: string, ask = 'words') => ({ id, ask, at: '2026-10-28T08:00:00Z', attachments: [], status: 'queued' as const, waiting: false, seen: false, answer: null, answeredAt: null, error: null, result: null });
-const conv = (turns: ReturnType<typeof turn>[] = [], cancelled: string[] = []) => ({ id: cid, nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, turns, cancelled });
+const conv = (turns: ReturnType<typeof turn>[] = [], cancelled: string[] = []) => ({ id: cid, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, turns, cancelled });
 const reply = (value: unknown, status = 200) => new Response(snapshotJson(value), { status });
 function setup(text = 'words') {
   setConversationState({ root, conversation: conv(), open: true, expanded: true, engaged: false, error: null });
@@ -432,33 +432,20 @@ test('cancellation beside an occupied input clears its uncertain notice while ke
   expect(useDraftStore.getState().entries[key]!.values.doc).toContain('occupied input');
   expect(useDraftStore.getState().entries[outgoingKey(root, id)]?.values.stage).toBe('refused');
 });
-for (const stage of ['refused', 'cancelled'] as const) for (const activity of ['running', 'warming'] as const)
-test(`folded, a ${stage} local row yields only to work the open conversation shows (${activity})`, () => {
+for (const stage of ['refused', 'cancelled'] as const)
+test(`folded, a ${stage} local row yields only to work the open conversation shows`, () => {
   const id = queued();
   const entry = useDraftStore.getState().entries[outgoingKey(root, id)]!;
   updateDraft(outgoingKey(root, id), { values: { ...entry.values, stage: 'refused', last: stage === 'cancelled' ? 'withdraw' : 'ask', refusal: 'refused' } });
-  const working = activity === 'running' ? [{ ...turn('working'), status: 'running' as const }] : [];
-  setConversationState({ conversation: { ...conv(), turns: working, busy: true, warm: activity === 'warming' ? 'preparing' as const : 'none' as const } });
+  setConversationState({ conversation: { ...conv(), turns: [{ ...turn('working'), status: 'running' as const }], busy: true } });
   render(<TestWorkspace data={screenData(tree())}><ShownConversationProvider><LastWordsPill style={{}} /></ShownConversationProvider></TestWorkspace>);
   const pill = document.querySelector('[data-coordinator-pill]')!;
-  // A warm-up is no message's work: the row's own words stay the line's, as in the open conversation.
-  expect(pill.getAttribute('data-coordinator-pill-state')).toBe(activity === 'running' ? 'running' : 'unread');
-  if (activity === 'running') expect(pill.textContent).toContain(i18n.t('ui:coordinatorCard.thinking'));
+  expect(pill.getAttribute('data-coordinator-pill-state')).toBe('running');
+  expect(pill.textContent).toContain(i18n.t('ui:coordinatorCard.thinking'));
   act(() => { setConversationState({ conversation: conv() }); });
   expect(pill.getAttribute('data-coordinator-pill-state')).toBe('unread');
 });
 
-// A warm-up alone is preparation; presentation scope is supplied by the caller.
-for (const language of ['ja', 'en']) test(`an empty warming conversation keeps the open-conversation pill; ${language}`, async () => {
-  await i18n.changeLanguage(language); setup('');
-  setConversationState({ conversation: { ...conv(), busy: true, warm: 'preparing' as const } });
-  render(<TestWorkspace data={screenData(tree())}><ShownConversationProvider><LastWordsPill style={{}} /></ShownConversationProvider></TestWorkspace>);
-  const pill = document.querySelector('[data-coordinator-pill]')!;
-  expect(pill.getAttribute('data-coordinator-pill-state')).toBe('none');
-  expect(pill.textContent).toBe(i18n.t('ui:coordinatorCard.expand'));
-  act(() => { setConversationState({ conversation: conv() }); });
-  expect(pill.textContent).toBe(i18n.t('ui:coordinatorCard.expand'));
-});
 test('outbox uses the supplied input destination instead of reading coordinator presentation', () => {
   useToasts.setState({ toasts: [] }); const id = queued();
   expect(cancelOutgoing(root, id, null)).toBe('restored');

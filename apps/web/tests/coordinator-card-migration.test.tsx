@@ -1,4 +1,4 @@
-import { readConversationThroughOwner } from './conversation-fixture';
+import { readConversationThroughOwner, SERVED } from './conversation-fixture';
 import { queryClient } from '../src/data/query-client';
 import { snapshotJson } from './conversation-fixture';
 import { setConversationState } from './conversation-fixture';
@@ -20,7 +20,7 @@ import { setAutoSwipe, useSitting } from '../src/features/reader/next-question';
 import { useTaskActionSlot } from '../src/features/coordinator/task-action-slot';
 import { TestWorkspace, at, dto, logEntry, narrowScreen, screenData, taskFixture, tree, userBall } from './fixtures';
 const root = '/fixture', cid = 'card-migration';
-const empty = (id = cid) => ({ id, nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [] as any[] });
+const empty = (id = cid) => ({ id, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, cancelled: [], turns: [] as any[] });
 const reply = (value: unknown) => new Response(snapshotJson(value));
 const review = taskFixture({ id: 'T1', state: 'waiting', title: 'Review', log: [logEntry({ id: 'L1', kind: 'reported', toState: 'waiting' })],
   ball: userBall('review', 'L1', at, { aboutRunId: 'R1' }) });

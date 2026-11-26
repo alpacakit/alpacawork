@@ -1,4 +1,4 @@
-import { snapshotJson } from './conversation-fixture';
+import { snapshotJson, SERVED } from './conversation-fixture';
 import { setConversationState } from './conversation-fixture';
 import { beforeAll, afterEach, expect, onTestFinished, test, vi } from "vitest";
 import { recordNotes } from "./time-history-fixture";
@@ -844,7 +844,7 @@ test("each question ends with Other, or Write an answer when it has no choices; 
 
 test("a question that says what stopping means offers Stop after its choices, answered `<n>-stop`; Other is answered `<n>-other`", async () => {
   const fetcher = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(snapshotJson({
-    id: "report-stop", nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [],
+    id: "report-stop", nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, cancelled: [], turns: [],
   })));
   onTestFinished(() => { fetcher.mockRestore(); setConversationState(useConversation.getInitialState()); });
   const data = screenData(tree({ tasks: [taskFixture({ state: "doing", ball: userBall("question", "Q1", at, { questionId: "Q1" }) })],
@@ -876,7 +876,7 @@ test("a question's choice, read from what was fixed when it was asked, goes into
   // Choosing also opens the real composer, whose focus handoff reads its conversation.
   // Supply that boundary; a relative URL cannot reach a server in jsdom.
   const fetcher = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(snapshotJson({
-    id: "report-choice", nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [],
+    id: "report-choice", nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, cancelled: [], turns: [],
   })));
   onTestFinished(() => { fetcher.mockRestore(); setConversationState(useConversation.getInitialState()); });
   // T1 asks the user L2; its values say something else now, but the choices are those fixed when it asked.
@@ -900,7 +900,7 @@ test("a question's choice, read from what was fixed when it was asked, goes into
 // Two open questions of one Task both have a first question with OptionA; choosing one is not choosing the other.
 test("the same choice of two open questions of a Task is chosen, shown chosen and kept apart by the question it answers", async () => {
   const fetcher = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(snapshotJson({
-    id: "two-questions", nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [],
+    id: "two-questions", nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, cancelled: [], turns: [],
   })));
   onTestFinished(() => { fetcher.mockRestore(); setConversationState(useConversation.getInitialState()); });
   const data = screenData(tree({ tasks: [taskFixture({ state: "doing", ball: userBall("question", "Q2", at, { questionId: "Q2" }) })],

@@ -1,11 +1,11 @@
-import { memo, useEffect, useState, useRef, type ReactNode } from "react";
+import { Fragment, memo, useMemo, useState, useRef, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { CopyButton } from "@/components/ui/copy-button";
 import { textClip } from "@/lib/clipboard";
 import { Icon } from "@/components/ui/icon";
 import { ON_RAIL, TimelineMark } from "@/components/ui/timeline-mark";
 import { useWriteDisabled } from "@/data/queries";
-import type { CoordinatorTurn } from "@/data/coordinator";
+import type { CoordinatorReset, CoordinatorTurn } from "@/data/coordinator";
 import { MarkdownBody } from "@/features/reader/MarkdownBody";
 import { useImageViewer } from "@/features/reader/ImageSlider";
 import { followTask } from "./follow-task";
@@ -26,7 +26,9 @@ import { Button } from '@/components/ui/button';
 import { MessageDelivery } from "./MessageDelivery";
 import { LINE_ACTION } from "./delivery-presentation";
 import { useActionFocus } from "./use-action-focus";
-import { WarmStart } from "./WarmStart";
+import { ConversationStart } from "./ConversationStart";
+import { ResetLine } from "./ResetLine";
+import { useEarlierHistory } from "./earlier-history";
 
 /**
  * A message's head line: who and when, and what it was sent with. `mark` is its turn's mark on the rail: drawn here and
@@ -146,17 +148,38 @@ function EarlierRow({ count, reveal }: { count: number; reveal: () => void }) {
     </button>
   </li>;
 }
+/**
+ * At the top of the opened history, while older turns are still to be read: a press reads the next page of them. It
+ * says it is reading meanwhile, and that it could not, with the same press to try again.
+ */
+function ReadOlder({ reading, failed, read }: { reading: boolean; failed: boolean; read: () => void }) {
+  const { t } = useTranslation("ui");
+  return <li data-earlier-more={reading ? "reading" : failed ? "failed" : ""} className="relative border-b border-rule pl-(--gutter)">
+    <button type="button" disabled={reading} onClick={read}
+      className="group flex min-h-11 w-full items-center gap-1.5 py-2 text-left text-xs text-muted disabled:cursor-default narrow:min-h-12">
+      <span className={`${ON_RAIL} top-1/2 flex -translate-y-1/2`}><Icon name="up" className={cn("size-3.5 text-muted", ON_DISC)} /></span>
+      <span role={reading || failed ? "status" : undefined} className={cn(failed && "text-error", reading && "motion-safe:animate-pulse")}>
+        {reading ? t("coordinatorCard.earlierReading") : failed ? t("coordinatorCard.earlierFailed") : null}</span>
+      <span className="ml-auto rounded-sm px-2 underline decoration-line underline-offset-3 group-hover:text-ink group-hover:decoration-ink group-disabled:no-underline">
+        {t("coordinatorCard.earlierMore")}</span>
+    </button>
+  </li>;
+}
 /** The hand's key for the earlier row (an exchange's is its ID). */
 const EARLIER = "earlier";
 
 /** Latest exchange and new arrivals stay shown; older history has one independent fold. */
-export const CoordinatorThread = memo(function CoordinatorThread({ turns, retry, skills = [] }: {
+export const CoordinatorThread = memo(function CoordinatorThread({ turns: recent, retry, skills = [] }: {
   // The Card's render remains an opportunity to notice a local day/zone change,
   // even when this memo's conversation inputs are otherwise unchanged.
   turns: CoordinatorTurn[]; retry: (turn: CoordinatorTurn) => void; skills?: readonly { name: string }[]; clock?: string;
 }) {
   const { t, i18n } = useTranslation("ui");
   const viewer = useImageViewer();
+  const conversation = useConversation(state => state.conversation);
+  // Turns older than the snapshot's come before its own, read a page at a time once the history is open.
+  const earlier = useEarlierHistory(conversation);
+  const turns = useMemo(() => earlier.turns.length ? [...earlier.turns, ...recent] : recent, [earlier.turns, recent]);
   const shown = useShownConversation(turns);
   const work = shown.thread;
   const taken = useConversation(state => state.opening);
@@ -176,20 +199,43 @@ export const CoordinatorThread = memo(function CoordinatorThread({ turns, retry,
     if (thread.current) keepThreadPosition(thread.current);
     setHand(map => new Map(map).set(id, open));
   };
-  // Before the server has a warm-up to say, the page's own ask stands for it: about to be sent or on its way (the card
-  // asks as soon as it can write), or refused; only a page that cannot write has none to say.
-  const writeDisabled = useWriteDisabled();
-  const warm = useConversation(({ conversation, warmRefused }) => !conversation ? "none"
-    : conversation.warm !== "none" ? conversation.warm : warmRefused === conversation.id ? "failed" : writeDisabled ? "none" : "preparing");
   const asked = useConversation(state => state.asked);
   useReplyNavigationOwner(thread, scope, asked, id => {
+    // One not read yet is read first, a page at a time from the oldest here, until it is here or the first turn is.
+    if (!work.some(turn => turn.id === id)) {
+      if (earlier.reading) return 'later';
+      if (!earlier.more || earlier.failed) return 'gone';
+      setHand(map => new Map(map).set(EARLIER, true));
+      void earlier.readMore();
+      return 'later';
+    }
     setHand(map => new Map(map).set(EARLIER, true).set(id, true));
+    return 'here';
   });
+  const readOlder = () => { if (thread.current) keepThreadPosition(thread.current); void earlier.readMore(); };
+  // Where the coordinator started again: before the message it started with, or at the end until there is one.
+  const resets = useMemo(() => {
+    const at = new Map<string | null, CoordinatorReset[]>(), ids = new Set<string>();
+    for (const reset of [...earlier.resets, ...conversation?.resets ?? []]) {
+      if (ids.has(reset.id)) continue;
+      ids.add(reset.id);
+      const key = reset.beforeRequestId !== null && turns.some(turn => turn.id === reset.beforeRequestId) ? reset.beforeRequestId : null;
+      at.set(key, [...at.get(key) ?? [], reset]);
+    }
+    return at;
+  }, [earlier.resets, conversation?.resets, turns]);
+  const resetLines = (id: string | null) => resets.get(id)?.map(reset => <ResetLine key={reset.id} reset={reset} />) ?? null;
+  const tailStart = work.length;
   const rows = [...work.map(turn => ({ kind: 'server' as const, turn })), ...shown.tail].map((row, at) => {
+    // Lines of a reset stand before the message it started with; one with none yet, before what is still on its way.
+    const lines = at === tailStart ? <>{resetLines(null)}{resetLines(row.turn.id)}</> : at >= start || earlierOpen ? resetLines(row.turn.id) : null;
+    return <Fragment key={row.kind === 'local' && row.turn.stage === "refused" ? `refused:${row.turn.id}` : row.turn.id}>{lines}{drawRow(row, at)}</Fragment>;
+  });
+  function drawRow(row: { kind: 'server'; turn: CoordinatorTurn } | (typeof shown.tail)[number], at: number) {
     if (row.kind === 'local') {
       const turn = row.turn;
       // The same request key survives admission; recoverable refused words have their own identity.
-      return <li key={turn.stage === "refused" ? `refused:${turn.id}` : turn.id} data-action-focus-place tabIndex={-1} data-coordinator-local={turn.stage} data-coordinator-waiting={shown.localWaiting.includes(turn) ? turn.id : undefined} data-coordinator-message={turn.id} className="relative animate-rise border-b border-rule py-3 pl-(--gutter) last:border-b-0">
+      return <li data-action-focus-place tabIndex={-1} data-coordinator-local={turn.stage} data-coordinator-waiting={shown.localWaiting.includes(turn) ? turn.id : undefined} data-coordinator-message={turn.id} className="relative animate-rise border-b border-rule py-3 pl-(--gutter) last:border-b-0">
         <Exchange key={EXCHANGE} turn={turn} open={viewer.open} skills={skills} joined={NONE}
           mark={<TimelineMark kind={turn.stage === "refused" ? "error" : "request"} tone={turn.stage === "refused" ? "error" : "quiet"} />}
           reply={<MessageDelivery turn={turn} local={turn} />} />
@@ -208,7 +254,7 @@ export const CoordinatorThread = memo(function CoordinatorThread({ turns, retry,
       aria-label={t(open ? "coordinatorCard.foldExchange" : "coordinatorCard.openExchange", { time: messageTime(turn.at, i18n.language) })}
       onClick={() => toggle(turn.id, !open)} className="-my-[calc((--spacing(7)-1lh)/2)] ml-auto flex h-7 flex-none items-center self-center rounded-sm px-2 text-xs text-muted underline decoration-line underline-offset-3 hover:bg-hover hover:text-ink hover:decoration-ink narrow:-my-[calc((--spacing(10)-1lh)/2)] narrow:h-10">
       {t(open ? "coordinatorCard.exchangeFold" : "coordinatorCard.exchangeOpen")}</button>;
-    return <li key={turn.id} data-action-focus-place tabIndex={-1} data-coordinator-turn={turn.status} data-coordinator-waiting={turn.waiting ? turn.id : undefined} data-coordinator-message={turn.id} data-exchange={open ? "open" : "folded"}
+    return <li data-action-focus-place tabIndex={-1} data-coordinator-turn={turn.status} data-coordinator-waiting={turn.waiting ? turn.id : undefined} data-coordinator-message={turn.id} data-exchange={open ? "open" : "folded"}
       className="relative animate-rise border-b border-rule py-3 pl-(--gutter) last:border-b-0">
       {open ? <Exchange key={EXCHANGE} turn={turn} open={viewer.open} skills={skills} joined={joined} mark={mark} fold={turn.waiting ? undefined : button}
         reply={<><TurnWork turn={turn} />{delivering(turn) ? <MessageDelivery turn={turn} /> : <Answer turn={turn} retry={retry} />}<Attempts turn={turn} /></>} />
@@ -227,18 +273,21 @@ export const CoordinatorThread = memo(function CoordinatorThread({ turns, retry,
         </div>
       </div>}
     </li>;
-  });
+  }
   // The rail runs through each turn's gutter, its 1px line from 7px in (--rail, its left edge), so it stays on whole
   // pixels; a turn's mark stands on it from its head, a gutter further in. A word with no place to fold (a path, an
   // address, a file's name) folds at any letter where it would outrun the conversation, as in the reader.
-  // Empty is no row drawn at all: a first message sent before the warm-up ends waits at the thread's end (tail), in no
-  // other list, and stands in the greeting's place as any message does.
-  const empty = !work.length && !shown.tail.length && warm !== "none" ? warm : null;
+  // Empty is no message at all: the first one sent stands in the greeting's place as any message does.
+  const empty = !!conversation && !work.length && !shown.tail.length && !conversation.earlier;
+  // Hidden, the history is counted whole: the turns here before the latest exchange and those not read yet.
+  const hidden = start + (earlier.unread ?? 0);
   return <>
     <ol ref={thread} data-action-focus-scope tabIndex={-1} data-coordinator-thread className={cn("relative m-0 list-none px-3 pt-1 pb-2 [overflow-wrap:anywhere] [--gutter:--spacing(6)] [--rail:7px] before:absolute before:top-5 before:bottom-5 before:left-[calc(--spacing(3)+var(--rail))] before:w-px before:bg-rule", empty && "before:hidden")}>
-      {empty && <WarmStart warm={empty} />}
-      {start > 0 && !earlierOpen && <EarlierRow count={start} reveal={() => toggle(EARLIER, true)} />}
+      {empty && <ConversationStart />}
+      {hidden > 0 && !earlierOpen && <EarlierRow count={hidden} reveal={() => toggle(EARLIER, true)} />}
+      {earlierOpen && earlier.more && <ReadOlder reading={earlier.reading} failed={earlier.failed} read={readOlder} />}
       {rows}
+      {!shown.tail.length && resetLines(null)}
     </ol>
     {viewer.viewer}
   </>;

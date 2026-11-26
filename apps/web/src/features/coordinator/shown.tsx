@@ -12,7 +12,7 @@ import { press, type Press } from "./press";
 import { isOutgoingIn, isLive, outgoing, outgoingDisplay, outgoingFinished, useOutbox, type Outgoing, type OutgoingDisplay } from "./editor/outbox";
 
 /** A message as it is drawn: serve's turn, or one sent from here that no snapshot holds yet. */
-export type SentTurn = Pick<CoordinatorTurn, "id" | "at" | "ask" | "tasks" | "attachments" | "replyTo" | "joinRequested" | "deliveryError"> & { status?: CoordinatorTurn["status"]; waiting?: boolean };
+export type SentTurn = Pick<CoordinatorTurn, "id" | "at" | "ask" | "tasks" | "attachments" | "filesExpired" | "replyTo" | "joinRequested" | "deliveryError"> & { status?: CoordinatorTurn["status"]; waiting?: boolean };
 /**
  * A request sent from here that no drawn snapshot holds yet, in the conversation it was sent to (`root`,
  * `conversationId`). `waiting`: fixed here, not sent yet; `sending`: an attempt at it is under way in this page, or serve was seen to have it (never drawn
@@ -31,13 +31,11 @@ export type Shown = {
   send: <T>(turn: LocalTurn, work: () => Promise<T>) => Promise<T>;
   pressed: ReadonlyMap<string, Press['action']>;
   closing: boolean;
-  /** The coordinator is still starting (the conversation's warm-up): what waits, waits for that. */
-  preparing: boolean;
   press: (target: string, action: Press['action'], work: () => Promise<void>) => Promise<void>;
 };
 
 /** One partition, consumed by the thread, both queues, folded words and the read boundary. No display queue is saved. */
-export function partitionTurns(turns: readonly CoordinatorTurn[], local: readonly LocalTurn[] = [], busy = false, preparing = false, sent: readonly SentTurn[] = local) {
+export function partitionTurns(turns: readonly CoordinatorTurn[], local: readonly LocalTurn[] = [], busy = false, sent: readonly SentTurn[] = local) {
   const thread: CoordinatorTurn[] = [], waiting: CoordinatorTurn[] = [];
   const joined = new Map<string, CoordinatorTurn[]>();
   const tail: TailTurn[] = [];
@@ -52,7 +50,7 @@ export function partitionTurns(turns: readonly CoordinatorTurn[], local: readonl
         if (group) group.push(turn);
         else joined.set(turn.into, [turn]);
       }
-    } else if (turn.waiting || preparing && turn.status === "queued") {
+    } else if (turn.waiting) {
       const queued = { ...turn, waiting: true };
       waiting.push(queued);
       tail.push({ kind: 'server', turn: queued });
@@ -130,12 +128,11 @@ export function ShownConversationProvider({ children }: { children: ReactNode })
     const local: LocalTurn[] = [];
     for (const row of rows) {
       if (row.root === root && (row.conversationId === conversation?.id || row.stage === 'refused') && (row.stage === "refused" || row.stage === "cancelled" || !settled.has(row.id)))
-        local.push(conversation?.warm === 'preparing' && row.stage === 'sending' && row.last !== 'withdraw' ? { ...row, stage: 'queued' as const } : row);
+        local.push(row);
     }
     const pressed = new Map<string, Press['action']>();
     for (const each of presses) if (each.root === root && each.conversationId === conversation?.id) pressed.set(each.target, each.action);
-    const preparing = conversation?.warm === "preparing";
-    return { turns, local, ...partitionTurns(turns, local, conversation?.busy, preparing, rows), pressed, closing: pressed.get(conversation?.id ?? '') === 'clear', preparing,
+    return { turns, local, ...partitionTurns(turns, local, conversation?.busy, rows), pressed, closing: pressed.get(conversation?.id ?? '') === 'clear',
       press: (target, action, work) => conversation ? press({ root, conversationId: conversation.id, target, action }, work, addPress) : Promise.resolve(),
       send: (turn, work) => new Promise((resolve, reject) => startTransition(async () => {
         addSending(turn);
@@ -145,7 +142,7 @@ export function ShownConversationProvider({ children }: { children: ReactNode })
   return <ShownConversation.Provider value={value}>{children}</ShownConversation.Provider>;
 }
 /** Outside the card (a lone input in a test), what serve holds, with nothing drawn ahead of it. */
-const alone: Shown = { turns: [], local: [], ...partitionTurns([]), pressed: new Map(), closing: false, preparing: false, press: (_target, _action, work) => work(), send: (_turn, work) => work() };
+const alone: Shown = { turns: [], local: [], ...partitionTurns([]), pressed: new Map(), closing: false, press: (_target, _action, work) => work(), send: (_turn, work) => work() };
 export function useShownConversation(fallback?: CoordinatorTurn[]): Shown {
   const shown = useContext(ShownConversation);
   const turns = useConversation(state => state.conversation?.turns);

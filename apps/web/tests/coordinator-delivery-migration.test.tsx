@@ -1,4 +1,4 @@
-import { readConversationThroughOwner } from './conversation-fixture';
+import { readConversationThroughOwner, SERVED } from './conversation-fixture';
 import { queryClient } from '../src/data/query-client';
 import { snapshotJson } from './conversation-fixture';
 import { setConversationState } from './conversation-fixture';
@@ -23,7 +23,7 @@ import { notify, useToasts } from '../src/lib/notify';
 import { TestWorkspace } from './fixtures';
 
 const root = '/fixture', cid = 'migration-delivery', key = draftKey(root, 'coordinator', cid);
-const snapshot = (turns: any[] = [], busy = false) => ({ id: cid, nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy, cancelled: [], turns });
+const snapshot = (turns: any[] = [], busy = false) => ({ id: cid, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy, cancelled: [], turns });
 const turn = (input: any, extra = {}) => ({ ...input.tasks?.length ? { tasks: input.tasks } : {}, ...input.skills?.length ? { skills: input.skills } : {}, id: input.id, at: '2026-10-16T00:00:00Z', ask: input.text, attachments: [],
   status: 'succeeded', waiting: false, answer: 'Done', seen: true, answeredAt: '2026-10-16T00:00:01Z', error: null, result: { writes: [], refused: [] }, ...extra });
 const reply = (value: unknown, status = 200) => new Response(snapshotJson(value), { status });

@@ -19,20 +19,49 @@ import { cn } from "@/lib/utils";
  * `conversations`, the Task's conversation changes by time (ConversationList); on a line that is itself pressed (a
  * child's), the figures are its tooltip instead.
  */
-export function ContextMeter({ context, press, conversations }: { context: ContextView; press: boolean; conversations?: TaskConversations }) {
+/**
+ * The words a context's figures are said in: the face's figure (the percent, else the tokens; "—" while it waits), the
+ * tokens used and the window in full, and the name a reader and a pointer's tip give them.
+ */
+export function useContextWords(context: ContextView | null) {
   const { t, i18n } = useTranslation("people");
-  const [open, setOpen] = useState(false);
-  const figure = contextFigure(context);
+  // None yet (a conversation that has not answered): it waits, as one just compacted does.
+  const figure = context ? contextFigure(context) : { percent: null, tone: "normal" as const, open: false, waiting: true };
   const count = (value: number) => new Intl.NumberFormat(i18n.language).format(value);
-  const compact = tokenText;
-  const shown = figure.waiting ? "—" : figure.percent !== null ? percentText(figure.percent) : compact(context.usedTokens!);
-  const used = figure.waiting ? t("context.waiting") : t("context.tokens", { count: context.usedTokens!, tokens: count(context.usedTokens!) });
-  const window = context.windowTokens === null ? t("context.noWindow") : t("context.tokens", { count: context.windowTokens, tokens: count(context.windowTokens) });
-  const label = t("context.label", { figure: shown, used, window });
-  const face = <>
+  const shown = figure.waiting ? "—" : figure.percent !== null ? percentText(figure.percent) : tokenText(context!.usedTokens!);
+  const used = figure.waiting ? t("context.waiting") : t("context.tokens", { count: context!.usedTokens!, tokens: count(context!.usedTokens!) });
+  const window = !context || context.windowTokens === null ? t("context.noWindow") : t("context.tokens", { count: context.windowTokens, tokens: count(context.windowTokens) });
+  return { figure, shown, used, window, label: t("context.label", { figure: shown, used, window }) };
+}
+/** A context's ring and figure, as every meter of a conversation shows them. */
+export function ContextFace({ words }: { words: ReturnType<typeof useContextWords> }) {
+  const { figure, shown } = words;
+  return <>
     <UsageRing percent={figure.percent ?? 0} tone={figure.tone} open={figure.open} className="size-3.5" />
     <span className={cn("min-w-[4ch] text-right tabular-nums", figure.percent === null ? "text-muted" : TONE_TEXT[figure.tone])}>{shown}</span>
   </>;
+}
+/** The tokens used and the window, one row each. */
+export function ContextFigures({ words }: { words: ReturnType<typeof useContextWords> }) {
+  const { t } = useTranslation("people");
+  return <dl className="m-0 mt-2 grid grid-cols-[auto_1fr] gap-x-5 gap-y-1">
+    <dt className="text-muted">{t("context.used")}</dt><dd className="m-0 text-right tabular-nums">{words.used}</dd>
+    <dt className="text-muted">{t("context.window")}</dt><dd className="m-0 text-right tabular-nums">{words.window}</dd>
+  </dl>;
+}
+
+/**
+ * How full a working agent's conversation is, at the end of its line: a ring and the percent (the tokens when its agent
+ * names no window, "—" just after a compaction). `press`: a press opens the tokens used and the window and, with
+ * `conversations`, the Task's conversation changes by time (ConversationList); on a line that is itself pressed (a
+ * child's), the figures are its tooltip instead.
+ */
+export function ContextMeter({ context, press, conversations }: { context: ContextView; press: boolean; conversations?: TaskConversations }) {
+  const { t } = useTranslation("people");
+  const [open, setOpen] = useState(false);
+  const words = useContextWords(context);
+  const { figure, label } = words;
+  const face = <ContextFace words={words} />;
   if (!press) return <span data-context-meter title={label} aria-label={label} className="inline-flex items-center gap-1 text-xs">{face}</span>;
   // The line under it opens and closes on a press: the meter's own press stops there. Its hover and touch room reach
   // past its face (negative margins), so the figure stands where an unpressable meter's would.
@@ -44,10 +73,7 @@ export function ContextMeter({ context, press, conversations }: { context: Conte
     </PopoverTrigger>
     <PopoverContent align="end" className={cn("p-3 text-sm", conversations?.changes.length ? "w-80" : "w-64")} onClick={event => event.stopPropagation()}>
       <p className="m-0 text-xs font-medium text-muted">{t("context.title")}{figure.percent !== null && ` ${percentText(figure.percent)}`}</p>
-      <dl className="m-0 mt-2 grid grid-cols-[auto_1fr] gap-x-5 gap-y-1">
-        <dt className="text-muted">{t("context.used")}</dt><dd className="m-0 text-right tabular-nums">{used}</dd>
-        <dt className="text-muted">{t("context.window")}</dt><dd className="m-0 text-right tabular-nums">{window}</dd>
-      </dl>
+      <ContextFigures words={words} />
       {figure.waiting && <p className="m-0 mt-2 text-xs text-muted">{t("context.compacted")}</p>}
       {figure.open && <p className="m-0 mt-2 text-xs text-muted">{t("context.setWindow")}</p>}
       {conversations && conversations.changes.length > 0 && <ConversationList conversations={conversations} />}

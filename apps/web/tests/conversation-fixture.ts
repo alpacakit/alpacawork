@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { CoordinatorConversation, CoordinatorSnapshot } from '@alpacawork/contract/coordinator';
+import type { CoordinatorConversation, CoordinatorSnapshot } from '../src/data/coordinator';
 import { useConversation } from '../src/features/coordinator/coordinator';
 import { queryClient } from '../src/data/query-client';
 import { readIndex, readQuery, captureReadProof, recordReadProof, recordIndexProof } from '../src/data/read-model';
@@ -8,9 +8,14 @@ import { indexOf, tree } from './fixtures';
 import { useConnection } from '../src/data/connection';
 import type { ProjectedIndexDTO } from '@alpacawork/contract/control';
 
+/** What every served conversation carries besides its turns: nothing older, no reset, no usage yet, the default reset. */
+export const SERVED: Pick<CoordinatorConversation, 'earlier' | 'resets' | 'context' | 'autoReset'> = { earlier: null, resets: [], context: null, autoReset: { tokens: 200000, percent: 50 } };
+/** A conversation as a test writes it: the page's withdrawals (`cancelled`) are optional and never served. */
+export type FixtureConversation = Omit<CoordinatorConversation, 'cancelled'> & { cancelled?: readonly string[] };
 /** Fixtures use the new wire DTO; production accepts no old conversation response. */
-export function conversationSnapshot(conversation: CoordinatorConversation): CoordinatorSnapshot {
-  conversation = JSON.parse(JSON.stringify(Object.assign({ busy: false }, conversation)));
+export function conversationSnapshot(fixture: FixtureConversation): CoordinatorSnapshot {
+  const { cancelled: _cancelled, ...served } = fixture;
+  const conversation = JSON.parse(JSON.stringify(Object.assign({ busy: false }, served)));
   const index = readIndex(queryClient);
   return { root: index?.root ?? '/fixture', generation: index?.generation ?? 'a',
     revision: createHash('sha256').update(JSON.stringify(conversation)).digest('hex'), conversation };
@@ -18,10 +23,10 @@ export function conversationSnapshot(conversation: CoordinatorConversation): Coo
 export const conversationRevision = (seed: string) => createHash('sha256').update(seed).digest('hex');
 export function snapshotJson(value: unknown) {
   return JSON.stringify(value && typeof value === 'object' && 'turns' in value && 'id' in value
-    ? conversationSnapshot(value as CoordinatorConversation) : value);
+    ? conversationSnapshot(value as FixtureConversation) : value);
 }
 /** Test arrangement goes into the sole Query, never an alternative product setter. */
-export function setConversationState(input: Partial<ReturnType<typeof useConversation.getState>>) {
+export function setConversationState(input: Omit<Partial<ReturnType<typeof useConversation.getState>>, 'conversation'> & { conversation?: FixtureConversation | null }) {
   const { conversation, read: _read, trying: _trying, ...ui } = input;
   if (input === useConversation.getInitialState()) queryClient.removeQueries({ queryKey: ['coordinator'] });
   let index = readIndex(queryClient);
@@ -53,7 +58,7 @@ export function announceConversation(seed: string) {
 }
 
 /** Initial live fixture read reaches the same fetch/reception/projection as the product. No conversation Query injection. */
-export async function readConversationThroughOwner(conversation: CoordinatorConversation, root = '/fixture', servedIndex?: ProjectedIndexDTO) {
+export async function readConversationThroughOwner(conversation: FixtureConversation, root = '/fixture', servedIndex?: ProjectedIndexDTO) {
   const held = readIndex(queryClient);
   const index = servedIndex ?? (held?.root === root ? held : indexOf(tree({ root })));
   receiveFullIndex(queryClient, index);

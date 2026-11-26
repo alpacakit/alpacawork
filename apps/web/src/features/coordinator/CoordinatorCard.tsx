@@ -118,48 +118,19 @@ const CoordinatorFooter = memo(function CoordinatorFooter() {
 });
 
 /**
- * At the end of the conversation, what is seldom needed: starting over (Clear conversation), left of the task actions
- * (TaskActionSlot). On a computer they say their words beside their marks while the foot has room for all of them (fit:
- * else, and on a phone, they are marks alone, ActionLook 'mark'). Clear asks to be pressed again in a word over it, the
- * button staying where it was pressed, so the second press lands on it and on nothing else.
+ * At the end of the conversation: the messages waiting their turn, the way back to a reply, a parked return, and the
+ * task actions (TaskActionSlot). On a computer the actions say their words beside their marks while the foot has room
+ * for all of them (else, and on a phone, they are marks alone).
  */
 function ThreadEnd({ area, active }: { area: React.RefObject<HTMLDivElement | null>; active: boolean }) {
-  const { t } = useTranslation("ui");
-  const turns = useConversation(state => state.conversation?.turns.length ?? 0);
-  const disabled = useWriteDisabled();
-  const shown = useShownConversation();
-  const conversationId = useConversation(state => state.conversation?.id ?? '');
-  const clearWidth = useRef<number | undefined>(undefined);
-  const focus = useActionFocus();
   const narrow = useNarrow();
-  const labels = useTaskActionSlot(state => state.labels) && !narrow;
   const row = useRef<HTMLDivElement>(null);
   const tools = useRef<HTMLDivElement>(null);
-  // Under the thumb that reads the last answer, starting over takes a second press (within a few seconds).
-  const [asking, setAsking] = useState(false);
-  const askId = useId();
-  useEffect(() => { if (!asking) return; const timer = setTimeout(() => setAsking(false), 4000); return () => clearTimeout(timer); }, [asking]);
   useRowWords(row, tools, active, narrow);
   // One line in every state, at any width.
-  return <div ref={row} data-coordinator-end className="flex items-center gap-2 whitespace-nowrap pt-1 pr-(--foot-inset) pb-(--foot-inset) pl-2 narrow:pt-0 narrow:pb-2 [&:not(:has(button,[data-coordinator-clearing]))]:hidden">
+  return <div ref={row} data-coordinator-end className="flex items-center gap-2 whitespace-nowrap pt-1 pr-(--foot-inset) pb-(--foot-inset) pl-2 narrow:pt-0 narrow:pb-2 [&:not(:has(button))]:hidden">
     <ThreadQueue area={area} /><ReplyReturn /><ParkedReturn />
     <div ref={tools} className="ml-auto flex min-w-0 items-center justify-end gap-2">
-      {turns > 0 && <span {...focus} className="flex flex-none">{shown.closing ? <span data-coordinator-clearing role="status" style={{ width: clearWidth.current }} className={cn(conversationTool, 'pointer-events-none justify-center text-muted motion-safe:animate-pulse')}><Icon name="clear" className="size-4 flex-none" /><span className={labels ? "min-w-0 truncate" : "sr-only"}>{t('coordinatorCard.clearing')}</span></span>
-        : <Popover open={asking} onOpenChange={open => { if (!open) setAsking(false); }}>
-          <PopoverAnchor asChild>
-            <button type="button" data-coordinator-clear data-action-focus-target="clear" data-asking={asking || undefined} disabled={disabled}
-              aria-label={t(asking ? "coordinatorCard.clearConfirm" : "coordinatorCard.clear")} aria-describedby={asking ? askId : undefined} title={asking ? undefined : t("coordinatorCard.clear")}
-              className={cn(conversationTool, !labels && markTool, asking && "border-error text-error hover:text-error")}
-              onClick={event => { if (!asking) { setAsking(true); return; } clearWidth.current = event.currentTarget.getBoundingClientRect().width; setAsking(false); countUse('coord.clear'); void shown.press(conversationId, 'clear', () => useConversation.getState().clear()).catch(error => recordFailure(error, "coordinator clear")); }}>
-              <Icon name="clear" className="size-4 flex-none" />{labels && <span>{t("coordinatorCard.clear")}</span>}</button>
-          </PopoverAnchor>
-          {/* The tip's look (as a sheet's tap tip): it takes no press and no focus, the button under it takes the second;
-              a press elsewhere leaves it to its time, Esc takes it back. */}
-          <PopoverContent id={askId} role="status" data-coordinator-clear-ask side="top" align="center" sideOffset={8} collisionPadding={16}
-            onOpenAutoFocus={event => event.preventDefault()} onCloseAutoFocus={event => event.preventDefault()}
-            onPointerDownOutside={event => event.preventDefault()} onFocusOutside={event => event.preventDefault()}
-            className="pointer-events-none w-auto max-w-72 px-3 py-2 text-sm text-error">{t("coordinatorCard.clearConfirm")}</PopoverContent>
-        </Popover>}</span>}
       {active && <TaskActionSlot inThread />}
     </div>
   </div>;
@@ -179,7 +150,7 @@ function PopIn({ own }: { own: Window }) {
  * half a conversationTool, --foot-inset; tokens.css --radius-pane) from its side; on a phone they stand 8px over its
  * foot, so the sheet's foot is 44px and the thread keeps the room. What passes under the head or the foot fades
  * (parts.css pane-head-fade, pane-foot-fade). The end row's tools say their words on a computer while they fit
- * (ThreadEnd), and Clear asks again over itself, so the row never moves under the hand.
+ * (ThreadEnd).
  */
 const AREA_UNDER_HEAD = "relative flex min-h-5 flex-1 flex-col [&>[data-card-scroll]]:min-h-0";
 const PANE_FOOT = "pane-foot-fade flex flex-none items-end [--foot-inset:calc(var(--radius-pane)-var(--spacing)*4.5)]";
@@ -188,11 +159,11 @@ const END_ROW = "min-w-0 flex-1";
  * What scrolls in a conversation surface, and the height of its head (--pane-head): 32px on a phone, only its grip, tall
  * enough for a finger to take it and no taller, so the thread keeps the room; 48px where it holds the pane's controls,
  * as much room under them as over them (HeadControls). A computer's is set on what scrolls, a phone's on the whole
- * sheet (PhoneSheet's grip is as tall); the head and what stands clear of it in the thread (WarmStart, an answer
+ * sheet (PhoneSheet's grip is as tall); the head and what stands clear of it in the thread (ConversationStart, an answer
  * scrolled to) read it from there. On a phone the area under the head keeps at least the head's height, so the grip
  * never stands over the foot's controls.
  */
-const PANE_SCROLL = "flex-1 overflow-y-auto overscroll-contain [&:has([data-coordinator-warm])]:[container-type:size]";
+const PANE_SCROLL = "flex-1 overflow-y-auto overscroll-contain [&:has([data-coordinator-start])]:[container-type:size]";
 const HEAD_WITH_CONTROLS = "[--pane-head:3rem]";
 const HEAD_GRIP_ONLY = "[--pane-head:2rem]";
 
@@ -339,8 +310,6 @@ function Card() {
   // A consumed request makes later moves between surfaces leave the user's selection alone.
   useLayoutEffect(applyCoordinatorFocus, [open, expanded, own, frame, drawn, focusRequested]);
   const { shown, footSize, maximized, toggleMaximized, hand } = useFramePlacement({ surfaces: { card, panel, outline, entrance }, frame, setHeld, open, expanded, own, narrow, bar });
-  // Turned to (`engaged`) on a conversation with no message yet (new, or just cleared), it gets ready in the background,
-  // with the model and effort the first message is likely to be sent with.
   // Put down with the focus in it (sent, Esc), the input hands the focus to its line, so the keys keep their place.
   // The focus may have dropped to the page already (its send button disabled while sending): it was in the input last.
   useEffect(() => {
@@ -366,10 +335,6 @@ function Card() {
     const foot = drawn.foot, engage = () => { if (!useConversation.getState().engaged) useConversation.setState({ engaged: true }); };
     foot.addEventListener("focusin", engage); return () => foot.removeEventListener("focusin", engage);
   }, [drawn]);
-  // With no coordinator AI that can run, it is asked all the same: the server's own answer (none can coordinate) is what
-  // the conversation says.
-  useEffect(() => { if (engaged && !disabled && launch.ready) void useConversation.getState().warm(); },
-    [engaged, disabled, conversation?.id, turns.length, launch.ready]);
   // The grip is one, on the far surface: the conversation open, or the input folded. Opened or folded with the focus on
   // the grip (its keys, Esc), the focus goes with it (the one leaving fades out before it is taken away).
   // Whether the focus was last on a grip: one taken away drops it to the page, which says nothing of where it was.
