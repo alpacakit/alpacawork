@@ -1,5 +1,6 @@
 /** Rounded work labels and bounded previews of observed tool calls. */
 import { z } from 'zod';
+import { contextViewSchema } from './agent-context.js';
 import { runIdSchema } from './fields.js';
 
 export const RUN_TOOL_NAME_LIMIT = 128;
@@ -125,4 +126,5 @@ export type RunStepDetail = z.infer<typeof runStepDetailSchema>;
 export const coordinatorWorkSchema = z.object({ name: workNameSchema.nullable(), count: z.number().int().nonnegative(),
   conversation: z.string(), turn: z.string(), run: runIdSchema, steps: runStepsSchema, stepEvents: z.number().int().nonnegative(),
   stepsStarted: z.number().int().nonnegative(),
+  context: contextViewSchema.nullable().optional(),
   words: z.string().max(RUN_NOTE_LIMIT).nullable() }).strict().nullable();
