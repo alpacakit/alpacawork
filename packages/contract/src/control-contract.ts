@@ -993,12 +993,14 @@ export const timelineItemKey = {
 /** When an event of a strip happened: a log entry when its cause was, a note at its mark, a Run when it started. */
 const timelineEventAt = (event: TimelineEvent) => Date.parse(event.kind === 'log' ? event.entry.causeAt ?? event.entry.at
   : event.kind === 'note' ? event.event.at : event.run.startedAt ?? event.run.createdAt);
+/** Keys compared as text in one language whatever the machine's, so the server and every screen agree. */
+const timelineKeyText = new Intl.Collator('en');
 /**
  * The one order of a strip's events, whoever puts them together (the server making it, the screen laying a patch on
  * it): the screen keeps that order among records of the same time.
  */
 export const timelineEventOrder = (a: TimelineEvent, b: TimelineEvent) => {
-  return timelineEventAt(a) - timelineEventAt(b) || timelineItemKey.event(a).localeCompare(timelineItemKey.event(b));
+  return timelineEventAt(a) - timelineEventAt(b) || timelineKeyText.compare(timelineItemKey.event(a), timelineItemKey.event(b));
 };
 type TimelineItem = TimelineEvent | TaskTimelineLaneDTO['belowRuns'][number] | TaskTimelineLaneDTO['placements'][number];
 const keyedItems = (lane: TimelineItems): (readonly [string, TimelineItem])[] => [
