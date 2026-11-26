@@ -68,9 +68,9 @@ test('the pinned coordinator card sends, resumes, attaches an image and starts o
     await input.fill('Follow-up question');
     const followUp = coordinatorMessage(page);
     await card.locator('[data-ask-send]').click();
-    await coordinatorCompleted(page, runtime, await followUp);
-    await expect(card.locator('[data-ask-answer]')).toHaveCount(2);
-    const second = JSON.parse((await card.locator('[data-ask-answer]').last().textContent())!);
+    const completed = await coordinatorCompleted(page, runtime, await followUp);
+    await expect(card.locator(`[data-coordinator-message="${completed.id}"] [data-ask-answer]`)).toBeVisible();
+    const second = JSON.parse(completed.answer!);
     expect(second.mode).toBe('resume'); expect(second.session).toBe(first.session);
     await card.locator('[data-coordinator-context]').click();
     const clear = page.locator('[data-coordinator-clear]');
