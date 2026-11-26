@@ -18,22 +18,25 @@ export function DisclosureBody({ open, least, swap, className, children }: { ope
   if (open && !seen) setSeen(true);
   const peeks = least !== undefined, hidden = !open && !peeks;
   const body = useRef<HTMLDivElement>(null), shown = useRef(open);
-  // The height drawn last, kept only where what it holds can take another's place.
+  // The height drawn last, kept only while open where what it holds can take another's place.
   const drawn = useRef(0), swapped = useRef(swap);
+  const swaps = swap !== undefined;
   useLayoutEffect(() => {
     const box = body.current;
-    if (swap === undefined || !box || typeof ResizeObserver === "undefined") return;
+    if (!swaps || !open || !box || typeof ResizeObserver === "undefined") return;
     const sizes = new ResizeObserver(() => { drawn.current = box.getBoundingClientRect().height; });
     sizes.observe(box);
     return () => sizes.disconnect();
-  }, [swap === undefined]); // eslint-disable-line react-hooks/exhaustive-deps -- observed once for a body that swaps
+  }, [swaps, open]);
   useLayoutEffect(() => {
     const box = body.current;
     if (!box || swapped.current === swap) return;
     swapped.current = swap;
     if (!open || shown.current !== open || reducedMotion()) return;
+    // Already moving (still unfolding), the move goes on from where it is to the new height.
+    if (box.getAnimations().some(move => move.playState === "running")) { box.style.height = `${box.scrollHeight}px`; return; }
     const from = drawn.current, to = box.scrollHeight;
-    if (!from || Math.abs(to - from) < 1 || box.getAnimations().some(move => move.playState === "running")) return;
+    if (!from || Math.abs(to - from) < 1) return;
     box.style.height = `${from}px`;
     void box.offsetHeight;
     box.style.height = `${to}px`;

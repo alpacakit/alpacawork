@@ -116,7 +116,8 @@ export function TurnWork({ turn }: { turn: Pick<CoordinatorTurn, 'id' | 'at' | '
   const steps = useRunSteps(run, open && worked, running ? mine?.stepEvents ?? 0 : 'ended');
   const block = useRef<HTMLDivElement>(null);
   // Opened after the answer, the pill goes to the top where it must move, so the answer's start stays in sight under it.
-  useListedInSight(steps.listed, block, !running);
+  // Brought into sight as it is shown: at once with what was read before, else once the first read answers.
+  useListedInSight(open ? steps.listed : null, block, !running);
   const count = stepCount(steps);
   if (!running && !turn.workedBy) return null;
   const toggle = () => setOpen(!open);
