@@ -1321,6 +1321,20 @@ test("a compaction's row shows its fill before and after with what it cut, and a
   expect(document.querySelector<HTMLAnchorElement>('[data-conversation-detail] a')!.href).toBe("https://arxiv.org/abs/2505.06120");
 });
 
+test("a compaction whose agent gave only the figure after still shows it, and says the one before did not come", async () => {
+  await inEnglish();
+  const owner = { kind: "owner", profileKey: "codex", modelId: "gpt-6.2-sol", effort: "high" } as const;
+  const data = screenData(tree({ tasks: [dto()], history: { T1: historyFixture([
+    { id: "R1@2026-11-26T00:00:00.000Z", kind: "conversation", author: owner, conversation: { change: "compacted", beforeTokens: null, afterTokens: 66_500, windowTokens: 475_000, trigger: "asked" } }]) } }));
+  render(<TestWorkspace data={data}><ReportFeed task={data.tasks[0]!} people={data.people} onFollow={() => {}} /></TestWorkspace>);
+  const fill = await waitFor(() => document.querySelector<HTMLElement>("[data-compaction-fill]")!);
+  expect(fill.textContent).toBe("Context after14%");
+  fireEvent.click(document.querySelector<HTMLElement>("button[aria-expanded]")!);
+  const detail = await waitFor(() => document.querySelector<HTMLElement>("[data-conversation-detail]")!);
+  expect(detail.textContent).toContain("Compacted before the next instruction, as requested.");
+  expect(detail.textContent).toContain("The AI did not say the context before.");
+});
+
 test("the context meter lists the task's conversation changes newest first, with what compactions cut", async () => {
   await inEnglish();
   const { ContextMeter } = await import("../src/features/people/ContextMeter");
@@ -1343,8 +1357,8 @@ test("the context meter lists the task's conversation changes newest first, with
   expect(rows[0]!.textContent).toContain("−400K");
   expect(rows[2]!.textContent).toContain("owner's break");
   // What a compaction and a new conversation are is a press on the ? away.
-  fireEvent.click(list.querySelector<HTMLElement>('[aria-label="About compactions and new conversations"]')!);
-  await waitFor(() => expect(document.querySelector("[data-conversation-help]")!.textContent).toContain("the conversation starts again from the task's records"));
+  fireEvent.click(list.querySelector<HTMLElement>('[aria-label="About compactions and fresh starts"]')!);
+  await waitFor(() => expect(document.querySelector("[data-conversation-help]")!.textContent).toContain("the conversation starts again from the task's records (what its Context tab shows)"));
 });
 
 test("a stop the AI stack carried on goes to the AI that took over, closed and open alike", async () => {

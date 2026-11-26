@@ -315,13 +315,14 @@
     },
     "conversation": {
       "byAgent": "La conversación se alargó y la IA la compactó por sí misma.",
-      "byRequest": "En una pausa del trabajo, la IA pidió compactarla.",
+      "byRequest": "Se compactó antes de la siguiente instrucción, según lo solicitado.",
+      "fillAfter": "La IA no dio el contexto de antes.",
       "fillBefore": "El contexto era {{before}} antes. La IA no dio la cifra de después.",
       "fillUnknown": "La IA no dio el contexto de antes ni de después.",
       "keeps": "Compactar reemplaza lo hablado por un resumen y sigue en la misma conversación. Algunos detalles pueden quedar fuera del resumen.",
       "source": "Laban et al. (2025)",
-      "startsFrom": "No se arrastra lo hablado: la conversación empieza desde los registros de la tarea (su objetivo, lo decidido, cuánto avanzó).",
-      "why": "Cuando un intercambio largo pierde el rumbo, empezar de nuevo con lo establecido suele dar mejores resultados, según un estudio."
+      "startsFrom": "No se arrastra lo hablado: la conversación empieza desde los registros de la tarea (lo que muestra su pestaña Contexto).",
+      "why": "Cuando un intercambio repartido en muchos turnos pierde el rumbo, empezar de nuevo con lo establecido suele dar mejores resultados, según un estudio."
     },
     "copy": "Copiar",
     "empty": {
@@ -361,6 +362,7 @@
       "compactedCut": "{{tokens}} tokens menos",
       "compactedFill": "Contexto",
       "compactedFrom": "Contexto antes",
+      "compactedTo": "Contexto después",
       "end": {
         "again": {
           "question": "Se hizo de nuevo la misma pregunta",

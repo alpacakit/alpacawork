@@ -44,12 +44,15 @@ function whyAnew(conversation: Extract<Conversation, { change: "new" }>, t: TFun
 export function conversationLine(conversation: Conversation, t: TFunction<"reader">, language: string): ReactNode {
   if (conversation.change === "new") return whyAnew(conversation, t);
   const { beforeTokens: before, afterTokens: after, windowTokens: window } = conversation;
-  if (before === null) return null;
+  if (before === null && after === null) return null;
   const cut = compactionCut({ at: "", ...conversation });
+  // One figure alone is named for which it is; both read as the change.
+  const label = before === null ? "reportFeed.row.compactedTo" : after === null ? "reportFeed.row.compactedFrom" : "reportFeed.row.compactedFill";
   return <span data-compaction-fill className="inline-flex flex-wrap items-center gap-x-1.5">
-    <span className="text-soft">{t(after === null ? "reportFeed.row.compactedFrom" : "reportFeed.row.compactedFill")}</span>
-    <Fill tokens={before} window={window} language={language} />
-    {after !== null && <><Icon name="arrowRight" className="size-3.5 text-muted" /><Fill tokens={after} window={window} language={language} /></>}
+    <span className="text-soft">{t(label)}</span>
+    {before !== null && <Fill tokens={before} window={window} language={language} />}
+    {before !== null && after !== null && <Icon name="arrowRight" className="size-3.5 text-muted" />}
+    {after !== null && <Fill tokens={after} window={window} language={language} />}
     {cut !== null && cut > 0 && <span className="text-soft tabular-nums">· {t("reportFeed.row.compactedCut", { tokens: tokensText(cut, language) })}</span>}
   </span>;
 }
@@ -61,13 +64,14 @@ export function conversationLine(conversation: Conversation, t: TFunction<"reade
 export function ConversationDetail({ conversation, t, language }: { conversation: Conversation; t: TFunction<"reader">; language: string }) {
   if (conversation.change === "new") return <div data-conversation-detail className="grid gap-2 text-sm">
     <p className="m-0">{t("reportFeed.conversation.startsFrom")}</p>
-    <p className="m-0 text-soft">{t("reportFeed.conversation.why")}{" "}
-      <a href={LOST_IN_CONVERSATION} target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-ink">{t("reportFeed.conversation.source")}</a></p>
+    {/* Why starting over helps, where the AI or the request chose it; not where another AI or a lost session forced it. */}
+    {conversation.because !== "another_ai" && conversation.because !== "unresumable" && <p className="m-0 text-soft">{t("reportFeed.conversation.why")}{" "}
+      <a href={LOST_IN_CONVERSATION} target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-ink">{t("reportFeed.conversation.source")}</a></p>}
   </div>;
   return <div data-conversation-detail className="grid gap-2 text-sm">
     {conversation.trigger && <p className="m-0">{conversation.trigger === "agent" ? t("reportFeed.conversation.byAgent") : t("reportFeed.conversation.byRequest")}</p>}
-    {/* The figures are the row's own line; said here only when the agent gave neither, or not the one after. */}
-    {conversation.afterTokens === null && <p className="m-0">{fillSentence(conversation, t, language)}</p>}
+    {/* The figures are the row's own line; what the agent never gave of them is said here. */}
+    {(conversation.beforeTokens === null || conversation.afterTokens === null) && <p className="m-0">{fillSentence(conversation, t, language)}</p>}
     <p className="m-0 text-soft">{t("reportFeed.conversation.keeps")}</p>
   </div>;
 }
@@ -76,6 +80,7 @@ export function ConversationDetail({ conversation, t, language }: { conversation
 function fillSentence(conversation: Compacted, t: TFunction<"reader">, language: string): string {
   const { beforeTokens: before, afterTokens: after, windowTokens: window } = conversation;
   const figure = (tokens: number) => window ? percentText(contextPercent({ usedTokens: tokens, windowTokens: window })!) : tokensText(tokens, language);
-  if (before !== null && after === null) return t("reportFeed.conversation.fillBefore", { before: figure(before) });
+  if (before !== null) return t("reportFeed.conversation.fillBefore", { before: figure(before) });
+  if (before === null && after !== null) return t("reportFeed.conversation.fillAfter");
   return t("reportFeed.conversation.fillUnknown");
 }

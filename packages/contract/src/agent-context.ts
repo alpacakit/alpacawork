@@ -19,10 +19,10 @@ export const agentContextSchema = z.object({
   observedAt: z.iso.datetime({ offset: true }),
 }).strict();
 export type AgentContext = z.infer<typeof agentContextSchema>;
-/** A field an observation leaves out keeps its last value. */
 /**
  * What one observation says: the fill, the model's window when the agent names it, and with a compaction, how full the
- * conversation was before it when the agent says so (`compactedFrom`; else the last fill read stands for it).
+ * conversation was before it when the agent says so (`compactedFrom`; else the last fill read stands for it). A field
+ * an observation leaves out keeps its last value.
  */
 export const contextUpdateSchema = agentContextSchema.omit({ observedAt: true }).extend({ windowTokens: limit, compactedFrom: tokens }).partial().strict();
 export type ContextUpdate = z.infer<typeof contextUpdateSchema>;

@@ -148,3 +148,15 @@ test('each agent that says how full its conversation was before a compaction is 
   assert.deepEqual(piContext({ type: 'compaction_end', result: { summary: 'Kept', tokensBefore: 120_000 }, aborted: false }),
     { usedTokens: null, compacted: true, compactedFrom: 120_000 });
 });
+
+test('the fill an agent says it had before a compaction stands over the last fill read', t => {
+  const folder = mkdtempSync(join(tmpdir(), 'agent-compaction-before-'));
+  t.after(() => rmSync(folder, { recursive: true, force: true }));
+  const told: { beforeTokens: number | null; afterTokens: number | null }[] = [];
+  const activity = new OutputActivityReader(adapters.claude, undefined, () => {}, fill => told.push(fill));
+  const rows = [{ type: 'assistant', parent_tool_use_id: null, message: { content: [], usage: { input_tokens: 100_000, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, output_tokens: 0 } } },
+    { type: 'system', subtype: 'compact_boundary', compact_metadata: { trigger: 'auto', pre_tokens: 610_000, post_tokens: 140_000 } }];
+  for (const row of rows) appendFileSync(join(folder, 'stdout.log'), JSON.stringify(row) + '\n');
+  activity.poll(folder);
+  assert.deepEqual(told, [{ beforeTokens: 610_000, afterTokens: 140_000 }]);
+});

@@ -299,13 +299,14 @@
     },
     "conversation": {
       "byAgent": "The conversation grew long, so the AI compacted it by itself.",
-      "byRequest": "At a break in the work, the AI asked for it to be compacted.",
+      "byRequest": "Compacted before the next instruction, as requested.",
+      "fillAfter": "The AI did not say the context before.",
       "fillBefore": "The context was {{before}} before. The AI did not say the figure after.",
       "fillUnknown": "The AI did not say the context before or after.",
       "keeps": "Compacting replaces the exchange so far with a summary and goes on in the same conversation. Fine details may be left out of the summary.",
       "source": "Laban et al. (2025)",
-      "startsFrom": "The old exchange is not carried over: the conversation starts from the task's records (its goal, what was decided, how far it got).",
-      "why": "When a long exchange loses its way, starting over with what was established tends to do better, as a study reports."
+      "startsFrom": "The old exchange is not carried over: the conversation starts from the task's records (what its Context tab shows).",
+      "why": "When an exchange spread over many turns loses its way, starting over with what was established tends to do better, a study reports."
     },
     "copy": "Copy",
     "empty": {
@@ -343,6 +344,7 @@
       "compactedCut": "{{tokens}} tokens cut",
       "compactedFill": "Context",
       "compactedFrom": "Context before",
+      "compactedTo": "Context after",
       "end": {
         "again": {
           "question": "Asked the same question again",
