@@ -1,4 +1,5 @@
 import type { LaunchFilter } from "./series";
+import { isTokenUnit } from "@/domain/tokens";
 import { createContext, memo, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
@@ -535,7 +536,8 @@ export function useScale(largest: number, unit: number, unitName: string, wholeO
   const { t } = useTranslation("analysis");
   const marks = ticks(Math.max(0, largest), unit, wholeOnly), top = marks[marks.length - 1] || unit;
   const written = numberText(Math.round(top / unit * 100) / 100);
-  return { top, label: unitName ? t(unit === 1 ? "unit.join" : "unit.joinTight", { value: written, unit: unitName }) : written };
+  return { top, label: !unitName ? written : isTokenUnit(unitName) ? `${written}${unitName}`
+    : t(unit === 1 ? "unit.join" : "unit.joinTight", { value: written, unit: unitName }) };
 }
 
 /** The span's last bin: where the keys start in a chart. */

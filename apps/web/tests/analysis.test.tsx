@@ -1,5 +1,5 @@
 import { beforeAll, expect, test } from "vitest";
-import { TOKEN_STEPS } from "../src/domain/tokens";
+import { TOKEN_STEPS, tokenText } from "../src/domain/tokens";
 import { i18n, startI18n } from "@alpacawork/i18n";
 import { comparison, delta, duration, format, parts, share, shareDelta, splitFigure, tokenColumn } from "../src/features/analysis/format";
 import { holdsAll } from "../src/features/analysis/BreakdownTable";
@@ -70,6 +70,8 @@ test("a list leaves out the day each task finished only when it lists the tasks 
 });
 
 test("large token counts take the largest step they reach, and a gap is written in the larger value's step", () => {
+  // One way everywhere: a count that rounds up to a thousand of its step is written in the next.
+  expect([950, 999.6, 12_345, 950_000, 999_950, 1_449_999, 999_960_000].map(tokenText)).toEqual(["950", "1k", "12k", "950k", "1.0M", "1.4M", "1.0B"]);
   // Tokens are written in k・M・B in every language, as the rest of the app writes them.
   const [big, , small] = TOKEN_STEPS;
   expect(parts("tokens", big!.at * 74).unit).toBe(big!.unit);

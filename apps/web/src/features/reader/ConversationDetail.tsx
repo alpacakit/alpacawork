@@ -16,14 +16,13 @@ type Compacted = Extract<Conversation, { change: "compacted" }>;
 /** The study that found a fresh, consolidated conversation does better than one that went astray (its §7.4). */
 export const LOST_IN_CONVERSATION = "https://arxiv.org/abs/2505.06120";
 
-const tokensText = (tokens: number, _language: string) => tokenText(tokens);
 
 /** How full the conversation was, as the context meter draws it: its ring and percent, or the tokens when no window is known. */
 function Fill({ tokens, window, language }: { tokens: number; window: number | null; language: string }) {
   const percent = window ? contextPercent({ usedTokens: tokens, windowTokens: window })! : null;
   return <span className="inline-flex items-center gap-1 tabular-nums">
     <UsageRing percent={percent ?? 0} tone={limitTone(percent ?? 0)} open={percent === null} className="size-3.5" />
-    {percent !== null ? percentText(percent) : tokensText(tokens, language)}</span>;
+    {percent !== null ? percentText(percent) : tokenText(tokens)}</span>;
 }
 
 /** A started-anew row's one sentence of why, when the Run that started it says. */
@@ -53,7 +52,7 @@ export function conversationLine(conversation: Conversation, t: TFunction<"reade
     {before !== null && <Fill tokens={before} window={window} language={language} />}
     {before !== null && after !== null && <Icon name="arrowRight" className="size-3.5 text-muted" />}
     {after !== null && <Fill tokens={after} window={window} language={language} />}
-    {cut !== null && cut > 0 && <span className="text-soft tabular-nums">{t("reportFeed.row.compactedCut", { tokens: tokensText(cut, language) })}</span>}
+    {cut !== null && cut > 0 && <span className="text-soft tabular-nums">{t("reportFeed.row.compactedCut", { tokens: tokenText(cut) })}</span>}
   </span>;
 }
 
@@ -79,7 +78,7 @@ export function ConversationDetail({ conversation, t, language }: { conversation
 /** What the agent never gave of a compaction's figures, in words. */
 function fillSentence(conversation: Compacted, t: TFunction<"reader">, language: string): string {
   const { beforeTokens: before, afterTokens: after, windowTokens: window } = conversation;
-  const figure = (tokens: number) => window ? percentText(contextPercent({ usedTokens: tokens, windowTokens: window })!) : tokensText(tokens, language);
+  const figure = (tokens: number) => window ? percentText(contextPercent({ usedTokens: tokens, windowTokens: window })!) : tokenText(tokens);
   if (before !== null) return t("reportFeed.conversation.fillBefore", { before: figure(before) });
   if (before === null && after !== null) return t("reportFeed.conversation.fillAfter");
   return t("reportFeed.conversation.fillUnknown");

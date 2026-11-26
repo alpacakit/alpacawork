@@ -1,5 +1,5 @@
 import { i18n } from "@alpacawork/i18n";
-import { tokenNumber, tokenParts, tokenStep, tokenText } from "@/domain/tokens";
+import { isTokenUnit, tokenNumber, tokenParts, tokenStep, tokenText } from "@/domain/tokens";
 
 /**
  * How the analysis writes its numbers, one way everywhere: a value and its unit apart (the unit drawn small beside it),
@@ -60,7 +60,8 @@ export function parts(kind: Kind, value: number): Parts {
     }
   }
 }
-export const text = ({ value, unit, tight }: Parts) => unit ? word(tight ? "unit.joinTight" : "unit.join", { value, unit }) : value;
+export const text = ({ value, unit, tight }: Parts) => !unit ? value : isTokenUnit(unit) ? `${value}${unit}`
+  : word(tight ? "unit.joinTight" : "unit.join", { value, unit });
 /** A value written by hand (a per-task number, a scale's top) with a unit that may be none. */
 export const inUnit = (value: string, unit: string) => text({ value, unit });
 /**
@@ -74,7 +75,7 @@ export const unitOf = (kind: "tasks" | "times" | "prs" | "conversations" | "peop
   kind === "hours" ? word("unit.hours") : countWord(kind, 2);
 export const format = (kind: Kind, value: number) => text(parts(kind, value));
 /**
- * A number already written with its unit ("962M", "1.5 h"), parted again into the number and what
+ * A number already written with its unit ("962.0M", "1.5 h"), parted again into the number and what
  * follows it, so the unit can be drawn at the body's step beside a large number. Words with no number stay whole.
  */
 export function splitFigure(written: string): { value: string; unit: string } {
@@ -113,7 +114,7 @@ function gapValue(kind: Kind, gap: number, larger: number): string {
   if (kind !== "tokens") return whole(gap);
   const scale = scaleOf(larger);
   // The gap has the places its value has (9.9B, +2.0B), so the two read alike.
-  return scale ? word("unit.joinTight", { value: tokenNumber(gap / scale.at, scale.digits), unit: scale.unit }) : whole(gap);
+  return scale ? `${tokenNumber(gap / scale.at, scale.digits)}${scale.unit}` : whole(gap);
 }
 /** The gap from the span before: a sign and its size, or "same" when it is zero as written. */
 export function delta(kind: Kind, current: number, previous: number): string {

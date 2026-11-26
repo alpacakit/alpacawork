@@ -70,8 +70,8 @@
     "laterTip": "El trabajo rehecho y esperado tras la primera revisión de cada tarea",
     "meant": "Como querías",
     "noFixes": "No hay arreglos clasificados en este periodo.",
-    "noQuestions": "Aceptadas sin preguntas ni arreglos",
     "none": "Nada que mostrar en este periodo.",
+    "noQuestions": "Aceptadas sin preguntas ni arreglos",
     "ofFixes_one": "Del {{count}} arreglo que pediste, por tipo",
     "ofFixes_other": "De los {{count}} arreglos que pediste, por tipo",
     "ofItems_one": "De {{count}} elemento respondido",
@@ -181,6 +181,11 @@
     "speed": "Velocidad",
     "wording": "Redacción"
   },
+  "history": {
+    "accepted": "Aceptada",
+    "created": "Tarea creada",
+    "linked": "Cambio de estado"
+  },
   "home": {
     "label": "{{marks}}. Abrir el análisis",
     "marks_one": "Completadas hoy: {{count}} ({{passed}} sin correcciones)",
@@ -189,6 +194,10 @@
   },
   "lead": {
     "ever": "Todo el período {{value}}"
+  },
+  "legend": {
+    "failedRun": "Ejecución fallida o detenida",
+    "state": "Estado de la tarea (línea fina)"
   },
   "line": {
     "median": "Mediana por tarea",
@@ -403,7 +412,7 @@
     "countWords": "no",
     "hours": "h",
     "join": "{{value}} {{unit}}",
-    "joinTight": "{{value}}{{unit}}",
+    "joinTight": "{{value}} {{unit}}",
     "minutes": "min",
     "people_one": "persona",
     "people_many": "personas",
@@ -492,15 +501,6 @@
     "passedOf_one": "{{passed}} de {{count}}",
     "passedOf_many": "{{passed}} de {{count}}",
     "passedOf_other": "{{passed}} de {{count}}"
-  },
-  "legend": {
-    "failedRun": "Ejecución fallida o detenida",
-    "state": "Estado de la tarea (línea fina)"
-  },
-  "history": {
-    "accepted": "Aceptada",
-    "created": "Tarea creada",
-    "linked": "Cambio de estado"
   },
   "work": {
     "aboutCause": "Sobre: {{cause}}",
