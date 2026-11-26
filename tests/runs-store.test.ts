@@ -198,7 +198,7 @@ for (const [field, old] of [
       error => error instanceof Problem && error.code === 'runs_unavailable' && error.message.includes(field));
     assert.deepEqual(store.read(), [current], 'rejection does not write or reinterpret the input');
     const invalid = JSON.stringify({ ...current, ...old });
-    if (field === 'requestId' || field === 'continues') {
+    if (field === 'requestId') {
       assert.throws(() => inspect(db => db.prepare('UPDATE runs SET record = ? WHERE id = 1').run(invalid)),
         /witness mismatch|run ownership is immutable/);
       assert.deepEqual(store.read(), [current], 'the Run witness remains linked to its original Task and Request');

@@ -50,7 +50,7 @@
   },
   {
     "file": "packages/runs/src/store.ts",
-    "sql": "INSERT INTO requests (id, task_id, placement_id, placement_revision, task_hash, wait_cycle_id, head_run_id, about_run_id, mode, body, purpose, author, submitted_at, delivery_state, answers_question, ai_stack, ai_explicit, ai_prefix) SELECT ?, external_id, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? FROM tasks WHERE external_id = ? AND kind = 'task'",
+    "sql": "INSERT INTO requests (id, task_id, placement_id, placement_revision, task_hash, wait_cycle_id, head_run_id, about_run_id, mode, body, purpose, author, submitted_at, delivery_state, answers_question, ai_stack, ai_explicit, ai_prefix, reason) SELECT ?, external_id, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? FROM tasks WHERE external_id = ? AND kind = 'task'",
     "table": "requests",
     "line": 238,
     "status": "touch"
@@ -379,9 +379,9 @@
   },
   {
     "file": "apps/backend/src/control/task-values-store.ts",
-    "sql": "INSERT INTO task_value_versions(task_id,field_id,replaced_at,value) VALUES (?,?,?,?)",
+    "sql": "INSERT INTO task_value_versions(task_id,field_id,replaced_at,value,change_log_id) VALUES (?,?,?,?,?)",
     "table": "task_value_versions",
-    "line": 202,
+    "line": 210,
     "status": "unobserved"
   },
   {
@@ -474,6 +474,13 @@
     "table": "coordinator_resets",
     "line": 61,
     "status": "touch"
+  },
+  {
+    "file": "apps/backend/src/maintenance.ts",
+    "sql": "UPDATE field_defs SET definition=json_set(definition,'$.direction',json('true')) WHERE id IN (SELECT value FROM json_each(?)) AND json_type(definition,'$.direction') IS NULL",
+    "table": "field_defs",
+    "line": 18,
+    "status": "maintenance"
   },
   {
     "file": "apps/backend/src/runs/compactions.ts",

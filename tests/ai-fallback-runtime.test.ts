@@ -107,6 +107,7 @@ test('a worker uses a named model just for its request and retains the prior con
   const service = new TaskRequestService(h.root);
   const ask = async (body: string, aiStack?: AiStackPrefix, newConversation?: boolean) => {
     const request = await service.request({ task: h.taskId, agent: placement.id, opId: randomUUID(), body, aiStack, newConversation,
+      ...(aiStack && { placedAs: 'policy' as const }),
       expectedTaskHash: currentTaskHash(h.root, h.taskId), expectedPlacementRevision: placement.revision },
     { kind: 'placement', placementId: h.ownerPlacementId },
     { kind: 'run', runId: owner.id, placementId: h.ownerPlacementId, taskId: h.taskId, role: 'owner', responsible: true });
@@ -179,7 +180,7 @@ test('a waiting worker request keeps its own stack when the preceding request na
   const service = new TaskRequestService(h.root);
   const ask = async (plan: object, aiStack?: AiStackPrefix) => {
     const request = await service.request({ task: h.taskId, agent: placement.id, opId: randomUUID(), body: JSON.stringify(plan), aiStack,
-      expectedTaskHash: currentTaskHash(h.root, h.taskId), expectedPlacementRevision: placement.revision },
+      ...(aiStack && { placedAs: 'policy' as const }), expectedTaskHash: currentTaskHash(h.root, h.taskId), expectedPlacementRevision: placement.revision },
     { kind: 'placement', placementId: h.ownerPlacementId },
     { kind: 'run', runId: owner.id, placementId: h.ownerPlacementId, taskId: h.taskId, role: 'owner', responsible: true });
     if (request.outcome.kind !== 'request_accepted') throw new Error('Worker request must be accepted');
@@ -284,7 +285,7 @@ test('a queued coordinator message follows the replacement conversation using th
     send(recovered, { output: 'Primary reply' });
     await until(() => conversation.read().turns.some(turn => turn.id === recovered && turn.status === 'succeeded'), 'primary replies again');
     assert.equal(h.store.read().find(run => run.requestId === recovered)?.agent, 'claude');
-    assert.equal(conversation.read().resets.at(-1)?.reason.kind, 'another_ai');
+    assert.equal(conversation.read().resets.at(-1)?.reason.kind, 'recovered');
 
     const later = randomUUID();
     writeFileSync(join(h.root, 'config.yaml'), stringify({ ...h.config,

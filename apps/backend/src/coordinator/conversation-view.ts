@@ -131,7 +131,7 @@ function trialRows(db: DatabaseSync, ids: readonly string[]) {
     (SELECT carrier.state FROM runs carrier WHERE carrier.id=(${messageCarrier('trial.request_id')})) AS carrier_state,
     EXISTS(SELECT 1 FROM runs retry
       WHERE retry.conversation_id=trial.conversation_id AND retry.conversation_id IS NOT NULL AND json_extract(retry.record,'$.message.retryOf')=trial.request_id
-      AND EXISTS (SELECT 1 FROM requests rq WHERE rq.id=retry.request_id AND rq.delivery_state <> 'aborted')) AS sent_again
+      AND EXISTS (SELECT 1 FROM requests q WHERE q.id=retry.request_id AND ${visible})) AS sent_again
     FROM json_each(?) scope JOIN runs trial ON trial.request_id=scope.value ORDER BY trial.id`).all(JSON.stringify(ids));
 }
 

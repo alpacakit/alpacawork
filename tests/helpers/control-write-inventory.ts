@@ -29,7 +29,7 @@ export function writeSites(repo: string): WriteSite[] {
 export const siteId = (site: Pick<WriteSite, 'file' | 'sql'>) => `${site.file}: ${site.sql}`;
 export const maintenanceFiles = new Set(['packages/db/src/control-migration-snapshot.ts',
   'packages/db/src/recovery-evidence.ts', 'apps/backend/src/agents/migration-storage.ts',
-  'apps/backend/src/control/task-values-migration.ts']);
+  'apps/backend/src/control/task-values-migration.ts', 'apps/backend/src/maintenance.ts']);
 export const routingFiles = new Set(['apps/backend/src/control/return-router.ts', 'apps/backend/src/control/return-lifecycle.ts',
   'apps/backend/src/control/task-reports.ts', 'apps/backend/src/runs/event-importer.ts']);
 // A value version is written only beside the task_values change whose touch announces the same write.

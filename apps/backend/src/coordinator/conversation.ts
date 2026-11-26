@@ -265,7 +265,7 @@ export class CoordinatorConversation {
             throw new Problem(PROBLEM_CODE.conflict, 'Only a failed message can be sent again', undefined, { reason: { kind: 'message_has_already_been_sent' } });
           if (db.prepare(`SELECT 1 FROM runs r JOIN requests q ON q.id=r.request_id
             WHERE r.conversation_id=? AND r.conversation_id IS NOT NULL AND json_extract(r.record,'$.message.retryOf')=?
-              AND q.delivery_state <> 'aborted'`).get(conversation.id, message.retryOf))
+              AND ${visible}`).get(conversation.id, message.retryOf))
             throw new Problem(PROBLEM_CODE.conflict, 'Message has already been sent again', undefined, { reason: { kind: 'message_already_sent_again' } });
         }
         if (!settings.ok) throw settings.error;
