@@ -1100,13 +1100,13 @@ export async function startServer(root: string, port: number, options: ServerOpt
     host.start();
     stopAnalysisTally = startTallyJob(root, tallySince, changes.log, batch => analysis.updateTallies(batch));
     stopAnalysisWarm = warmAnalysisWhenIdle(analysis, () => lifecycle.state === 'accepting' && !queuedWrites && !queuedReads);
-    let lastSettle = 0, lastHeartbeat = Date.now(), lastCheck = 0, lastAudit = Date.now();
+    let lastPeriodicSettle = 0, lastHeartbeat = Date.now(), lastCheck = 0, lastAudit = Date.now();
     let auditing: Promise<void> | undefined;
     loopDelay?.enable();
     timer = setInterval(() => {
       const now = Date.now();
       if (lifecycle.state !== 'accepting') return;
-      const settleDue = now - lastSettle >= 30_000;
+      const settleDue = now - lastPeriodicSettle >= 30_000;
       const executionDue = executionPrompt || !settling && new RunEventImporter(runStore()).hasPublishedTail();
       if (!settling && (settleDue || executionDue)) {
         executionPrompt = false;
@@ -1114,10 +1114,12 @@ export async function startServer(root: string, port: number, options: ServerOpt
           await ordered(async () => {
             const started = performance.now(), revision = runReviews.revision;
             const { skipped } = await settle(runStore(), operation => retryBusy(operation, settleAbort.signal), () => lifecycle.state === 'accepting', runReviews);
-            lastSettle = Date.now();
             const next = skipped.length ? `Skipped queued runs: ${skipped.map(item => `${item.run} (${item.reason})`).join(', ')}.` : undefined;
             if (next !== settleError || revision !== runReviews.revision) { settleError = next; republish(); }
-            coordinator.sweepAttachments();
+            if (settleDue) {
+              lastPeriodicSettle = Date.now();
+              coordinator.sweepAttachments(lastPeriodicSettle);
+            }
             timing?.({ step: 'settle', settleMs: performance.now() - started });
           });
         }).catch(error => {

@@ -1,11 +1,12 @@
 /** Real coordinator HTTP media cases; independent private fixtures. */
 import { coordinatorSnapshotSchema } from '@alpacawork/contract/coordinator';
+import { ControlStore } from '@alpacawork/db';
 import { httpStatus } from './helpers/http-cli.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, symlinkSync, linkSync, mkdtempSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { CoordinatorConversation } from '@alpacawork/backend/test-dist/coordinator/conversation.js';
 import { coordinatorCwd } from '@alpacawork/backend/test-dist/runs/execution-control.js';
 import { messagePart, type View, eventually, records, fixture } from './helpers/coordinator-http-fixture.ts';
@@ -304,16 +305,28 @@ test('both attachment folders expire only after the turn is old and behind a sta
   };
   const owner = new CoordinatorConversation(h.root);
   const future = Date.now() + 31 * 86400_000;
-  owner.sweepAttachments(future);
+  const write = t.mock.method(ControlStore.prototype, 'write');
+  const sweep = (expectedWrites: number, at?: number) => {
+    const calls = write.mock.callCount();
+    owner.sweepAttachments(at);
+    assert.equal(write.mock.callCount() - calls, expectedWrites);
+  };
+  sweep(0, future);
   assert.ok(retained(first).every(existsSync), 'age cannot expire files in the current session');
   assert.equal((await h.post('/api/coordinator/reset', { conversationId, opId: crypto.randomUUID() })).status, 200);
-  owner.sweepAttachments(future);
+  sweep(0, future);
   assert.ok(retained(first).every(existsSync), 'a pending reset has not opened the next session');
   const nextAnswer = await send(next);
-  owner.sweepAttachments();
+  sweep(0);
   assert.ok(retained(first).every(existsSync), 'the boundary alone does not expire a recent file');
-  owner.sweepAttachments(future);
+  sweep(1, future);
   assert.ok(retained(first).every(path => !existsSync(path)));
+  for (const file of retained(first)) {
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(file, 'Left over from interrupted cleanup');
+  }
+  sweep(0, future);
+  assert.ok(retained(first).every(path => !existsSync(path)), 'a previously marked turn is still cleaned up');
   assert.ok(retained(next, nextAnswer).every(existsSync));
   assert.equal((await h.get()).turns.find(turn => turn.id === first)?.filesExpired, true);
   const readFile = (query: string) => httpStatus(new URL(`/api/coordinator/file?requestId=${first}&${query}`, h.url()));

@@ -104,9 +104,18 @@ test('the conversation snapshot retains shared-session holds without reading unr
     db.prepare("UPDATE run_inputs SET state='uncertain' WHERE instruction_run_no=1000").run();
     tx.update({ ...own, session: shared.session });
   });
-  assert.equal(f.read().turns[0]!.waiting, true);
+  assert.equal(f.read().turns[0]!.waiting, true, 'an unresolved receipt holds a shared session');
+  const diagnostic = (kind: string) => f.store.write(() => {
+    const db = f.store.connection;
+    db.prepare("UPDATE run_inputs SET state='resolved' WHERE instruction_run_no=1000").run();
+    db.prepare('UPDATE run_attempts SET diagnostic=? WHERE run_no=1000').run(JSON.stringify({ kind }));
+  });
+  diagnostic('launch_aborted');
+  assert.equal(f.read().turns[0]!.waiting, false, 'an aborted launch does not hold the session');
+  diagnostic('execution_fault');
+  assert.equal(f.read().turns[0]!.waiting, true, 'a diagnostic holds the shared session');
   f.store.write(tx => tx.update({ ...f.run(message, tx), session: null }));
-  assert.equal(f.read().turns[0]!.waiting, false);
+  assert.equal(f.read().turns[0]!.waiting, false, 'a diagnostic from an unrelated session is ignored');
 });
 test('a failed message is sent again once: the server marks it, keeps its ID readable, and refuses a second copy', t => {
   const f = fixture(t), first = f.ask();

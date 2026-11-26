@@ -409,33 +409,43 @@ export class CoordinatorConversation {
   }
   /** Serve's periodic maintenance removes a turn's files only after its age and reset boundary both qualify. */
   sweepAttachments(now = Date.now()): void {
-    const settings = readAgentsSettings(this.root);
-    const days = settings.ok ? settings.config.limits.coordinator_attachment_days : DEFAULT_LIMITS.coordinator_attachment_days;
-    const cutoff = days > 0 ? new Date(Math.max(-8.64e15, now - days * 86400_000)).toISOString() : null;
     const folders = coordinatorFolders(this.root);
-    const expired = this.control(true, db => {
-      const unowned = db.prepare('SELECT 1 FROM coordinator_conversations WHERE id=? AND cleared_at IS NOT NULL');
+    if (!folders.length) return;
+    const expired = this.control(false, db => {
+      const cleared = db.prepare(`SELECT c.id FROM json_each(?) folder
+        JOIN coordinator_conversations c ON c.id=folder.value WHERE c.cleared_at IS NOT NULL`)
+        .all(JSON.stringify(folders)).map(row => String(row.id));
       const open = current(db);
-      const requests: string[] = [];
-      if (open) {
-        const before = coordinatorBoundary(db, open.id);
+      const requests: string[] = [], toMark: string[] = [];
+      const before = open ? coordinatorBoundary(db, open.id) : 0;
+      if (open && before > 1) {
         const candidates = new Set([...coordinatorFolders(this.root, open.id), ...coordinatorFolders(this.root, open.id, 'answers')]);
-        const eligible = db.prepare(`SELECT q.coordinator_files_expired_at,
-          q.coordinator_turn_no < ? AND r.state NOT IN ('queued','running','needs_review')
-            AND datetime(q.submitted_at)<=datetime(?) AND q.delivery_state <> 'aborted' AS eligible
-          FROM requests q JOIN runs r ON r.id=(${currentRequestRun('q.id')}) WHERE q.id=? AND q.conversation_id=?`);
-        const mark = db.prepare('UPDATE requests SET coordinator_files_expired_at=? WHERE id=?');
-        for (const id of candidates) {
-          const row = eligible.get(before, cutoff, id, open.id);
-          if (row?.coordinator_files_expired_at) requests.push(id);
-          else if (row?.eligible) {
-            mark.run(new Date(now).toISOString(), id);
-            touch(db, { kind: 'request', id });
-            requests.push(id);
+        if (candidates.size) {
+          const settings = readAgentsSettings(this.root);
+          const days = settings.ok ? settings.config.limits.coordinator_attachment_days : DEFAULT_LIMITS.coordinator_attachment_days;
+          const cutoff = days > 0 ? new Date(Math.max(-8.64e15, now - days * 86400_000)).toISOString() : null;
+          for (const row of db.prepare(`SELECT q.id,q.coordinator_files_expired_at,
+            q.coordinator_turn_no < ? AND r.state NOT IN ('queued','running','needs_review')
+              AND datetime(q.submitted_at)<=datetime(?) AND q.delivery_state <> 'aborted' AS eligible
+            FROM json_each(?) folder JOIN requests q ON q.id=folder.value
+            JOIN runs r ON r.id=(${currentRequestRun('q.id')}) WHERE q.conversation_id=?`)
+            .all(before, cutoff, JSON.stringify([...candidates]), open.id)) {
+            if (row.coordinator_files_expired_at) requests.push(String(row.id));
+            else if (row.eligible) toMark.push(String(row.id));
           }
         }
       }
-      return { open, requests, cleared: folders.filter(folder => unowned.get(folder)) };
+      return { open, requests, toMark, cleared };
+    });
+    if (expired.toMark.length) this.control(true, db => {
+      if (current(db)?.id !== expired.open?.id) return;
+      const at = new Date(now).toISOString();
+      const mark = db.prepare('UPDATE requests SET coordinator_files_expired_at=? WHERE id=?');
+      for (const id of expired.toMark) {
+        mark.run(at, id);
+        touch(db, { kind: 'request', id });
+      }
+      expired.requests.push(...expired.toMark);
     });
     for (const conversation of expired.cleared) {
       try { discardCoordinatorFiles(this.root, conversation); }
