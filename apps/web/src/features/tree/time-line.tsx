@@ -11,6 +11,7 @@ import { MarkShape, type MarkKind, type MarkTone } from "@/components/ui/timelin
 import { TONE } from "@/components/ui/tone";
 import { FINISH_MARK, STOP_MARK } from "@/domain/report-events";
 import { useTimeView } from "@/state/time-view";
+import { TimeTipPopover } from "./time-tip";
 import type { FinishWords } from "@/domain/finish-words";
 import { isHand, type Segment, type TaskHistory, type TimeEvent } from "@/domain/time-history";
 import { formatCalendarDate, formatClock, sameCalendarDay } from "@/domain/time";
@@ -901,10 +902,37 @@ export function Lane({ line, marks, scale, level, now, finish, turnFrom, onPick,
       <g clipPath={`url(#${overId})`}><Wave stretches={line.stretches} scale={scale} level={level} drops={line.drops} turnFrom={null} late /></g>
     </g>}
     <Marks marks={marks} scale={scale} y={level.base} onPick={onPick} probe={probe} />
-    {label && <text data-future-label x={labelX} y={level.base + 4} textAnchor="start"
-      className={cn("text-xs tabular-nums", passed !== null ? "fill-ink font-medium" : "fill-muted")}>
-      <title>{finish!.long}</title><FutureText words={label} /></text>}
+    {label && <FutureLabel words={label} long={finish!.long} x={labelX} y={level.base} over={passed !== null} />}
   </g>;
+}
+
+/**
+ * The band's words for one row, pressed (a click, Enter or Space) to open what they mean in the reader's words, as the
+ * row's other times are (TimeTipPopover); never the strip's own press under it. Its hit area is the row's height over
+ * its words, so a press need not land on a glyph.
+ */
+function FutureLabel({ words, long, x, y, over }: { words: FutureWords; long: string; x: number; y: number; over: boolean }) {
+  const { t } = useTranslation("tree");
+  const heading = t("status.tip.report");
+  const k = textScale();
+  const width = wordsW(words.text, k) + (words.days === 0 ? 0 : dayMarkW(words.days, k));
+  return <TimeTipPopover heading={heading} body={<p>{long}</p>}>
+    <g data-future-tip role="button" tabIndex={0} aria-label={`${heading}: ${long}`} style={{ pointerEvents: "auto" }}
+      className="group/future cursor-pointer outline-none"
+      onClick={(event) => event.stopPropagation()}
+      onKeyDown={(event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault(); event.stopPropagation();
+        event.currentTarget.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      }}>
+      <rect x={x - 4} y={y - 12} width={width + 8} height={24} rx={3} fill="transparent"
+        className="group-focus-visible/future:stroke-ink/40" strokeWidth={2} />
+      <text data-future-label x={x} y={y + 4} textAnchor="start"
+        className={cn("text-xs tabular-nums decoration-dotted group-hover/future:underline group-data-[state=open]/future:underline",
+          over ? "fill-ink font-medium" : "fill-muted")}>
+        <FutureText words={words} /></text>
+    </g>
+  </TimeTipPopover>;
 }
 
 /** The visible words and width of the shared future band; only drawn rows contribute to its width. */
