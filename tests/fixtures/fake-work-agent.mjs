@@ -29,6 +29,6 @@ const wait = async stage => {
 };
 start('one', 'alpacawork task new --title test');
 await wait('end'); end('one');
-await wait('unknown'); start('two', 'cd /tmp && \\\n  echo alpacawork task new || echo failed');
+await wait('unknown'); start('two', 'cd /missing && printf SKIPPED \\\n  || printf FALLBACK');
 await wait('update'); end('two'); start('three', 'alpacawork task update --task T1 --title changed');
 await wait('finish'); end('three'); finish();

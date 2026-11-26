@@ -59,7 +59,7 @@ for (const phone of [false]) test(`observed work reaches folded and open convers
     } finally { store.close(); }
   }).toEqual({ tool: 'Bash', command: null });
   // A command without the agent's words shows its own start, a `cd` and all, however it goes on.
-  await expect(steps).toContainText('cd /tmp && \\');
+  await expect(steps).toContainText('cd /missing && printf SKIPPED \\');
   // A press lists every step so far, read from the Run's output, and another folds them back to the one line.
   const listed = page.locator('[data-coordinator-turn=running] [data-run-steps=open] [data-run-step]');
   await steps.click();
@@ -68,7 +68,7 @@ for (const phone of [false]) test(`observed work reaches folded and open convers
   await expect(listed).toHaveCount(2);
   // Opened, it reads in full, the fallback on its next line too.
   await listed.nth(1).locator('button').click();
-  await expect(listed.nth(1).locator('[data-run-step-input]')).toContainText('echo alpacawork task new || echo failed');
+  await expect(listed.nth(1).locator('[data-run-step-input]')).toContainText('|| printf FALLBACK');
   await steps.click();
   await expect(listed).toHaveCount(0);
   const ended = await (await page.request.get(runtime.origin + '/api/coordinator')).json();
