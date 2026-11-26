@@ -279,20 +279,12 @@ type ChangesMade = { runs: DatedRun[]; events: ReturnType<typeof scopeChangeEven
  */
 const made = new WeakMap<object, Promise<ChangesMade>>();
 async function makeChanges(root: string, launches: readonly { day: string; run: FactLaunch }[], slices: Slices): Promise<ChangesMade> {
-  const store = new ControlStore(root, { busyTimeoutMs: 10_000 }, true), seats = new Map<string, string>();
-  try {
-    store.read(db => {
-      for (const row of db.prepare("SELECT 'R'||id AS id, json_extract(record,'$.placementId') AS placement FROM runs WHERE id IN (SELECT value FROM json_each(?))")
-        .iterate(JSON.stringify(launches.map(({ run }) => Number(run.id.slice(1)))))) seats.set(String(row.id), String(row.placement));
-    });
-  } finally { store.close(); }
   const runs: DatedRun[] = [];
   for (const { day, run } of launches) {
     const key = `${root}\0${run.id}`;
     const conditions = noConditions.has(key) ? null : readConditions(runFolder(root, run.id));
     if (!conditions && !run.live) noConditions.add(key);
-    runs.push({ id: run.id, task: run.task, placement: seats.get(run.id) ?? run.id, agent: run.agent, model: run.model, effort: run.effort,
-      started: run.started, conditions, day });
+    runs.push({ id: run.id, task: run.task, agent: run.agent, model: run.model, effort: run.effort, started: run.started, conditions, day });
     if (slices.due) await slices.pause();
   }
   return { runs, events: scopeChangeEvents(runs) };

@@ -95,7 +95,6 @@
     "fromTo": "{{what}} {{from}} → {{to}}",
     "instruction-file": "Archivo de instrucciones",
     "legend": "Cambios",
-    "more": "{{count}} más",
     "removed": "{{what}} {{name}} quitado",
     "skill": "Skill",
     "updated": "{{what}} {{name}} actualizado",

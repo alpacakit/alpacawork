@@ -85,7 +85,6 @@
     "fromTo": "{{what}} {{from}} → {{to}}",
     "instruction-file": "指示ファイル",
     "legend": "変更の印",
-    "more": "ほか{{count}}件",
     "removed": "{{what}} {{name}} を削除",
     "skill": "スキル",
     "updated": "{{what}} {{name}} を更新",

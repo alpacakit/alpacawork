@@ -58,8 +58,9 @@ function CardLayer({ place, project, part, waitFrom }: {
 /**
  * What a number opens: the list of the tasks behind it; or the share card. A task opened from the list is the reader over
  * the face (the same window as on the list of tasks), and the list waits under it, out of sight, until the reader closes.
- * Where the docked reader can stand (`beside`), it stands there, as wide as the reader, and the page gives it that room
- * (Workbench): the charts stay in reach beside it, so another day or number opens in its place. Where it cannot, it is
+ * Where the docked reader can stand (`beside`), it stands there, as wide as the room the page gives the reader (Workbench,
+ * `--window-reserve`): the charts stay whole and in reach beside it, so another day or number opens in its place, and the
+ * focus stays where it is (it moves into the window when the window first opens). Where it cannot, it is
  * over the page, which a press behind it closes; on a phone a sheet from the bottom. × closes every layer; the list's
  * way back and Back close one.
  */
@@ -95,8 +96,11 @@ export function AnalysisLayers({ place, project, days, beside }: {
   }, [depth, reading]);
   // A layer that opens takes the focus on its first control; back from a task to its list, the reader gives the focus
   // back to the row that opened it (its returnTo), as every window gives the focus back to what opened it.
+  const shown = useRef(false);
   useEffect(() => {
-    surface.current?.querySelector<HTMLElement>("[data-layer-focus]")?.focus({ preventScroll: true });
+    const first = !shown.current;
+    shown.current = depth > 0;
+    if (depth > 0 && (first || !beside)) surface.current?.querySelector<HTMLElement>("[data-layer-focus]")?.focus({ preventScroll: true });
   }, [place.list, place.card, phoneCard]);
   // As every window does: what had the focus when the first layer opened gets it back when the last one closes (a
   // chart and its legend give it back to themselves, ChartGroup).
@@ -137,7 +141,7 @@ export function AnalysisLayers({ place, project, days, beside }: {
       : <aside ref={setSurface} role="dialog" data-analysis-panel={narrow ? undefined : ""} aria-label={label}
           className={cn("fixed z-(--layer-reader) flex flex-col border-hairline border-lit-line bg-lit shadow-float",
             narrow ? "inset-x-0 top-[18%] bottom-0 animate-sheet rounded-t-pane before:absolute before:top-1.5 before:left-1/2 before:-ms-4.5 before:h-1 before:w-9 before:rounded-xs before:bg-lit-line"
-              : cn("top-window right-window bottom-window animate-side rounded-pane", beside ? "w-(--window-fit)" : "w-[min(548px,calc(100%-24px))]"))}>
+              : cn("top-window right-window bottom-window animate-side rounded-pane", beside ? "w-(--window-reserve)" : "w-[min(548px,calc(100%-24px))]"))}>
           {contents}
         </aside>}
   </div>;

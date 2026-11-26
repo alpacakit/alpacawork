@@ -19,7 +19,7 @@ import type { Bucket, Group, ListSet, ListValue } from "./contract";
 export type Bin = { from: string; to: string; complete: boolean };
 type Days = { from: string; to: string };
 
-/** The grid's columns: the rows' and the lead numbers'. */
+/** The rows' grid of 12 columns (on a wide page the lead numbers above stand three of them each). */
 export const GRID = "grid grid-cols-12 gap-x-6 narrow:block";
 // Where the page is narrower than a wide screen (a window beside it), the left takes a third, so its names and numbers
 // still stand side by side.
@@ -395,7 +395,9 @@ function Columns({ layer }: { layer: "back" | "front" }) {
       if (!(to instanceof Element && row !== undefined && to.closest(`[data-row="${row}"]`))) group.point(null);
     } : undefined}>
       {group.bins.map((bin, at) => layer === "back"
-        ? <i key={bin.from} className={cn("block", group.hovered === at || group.chosen === at ? "bg-day-band" : lit(bin, group.span) && "bg-span-band")} />
+        // The day whose list is open is boxed, so it stays apart from the day pointed at.
+        ? <i key={bin.from} className={cn("block", group.hovered === at || group.chosen === at ? "bg-day-band" : lit(bin, group.span) && "bg-span-band",
+          group.chosen === at && "outline outline-1 -outline-offset-1 outline-ink/50")} />
         : <span key={bin.from} data-day-column="" className="pointer-events-auto cursor-pointer"
           onMouseMove={event => move(at, under(event.clientX, event.clientY, event.currentTarget).row, { x: event.clientX, y: event.clientY, time: event.timeStamp })}
           onClick={event => { const { row, part } = under(event.clientX, event.clientY, event.currentTarget); if (row >= 0) group.press(at, row, part); }} />)}
@@ -590,30 +592,37 @@ export function changesByBin(bins: readonly Bin[], changes: readonly ChangeMark[
   return marks;
 }
 
-/** How many of a bin's changes its line names before it counts the rest. */
-const CHANGES_NAMED = 2;
+/** On how many days of the bins something changed. */
+const changeDays = (bins: readonly Bin[], changes: readonly ChangeMark[]) =>
+  new Set(changes.filter(change => bins[0]!.from <= change.day && change.day <= bins.at(-1)!.to).map(change => change.day)).size;
 /**
  * The changes of what Runs ran under (alpacawork's version, a skill, an instruction file) over the group's first chart,
  * on their days: a small mark over each bin that has one, and one line of words, saying what changed on the day pointed
- * at (the days that have one otherwise), so the numbers before and after a change are read down the charts below it.
- * The line is always one line tall, so pointing at a day never moves the charts.
+ * at (else on how many days), so the numbers before and after a change are read down the charts below it. The line is
+ * always one line tall, so pointing at a day never moves the charts; where a day's changes do not fit it, they are also
+ * listed whole under it, over the chart's top, while the day is pointed at.
  */
 function ChangeStrip() {
   const { t } = useTranslation("analysis");
   const group = useGroup();
   const marks = useMemo(() => changesByBin(group.bins, group.changes), [group.bins, group.changes]);
-  if (!marks.size) return null;
+  const line = useRef<HTMLParagraphElement>(null);
+  const [cut, setCut] = useState(false);
   const at = group.hovered, words = at === null ? undefined : marks.get(at);
-  const named = words && (words.length > CHANGES_NAMED + 1 ? [...words.slice(0, CHANGES_NAMED), t("change.more", { count: words.length - CHANGES_NAMED })] : words);
-  return <div data-change-strip="">
-    <p className="h-4.5 truncate text-xs text-muted" title={words?.join("\n")}>
+  useLayoutEffect(() => { setCut(!!words && !!line.current && line.current.scrollWidth > line.current.clientWidth); }, [words]);
+  if (!marks.size) return null;
+  return <div data-change-strip="" className="relative">
+    <p ref={line} className="h-4.5 truncate text-xs text-muted">
       <span className="me-2 text-soft">{t("change.legend")}</span>
-      {at !== null && named ? <><b className="me-2 font-semibold text-ink">{group.dayName(at)}</b>{named.join(t("sep"))}</>
-        : [...marks.keys()].sort((a, b) => a - b).map(each => group.dayName(each)).join(t("sep"))}
+      {at !== null && words ? <><b className="me-2 font-semibold text-ink">{group.dayName(at)}</b>{words.join(t("sep"))}</>
+        : t("period.days", { count: changeDays(group.bins, group.changes) })}
     </p>
+    {cut && words && <ul data-change-list="" className="pointer-events-none absolute start-0 top-full z-2 mt-1 max-w-full rounded-md border-hairline border-lit-line bg-lit px-2.5 py-1.5 text-xs text-muted shadow-float">
+      {words.map(each => <li key={each} className="[overflow-wrap:anywhere]">{each}</li>)}
+    </ul>}
     <div aria-hidden className="mt-1 grid h-2 auto-cols-[minmax(0,1fr)] grid-flow-col">
       {group.bins.map((bin, each) => <span key={bin.from} className="flex items-center justify-center">
-        {marks.has(each) && <i className={cn("block size-1.5 rotate-45 bg-changed transition-transform duration-(--motion-base)", group.hovered === each && "scale-150")} />}
+        {marks.has(each) && <i className={cn("block size-1.5 rotate-45 bg-muted transition-transform duration-(--motion-base)", group.hovered === each && "scale-150 bg-ink")} />}
       </span>)}
     </div>
   </div>;

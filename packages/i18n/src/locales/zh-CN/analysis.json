@@ -85,7 +85,6 @@
     "fromTo": "{{what}} {{from}} → {{to}}",
     "instruction-file": "指示文件",
     "legend": "变更标记",
-    "more": "另外{{count}}项",
     "removed": "移除{{what}} {{name}}",
     "skill": "技能",
     "updated": "更新{{what}} {{name}}",

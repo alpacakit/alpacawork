@@ -13,7 +13,7 @@ import type { AnalysisChange } from '@alpacawork/contract/analysis';
 import type { RunConditions } from '@alpacawork/contract/run';
 
 export type ChangeWhat = AnalysisChange['what'];
-export type ChangeRun = { id: string; task: string; placement: string; agent: string; model: string | null; effort: string | null;
+export type ChangeRun = { id: string; task: string; agent: string; model: string | null; effort: string | null;
   started: number | null; conditions: RunConditions | null };
 export type ChangeEvent<R extends ChangeRun> = { run: R; previous: R | null; changes: AnalysisChange[] };
 

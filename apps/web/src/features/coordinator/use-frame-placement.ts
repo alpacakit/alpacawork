@@ -3,6 +3,7 @@ import { arise, drawnShape, duration, easing, reducedMotion, reshape, rise, surf
 import { useDeviceValue } from "@/lib/device-storage";
 import { readerEdgeHeld } from "@/state/screen-settings";
 import { shownInReader, useViewStore } from "@/state/view-store";
+import { analysisSurfaces } from "@/features/analysis/place";
 import { useConversation } from "./coordinator";
 import { leastHeight } from "./foot";
 import { atLargest, atRight, besidePanel, BETWEEN, clearlySmaller, pushedAcross, pushingPanel, ceilingOf, EDGE, FIRST, keptAt, keptFrame, keptWithin, placeFrame, placeMaximized, pulledOut, restoredFrame, smallerFrame, type Frame, type Pull, type Room } from "./frame";
@@ -36,7 +37,7 @@ function workingRoom(ceiling: number, widest: number): Room {
 }
 /**
  * The panels docked on a computer's page: the reader, a file or diff read beside it (not a still copy leaving), and what
- * a number of the analysis opens (its list of tasks, one task's values).
+ * a number of the analysis opens (its list of tasks, the share card).
  */
 const DOCKED = 'aside[data-reader-mode="docked"], [data-viewer-place="page"]:not([data-still-copy]), aside[data-analysis-panel]';
 /** The panel standing at the window's right edge (atRight), as laid out (not as a move draws it): its left edge and width. */
@@ -85,7 +86,7 @@ export function useFramePlacement({ surfaces, frame, setHeld, open, expanded, ow
   const selectedTask = useViewStore(shownInReader);
   // What decides which panels stand docked on the page (Workbench): a file or diff read beside the reader, and the
   // reader taken to the whole window or back.
-  const docking = useViewStore((state) => `${state.view !== null}|${state.readerFull}|${!!state.analysis?.list}`);
+  const docking = useViewStore((state) => `${state.view !== null}|${state.readerFull}|${analysisSurfaces(state.analysis).length > 0}`);
   const cappedEditor = useRef<HTMLElement | null>(null);
   const frameNow = useRef(frame);
   frameNow.current = frame;

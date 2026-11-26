@@ -90,7 +90,6 @@
     "fromTo": "{{what}} {{from}} → {{to}}",
     "instruction-file": "Instruction file",
     "legend": "Changes",
-    "more": "{{count}} more",
     "removed": "{{what}} {{name}} removed",
     "skill": "Skill",
     "updated": "{{what}} {{name}} updated",
