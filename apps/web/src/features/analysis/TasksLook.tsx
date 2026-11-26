@@ -26,8 +26,10 @@ const HOUR = 3_600_000;
  * same days: finished tasks (with the calendar), the share without fixes, and what it took until acceptance. Then the
  * same numbers broken down. Every number opens the tasks behind it.
  */
-export const TasksLook = memo(function TasksLook({ view, span, root, days, open, zone }: { view: TasksView; span: Span; root: HTMLElement | null;
-  days: Days; open: Open; zone: string }) {
+export const TasksLook = memo(function TasksLook({ view, span, root, days, open, zone, live = true }: { view: TasksView; span: Span; root: HTMLElement | null;
+  days: Days; open: Open; zone: string;
+  /** False for the face's stand-in (FaceSkeleton): it reads nothing of its own. */
+  live?: boolean }) {
   const { t } = useTranslation("analysis");
   const { bucket, taskGroup, grow } = useChoices();
   const choose = useChoices(state => state.choose);
@@ -38,7 +40,7 @@ export const TasksLook = memo(function TasksLook({ view, span, root, days, open,
   const ever = whole ? null : view.ever;
   const time = accepted.time, you = time.review + time.answer, total = you + time.ai + time.other;
   const project = useViewStore(state => state.project);
-  const changeRead = useChanges(project, span);
+  const changeRead = useChanges(project, span, live);
   // Another project's or span's changes are never drawn on these charts while this one's are read.
   const changes = useChangeMarks(changeRead.isPlaceholderData ? undefined : changeRead.data, view.head.timeZone);
 
