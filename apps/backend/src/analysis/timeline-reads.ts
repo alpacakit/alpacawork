@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 import { ControlStore } from '@alpacawork/db';
+import { readValuesAt } from '../control/task-values-store.js';
 import { RUN_FILES, RUN_STEPS_PAGE_LIMIT, runFolder, type RunRecord } from '@alpacawork/contract/run';
 import { analysisStepsMissingSchema, type AnalysisEvidence } from '@alpacawork/contract/analysis';
 import type { AnalysisAtInput, AnalysisAtView, AnalysisChangesInput, AnalysisChangesView, AnalysisHead, AnalysisFindingsInput, AnalysisFindingsView, AnalysisTraceInput,
@@ -259,7 +260,13 @@ export async function readAt(root: string, input: AnalysisAtInput): Promise<Anal
   // Which part of the wall time the instant is in, as the trace's breakdown gives it (none outside the task's period).
   const found = segments(records, wholePeriod(records)).find(each => each.from <= at && at < each.to)?.key ?? null;
   const part = found === 'answer-user' || found === 'answer-task' ? 'waiting-answer' as const : found;
-  return { head: { ...headOf(records, input.timeZone), at: iso(at) }, part, ...situationAt(records, at), url: sceneUrl(records.root, scope, { at }) };
+  // The task's values as they were then, from the versions each write keeps of what it replaced.
+  const store = new ControlStore(root, { busyTimeoutMs: 10_000 }, true);
+  let then: ReturnType<typeof readValuesAt>;
+  try { then = store.read(db => readValuesAt(db, input.task, iso(at))); }
+  finally { store.close(); }
+  return { head: { ...headOf(records, input.timeZone), at: iso(at) }, part, ...situationAt(records, at),
+    values: then.values, valuesReason: then.reason ?? null, url: sceneUrl(records.root, scope, { at }) };
 }
 
 /** Ended Runs that kept no conditions (from before they were kept): they never will, so their folders are not read again. */

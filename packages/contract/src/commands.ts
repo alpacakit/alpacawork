@@ -22,13 +22,13 @@ import { attachmentResultSchema, placementSchema, startOrderSchema, taskLifecycl
 import { serverSettingsSchema } from './server-settings.js';
 import { z } from 'zod';
 import { coordinatorReplyGetInput } from './coordinator-contract.js';
-import { fieldGetResultSchema, fieldListResultSchema, fieldSetResultSchema, fieldDeleteResultSchema, PROJECT_SCHEMA, PROJECT_SUMMARY } from './task-schema.js';
+import { taskValuesAtSchema, fieldGetResultSchema, fieldListResultSchema, fieldSetResultSchema, fieldDeleteResultSchema, PROJECT_SCHEMA, PROJECT_SUMMARY } from './task-schema.js';
 import { ESTIMATE_MINUTES, MAX_CONTROL_BODY, MAX_DETAIL_LENGTH, MAX_INSTRUCTION_BYTES } from '@alpacawork/raw/values';
 import { FIX_KIND_MEANINGS, INSTRUCTION_KINDS } from '@alpacawork/raw/task-log-schema';
 import { digestSchema, REPORT_TITLE_GUIDE_WIDTH, REPORT_TITLE_MAX_WIDTH, reportStateSchema, runIdSchema, taskIdSchema,
   taskKindSchema, taskStateSchema } from './fields.js';
 import {
-  dependencySetInput, dependencyClearInput, taskReturnsInput, taskListInput, taskGetInput, taskCreateInput, taskUpdateInput, taskReportInput,
+  dependencySetInput, dependencyClearInput, taskReturnsInput, taskValuesInput, taskListInput, taskGetInput, taskCreateInput, taskUpdateInput, taskReportInput,
   taskRequestInput, taskCommentInput, taskMoveInput, taskLifecycleInput, agentAssignInput,
   agentHandoverInput, agentReleaseInput, runGetInput, runListInput, runStepsInput, runConditionsInput, runStopInput,
   fieldSetInput, configSetShape, emptyInput, personSettingsSetShape, fieldGetInput, fieldDeleteInput, fieldUseInput,
@@ -378,6 +378,11 @@ const definitions = {
     'A Task awaiting review turns internal only after it is confirmed or sent back.') }),
   'task/returns': command('read', 'Read returns and their full identities without acknowledging them',
     taskReturnsInput, [taskId, text('after', 'Previous return ID'), number('limit', 'Page size (1–200)')], { output: taskReturnsResultSchema }),
+  'task/values': command('read', 'Read a Task\'s values as they were at a time: each write that replaced a value keeps the value it replaced',
+    taskValuesInput, [taskId, text('at', 'The time, as ISO 8601 with its offset (2026-11-26T09:30:00+09:00)')],
+    { output: taskValuesAtSchema, help: help(
+      'values is null before the Task existed (reason not-created) and before earlier values began to be kept (reason not-recorded); recordedSince says from when they are known.',
+      'Who changed the values and when is in the log (body_updated and reports with values: task get --task <ID> --log <count>).') }),
   'task/request': command('write', 'Ask a Task\'s responsible to work: an instruction (to a member with --agent), ' +
     'or an answer to its question (--answers)', taskRequestInput, [
     taskId,
@@ -482,12 +487,13 @@ const definitions = {
   'run/get': command('read', 'Read a bounded run prompt or result with explicit file status', runGetInput,
     [text('run', 'Run ID'), text('kind', 'result (default) or prompt, the delivered start text')], { output: controlRunFilesSchema }),
   'run/steps': command('read', 'Read a Run\'s steps (tool calls) in order: what each ran on one line, how it ended, when it started and ' +
-    'ended and where those times came from (reported: the agent\'s output said it; observed: the time the line was read, within about a second), a ' +
+    'ended and where those times came from (reported: the agent\'s output said it; observed: the time the line was read, within about a second; ' +
+    'transcript: read afterwards from the agent\'s own conversation record, for a Run from before times were kept), a ' +
     'fingerprint of what it ran (paths, IDs and numbers replaced) and the size of what came back', runStepsInput,
     [text('run', 'Run ID'), number('from', 'First step number (from 0); without it, the latest steps'),
       number('limit', 'Most steps to read (up to 200)'), number('step', 'One step\'s number: what it ran and got back, in full')],
     { output: z.union([runStepsPageSchema, runStepDetailSchema]), help: help(
-      'A Run from before step times were kept, or an end not yet seen, has null times.') }),
+      'A Run from before step times were kept has null times unless they were imported from the agent\'s conversation record; an end not yet seen is null too.') }),
   'run/conditions': command('read', 'Read how a Run was launched (agent, model, effort) and what it ran under: alpacawork\'s version and ' +
     'release, the commit where the agent worked, each skill it could read and the person\'s own instruction files, each with a digest',
     runConditionsInput, [text('run', 'Run ID')],

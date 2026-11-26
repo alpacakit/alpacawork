@@ -38,63 +38,63 @@
     "file": "packages/runs/src/store.ts",
     "sql": "UPDATE run_sequence SET next_number = ? WHERE singleton = 1",
     "table": "run_sequence",
-    "line": 210,
+    "line": 213,
     "status": "unobserved"
   },
   {
     "file": "packages/runs/src/store.ts",
     "sql": "INSERT INTO runs(id,record,prompt) VALUES (?,?,?)",
     "table": "runs",
-    "line": 225,
+    "line": 228,
     "status": "touch"
   },
   {
     "file": "packages/runs/src/store.ts",
     "sql": "INSERT INTO requests (id, task_id, placement_id, placement_revision, task_hash, wait_cycle_id, head_run_id, about_run_id, mode, body, purpose, author, submitted_at, delivery_state, answers_question, ai_stack, ai_explicit, ai_prefix) SELECT ?, external_id, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? FROM tasks WHERE external_id = ? AND kind = 'task'",
     "table": "requests",
-    "line": 235,
+    "line": 238,
     "status": "touch"
   },
   {
     "file": "packages/runs/src/store.ts",
     "sql": "INSERT INTO requests (id, conversation_id, head_run_id, mode, body, purpose, author, submitted_at, delivery_state, reply_to, ai_stack, ai_explicit) SELECT ?, id, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? FROM coordinator_conversations WHERE id = ?",
     "table": "requests",
-    "line": 248,
+    "line": 251,
     "status": "touch"
   },
   {
     "file": "packages/runs/src/store.ts",
     "sql": "UPDATE requests SET delivery_state = ? WHERE id = ?",
     "table": "requests",
-    "line": 258,
+    "line": 261,
     "status": "touch"
   },
   {
     "file": "packages/runs/src/store.ts",
     "sql": "UPDATE runs SET record = ?, result_state = CASE WHEN result_state = 'pending' AND ? IN ('failed','cancelled') THEN 'missing' ELSE result_state END WHERE id = ?",
     "table": "runs",
-    "line": 294,
+    "line": 297,
     "status": "touch"
   },
   {
     "file": "packages/runs/src/store.ts",
     "sql": "UPDATE runs SET record=?,prompt=coalesce(?,prompt) WHERE id=?",
     "table": "runs",
-    "line": 308,
+    "line": 311,
     "status": "touch"
   },
   {
     "file": "packages/runs/src/store.ts",
     "sql": "UPDATE requests SET ai_stack=? WHERE id=?",
     "table": "requests",
-    "line": 311,
+    "line": 314,
     "status": "touch"
   },
   {
     "file": "packages/runs/src/store.ts",
     "sql": "UPDATE runs SET record = ?, result = ?, result_state = ? WHERE id = ?",
     "table": "runs",
-    "line": 330,
+    "line": 333,
     "status": "touch"
   },
   {
@@ -304,28 +304,28 @@
     "file": "apps/backend/src/control/task-store.ts",
     "sql": "INSERT INTO task_log(id,task_id,ordinal,entry) VALUES (?,?,?,?)",
     "table": "task_log",
-    "line": 501,
+    "line": 505,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/control/task-store.ts",
     "sql": "INSERT INTO task_log(id,task_id,ordinal,request_id,note_title,note_description) VALUES (?,?,?,?,?,?)",
     "table": "task_log",
-    "line": 505,
+    "line": 509,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/control/task-store.ts",
     "sql": "INSERT INTO task_log_question(log_id,question_log_id) VALUES (?,?)",
     "table": "task_log_question",
-    "line": 515,
+    "line": 519,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/control/task-store.ts",
     "sql": "INSERT INTO log_texts(log_id,text) VALUES (?,?)",
     "table": "log_texts",
-    "line": 523,
+    "line": 527,
     "status": "touch"
   },
   {
@@ -358,13 +358,6 @@
   },
   {
     "file": "apps/backend/src/control/task-values-store.ts",
-    "sql": "DELETE FROM task_values WHERE field_id=?",
-    "table": "task_values",
-    "line": 95,
-    "status": "touch"
-  },
-  {
-    "file": "apps/backend/src/control/task-values-store.ts",
     "sql": "DELETE FROM field_defs WHERE id=?",
     "table": "field_defs",
     "line": 97,
@@ -386,37 +379,44 @@
   },
   {
     "file": "apps/backend/src/control/task-values-store.ts",
-    "sql": "DELETE FROM task_values WHERE task_id=?",
+    "sql": "INSERT INTO task_value_versions(task_id,field_id,replaced_at,value) VALUES (?,?,?,?)",
+    "table": "task_value_versions",
+    "line": 202,
+    "status": "unobserved"
+  },
+  {
+    "file": "apps/backend/src/control/task-values-store.ts",
+    "sql": "DELETE FROM task_values WHERE task_id=? AND field_id=?",
     "table": "task_values",
-    "line": 188,
+    "line": 203,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/control/task-values-store.ts",
-    "sql": "INSERT INTO task_values(task_id,field_id,value) VALUES (?,?,?)",
+    "sql": "INSERT INTO task_values(task_id,field_id,value) VALUES (?,?,?) ON CONFLICT(task_id,field_id) DO UPDATE SET value=excluded.value",
     "table": "task_values",
-    "line": 190,
+    "line": 204,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/coordinator/conversation.ts",
     "sql": "INSERT INTO coordinator_conversations(id, started_at) VALUES (?, ?)",
     "table": "coordinator_conversations",
-    "line": 53,
+    "line": 54,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/coordinator/conversation.ts",
     "sql": "UPDATE coordinator_conversations SET warm_request_id = ? WHERE id = ?",
     "table": "coordinator_conversations",
-    "line": 213,
+    "line": 219,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/coordinator/conversation.ts",
     "sql": "UPDATE coordinator_conversations SET cleared_at = ? WHERE id = ?",
     "table": "coordinator_conversations",
-    "line": 335,
+    "line": 341,
     "status": "touch"
   },
   {
@@ -437,42 +437,42 @@
     "file": "apps/backend/src/runs/compactions.ts",
     "sql": "INSERT INTO compactions(id,run_no,focus,state,message,ended_at) VALUES (?,?,?,?,?,?)",
     "table": "compactions",
-    "line": 60,
+    "line": 63,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/runs/compactions.ts",
     "sql": "UPDATE compactions SET state='dropped',message=?,ended_at=? WHERE id=?",
     "table": "compactions",
-    "line": 75,
+    "line": 78,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/runs/compactions.ts",
     "sql": "UPDATE compactions SET state='sent',attempt_id=? WHERE id=?",
     "table": "compactions",
-    "line": 76,
+    "line": 79,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/runs/compactions.ts",
     "sql": "UPDATE compactions SET state=?,message=?,ended_at=? WHERE id=?",
     "table": "compactions",
-    "line": 92,
+    "line": 95,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/runs/compactions.ts",
     "sql": "UPDATE compactions SET state='unknown',ended_at=? WHERE id=?",
     "table": "compactions",
-    "line": 93,
+    "line": 96,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/runs/compactions.ts",
     "sql": "UPDATE compactions SET state='dropped',message='The instruction it went with was not sent',ended_at=? WHERE id=?",
     "table": "compactions",
-    "line": 94,
+    "line": 97,
     "status": "touch"
   },
   {
@@ -563,7 +563,7 @@
     "file": "apps/backend/src/runs/event-importer.ts",
     "sql": "UPDATE run_attempts SET completed_digest=? WHERE attempt_id=?",
     "table": "run_attempts",
-    "line": 261,
+    "line": 263,
     "status": "unobserved"
   },
   {

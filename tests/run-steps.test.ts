@@ -574,3 +574,35 @@ test('a step time written after the index read its line comes with the next sinc
   new OutputActivityReader(AGENT_RUNTIME_ADAPTERS.claude, () => Date.parse('2026-11-26T03:00:00.000Z')).poll(path);
   assert.equal((await read(path)).range(undefined, 12).steps[0]?.startedAt, '2026-11-26T02:00:00.000Z');
 });
+
+test('an error notice while a command runs does not end it: its own later end is kept with its time and output', async t => {
+  const path = folder(t);
+  let clock = Date.parse('2026-11-20T01:00:01.000Z');
+  const live = new OutputActivityReader(AGENT_RUNTIME_ADAPTERS.codex, () => clock);
+  const command = "/bin/bash -lc 'pnpm test'";
+  write(path, [{ type: 'item.started', item: { id: 'c1', type: 'command_execution', command } }]);
+  live.poll(path);
+  clock += 1000;
+  write(path, [{ type: 'error', message: 'Reconnecting... 1/5' }]);
+  live.poll(path);
+  clock += 3000;
+  write(path, [{ type: 'item.completed', item: { id: 'c1', type: 'command_execution', command, aggregatedOutput: 'ok', exitCode: 0 } }]);
+  live.finish(path, 'done');
+  const [step] = (await read(path, 'codex')).range(undefined, 12).steps;
+  assert.deepEqual({ state: step?.state, endedAt: step?.endedAt, chars: step?.output?.chars },
+    { state: 'done', endedAt: '2026-11-20T01:00:05.000Z', chars: 2 });
+});
+
+test('a start without a tool name after an error leaves the step before it to take its own end', async t => {
+  const path = folder(t);
+  let clock = Date.parse('2026-11-20T01:00:01.000Z');
+  const live = new OutputActivityReader(AGENT_RUNTIME_ADAPTERS.claude, () => clock);
+  write(path, [bash('a', 'pnpm test'), { type: 'error' }, { type: 'assistant', parent_tool_use_id: null,
+    message: { content: [{ type: 'tool_use', id: 'a', name: null, input: {} }] } }]);
+  live.poll(path);
+  clock += 4000;
+  write(path, [claudeEnd('a', 'ok')]);
+  live.finish(path, 'done');
+  const steps = (await read(path)).range(undefined, 12).steps;
+  assert.deepEqual(steps.map(({ id, endedAt, output }) => ({ id, endedAt, chars: output?.chars })), [{ id: 'a', endedAt: '2026-11-20T01:00:05.000Z', chars: 2 }]);
+});

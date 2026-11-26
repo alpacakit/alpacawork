@@ -438,7 +438,8 @@ export const analysisAtViewSchema = z.strictObject({
     /** Whether it asks to take a result as it is; `estimated` when read from its words (asked before its kind was recorded). */
     ...questionKindShape })),
   history: z.array(z.strictObject({ log: z.string(), task: taskIdSchema, kind: z.string(), at: instant, title: z.string().nullable() })),
-  values: z.null(), valuesReason: z.literal('not-recorded'), url: z.string(),
+  /** The task's values as they were at the instant (as `task values --at` reads them); null with the reason when not known then. */
+  values: z.record(z.string(), z.unknown()).nullable(), valuesReason: z.enum(['not-created', 'not-recorded']).nullable(), url: z.string(),
 });
 
 /** `analysis changes`: when what Runs ran under changed, over the same scope and days as `analysis tasks`. */

@@ -65,7 +65,7 @@ The data folder (`~/alpacawork`) stays. Delete it yourself if you don't need it.
 
 ## Where your data is, and what is sent out
 
-Tasks, conversations and the files the AI made are in the data folder on your PC (`~/alpacawork` at first). Secrets the AI read may be left there, so don't give this folder to anyone.
+Tasks, conversations and the files the AI made are in the data folder on your PC (`~/alpacawork` at first). Secrets the AI read may be left there, so don't give this folder to anyone. When a task's values (its goal, conclusion, notes and the like) are rewritten or cleared, the earlier values stay there too, so the task can be read as it was at a past time. Don't write passwords or keys in them: clearing a value doesn't remove its earlier versions.
 
 The contents of tasks and conversations are not sent to the developer. What goes out is the following.
 

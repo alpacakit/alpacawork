@@ -8,7 +8,7 @@ import { JsonlReader, STEP_LINE_LIMIT } from './readers/jsonl.js';
 import type { AgentAdapter } from '../agents/adapters/types.js';
 import { RecentWork, recentWorkName, runStepKind } from './recent-work.js';
 import type { ActivityEvent } from './activity-events.js';
-import { StepJournal } from './step-journal.js';
+import { StepJournal, liveStepTime } from './step-journal.js';
 
 // Six steps with worst-case JSON escaping, plus the note and current work, fit below this bound.
 const ACTIVITY_FILE_LIMIT = 64 * 1024;
@@ -152,7 +152,8 @@ export class OutputActivityReader {
       this.lines.read(folder, (value, line) => this.accept(value, line));
       this.lines.finish((value, line) => this.accept(value, line));
     } finally {
-      this.journal.settle(state, new Date(this.now()).toISOString());
+      const read = new Date(this.now()).toISOString();
+      this.journal.settle(state, () => ({ at: read, source: 'observed' }));
       this.resetWork(state);
       this.flush(folder);
     }
@@ -175,7 +176,7 @@ export class OutputActivityReader {
       this.dirty = true;
     }
     for (const event of this.adapter.activity(value, received)) {
-      this.journal?.observe(event, line, received);
+      this.journal?.observe(event, line, liveStepTime(event, received));
       const name = this.work.observe(event);
       const text = words(event.text);
       const note = text ? { at: event.at, text } : this.latest?.note ?? null;

@@ -122,7 +122,11 @@ test('analysis trace, findings and at answer one task\'s timeline over HTTP in t
 
       const at = analysisAtViewSchema.parse(await read('at', { task, at: instant(20) }));
       assert.deepEqual(at.runs.map(item => [item.run, item.current.map(current => current.step)]), [[run, [0]]]);
-      assert.equal(at.values, null);
+      // The values then are the ones task values --at reads for the same instant.
+      const valuesUrl = new URL(commandPath('task/values'), app.url);
+      valuesUrl.search = new URLSearchParams({ task, at: instant(20) }).toString();
+      const then = await (await fetch(valuesUrl)).json();
+      assert.deepEqual([at.values, at.valuesReason], [then.values, then.reason ?? null]);
       await read('at', { task: 'T999999', at: instant(20) }, 404);
 
       // The trace's waits are the counts' waits: for a top-level task, the same numbers whatever the scope.

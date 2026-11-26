@@ -386,7 +386,7 @@ const stepAt = (step: TraceStep): NonNullable<StepAt> => ({ step: step.n, tool: 
   from: step.from === null ? null : iso(step.from), to: step.to === null ? null : iso(step.to) });
 
 /** The situation at `at`: each task's state, the Runs running and their steps, the queue, the open questions, the last history lines. */
-export function situationAt(records: TraceRecords, at: number): Omit<AnalysisAtView, 'head' | 'url' | 'part'> {
+export function situationAt(records: TraceRecords, at: number): Omit<AnalysisAtView, 'head' | 'url' | 'part' | 'values' | 'valuesReason'> {
   const shown = shownTasks(records);
   records = { ...records, tasks: records.tasks.filter(task => shown.has(task.id)), runs: records.runs.filter(run => shown.has(run.task)) };
   const tasks = records.tasks.flatMap(task => { const state = stateAt(task, at); return state === null ? [] : [{ task: task.id, title: task.title, state }]; });
@@ -414,5 +414,5 @@ export function situationAt(records: TraceRecords, at: number): Omit<AnalysisAtV
     .sort((a, b) => Date.parse(a.entry.at) - Date.parse(b.entry.at)).slice(-HISTORY_LINES)
     .map(({ task, entry }) => ({ log: entry.id, task, kind: entry.kind, at: iso(Date.parse(entry.at)),
       title: entry.title ?? records.requests.get(entry.id)?.firstLine ?? null }));
-  return { tasks, runs, queued, questions, history, values: null, valuesReason: 'not-recorded' };
+  return { tasks, runs, queued, questions, history };
 }
