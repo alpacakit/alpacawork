@@ -547,7 +547,7 @@
       "versions": {
         "checking": "正在检查最新版本…",
         "day": "{{date}} 更新",
-        "installed": "已安装 {{version}}",
+        "installed": "已安装的版本 {{version}}",
         "latest": "最新 {{version}}",
         "unchecked": "无法检查最新版本",
         "unknown": "未知"
@@ -718,7 +718,7 @@
       "appSkill": "使用 alpacawork 的技能",
       "handEdits": "如果你手动改过这些技能，新版本会覆盖你的修改。",
       "skill": "技能",
-      "targets": "更新会换新的内容",
+      "targets": "更新后会换新的内容",
       "targetsNote": "alpacawork 及其附带的技能会一起换成新版本，无需逐个更新技能。"
     }
   },

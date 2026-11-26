@@ -553,9 +553,9 @@
       "upToDate": "Up to date",
       "versions": {
         "checking": "Checking for the latest…",
-        "day": "{{date}}",
-        "installed": "Installed {{version}}",
-        "latest": "Latest {{version}}",
+        "day": "{{date}} version",
+        "installed": "Installed: {{version}}",
+        "latest": "Latest: {{version}}",
         "unchecked": "Couldn't check for the latest",
         "unknown": "unknown"
       },
@@ -726,11 +726,11 @@
       }
     },
     "page": {
-      "app": "alpacawork",
+      "app": "alpacawork (the app)",
       "appSkill": "The skill for using alpacawork",
       "handEdits": "If you edited any of these skills by hand, the new version replaces your edits.",
       "skill": "Skill",
-      "targets": "What an update replaces",
+      "targets": "What gets updated",
       "targetsNote": "alpacawork and the skills that come with it move to the new version together. No skill needs updating on its own."
     }
   },

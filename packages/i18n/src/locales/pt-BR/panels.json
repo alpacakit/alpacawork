@@ -560,9 +560,9 @@
       "upToDate": "Atualizada",
       "versions": {
         "checking": "Verificando a mais recente…",
-        "day": "{{date}}",
-        "installed": "Instalada {{version}}",
-        "latest": "Mais recente {{version}}",
+        "day": "versão de {{date}}",
+        "installed": "Instalada: {{version}}",
+        "latest": "Mais recente: {{version}}",
         "unchecked": "Não foi possível verificar a mais recente",
         "unknown": "desconhecida"
       },
@@ -738,11 +738,11 @@
       }
     },
     "page": {
-      "app": "alpacawork",
+      "app": "alpacawork (o aplicativo)",
       "appSkill": "A habilidade para usar o alpacawork",
       "handEdits": "Se você editou alguma dessas habilidades à mão, a nova versão substitui suas edições.",
       "skill": "Habilidade",
-      "targets": "O que uma atualização renova",
+      "targets": "O que é atualizado",
       "targetsNote": "O alpacawork e as habilidades que vêm com ele passam juntos para a nova versão. Nenhuma habilidade precisa ser atualizada sozinha."
     }
   },
