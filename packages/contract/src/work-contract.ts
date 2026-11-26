@@ -50,7 +50,7 @@ export type RunStepText = z.infer<typeof runStepTextSchema>;
 /**
  * Where a step's time came from: `reported`, the agent's own output line said it; `observed`, the Run's manager read the line
  * at that time (within its poll interval of when it was written); `transcript`, read afterwards from the agent's own
- * conversation record, for a Run from before step times were kept as they happen.
+ * conversation record (kept by Runs whose times were imported once).
  */
 export const stepTimeSourceSchema = z.enum(['reported', 'observed', 'transcript']);
 export type StepTimeSource = z.infer<typeof stepTimeSourceSchema>;

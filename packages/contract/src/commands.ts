@@ -499,7 +499,7 @@ const definitions = {
     [text('run', 'Run ID'), text('kind', 'result (default) or prompt, the delivered start text')], { output: controlRunFilesSchema }),
   'run/steps': command('read', 'Read a Run\'s steps (tool calls) in order: what each ran on one line, how it ended, when it started and ' +
     'ended and where those times came from (reported: the agent\'s output said it; observed: the time the line was read, within about a second; ' +
-    'transcript: read afterwards from the agent\'s own conversation record, for a Run from before times were kept), a ' +
+    'transcript: read afterwards from the agent\'s own conversation record), a ' +
     'fingerprint of what it ran (paths, IDs and numbers replaced) and the size of what came back', runStepsInput,
     [text('run', 'Run ID'), number('from', 'First step number (from 0); without it, the latest steps'),
       number('limit', 'Most steps to read (up to 200)'), number('step', 'One step\'s number: what it ran and got back, in full')],

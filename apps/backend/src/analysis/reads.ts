@@ -86,7 +86,7 @@ function creditAcceptedPrs(units: readonly DatedUnit[]): Map<Unit, number> {
 /** `waits`: a unit's waits split by where the user was (clues.waitsOf over the facts counted). */
 type Waits = (unit: Unit) => WaitSplit;
 function acceptedTotals(units: readonly CountedUnit[], waits: Waits): AnalysisAcceptedTotals {
-  let submits = 0, questions = 0, prs = 0, noQuestions = 0, passedNoQuestions = 0, submitsEstimated = 0;
+  let submits = 0, questions = 0, prs = 0, noQuestions = 0, passedNoQuestions = 0;
   const leads: number[] = [], time = emptyClock(), clues = new CluesSum();
   const rounds = { first: { ms: 0, tokens: 0 }, later: { ms: 0, tokens: 0 } };
   for (const { unit, prCount } of units) {
@@ -98,7 +98,6 @@ function acceptedTotals(units: readonly CountedUnit[], waits: Waits): AnalysisAc
       noQuestions++;
       if (unit.outcome.passed) passedNoQuestions++;
     }
-    if (unit.outcome.estimated) submitsEstimated++;
     const clock = finishedClock(unit)!.time;
     time.review += clock.review; time.answer += clock.answer; time.ai += clock.ai; time.other += clock.other;
     clues.add(unit, waits(unit));
@@ -107,7 +106,7 @@ function acceptedTotals(units: readonly CountedUnit[], waits: Waits): AnalysisAc
       sum.ms += round.to - round.from; sum.tokens += round.tokens;
     });
   }
-  return { leadMedianMs: median(leads), submits, questions, prs, time, ...clues.clues(), noQuestions, passedNoQuestions, submitsEstimated, rounds };
+  return { leadMedianMs: median(leads), submits, questions, prs, time, ...clues.clues(), noQuestions, passedNoQuestions, rounds };
 }
 
 /** Counts distinct units (by slot) again and again, each count in one pass, without a set per count. */
@@ -766,7 +765,7 @@ class ScopedAnalysis {
     const clues = new CluesSum();
     clues.add(unit, waitsOf(this.facts, unit, this.now));
     return { head: this.head({}), unit: { ...row(unit, null), requestedAt: unit.outcome.requestedAt, asked },
-      ...clues.clues(), submitsEstimated: unit.outcome.estimated,
+      ...clues.clues(),
       band, time, marks: unitMarks(unit.log, from, to), submits: unit.outcome.submits,
       rounds: roundsOf(unit, this.now).map(round => ({ from: iso(round.from), to: iso(round.to), ms: round.to - round.from, tokens: round.tokens })),
       questions: unit.questions, ...unit.outcome.instructions, answers: unit.answers, workers: unit.workers, children: unit.children,
