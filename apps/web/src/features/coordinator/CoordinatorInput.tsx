@@ -296,8 +296,9 @@ export const CoordinatorInput = memo(function CoordinatorInput({ launch }: { lau
   // The row keeps 8px inside the frame, under a pointer as under a finger, so the round action stands as far from the
   // frame's bottom as from its side; the frame's rounding is that action's own plus those 8px (FRAME_ROUND), one curve
   // round the other, as the folded capsule's is. The words above start where the row's first mark does (LabelEditor).
-  // Its words (the usage's figure, the AI's name, a recording's state) are boxed from their capitals to their baseline,
-  // so centring them puts their letters on the marks' centre line, whatever the font's room above and below.
+  // Its words (the # and / tools' signs, the usage's figure, the AI's name, a recording's state) are boxed from their
+  // capitals to their baseline, so centring them puts their letters on the marks' centre line, whatever the font's room
+  // above and below.
   const row = 'flex min-h-10 flex-none flex-wrap items-center gap-1 px-2 pb-2 [&_span]:[text-box:trim-both_cap_alphabetic] narrow:min-h-13 narrow:gap-0 narrow:px-2 narrow:pb-2 pointer-coarse:min-h-13 pointer-coarse:gap-0 pointer-coarse:px-2 pointer-coarse:pb-2';
   // The input's AI is one of the row's quiet tools, not a field: no box of its own, its ground only when pointed at.
   const ai = 'h-8 rounded-full border-transparent bg-transparent px-2 text-muted hover:text-ink narrow:h-11 narrow:pl-1 pointer-coarse:h-11 pointer-coarse:pl-1';
@@ -329,8 +330,8 @@ export const CoordinatorInput = memo(function CoordinatorInput({ launch }: { lau
           <Button type="button" className={action} aria-label={t('reader:voiceInput.stop')} onClick={voice.stop} disabled={voice.state === 'finalizing'}><Icon name="check" className="size-4" /></Button>
         </div> : <div className={row} data-frame-ground={!own && !narrow || undefined}>
           {files.frame.attach}
-          <button type="button" className={tool} disabled={!writing} aria-label={t('input.tasks')} onClick={() => typeTrigger(editor.current, '#')}>#</button>
-          <button type="button" className={tool} disabled={!writing} aria-label={t('input.skills')} onClick={() => typeTrigger(editor.current, '/')}>/</button>
+          <button type="button" className={tool} disabled={!writing} aria-label={t('input.tasks')} onClick={() => typeTrigger(editor.current, '#')}><span>#</span></button>
+          <button type="button" className={tool} disabled={!writing} aria-label={t('input.skills')} onClick={() => typeTrigger(editor.current, '/')}><span>/</span></button>
           {/* Initial release: {voice.enabled && content && <VoiceInput voice={voice} disabled={unreachable} className={inputFinger} />} */}
           {/* The row's ground: on a computer it moves the coordinator (frame-hand.tsx). */}
           <span className={cn("min-w-0 flex-1 self-stretch narrow:flex-none pointer-coarse:flex-none", !own && !narrow && "cursor-grab touch-none [[data-coordinator-held]_&]:cursor-grabbing")} />
