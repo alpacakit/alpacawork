@@ -6,7 +6,7 @@ import { breakdown, changeMarks, segments, situationAt, thinkingIntervals, timed
   type TraceStep, type TraceTask } from '@alpacawork/backend/test-dist/analysis/timeline.js';
 import { lastEndedAt, taskOutcome, userQuestions } from '@alpacawork/backend/test-dist/analysis/rules.js';
 import { DEFAULT_THRESHOLDS, findFindings, thresholdsOf } from '@alpacawork/backend/test-dist/analysis/findings.js';
-import { changeEvents } from '@alpacawork/backend/test-dist/analysis/changes.js';
+import { changeEvents, scopeChangeEvents } from '@alpacawork/backend/test-dist/analysis/changes.js';
 
 const MIN = 60_000;
 const epoch = Date.parse('2026-03-08T00:00:00Z');
@@ -281,7 +281,7 @@ test('rework includes an instruction given in place of answering a question aski
   assert.equal(found!.durationMs, Date.parse(again.at) - found!.at);
 });
 
-test('scope-wide changes compare an agent\'s conditions across its seats, and launch choices within each seat', () => {
+test('scope-wide changes compare an agent\'s conditions across its seats and leave a seat\'s launch choices to its task', () => {
   const conditions = (skills: Record<string, string>, version = '1.0.0'): RunConditions => ({ v: 1, observedAt: stamp(0), version, release: null,
     source: null, cwd: { path: '/work', commit: null }, instructions: [],
     skills: [{ scope: 'personal', folder: '/home/skills', items: Object.entries(skills).map(([name, digest]) => ({ name, digest })) }] });
@@ -291,10 +291,9 @@ test('scope-wide changes compare an agent\'s conditions across its seats, and la
     run('R3', { started: at(20), placement: 'member', model: 'sonnet', conditions: conditions({ review: '2222222222222222' }, '1.1.0') }),
     run('R4', { started: at(30), placement: 'owner', model: 'sonnet', conditions: conditions({ review: '2222222222222222' }, '1.1.0') }),
   ];
-  const events = changeEvents(runs, (item, what) => ['agent', 'model', 'effort'].includes(what) ? item.placement : item.agent);
+  const events = scopeChangeEvents(runs);
   assert.deepEqual(events.map(event => [event.run.id, event.changes.map(change => [change.what, change.name, change.to])]), [
     ['R3', [['version', null, '1.1.0'], ['skill', 'personal:plan', null], ['skill', 'personal:review', '2222222222222222']]],
-    ['R4', [['model', null, 'sonnet']]],
   ]);
 });
 

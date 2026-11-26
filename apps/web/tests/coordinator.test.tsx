@@ -7,6 +7,7 @@ import { i18n, startI18n } from "@alpacawork/i18n";
 import { CoordinatorCard } from "../src/features/coordinator/CoordinatorCard";
 import { useConversation } from "../src/features/coordinator/coordinator";
 import { useViewStore } from "../src/state/view-store";
+import { analysisHome } from "../src/features/analysis/place";
 import { coordinatorErrorReason } from "../src/features/coordinator/parts";
 import { notify } from "../src/lib/notify";
 import { markCoordinatorSeen, type CoordinatorTurn } from "../src/data/coordinator";
@@ -466,4 +467,19 @@ test("a coordinator read ACK keeps its leave-page delivery and requires a live w
     await expect(markCoordinatorSeen(empty.id, [turn.id], true)).rejects.toMatchObject({ code: "write_unavailable", retry: "later" });
     expect(fetcher).toHaveBeenCalledOnce();
   } finally { useConnection.setState(connection); }
+});
+
+test("going from Use to the analysis folds the open conversation; a move within it or back to Use leaves it as it is", async () => {
+  setConversationState({ conversation: { ...empty, turns: [{ ...turn, status: "succeeded", answer: "Done", answeredAt: turn.at, seen: true }] }, open: true, expanded: true, read: true });
+  stubFetch(() => Promise.resolve(reply({ conversation: null })));
+  act(() => useViewStore.getState().showAnalysis(null));
+  render(<TestWorkspace data={screenData(tree({ tasks: [dto(), dto({ id: "T13" })] }))}><CoordinatorCard /></TestWorkspace>);
+  act(() => useViewStore.getState().showAnalysis(analysisHome()));
+  expect(useConversation.getState().expanded).toBe(false);
+  // Opened again on the analysis, a move within it leaves it open.
+  act(() => useConversation.getState().setExpanded(true));
+  act(() => useViewStore.getState().showAnalysis({ ...analysisHome(), list: null }));
+  expect(useConversation.getState().expanded).toBe(true);
+  act(() => useViewStore.getState().showAnalysis(null));
+  expect(useConversation.getState().expanded).toBe(true);
 });

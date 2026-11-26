@@ -60,8 +60,8 @@
     "laterTip": "各タスクの1回目の確認の後に、直して待った分",
     "meant": "思った通りか",
     "noFixes": "この期間に分類された直しはありません。",
-    "noQuestions": "問いなしでそのまま採用",
     "none": "この期間に出せるものはありません。",
+    "noQuestions": "問いなしでそのまま採用",
     "ofFixes_one": "あなたが頼んだ直し {{count}}件のうち（分類ごと）",
     "ofFixes_other": "あなたが頼んだ直し {{count}}件のうち（分類ごと）",
     "ofItems_one": "答えた {{count}} 項目のうち",
@@ -82,12 +82,9 @@
   },
   "change": {
     "added": "{{what}} {{name}} を追加",
-    "agent": "エージェント",
-    "effort": "effort",
     "fromTo": "{{what}} {{from}} → {{to}}",
     "instruction-file": "指示ファイル",
     "legend": "変更の印",
-    "model": "モデル",
     "removed": "{{what}} {{name}} を削除",
     "skill": "スキル",
     "updated": "{{what}} {{name}} を更新",
@@ -172,12 +169,21 @@
     "speed": "速さ",
     "wording": "文言"
   },
+  "history": {
+    "accepted": "受け入れ",
+    "created": "タスクの作成",
+    "linked": "状態の変更"
+  },
   "home": {
     "label": "{{marks}}。分析を開く",
     "marks_other": "今日の完了 {{count}}件（手直しなし {{passed}}件）"
   },
   "lead": {
     "ever": "全期間 {{value}}"
+  },
+  "legend": {
+    "failedRun": "失敗・中止した実行",
+    "state": "タスクの状態（細い線）"
   },
   "line": {
     "median": "1件の中央値",
@@ -386,30 +392,6 @@
     "points": "pt",
     "prs_other": "件",
     "questions_other": "回",
-    "scales": [
-      {
-        "at": 100000000,
-        "digits": 1,
-        "unit": "億"
-      },
-      {
-        "at": 10000,
-        "digits": 0,
-        "unit": "万"
-      }
-    ],
-    "spoken": [
-      {
-        "at": 100000000,
-        "digits": 1,
-        "unit": "億"
-      },
-      {
-        "at": 10000,
-        "digits": 0,
-        "unit": "万"
-      }
-    ],
     "tasks_other": "件",
     "times_other": "回"
   },
@@ -476,15 +458,6 @@
     "finished_other": "終わった {{count}}件",
     "list": "タスクの一覧",
     "passedOf_other": "{{count}}件のうち{{passed}}件"
-  },
-  "legend": {
-    "failedRun": "失敗・中止した実行",
-    "state": "タスクの状態（細い線）"
-  },
-  "history": {
-    "accepted": "受け入れ",
-    "created": "タスクの作成",
-    "linked": "状態の変更"
   },
   "work": {
     "aboutCause": "{{cause}} について",

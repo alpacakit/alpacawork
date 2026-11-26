@@ -7,6 +7,8 @@ import { compactionCut, contextFigure, type TaskConversations } from "@/domain/c
 import { limitTone } from "@/domain/limits";
 import { contextPercent } from "@alpacawork/contract/agent-context";
 import { Icon } from "@/components/ui/icon";
+import { tokenText } from "@/domain/tokens";
+import { LOST_IN_CONVERSATION } from "@/features/reader/ConversationDetail";
 import { cn } from "@/lib/utils";
 
 /* Hallmark · component: context meter · genre: modern-minimal · theme: the app's own tokens (the usage ring) */
@@ -22,7 +24,7 @@ export function ContextMeter({ context, press, conversations }: { context: Conte
   const [open, setOpen] = useState(false);
   const figure = contextFigure(context);
   const count = (value: number) => new Intl.NumberFormat(i18n.language).format(value);
-  const compact = (value: number) => new Intl.NumberFormat(i18n.language, { notation: "compact", maximumFractionDigits: 1 }).format(value);
+  const compact = tokenText;
   const shown = figure.waiting ? "—" : figure.percent !== null ? percentText(figure.percent) : compact(context.usedTokens!);
   const used = figure.waiting ? t("context.waiting") : t("context.tokens", { count: context.usedTokens!, tokens: count(context.usedTokens!) });
   const window = context.windowTokens === null ? t("context.noWindow") : t("context.tokens", { count: context.windowTokens, tokens: count(context.windowTokens) });
@@ -60,7 +62,7 @@ export function ContextMeter({ context, press, conversations }: { context: Conte
  */
 function ConversationList({ conversations }: { conversations: TaskConversations }) {
   const { t, i18n } = useTranslation("people");
-  const compact = (value: number) => new Intl.NumberFormat(i18n.language, { notation: "compact", maximumFractionDigits: 1 }).format(value);
+  const compact = tokenText;
   // Times in one form down the list, so the rows line up: with the date once any of them is not today's.
   const today = new Date().toDateString();
   const dated = conversations.changes.some(change => new Date(change.at).toDateString() !== today);
@@ -86,7 +88,8 @@ function ConversationList({ conversations }: { conversations: TaskConversations 
             <div><dt className="flex items-center gap-1 font-medium"><Icon name="reload" className="size-3.5 text-conversation" />{t("context.change.compacted")}</dt>
               <dd className="m-0 mt-0.5">{t("context.helpCompacted")}</dd></div>
             <div><dt className="flex items-center gap-1 font-medium"><Icon name="chat" className="size-3.5 text-conversation" />{t("context.change.new")}</dt>
-              <dd className="m-0 mt-0.5">{t("context.helpNew")}</dd></div>
+              <dd className="m-0 mt-0.5">{t("context.helpNew")}{" "}
+                <a href={LOST_IN_CONVERSATION} target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-ink">{t("context.source")}</a></dd></div>
           </dl>
           <p className="m-0 mt-2 border-t border-rule pt-2 text-muted">{t("context.helpFigures")}</p></PopoverContent>
       </Popover>

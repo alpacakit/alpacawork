@@ -18,7 +18,7 @@ import { personalSettingsResponseSchema } from './personal-settings.js';
 import { RESOLUTION_REASONS, RETURN_OUTCOMES } from './return-outcomes.js';
 import { agentNameSchema, runReasonSchema, runRoleSchema, runStateSchema, stopResponseSchema, runStepsPageSchema, runStepDetailSchema, runConditionsViewSchema } from './run-contract.js';
 import { beforeRestoreOperationSchema, unknownAfterRestoreOperationSchema } from './recovery.js';
-import { attachmentResultSchema, placementSchema, startOrderSchema, taskLifecycleSchema, projectShelfInfoSchema, projectShelfSchema, taskPlanResultSchema, taskWriteResultSchema, taskReportResultSchema,
+import { attachmentResultSchema, taskGetPlacementSchema, startOrderSchema, taskLifecycleSchema, projectShelfInfoSchema, projectShelfSchema, taskPlanResultSchema, taskWriteResultSchema, taskReportResultSchema,
   taskRequestResultSchema, taskPlacementResultSchema, taskGetRunSchema, controlRunFilesSchema, workspaceUrlSchema } from './control-contract.js';
 import { serverSettingsSchema } from './server-settings.js';
 import { z } from 'zod';
@@ -177,7 +177,7 @@ const taskGetResultSchema = z.looseObject({
     values: z.record(z.string(), z.json()).optional(), analysisSubject: analysisSubjectSchema.optional(),
   }),
   shelf: projectShelfInfoSchema,
-  agents: z.array(placementSchema),
+  agents: z.array(taskGetPlacementSchema),
   runs: z.array(taskGetRunSchema).optional(),
   questions: z.array(z.looseObject({ id: z.string(), taskId: taskIdSchema, applicable: z.boolean() })),
   dependencies: startOrderSchema,
@@ -287,12 +287,12 @@ const definitions = {
   'analysis/task': command('read', 'Read the analysis values behind one task', analysisTaskInput, [
     ...analysisScope, taskId,
   ], { output: analysisUnitValuesSchema }),
-  'analysis/changes': command('read', 'List when what Runs ran under changed (alpacawork\'s version, a skill, an instruction file, a ' +
-    'placement\'s agent, model or effort), each with the first Run under the new condition, over the days analysis tasks reads', analysisChangesInput, [
+  'analysis/changes': command('read', 'List when what Runs ran under changed (alpacawork\'s version, a skill, an instruction file), ' +
+    'each with the first Run under the new condition, over the days analysis tasks reads', analysisChangesInput, [
     ...analysisScope, ...analysisPeriodOptions, text('cursor', 'cursor from the previous page'), number('limit', 'Most changes per page (up to 100, default 100)'),
   ], { output: analysisChangesViewSchema, help: help(
-    'Agent, model and effort come from the launch records and compare the Runs of one placement. Version, skill and instruction-file changes ' +
-    'need the Runs\' condition records and compare each agent\'s Runs in the order they started; runs.recorded counts the period\'s Runs that have them.',
+    'Changes need the Runs\' condition records and compare each agent\'s Runs in the order they started; runs.recorded counts the period\'s ' +
+    'Runs that have them. A placement\'s agent, model or effort is its task\'s: analysis trace shows those.',
     'An item added to or gone from a set already recorded is a change; the first conditions recorded are not.') }),
   'analysis/trace': command('read', 'Read one task\'s timeline: lanes (the task, the tasks under it and each placement that ran), spans and ' +
     'marks in time order, the wall time split into parts that do not overlap, the time the user was waited on, and which Runs have step times',
@@ -348,7 +348,8 @@ const definitions = {
     list('include', `Additional data: ${taskGetIncludes.join(', ')}. agents includes inactive placements.`),
     text('question', 'A question\'s ID: its full text as asked, whether it is open, answered, withdrawn or expired, ' +
       'and its answer\'s full text once answered'),
-  ], { output: taskGetResultSchema }),
+  ], { output: taskGetResultSchema, help: help(
+    'Each placement in agents has its latest conversation context when available. context.usedPercent is the percent of its context window used (for example, 84), present when both token counts are known.') }),
   'task/new': command('write', 'Create a Task, or a project, with optional field values; or sibling Tasks from a plan',
     taskCreateInput, [
       text('title', 'Task title'),
@@ -399,9 +400,8 @@ const definitions = {
     text('compactFocus', 'What the compaction\'s summary should keep in focus (Claude, Copilot and pi)'),
     text('cwd', 'Absolute launch directory for a new conversation (default: the code location on this PC ' +
       'that the Task\'s project sets or inherits, else the workspace root)'),
-    json('selected', 'Launch choices by key. Use a candidate, or null when candidates are absent or start with -. Unset keys keep the conversation value. ' +
-      'A placement with no Run uses its initial choices unless --new-conversation is set. Other new conversations use first candidates.'),
-    json('aiStack', 'AI rows to use before the server stack, as JSON: [{"agent":"claude","values":{"model":"opus"}},"stop"]'),
+    json('selected', 'Override launch choices by key. Use a candidate, or null when candidates are absent or start with -.'),
+    json('aiStack', 'AI rows for this request, ahead of the placement and server rows, as JSON: [{"agent":"claude","values":{"model":"opus"}},"stop"]'),
     quote, sourceRequest, expectedTaskHash, placementRevision,
     text('expectedHeadRun', 'The target placement\'s conversation head: agents[].headRunId in task get'),
     text('instructionKind', `What the instruction is, kept for analysis: ${INSTRUCTION_KINDS.join(', ')} (fix: change what was made or ` +
@@ -410,9 +410,15 @@ const definitions = {
   ], { rules: taskRequestRules, output: taskRequestResultSchema, help: help(
     'A late answer becomes an ordinary instruction and names the original question in its outcome. Expired questions refuse answers.',
     'An ordinary instruction to the responsible closes the old question or review and resumes work. Member instructions leave the responsible’s work as it is.',
+    'Changing the model or effort for the same agent can continue its conversation. Use --new-conversation to start fresh, ' +
+      'including when a custom resume command cannot pass the new values.',
+    'For fields omitted from --selected, use the starting row of --ai-stack if one is named. Otherwise a continuation keeps the previous values.',
+    'If a request used values outside the placement and server AI order, the next request returns to configured starting values ' +
+      'after --ai-stack or a fallback. It also does so after --selected when Settings > Server has an AI order for tasks.',
+    'A fresh conversation starts with its configured row or first candidates. An implicit first request can also use the placement’s initial choices.',
     'With --compact the agent summarizes this conversation with its own model before the instruction and goes on from the summary; --compact-focus names what the summary must keep. As with --new-conversation, it is refused for an unfinished Run; a first request has no conversation to compact.',
     COMPACTION_COST, COMPACTION_REFUSALS,
-    'task get --include agents shows each placement\'s conversation fill (context) and its latest compaction. Every agent also compacts by itself near its limit: compact for the work, not for fear of overflowing.') }),
+    'Check agents[].context.usedPercent in task get and use it to decide whether to compact. Each agent also compacts by itself near its limit.') }),
   'task/report': command('write', 'Report Task state, ask the user or an ancestor Task, or withdraw a question',
     taskReportInput, [
       text('task', 'Task ID; a Run reports on its own Task when left out'),

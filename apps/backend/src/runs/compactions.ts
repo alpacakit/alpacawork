@@ -108,11 +108,14 @@ export function latestCompactions(db: DatabaseSync, placementIds: readonly strin
 }
 
 /**
- * Keep on `run` that its agent compacted its conversation at `at`, with the fill before and after it said and its
- * model's window now, so History can say it after the Run ends. The latest RUN_COMPACTION_LIMIT are kept.
+ * Keep on `run` that its agent compacted its conversation at `at`, with the fill before and after it said, its model's
+ * window now, and what set it off, so History can say it after the Run ends. An asked compaction goes before the Run's
+ * instruction, so it is the Run's first; any later one is the agent's own. The latest RUN_COMPACTION_LIMIT are kept.
  */
-export function recordCompaction(tx: RunTransaction, root: string, run: RuntimeRunRecord,
+export function recordCompaction(tx: RunTransaction, db: DatabaseSync, root: string, run: RuntimeRunRecord,
   fill: Pick<RunCompaction, 'beforeTokens' | 'afterTokens'>, at: string): void {
-  const compaction: RunCompaction = { at, ...fill, windowTokens: contextLimitsFor(root, run).windowTokens };
+  const asked = !run.compactions?.length && !!db.prepare("SELECT 1 FROM compactions WHERE run_no=? AND state IN ('sent','compacted')")
+    .get(runNumber(run.id));
+  const compaction: RunCompaction = { at, ...fill, windowTokens: contextLimitsFor(root, run).windowTokens, trigger: asked ? 'asked' : 'agent' };
   tx.update({ ...run, compactions: [...run.compactions ?? [], compaction].slice(-RUN_COMPACTION_LIMIT) });
 }

@@ -118,7 +118,7 @@ test('a worker uses a named model just for its request and retains the prior con
   h.finish(named);
   const prior = await ask('Keep the draft title "Report for Friday".');
   assert.equal(prior.launch.values.model, 'opus');
-  assert.equal(prior.resumes, null);
+  assert.equal(prior.resumes, named.id);
   h.finish(prior);
   const first = await ask(JSON.stringify({ sessionLimit: true, output: 'Worker result' }));
   assert.equal(first.resumes, prior.id);
@@ -135,7 +135,8 @@ test('a worker uses a named model just for its request and retains the prior con
     const { prompt } = receipts(h.root).find(item => item.pid === next.pids.agent)!;
     assert.match(prompt, /Report for Friday/);
     assert.match(prompt, /fixture reply/);
-    assert.doesNotMatch(prompt, /Do the important task first\.|continuing the same conversation/);
+    assert.match(prompt, /Do the important task first\./);
+    assert.doesNotMatch(prompt, /continuing the same conversation/);
 
     const settings = serverSettingsSchema.parse(await (await fetch(new URL('/api/commands/config/get', app.url))).json());
     const [primary, replacement, third, fourth] = settings.aiStack!;
@@ -197,8 +198,8 @@ test('a waiting worker request keeps its own stack when the preceding request na
     assert.equal(replacement.launch.values.model, 'fable');
     const resumed = h.store.get(pending.id)!;
     assert.equal(resumed.launch.values.model, 'opus');
-    assert.equal(resumed.resumes, null);
-    assert.notEqual(resumed.session?.id, replacement.session?.id);
+    assert.equal(resumed.resumes, replacement.id);
+    assert.deepEqual(resumed.session, replacement.session);
   } finally { await app.close(); }
 });
 

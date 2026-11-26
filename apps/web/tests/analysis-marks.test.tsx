@@ -4,7 +4,7 @@ import { analysisHome, type AnalysisPlace } from "../src/features/analysis/place
 import { AnalysisLayers } from "../src/features/analysis/AnalysisLayers";
 import { useState } from "react";
 import { ChartHead, PointerTip, Rule, RuleCard, Rules } from "../src/features/analysis/parts";
-import { BarChart, ChartGroup, Parts, Row } from "../src/features/analysis/rows";
+import { BarChart, ChartGroup, changesByBin, Parts, Row } from "../src/features/analysis/rows";
 import { afterEach, beforeAll, expect, test, vi } from "vitest";
 import { i18n, startI18n } from "@alpacawork/i18n";
 import { TodayMarks } from "../src/features/analysis/FaceSwitch";
@@ -328,7 +328,7 @@ test("a list's next page stands as rows while it is read, and one that could not
     return new Promise<Response>(resolve => { page = body => resolve(new Response(JSON.stringify(body ?? { error: { code: "unavailable", message: "x", retry: "later" } }), { status: body ? 200 : 503 })); });
   });
   const place = { ...analysisHome(), list: { set: "finished" as const, value: null, group: null, member: null } };
-  const view = render(<TestWorkspace data={screenData()}><AnalysisLayers place={place} project={null} days={null} /></TestWorkspace>);
+  const view = render(<TestWorkspace data={screenData()}><AnalysisLayers place={place} project={null} days={null} beside={false} /></TestWorkspace>);
   await vi.waitFor(() => expect(view.container.querySelectorAll("[data-analysis-layer] li")).toHaveLength(100));
   await act(async () => view.getByRole("button", { name: /残り/ }).click());
   // Asked for: its rows' places stand where they will come, not nothing.
@@ -361,4 +361,14 @@ test("the parts' number columns are measured again only when their words change,
   expect(measured()).toBeGreaterThan(first);
   read.mockRestore();
   view.unmount();
+});
+
+test("a bin says each change once, however many agents took it on its days", () => {
+  const week = [{ from: "2026-11-16", to: "2026-11-22", complete: true }, { from: "2026-11-23", to: "2026-11-29", complete: true }];
+  const marks = changesByBin(week, [
+    { day: "2026-11-24", words: ["alpacawork 0.1.6 → 0.1.7", "スキル review を更新"] },
+    { day: "2026-11-25", words: ["alpacawork 0.1.6 → 0.1.7"] },
+    { day: "2026-11-30", words: ["スキル plan を追加"] },
+  ]);
+  expect([...marks]).toEqual([[1, ["alpacawork 0.1.6 → 0.1.7", "スキル review を更新"]]]);
 });

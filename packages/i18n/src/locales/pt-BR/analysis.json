@@ -70,8 +70,8 @@
     "laterTip": "O trabalho refeito e esperado após a primeira revisão de cada tarefa",
     "meant": "Como você queria",
     "noFixes": "Nenhuma correção classificada neste período.",
-    "noQuestions": "Aceitas sem perguntas nem correções",
     "none": "Nada a mostrar neste período.",
+    "noQuestions": "Aceitas sem perguntas nem correções",
     "ofFixes_one": "Da {{count}} correção que você pediu, por tipo",
     "ofFixes_other": "Das {{count}} correções que você pediu, por tipo",
     "ofItems_one": "De {{count}} item respondido",
@@ -92,12 +92,9 @@
   },
   "change": {
     "added": "{{what}} {{name}} adicionado",
-    "agent": "Agente",
-    "effort": "Esforço",
     "fromTo": "{{what}} {{from}} → {{to}}",
     "instruction-file": "Arquivo de instruções",
     "legend": "Mudanças",
-    "model": "Modelo",
     "removed": "{{what}} {{name}} removido",
     "skill": "Skill",
     "updated": "{{what}} {{name}} atualizado",
@@ -184,6 +181,11 @@
     "speed": "Velocidade",
     "wording": "Redação"
   },
+  "history": {
+    "accepted": "Aceita",
+    "created": "Tarefa criada",
+    "linked": "Mudança de estado"
+  },
   "home": {
     "label": "{{marks}}. Abrir a análise",
     "marks_one": "Concluídas hoje: {{count}} ({{passed}} sem correções)",
@@ -192,6 +194,10 @@
   },
   "lead": {
     "ever": "Todo o período {{value}}"
+  },
+  "legend": {
+    "failedRun": "Execução com falha ou interrompida",
+    "state": "Estado da tarefa (linha fina)"
   },
   "line": {
     "median": "Mediana por tarefa",
@@ -418,35 +424,6 @@
     "questions_one": "pergunta",
     "questions_many": "perguntas",
     "questions_other": "perguntas",
-    "scales": [
-      {
-        "at": 1000000000,
-        "digits": 1,
-        "unit": "bi"
-      },
-      {
-        "at": 1000000,
-        "digits": 1,
-        "unit": "mi"
-      },
-      {
-        "at": 1000,
-        "digits": 0,
-        "unit": "mil"
-      }
-    ],
-    "spoken": [
-      {
-        "at": 1000000000,
-        "digits": 1,
-        "unit": " bilhões de"
-      },
-      {
-        "at": 1000000,
-        "digits": 1,
-        "unit": " milhões de"
-      }
-    ],
     "tasks_one": "tarefa",
     "tasks_many": "tarefas",
     "tasks_other": "tarefas",
@@ -524,15 +501,6 @@
     "passedOf_one": "{{passed}} de {{count}}",
     "passedOf_many": "{{passed}} de {{count}}",
     "passedOf_other": "{{passed}} de {{count}}"
-  },
-  "legend": {
-    "failedRun": "Execução com falha ou interrompida",
-    "state": "Estado da tarefa (linha fina)"
-  },
-  "history": {
-    "accepted": "Aceita",
-    "created": "Tarefa criada",
-    "linked": "Mudança de estado"
   },
   "work": {
     "aboutCause": "Sobre: {{cause}}",

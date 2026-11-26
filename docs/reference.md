@@ -104,7 +104,7 @@ The screen and these read commands use the same counts. A person or the coordina
 | `alpacawork analysis trace --task <task>` | One Task's timeline: lanes, spans, marks, a breakdown of its wall time and which Runs have step times |
 | `alpacawork analysis findings --task <task>` | Places in that timeline worth a look, each by a rule with its threshold and evidence |
 | `alpacawork analysis at --task <task> --at <ISO>` | The situation at one instant: states, Runs and their steps, the queue, open questions, recent history, and the Task's values then (as `task values --at` reads them; null with `valuesReason` when not known) |
-| `alpacawork analysis changes --period 28d` | When what Runs ran under changed (version, skills, instruction files, a seat's model or effort) |
+| `alpacawork analysis changes --period 28d` | When what Runs ran under changed (version, skills, instruction files) |
 
 Periods are `today`, `7d`, `28d` and `all`. Use `--end YYYY-MM-DD` to move the first three periods.
 Use inclusive `--from YYYY-MM-DD` and `--to YYYY-MM-DD` for a custom range. The server's time zone can be
@@ -201,10 +201,10 @@ a record carries its first line. The rules:
 
 An `instruction` mark's `label` is what its sender said it was (`kind`, and `fixes` for a fix), or `null` when it was sent with none.
 `url` in the answers of `analysis trace`, `analysis findings` (and each finding) and `analysis at` is the screen's address
-of the same scene, a path relative to the screen: the Task's Analysis tab at an instant (`at`) or on a finding (`finding`). `analysis changes` takes the scope and days of `analysis tasks`. A
-placement's agent, model and effort come from the launch records and compare the Runs of that placement. Version,
-skill and instruction-file changes need the Runs' condition records and compare each agent's Runs in the order they
-started; `runs.recorded` counts the period's Runs that have them. An item added to or gone from a set already recorded
+of the same scene, a path relative to the screen: the Task's Analysis tab at an instant (`at`) or on a finding (`finding`). `analysis changes` takes the scope and days of `analysis tasks`. Its
+changes need the Runs' condition records and compare each agent's Runs in the order they started; `runs.recorded`
+counts the period's Runs that have them. A placement's agent, model and effort are its task's: they come from the
+launch records, compare the Runs of that placement, and appear as `change` marks of `analysis trace` only. An item added to or gone from a set already recorded
 is a change; the first conditions recorded are not.
 
 Model breakdowns and `analysis task` group by model name and launch effort. They use the model recorded in the

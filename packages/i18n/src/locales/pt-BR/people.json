@@ -31,28 +31,29 @@
   "context": {
     "because": {
       "another_ai": "outra IA",
-      "asked": "pedida",
+      "asked": "pedido",
       "handoff": "pausa do responsável",
       "unresumable": "não foi possível retomar"
     },
     "change": {
       "compacted": "Compactação",
-      "new": "Conversa nova"
+      "new": "Recomeço"
     },
     "compacted": "A conversa acabou de ser compactada. A próxima resposta dirá quanto está em uso.",
     "conversations": "Conversas desta tarefa",
     "cutLabel": "Tokens tirados por compactação (total)",
     "cutTokens": "{{tokens}} tokens",
-    "help": "Sobre compactações e conversas novas",
+    "help": "Sobre compactações e recomeços",
     "helpCompacted": "Quando uma conversa fica longa, a IA resume o que foi dito e continua com a versão curta.",
     "helpFigures": "Um % é quanto do limite da conversa estava em uso; o número à direita são os tokens que essa compactação tirou.",
-    "helpNew": "Quando, por exemplo, a abordagem muda, a conversa recomeça com os dados da tarefa, sem reler o que veio antes.",
+    "helpNew": "A conversa anterior não é levada adiante; a conversa recomeça dos registros da tarefa (o que a aba Contexto mostra). Uma conversa que perdeu o rumo costuma ir melhor recomeçada com o que foi estabelecido, segundo um estudo.",
     "label": "Contexto da conversa {{figure}} (usado {{used}} / limite {{window}})",
     "more_one": "Mais {{count}} no histórico",
     "more_many": "Mais {{count}} no histórico",
     "more_other": "Mais {{count}} no histórico",
     "noWindow": "Não definido",
     "setWindow": "Informe um limite em Limites de contexto, nas configurações do agente, para ver uma porcentagem.",
+    "source": "Laban et al. (2025)",
     "title": "Contexto da conversa",
     "tokens_one": "{{tokens}} token",
     "tokens_many": "{{tokens}} tokens",

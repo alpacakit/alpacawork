@@ -1,4 +1,5 @@
 import { i18n } from "@alpacawork/i18n";
+import { isTokenUnit, tokenNumber, tokenParts, tokenStep, tokenText } from "@/domain/tokens";
 
 /**
  * How the analysis writes its numbers, one way everywhere: a value and its unit apart (the unit drawn small beside it),
@@ -36,23 +37,10 @@ export const numberText = (value: number) => numbers(undefined, 2).format(value)
 const fixed = (value: number, digits: number) => numbers(digits, digits).format(value);
 const HOUR = 3_600_000;
 
-/** Large token counts are written in the language's own steps (万・億, or K・M・B), the first step they reach. */
-type Scale = { at: number; unit: string; digits: number };
-const steps = (key: "scales" | "spoken") => once(key, () => {
-  const list = i18n.t(`analysis:unit.${key}`, { returnObjects: true }) as unknown;
-  return Array.isArray(list) ? list as Scale[] : [];
-});
-const scaleOf = (value: number) => steps("scales").find(scale => value >= scale.at) ?? null;
-
-/**
- * A large count as it is said in a sentence of the language (108.6億, 10.9 billion, 10.940 millones de): the language's
- * own steps for prose, which differ from the short ones a figure takes beside its unit (10,9 mil M).
- */
-export function spoken(value: number): string {
-  const scale = steps("spoken").find(each => value >= each.at);
-  // Each step carries its own space where the language puts one (" billion", "億").
-  return scale ? `${fixed(value / scale.at, scale.digits)}${scale.unit}` : whole(value);
-}
+/** Large token counts are written as the whole app writes them (domain/tokens): k・M・B, in every language. */
+const scaleOf = tokenStep;
+/** A token count as a sentence says it: as everywhere else ("1.2B"). */
+export const spoken = tokenText;
 
 /**
  * Hours: to one place under ten, whole from ten. The places are chosen by the value as it rounds (9.96 is 10, not
@@ -67,12 +55,13 @@ export function parts(kind: Kind, value: number): Parts {
     case "plain": return { value: whole(value), unit: "" };
     case "hours": return { value: hourValue(value / HOUR), unit: word("unit.hours") };
     case "tokens": {
-      const scale = scaleOf(value);
-      return scale ? { value: fixed(value / scale.at, scale.digits), unit: scale.unit, tight: true } : { value: whole(value), unit: "" };
+      const { value: number, unit } = tokenParts(value);
+      return unit ? { value: number, unit, tight: true } : { value: whole(value), unit: "" };
     }
   }
 }
-export const text = ({ value, unit, tight }: Parts) => unit ? word(tight ? "unit.joinTight" : "unit.join", { value, unit }) : value;
+export const text = ({ value, unit, tight }: Parts) => !unit ? value : isTokenUnit(unit) ? `${value}${unit}`
+  : word(tight ? "unit.joinTight" : "unit.join", { value, unit });
 /** A value written by hand (a per-task number, a scale's top) with a unit that may be none. */
 export const inUnit = (value: string, unit: string) => text({ value, unit });
 /**
@@ -86,7 +75,7 @@ export const unitOf = (kind: "tasks" | "times" | "prs" | "conversations" | "peop
   kind === "hours" ? word("unit.hours") : countWord(kind, 2);
 export const format = (kind: Kind, value: number) => text(parts(kind, value));
 /**
- * A number already written with its unit ("9,622万", "1.5 h", "55,3 mil M"), parted again into the number and what
+ * A number already written with its unit ("962.0M", "1.5 h"), parted again into the number and what
  * follows it, so the unit can be drawn at the body's step beside a large number. Words with no number stay whole.
  */
 export function splitFigure(written: string): { value: string; unit: string } {
@@ -102,7 +91,7 @@ export function duration(ms: number): string {
 }
 
 /**
- * How a column of token counts is written: every value in the step of the column's largest (万・億, or K・M・B), said
+ * How a column of token counts is written: every value in the step of the column's largest (k・M・B), said
  * once in the column's heading (`unit`), so the values of one column read alike. A value too small to show in that
  * step is written as under its smallest place ("<0.1"), never as 0 (only none is 0).
  */
@@ -111,10 +100,10 @@ export function tokenColumn(values: number[]): { unit: string; write: (value: nu
   if (!scale) return { unit: "", write: whole };
   return { unit: scale.unit, write: value => {
     if (!value) return whole(0);
-    // A step's own places, and one more where the column's values are under ten of it (0.3万, not 0万).
+    // A step's own places, and one more where the column's values are under ten of it (0.3M, not 0M).
     const digits = Math.max(scale.digits, Math.max(0, ...values) / scale.at < 10 ? 1 : 0);
-    const written = fixed(value / scale.at, digits);
-    return value > 0 && !/[1-9]/.test(written) ? `<${fixed(10 ** -digits, digits)}` : written;
+    const written = tokenNumber(value / scale.at, digits);
+    return value > 0 && !/[1-9]/.test(written) ? `<${tokenNumber(10 ** -digits, digits)}` : written;
   } };
 }
 
@@ -124,8 +113,8 @@ function gapValue(kind: Kind, gap: number, larger: number): string {
   if (kind === "hours") return Math.round(larger / HOUR * 10) / 10 >= 10 ? whole(gap / HOUR) : fixed(gap / HOUR, 1);
   if (kind !== "tokens") return whole(gap);
   const scale = scaleOf(larger);
-  // The gap has the places its value has (99.7億, +20.4億), so the two read alike.
-  return scale ? word("unit.joinTight", { value: fixed(gap / scale.at, scale.digits), unit: scale.unit }) : whole(gap);
+  // The gap has the places its value has (9.9B, +2.0B), so the two read alike.
+  return scale ? `${tokenNumber(gap / scale.at, scale.digits)}${scale.unit}` : whole(gap);
 }
 /** The gap from the span before: a sign and its size, or "same" when it is zero as written. */
 export function delta(kind: Kind, current: number, previous: number): string {
