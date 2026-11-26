@@ -429,7 +429,8 @@
     "tasks_other": "tarefas",
     "times_one": "vez",
     "times_many": "vezes",
-    "times_other": "vezes"
+    "times_other": "vezes",
+    "tokenWords": "no"
   },
   "until": {
     "lead": "Tempo (mediana)",

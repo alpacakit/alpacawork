@@ -41,8 +41,8 @@ function readPalette(box: HTMLElement): CardPalette {
   });
   return { bg: bg!, ink: ink!, muted: muted!, line: line!, grass: grass as CardPalette["grass"] };
 }
-/** Text widths, and where their first glyph begins, in the card's font, by the page's own measure. */
-function measurer(font: string): Pick<CardLook, "measure" | "bearing"> {
+/** Text widths, and where their glyphs are drawn, in the card's font, by the page's own measure. */
+function measurer(font: string): Pick<CardLook, "measure" | "ink"> {
   const context = document.createElement("canvas").getContext("2d");
   const read = (words: string, size: number, weight: number) => {
     if (!context) return null;
@@ -51,7 +51,10 @@ function measurer(font: string): Pick<CardLook, "measure" | "bearing"> {
   };
   return {
     measure: (words, size, weight) => read(words, size, weight)?.width ?? words.length * size * 0.6,
-    bearing: (words, size, weight) => -(read(words, size, weight)?.actualBoundingBoxLeft ?? 0),
+    ink: (words, size, weight) => {
+      const metrics = read(words, size, weight);
+      return { left: -(metrics?.actualBoundingBoxLeft ?? 0), ascent: metrics?.actualBoundingBoxAscent ?? size * 0.72, descent: metrics?.actualBoundingBoxDescent ?? 0 };
+    },
   };
 }
 
@@ -102,7 +105,7 @@ export function CardPane({ place, reads: { face, tasks, usage }, waitFrom }: {
   reads: ReturnType<typeof useCardReads>;
   waitFrom: number;
 }) {
-  const { t } = useTranslation("analysis");
+  const { t, i18n } = useTranslation("analysis");
   const card = place.card!;
   const choice = useDeviceValue(cardChoice);
   const choose = (next: Partial<CardChoice>) => cardChoice.set({ ...choice, ...next });
@@ -119,7 +122,10 @@ export function CardPane({ place, reads: { face, tasks, usage }, waitFrom }: {
   const tasksAnswer = answerOf(tasks), usageAnswer = answerOf(usage);
   const facts = useMemo(() => cardFacts(face, tasksAnswer, usageAnswer),
     [face?.data, face?.current, tasksAnswer?.data, tasksAnswer?.current, usageAnswer?.data, usageAnswer?.current]);
-  const input = useMemo(() => facts ? cardInput(facts, choice) : null, [facts, choice]);
+  // The card is written in the screen's language, so a change of language while it is open writes it again: the
+  // picture, the words it is read aloud by and the post's sentence then say the same.
+  const language = i18n.resolvedLanguage;
+  const input = useMemo(() => facts ? cardInput(facts, choice) : null, [facts, choice, language]);
   const svg = useMemo(() => input && looks ? drawCard(input, looks[theme]) : null, [input, looks, theme]);
   const current = !!svg;
   const picks = facts ? cardPicks(choice, facts) : null;

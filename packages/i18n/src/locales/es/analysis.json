@@ -429,7 +429,8 @@
     "tasks_other": "tareas",
     "times_one": "vez",
     "times_many": "veces",
-    "times_other": "veces"
+    "times_other": "veces",
+    "tokenWords": "no"
   },
   "until": {
     "lead": "Tiempo (mediana)",

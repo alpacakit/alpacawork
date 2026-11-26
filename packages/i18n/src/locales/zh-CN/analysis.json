@@ -393,7 +393,8 @@
     "prs_other": "个",
     "questions_other": "次",
     "tasks_other": "个",
-    "times_other": "次"
+    "times_other": "次",
+    "tokenWords": "no"
   },
   "until": {
     "lead": "耗时（中位数）",

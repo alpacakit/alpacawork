@@ -411,7 +411,8 @@
     "tasks_one": "task",
     "tasks_other": "tasks",
     "times_one": "time",
-    "times_other": "times"
+    "times_other": "times",
+    "tokenWords": "no"
   },
   "until": {
     "lead": "Time taken (median)",
