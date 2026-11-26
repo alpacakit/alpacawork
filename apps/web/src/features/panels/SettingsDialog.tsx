@@ -11,6 +11,9 @@ import { GeneralSettingsTab, NotificationSettingsTab } from "./PersonalSettingsT
 import { AdvancedServerOptions, AiSettingsTab, ServerDraftProvider, ServerFolderLines } from "./ServerSettingsTab";
 import { AppGuideTab } from "./AppGuideTab";
 import { ProjectsSettingsTab } from "./ProjectsSettingsTab";
+import { SkillsSettingsTab } from "./SkillsSettingsTab";
+import { cn } from "@/lib/utils";
+import { useNarrow } from "@/state/view-store";
 import { UpdateConfirmDialog, UpdateStateLine, VersionLine } from "@/features/update/UpdateView";
 
 /**
@@ -24,19 +27,20 @@ import { UpdateConfirmDialog, UpdateStateLine, VersionLine } from "@/features/up
 export function SettingsDialog({ initialTab = "ai", request, focus }: { initialTab?: SettingsTab; request?: number; focus?: SettingsFocus } = {}) {
   const { t } = useTranslation("panels");
   return (
-    <PanelDialog title={t("settings.title")} size="large" ownBody>
+    <PanelDialog title={t("settings.title")} size="large" wide ownBody>
       <SettingsBody initialTab={initialTab} request={request} focus={focus} />
       <UpdateConfirmDialog />
     </PanelDialog>
   );
 }
 
-const TABS = ["ai", "notifications", "projects", "general", "apps", "host"] as const satisfies readonly SettingsTab[];
+const TABS = ["ai", "skills", "notifications", "projects", "general", "apps", "host"] as const satisfies readonly SettingsTab[];
 
 export function SettingsBody({ initialTab = "ai", request, focus }: { initialTab?: SettingsTab; request?: number; focus?: SettingsFocus }) {
   const focusNotifications = focus === "notifications";
   const { t } = useTranslation("panels");
   const coarsePointer = useCoarsePointer();
+  const narrow = useNarrow();
   // The guide is read at a computer: a phone that opens this is past every step of it.
   const availableTabs = TABS.filter((value) => value !== "apps" || !coarsePointer);
   const [selected, setTab] = useState<SettingsTab>(initialTab);
@@ -69,25 +73,29 @@ export function SettingsBody({ initialTab = "ai", request, focus }: { initialTab
   }, [tab]);
   return (
     <ServerDraftProvider show={setTab} focusCoordinatorAi={focus === "coordinatorAi" ? request ?? 0 : undefined}>
-    <Tabs value={tab} onValueChange={(value) => setTab(value as SettingsTab)} className="min-h-0 flex-1">
-      {/* The tabs stay with the head; only the tab shown scrolls under them. */}
-      <div className="flex-none px-6 narrow:px-4.5">
-        <UpdateStateLine />
-        {/* The rule under the tabs is as wide as the rows below; the row itself reaches a little past both ends, so
-            the first tab's face starts on the title's edge and its focus ring is drawn whole. */}
-        <div className="border-b border-line">
-          <TabsList ref={list} className="-mx-1 border-b-0">
+    <Tabs value={tab} orientation={narrow ? "horizontal" : "vertical"} onValueChange={(value) => setTab(value as SettingsTab)} className={cn("min-h-0 flex-1", !narrow && "flex-row")}>
+      {/* A computer lists the sections down the side, under the title; a phone keeps them in a row that scrolls sideways. */}
+      <div className={cn("flex-none px-6 narrow:px-4.5", !narrow && "flex w-52 flex-col border-e border-line px-3 pt-1")}>
+        {narrow && <UpdateStateLine />}
+        <div className={cn("border-b border-line", !narrow && "border-b-0")}>
+          <TabsList ref={list} className={cn("-mx-1 border-b-0", !narrow && "mx-0 flex-col items-stretch gap-0.5 overflow-visible py-0")}>
             {/* Mapped over TABS itself: i18n:extract reads each `settings.tabs.*` key from this constant list, not a filtered copy. */}
-            {TABS.map((value) => availableTabs.includes(value) && <TabsTrigger key={value} value={value}>
+            {TABS.map((value) => availableTabs.includes(value) && <TabsTrigger key={value} value={value} className={cn("", !narrow && "h-8 justify-start")}>
               {t(`settings.tabs.${value}`)}
             </TabsTrigger>)}
           </TabsList>
         </div>
+        {!narrow && <div className="mt-auto px-2 pb-5"><VersionLine /></div>}
       </div>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      {!narrow && <div className="flex-none px-6 empty:hidden"><UpdateStateLine /></div>}
       <DialogBody ref={body} className="flex flex-col border-t-0 pt-5">
       {/* The two tabs showing the draft stay mounted while hidden, so a refused save can take the eye into either. */}
       <TabsContent value="ai" forceMount hidden={tab !== "ai"}>
         <AiSettingsTab />
+      </TabsContent>
+      <TabsContent value="skills">
+        <SkillsSettingsTab />
       </TabsContent>
       <TabsContent value="notifications">
         <NotificationSettingsTab focusNotifications={focusNotifications} />
@@ -105,9 +113,10 @@ export function SettingsBody({ initialTab = "ai", request, focus }: { initialTab
       <TabsContent value="host">
         <HostTab />
       </TabsContent>
-      {/* At the foot of the box when the tab shown is short, after its last line when it is long. */}
-      <div className="mt-auto"><VersionLine /></div>
+      {/* On a phone at the foot of the box when the tab shown is short, after its last line when it is long; a computer keeps it under the side list. */}
+      {narrow && <div className="mt-auto"><VersionLine /></div>}
       </DialogBody>
+      </div>
     </Tabs>
     </ServerDraftProvider>
   );

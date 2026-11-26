@@ -538,10 +538,20 @@
       "general": "General",
       "host": "Resources",
       "notifications": "Notifications",
-      "projects": "Projects"
+      "projects": "Projects",
+      "skills": "Recommended skills"
     },
     "title": "Settings",
-    "up": "Up"
+    "up": "Up",
+    "skills": {
+      "installedVersion": "Installed {{version}}",
+      "latestVersion": "Latest {{version}}",
+      "upToDate": "Up to date",
+      "install": "Install",
+      "update": "Update",
+      "installing": "Installing…",
+      "notInstalled": "Not installed"
+    }
   },
   "telemetry": {
     "blocked": {

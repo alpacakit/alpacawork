@@ -531,10 +531,20 @@
       "general": "一般",
       "host": "リソース",
       "notifications": "通知",
-      "projects": "プロジェクト"
+      "projects": "プロジェクト",
+      "skills": "おすすめスキル"
     },
     "title": "設定",
-    "up": "上へ"
+    "up": "上へ",
+    "skills": {
+      "installedVersion": "入っている版 {{version}}",
+      "latestVersion": "最新 {{version}}",
+      "upToDate": "最新です",
+      "install": "インストール",
+      "update": "更新する",
+      "installing": "インストール中…",
+      "notInstalled": "未インストール"
+    }
   },
   "telemetry": {
     "blocked": {
