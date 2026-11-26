@@ -775,9 +775,9 @@ function RowName({ row, kindWord, open }: { row: HistoryRow; kindWord: string; o
     {/* On a phone the tags are a step smaller than the words beside them, so two long agents stay whole on one line. */}
     {/* Cut across only: cut all round, a phone's tight small line cut the agents' g and p off below. */}
     {!open && <span data-row-ends className="-my-px ml-1.5 flex min-w-0 items-baseline overflow-x-clip gap-x-1 narrow:my-0 narrow:ml-0.5 narrow:gap-x-0.5 narrow:text-micro">
-      <PartyTag end={"own" in name ? name.own : name.ends[0]} />
+      <PartyTag end={"own" in name ? name.own : name.ends[0]} tight={!("own" in name)} />
       {"ends" in name && <><TextMark className="narrow:mx-px"><Icon name="arrowRight" data-row-arrow className="size-3.5 narrow:size-3 text-muted group-hover/row:text-ink group-data-lit/row:text-ink" /></TextMark>
-        <PartyTag end={name.ends[1]} /></>}
+        <PartyTag end={name.ends[1]} tight /></>}
     </span>}
   </span>;
 }
@@ -799,7 +799,7 @@ function PartyMark({ party }: { party: NameEnd["party"] }) {
  * agent, and no title (the title is the Task's own page, said only in the tag's label). A tag naming another Task
  * is the way to it (`onOpen`): the whole tag is the one button, and all its words are underlined as one link.
  */
-function PartyTag({ end, whole, onOpen }: { end: NameEnd; whole?: boolean; onOpen?: (button: HTMLElement) => void }) {
+function PartyTag({ end, whole, tight, onOpen }: { end: NameEnd; whole?: boolean; tight?: boolean; onOpen?: (button: HTMLElement) => void }) {
   const { reader: t } = useFeedWords();
   const agentNames = useContext(AgentNames);
   const agent = end.agent && modelLabel(end.agent, agentNames);
@@ -811,7 +811,8 @@ function PartyTag({ end, whole, onOpen }: { end: NameEnd; whole?: boolean; onOpe
     word && <span key="party" data-row-party className={`flex-none ${end.party === "self" ? "" : "font-semibold"}`}>{word}</span>,
     task && end.taskId && (whole || !kin) && <span key="task" data-row-task className="flex-none font-semibold tabular-nums">{end.taskId}</span>,
     agent && (whole ? <span key="agent" data-row-agent title={agent.full} className="whitespace-nowrap"><AgentMark model={agent.name} className="me-1 inline-block align-[-0.2em]" />{agent.full}</span>
-      : <AgentLabel key="agent" data-row-agent label={agent} />),
+      // A phone's row between two ends has room for their names only: the names stay, the AIs' marks give way.
+      : <AgentLabel key="agent" data-row-agent label={agent} markClassName={tight ? "narrow:hidden" : undefined} />),
   ].filter(Boolean);
   // The mark stands on the words' baseline, so whole it centres on their first line, even when they wrap below it; the
   // words are one run of text (spaces between them, not gaps), so a link's underline runs unbroken from its kind's word
