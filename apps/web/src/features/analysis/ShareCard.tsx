@@ -102,7 +102,7 @@ export function CardPane({ place, reads: { face, tasks, usage }, waitFrom }: {
   reads: ReturnType<typeof useCardReads>;
   waitFrom: number;
 }) {
-  const { t } = useTranslation("analysis");
+  const { t, i18n } = useTranslation("analysis");
   const card = place.card!;
   const choice = useDeviceValue(cardChoice);
   const choose = (next: Partial<CardChoice>) => cardChoice.set({ ...choice, ...next });
@@ -119,7 +119,10 @@ export function CardPane({ place, reads: { face, tasks, usage }, waitFrom }: {
   const tasksAnswer = answerOf(tasks), usageAnswer = answerOf(usage);
   const facts = useMemo(() => cardFacts(face, tasksAnswer, usageAnswer),
     [face?.data, face?.current, tasksAnswer?.data, tasksAnswer?.current, usageAnswer?.data, usageAnswer?.current]);
-  const input = useMemo(() => facts ? cardInput(facts, choice) : null, [facts, choice]);
+  // The card is written in the screen's language, so a change of language while it is open writes it again: the
+  // picture, the words it is read aloud by and the post's sentence then say the same.
+  const language = i18n.resolvedLanguage;
+  const input = useMemo(() => facts ? cardInput(facts, choice) : null, [facts, choice, language]);
   const svg = useMemo(() => input && looks ? drawCard(input, looks[theme]) : null, [input, looks, theme]);
   const current = !!svg;
   const picks = facts ? cardPicks(choice, facts) : null;

@@ -44,7 +44,7 @@ test("a card uses measured totals and the most-used model across efforts", () =>
   // Monday on top, the newest 13 weeks at most; days after today or before the record are not drawn.
   expect(facts.grass.length).toBeLessThanOrEqual(13);
   const input = cardInput(facts, { ...CARD_DEFAULT, numbers: ["finished", "share", "runMs", "prs"] });
-  expect(input.hero).toMatchObject({ label: "トークン", figure: { value: "1.2", unit: "B" } });
+  expect(input.hero).toMatchObject({ label: "トークン", figure: { value: "12.4", unit: "億" } });
   expect(input.rest.map(entry => `${entry.label} ${entry.figure.value}${entry.figure.unit}`)).toEqual(["終わったタスク 1,328件", "手直しなしで完了 75%", "AI の実行時間 147時間"]);
   expect(cardFileName(facts)).toBe("alpacawork-2026-11-19_2026-11-25.png");
 });
@@ -80,6 +80,14 @@ test("the card holds only what it is given, and a long model name stays inside i
   expect(cardWords(input)).toContain("claude-opus-5-5-extended");
 });
 
+test("Japanese writes a card's tokens in 万・億, a count rounding up to the next word in it; other languages keep k・M・B", async () => {
+  const facts = cardFacts(now(tasks), now(tasks), now(usage))!;
+  const tokens = (count: number) => { const each = cardInput({ ...facts, tokens: count }, { ...CARD_DEFAULT, hero: "finished", numbers: ["tokens"] }).rest[0]!.figure; return `${each.value}${each.unit}`; };
+  expect([9_876, 9_999.6, 12_345, 99_995_000, 13_812_345_678, 999_950_000_000].map(tokens)).toEqual(["9,876", "1万", "1.23万", "1億", "138億", "1兆"]);
+  await i18n.changeLanguage("en");
+  try { expect(tokens(13_812_345_678)).toBe("13.8B"); } finally { await i18n.changeLanguage("ja"); }
+});
+
 test("the card's days are a length and the day the analysis ended on: another length keeps the day, a day opens a week", () => {
   expect(cardSpanOf({ period: "today" })).toEqual({ length: "7d", end: null });
   expect(cardSpanOf({ from: "2026-11-18", to: "2026-11-18" })).toEqual({ length: "7d", end: "2026-11-18" });
@@ -96,7 +104,7 @@ test("the card's days are a length and the day the analysis ended on: another le
 test("the post begins with the lead number in a sentence of its own, over the card's days or, for the whole record, so far", () => {
   const facts = cardFacts(now(tasks), now(tasks), now(usage))!;
   const post = (hero: CardChoice["hero"], whole = false) => cardPostText(facts, { ...CARD_DEFAULT, hero }, whole);
-  expect(post("tokens")).toContain("1.2B");
+  expect(post("tokens")).toContain("12.4億トークン");
   expect(post("finished")).toContain("1,328");
   expect(post("share")).toContain("75%");
   for (const hero of ["tokens", "finished", "share"] as const) {

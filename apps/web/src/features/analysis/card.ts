@@ -1,6 +1,6 @@
 import { i18n } from "@alpacawork/i18n";
 import { grassLevels } from "./charts";
-import { addDays, dateLabel, daysBetween, parts as written, shareParts, spoken, text, type Parts } from "./format";
+import { addDays, dateLabel, daysBetween, parts as written, shareParts, text, type Parts } from "./format";
 import { tokenTotal, type TasksView, type UsageView } from "./contract";
 import type { Answer } from "./data";
 
@@ -92,9 +92,25 @@ const parts = (kind: Parameters<typeof written>[0], value: number): Figure => {
   const each = written(kind, value);
   return { ...each, spaced: !!each.unit && text(each) !== `${each.value}${each.unit}` };
 };
+/**
+ * A token count as the card writes it. A language that says large numbers in its own words (`unit.tokenWords`: Japanese
+ * 万・億・兆) writes them so, as its standard short form does (138億, 1.2万), to three figures; a count that rounds up to
+ * the next word is written in it (9,999.6 is 1万, 99,995,000 is 1億); under 万, whole (9,876). Every other language
+ * writes the count as the rest of the app does (1.2B).
+ */
+function cardTokens(tokens: number): Figure {
+  if (i18n.t("analysis:unit.tokenWords") === "yes") {
+    const language = i18n.resolvedLanguage ?? i18n.language;
+    const each = new Intl.NumberFormat(language, { notation: "compact", maximumSignificantDigits: 3 }).formatToParts(tokens);
+    const unit = each.filter(part => part.type === "compact").map(part => part.value).join("");
+    return unit ? { value: each.filter(part => part.type !== "compact" && part.type !== "literal").map(part => part.value).join(""), unit }
+      : written("plain", tokens);
+  }
+  return parts("tokens", tokens);
+}
 export function cardFigure(facts: CardFacts, key: CardNumber): Figure | null {
   switch (key) {
-    case "tokens": return parts("tokens", facts.tokens);
+    case "tokens": return cardTokens(facts.tokens);
     case "finished": return parts("tasks", facts.finished);
     case "share": return facts.share === null ? null : shareParts(facts.share);
     case "runMs": return parts("hours", facts.runMs);
@@ -141,7 +157,7 @@ export const cardWords = (input: CardInput) => [`${input.kicker} ${input.span} $
  */
 export function cardPostText(facts: CardFacts, choice: CardChoice, whole: boolean): string {
   const hero = cardPicks(choice, facts).hero, days = daysBetween(facts.from, facts.to);
-  const value = hero === "tokens" ? spoken(facts.tokens) : hero === "finished" ? written("plain", facts.finished).value : `${shareParts(facts.share!).value}%`;
+  const value = hero === "tokens" ? figureWords(cardTokens(facts.tokens)) : hero === "finished" ? written("plain", facts.finished).value : `${shareParts(facts.share!).value}%`;
   const sentence = {
     tokens: whole ? say("card.postTokensAll", { value }) : say("card.postTokens", { value, days }),
     finished: whole ? say("card.postFinishedAll", { value, count: facts.finished }) : say("card.postFinished", { value, days, count: facts.finished }),

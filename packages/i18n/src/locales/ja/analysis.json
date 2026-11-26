@@ -393,7 +393,8 @@
     "prs_other": "件",
     "questions_other": "回",
     "tasks_other": "件",
-    "times_other": "回"
+    "times_other": "回",
+    "tokenWords": "yes"
   },
   "until": {
     "lead": "かかった時間（中央値）",
