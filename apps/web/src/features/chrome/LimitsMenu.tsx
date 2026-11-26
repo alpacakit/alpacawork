@@ -12,6 +12,7 @@ import { resources } from "@/data/resources";
 import { barLimit, type BarLimit, besideModelWindow, currentLimitWindow, limitTone, readWords, resetWords, stackPlaces, stoppedWords, windowLabel } from "@/domain/limits";
 import { AGENT_NAMES } from "@/domain/agent-names";
 import { useNow } from "@/state/clock";
+import { openSettings } from "@/state/dialog-store";
 import { cn } from "@/lib/utils";
 import { TONE_FILL, TONE_TEXT, UsageRing, percentText } from "@/components/ui/usage-ring";
 
@@ -111,6 +112,7 @@ export function LimitsMenu({ folded = false }: { folded?: boolean }) {
   const tone = limitTone(percent);
   const name = AGENT_NAMES[shown.agent.adapter].short;
   const label = barWords(shown, name, now, i18n.language, t);
+  const stackLabel = t("limits.openStack", { title: t("panels:agentSettings.aiStack.title") });
   const read = readWords(agents.map(agent => agent.observedAt).filter(at => at !== null).sort()[0] ?? null, now, t);
   return <>
     <Button ref={trigger} variant="ghost" size="bar" data-limits-trigger data-tone={tone} aria-haspopup="dialog" aria-expanded={open}
@@ -134,16 +136,16 @@ export function LimitsMenu({ folded = false }: { folded?: boolean }) {
           <span aria-live="polite">{refreshing ? t("limits.refreshing") : read}</span>
           <Button variant="ghost" size="icon" data-limits-refresh aria-label={t("limits.refresh")} title={t("limits.refresh")}
             disabled={refreshing} onClick={() => void refresh().catch(error =>
-              notify.failure(error, { about: "limits", text: t("limits.refreshFailed"), from: trigger.current }))} className="-mr-2 size-7 text-muted hover:text-ink narrow:mr-0 narrow:size-9">
+              notify.failure(error, { about: "limits", text: t("limits.refreshFailed"), from: trigger.current }))} className="size-7 text-muted hover:text-ink narrow:size-9">
             <Icon name="reload" className={cn("size-3.5", refreshing && "animate-spin")} /></Button>
+          {/* The order that decides the agent the bar shows is set in the settings: the gear opens them onto it. */}
+          <Button variant="ghost" size="icon" data-limits-settings aria-label={stackLabel} title={stackLabel}
+            onClick={() => { setOpen(false); openSettings("ai", "tasksAi"); }} className="-mr-2 size-7 text-muted hover:text-ink narrow:mr-0 narrow:size-9">
+            <Icon name="settings" className="size-3.5" /></Button>
         </span></span>}>
       <div data-limits-menu lang={i18n.language} className="pt-2">
-        {/* The agents in a box of their own, so the last of them is last here and ends without the space above a divider. */}
-        <div>{agents.map(agent => <AgentBlock key={agent.adapter} agent={agent} stack={limits.data!.stack} now={now}
-          shown={agent.adapter === shown.agent.adapter ? shownWindow : null} />)}</div>
-        {/* What decides the agent the bar shows, when another reads as free: the stack's order with the figures, not the figures alone. */}
-        <p className="m-0 mt-4 border-t border-line pt-3 text-xs text-pretty text-muted">
-          {t("limits.place.note", { title: t("panels:agentSettings.aiStack.title") })}</p>
+        {agents.map(agent => <AgentBlock key={agent.adapter} agent={agent} stack={limits.data!.stack} now={now}
+          shown={agent.adapter === shown.agent.adapter ? shownWindow : null} />)}
       </div>
     </Popup>}
   </>;

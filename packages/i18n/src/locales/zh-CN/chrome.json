@@ -25,9 +25,9 @@
     "barUnknown": "AI 用量上限：无法读取 {{agent}} 的上限",
     "barUnlimited": "AI 用量上限：{{agent}} 目前没有上限",
     "none": "当前没有上限",
+    "openStack": "在设置中打开「{{title}}」",
     "place": {
       "model": "{{role}}（{{model}}）",
-      "note": "顶栏显示哪个 AI，取决于设置中「{{title}}」的顺序和用量。",
       "notListed": "不在「{{title}}」中"
     },
     "readAgo_other": "{{count}} 分钟前更新",
