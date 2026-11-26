@@ -137,7 +137,7 @@ function rowTip(t: (key: string, options?: Record<string, unknown>) => string, r
 /** The speed column at the title column's end, before the time: a number and the minute's bars, or the number alone beside a narrow list. */
 export const SPEED_LANE = 112;
 const COMPACT_LANE = 72;
-/** A list narrower than this (the detail open beside it) keeps its time strip's room with the number alone. */
+/** A list narrower than this (the detail open beside it) keeps its time strip's room with the number alone; under 600px there is no column. */
 const FULL_LANE_SHEET = 900;
 export const speedLane = (sheet: number) => sheet < FULL_LANE_SHEET ? COMPACT_LANE : SPEED_LANE;
 

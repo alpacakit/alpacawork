@@ -351,7 +351,7 @@ export function TimeTree({ entering = false }: { entering?: boolean }) {
   const list = useListWidth(box, 1200), { width: sheet, zoomWidth } = list;
   // The title column: narrower when the sheet itself is narrow (the detail is open beside it), so the time keeps its room.
   // Beside it, before the time, the column of the In progress rows' output speed (speedLane).
-  const lane = narrow || !strips ? 0 : speedLane(sheet);
+  const lane = narrow || !strips || sheet < 600 ? 0 : speedLane(sheet);
   const lead = narrow ? 0 : Math.min(titleColumnWidth(sheet) + lane, Math.max(0, sheet - 120));
   // The width the zoom is for (useStrip): a reader past half the screen only hides the strip's oldest part.
   const laid = Math.max(sheet, zoomWidth) - lead;
