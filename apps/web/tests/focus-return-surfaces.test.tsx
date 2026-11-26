@@ -1,12 +1,15 @@
 // Real popups and dialogs give the focus back to what opened them, however many replaced each other on the way.
-import { afterEach, beforeAll, expect, it } from 'vitest';
+import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { StrictMode, useRef, useState } from 'react';
 import { startI18n } from '@alpacawork/i18n';
+// A phone's width draws a popup as a bottom sheet; each test sets it (off unless said).
+let narrow = false;
+vi.mock('@/state/view-store', async (actual) => ({ ...await actual<object>(), useNarrow: () => narrow }));
 import { Popup } from '@/components/ui/popup';
 import { Dialog, DialogContent, DialogHeading } from '@/components/ui/dialog';
 beforeAll(() => startI18n());
-afterEach(cleanup);
+afterEach(() => { cleanup(); narrow = false; });
 function Ordinary({ kind }: { kind: 'popup' | 'dialog' }) {
   const [open, setOpen] = useState(false);
   const more = useRef<HTMLButtonElement>(null);
@@ -42,24 +45,32 @@ for (const strict of [false, true]) it(`two replaced surfaces preserve opener (S
   await waitFor(() => expect(document.activeElement).toBe(more));
 });
 
-// A button in a popup's heading (the limits' gear) stands outside its body: what it opens still goes back to the popup's opener.
-function FromHeading() {
-  const [stage, setStage] = useState(-1);
-  const more = useRef<HTMLButtonElement>(null);
-  return <><button ref={more} onClick={() => setStage(0)}>more</button>
-    {stage === 0 && <Popup open onOpenChange={() => setStage(-1)} anchorRef={more} label="menu"
-      heading={<button onClick={() => setStage(1)}>settings</button>}><p>body</p></Popup>}
-    {stage === 1 && <Dialog open onOpenChange={() => setStage(-1)}><DialogContent aria-describedby={undefined}><DialogHeading title="settings" /><button onClick={() => setStage(-1)}>finish</button></DialogContent></Dialog>}
+// A popup opened again from another opener (one that stays mounted, as the reader's state form): what its heading or its
+// body opens goes back to this opening's opener, on a phone's sheet as on a computer's popover.
+function Reopened({ from }: { from: 'heading' | 'body' }) {
+  const [open, setOpen] = useState(false), [dialog, setDialog] = useState(false);
+  const anchor = useRef<HTMLButtonElement>(null);
+  const go = <button onClick={() => { setOpen(false); setDialog(true); }}>go</button>;
+  return <><button ref={anchor} onClick={() => setOpen(true)}>first</button><button onClick={() => setOpen(true)}>second</button>
+    <Popup open={open} onOpenChange={setOpen} anchorRef={anchor} label="form" heading={<span>head{from === 'heading' && go}</span>}>
+      <button onClick={() => setOpen(false)}>close</button>{from === 'body' && go}
+    </Popup>
+    {dialog && <Dialog open onOpenChange={setDialog}><DialogContent aria-describedby={undefined}><DialogHeading title="dialog" /><button onClick={() => setDialog(false)}>finish</button></DialogContent></Dialog>}
   </>;
 }
-it('a surface opened from a popup heading gives the focus back to the popup opener', async () => {
-  render(<FromHeading />);
-  const more = screen.getByText('more'); more.focus(); fireEvent.click(more);
-  const settings = await screen.findByRole('button', { name: 'settings' }); settings.focus(); fireEvent.click(settings);
-  const finish = await screen.findByText('finish');
-  await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+for (const phone of [false, true]) for (const from of ['heading', 'body'] as const) it(`reopened from another opener, what its ${from} opens goes back there (${phone ? 'phone' : 'computer'})`, async () => {
+  narrow = phone;
+  render(<Reopened from={from} />);
+  const first = screen.getByText('first'), second = screen.getByText('second');
+  first.focus(); fireEvent.click(first);
+  fireEvent.click(await screen.findByText('close'));
+  await waitFor(() => expect(screen.queryByText('close')).toBeNull()); await frame(); await frame();
+  second.focus(); fireEvent.click(second);
+  const go = await screen.findByText('go'); await frame();
+  go.focus(); fireEvent.click(go);
+  const finish = await screen.findByText('finish'); await frame();
   fireEvent.click(finish);
-  await waitFor(() => expect(document.activeElement).toBe(more));
+  await waitFor(() => expect(document.activeElement).toBe(second));
 });
 
 // A modal over a modal. When the upper one closes and what opened it is gone (the settings' update button after

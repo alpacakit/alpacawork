@@ -63,8 +63,13 @@ export function Popup({
   // focus back on close. The anchor is not a Radix trigger and the sheet is mounted before it opens, so neither
   // surface can remember that itself.
   const opener = React.useRef<Element[]>([]);
-  // Kept on the whole surface, its heading's buttons included, for what is opened from anywhere inside it.
-  const remember = React.useCallback(() => rememberOpener(host.closest('[role="dialog"]') ?? host, opener.current), [host]);
+  // Kept on the body and on the whole surface (its heading's buttons included), each time it is written, so whatever
+  // inside reads the opener of this opening: the nearest record to an element is the one it reads.
+  const remember = React.useCallback(() => {
+    rememberOpener(host, opener.current);
+    const surface = host.closest('[role="dialog"]');
+    if (surface) rememberOpener(surface, opener.current);
+  }, [host]);
   // Reattaching even to the same slot removes the focused descendant from the
   // document. Only move the host when the surface actually changes.
   const attach = React.useCallback((slot: HTMLElement | null) => {
