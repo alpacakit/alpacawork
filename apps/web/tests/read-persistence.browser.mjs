@@ -690,7 +690,7 @@ try {
   });
   await check('real Check caller cannot accept after committed refusal retirement cuts scope', async () => {
     const a=await pageIn(await context());await boot(a);await seed(a);
-    const snapshot={root:'/fixture',generation:index.generation,revision:'c'.repeat(64),conversation:{id:'C1',agent:null,warm:'none',busy:false,cancelled:[],turns:[]}};
+    const snapshot={root:'/fixture',generation:index.generation,revision:'c'.repeat(64),conversation:{id:'C1',nextLaunch:null,busy:false,turns:[],earlier:null,resets:[],context:null,autoReset:{tokens:200000,percent:50}}};
     await a.route('**/api/coordinator',route=>route.fulfill({json:snapshot}));
     await a.evaluate(async snapshot=>{const s=window.s, c=s.queryClient;const refresh=await import('/@react-refresh');window.$RefreshReg$=()=>{};window.$RefreshSig$=()=>type=>type;window.__vite_plugin_react_preamble_installed__=true;window.coordinator=await import('/src/features/coordinator/coordinator.ts');s.receiveFullIndex(c,{...s.readIndex(c),rev:s.readIndex(c).rev+1,person:{...s.readIndex(c).person,coordinator:{id:'C1',revision:snapshot.revision}}});window.coordinator.useConversation.setState({root:'/fixture'});await window.coordinator.useConversation.getState().refresh();},snapshot);
     const previous=(await disk(a)).control.epoch;
