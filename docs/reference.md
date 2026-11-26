@@ -116,8 +116,7 @@ for `--period all` and is `null` when the scope has no records.
 Task counts use Tasks the user directly requested. A review round (`submits`) is a submit for review, or a question to
 the user from the Task or any Task under it that asks whether to take a result as it is (one of its items has
 `decide_kind` `accept`). `submits` counts the times a result was put to the user, not the round it passed on: a Task
-whose question was answered "take it" and that was then submitted for review has two. A question with no
-`decide_kind` recorded does not count as a review round. A Task is reworked when the user sent it back, gave an instruction at review or after
+whose question was answered "take it" and that was then submitted for review has two. A Task is reworked when the user sent it back, gave an instruction at review or after
 acceptance, gave an instruction in place of answering a question asking to take a result, or it was submitted for review
 twice or more. An instruction that names a withdrawn question it answers counts as one given in place of its answer; one given
 after the acceptance counts in `instructionsAfterAccept` instead.
