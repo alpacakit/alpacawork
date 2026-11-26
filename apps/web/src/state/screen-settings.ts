@@ -40,16 +40,6 @@ const LEAST_LIST_WIDTH = 24 + TITLE_COLUMN_TIGHT + LEAST_STRIP_WIDTH + 36;
  */
 export const readerListReservation = (width: number, viewport: number) =>
   Math.min(width, Math.max(MIN_WORKSPACE_WIDTH, viewport - LEAST_LIST_WIDTH));
-/** The analysis's charts keep at least this much beside the window at the page's right, or the window stands over them (Workbench). */
-const ANALYSIS_LEAST_WIDTH = 680;
-/** From this width the analysis's row names stand on one line each (measured): widening the window stops where it is left this. */
-const ANALYSIS_READABLE_WIDTH = 760;
-/** The page's room around the analysis beside a window: its 24px left and the 36px gap. */
-const ANALYSIS_ASIDE = 24 + 36;
-/** Whether the narrowest window leaves the analysis's charts their least: the window then stands beside them. */
-export const analysisFitsBeside = (viewport: number) => viewport - ANALYSIS_ASIDE - READER_MIN_WIDTH >= ANALYSIS_LEAST_WIDTH;
-/** The widest the window beside the analysis goes: what leaves the charts their readable width, never under the narrowest window. */
-export const widestBesideAnalysis = (viewport: number) => Math.max(READER_MIN_WIDTH, viewport - ANALYSIS_ASIDE - ANALYSIS_READABLE_WIDTH);
 /**
  * Until the reader is half the screen, the list's time strip is squeezed into what is left of it. What the list gives
  * past that hides the strip's oldest part instead: the strip keeps the scale it had there, so now and the reports

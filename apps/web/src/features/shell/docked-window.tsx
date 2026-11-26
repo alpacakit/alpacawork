@@ -8,29 +8,34 @@ import { draggedReaderWidth, holdReaderEdge, maxDockedReaderWidth, windowMargin 
  * caller's: the reader's own, or the room the page keeps beside it.
  */
 export const DOCKED_WINDOW = "fixed top-window right-window bottom-window z-(--layer-reader) flex min-w-0 flex-col overflow-hidden rounded-pane border-hairline border-lit-line bg-lit shadow-float";
+/**
+ * The window at the page's right where the page places it (Workbench's mode): docked, as wide as the page keeps it
+ * (`--window-fit`); over the page, the whole screen. The reader and what a number of the analysis opens both stand in it.
+ * A phone's sheet is each one's own (TaskSheet, AnalysisLayers).
+ */
+export const windowBox = (mode: "docked" | "overlay") => mode === "overlay"
+  ? "fixed inset-0 z-(--layer-reader) flex flex-col overflow-hidden bg-lit"
+  : `${DOCKED_WINDOW} w-(--window-fit)`;
 
 /**
- * The inner edge of the window at the page's right (the reader, or what a number of the analysis opens beside its
- * charts), marked `data-window` where it is drawn: its left one over the page, dragging resizes it over the page. Both
- * windows have one width, the person's (`setReaderWidth`), so the one opened next stands as the last was left. Past the
- * docked limit the reader takes the full width (`fills`), and stays available there so the same drag can bring it back;
- * a window that may go no wider than `widest` for the screen's width (the reader beside a diff, the analysis's list beside its charts) stops
- * there. While a diff stands beside the reader the edge is its right one, in the gap toward the diff. Arrow keys move it
- * 24px; a double press gives the default width back.
+ * The inner edge of the window at the page's right (the reader, or what a number of the analysis opens), marked
+ * `data-window` where it is drawn: its left one over the page, dragging resizes it over the page. Both stand in one
+ * window with one width, the person's (`setReaderWidth`), so the one opened next stands as the last was left. Past the
+ * docked limit the window takes the full width, and the edge stays available there so the same drag can bring it back;
+ * a window that may go no wider than `widest` for the screen's width (the reader beside a diff) stops there. While a diff
+ * stands beside the reader the edge is its right one, in the gap toward the diff. Arrow keys move it 24px; a double
+ * press gives the default width back.
  */
-export function WindowWidthHandle({ label, taskId = null, widest, fills = true }: {
-  label: string; taskId?: string | null; widest?: (viewport: number) => number; fills?: boolean;
+export function WindowWidthHandle({ label, taskId = null, widest }: {
+  label: string; taskId?: string | null; widest?: (viewport: number) => number;
 }) {
-  const full = useViewStore((state) => state.readerFull) && fills;
-  const setReaderWidth = useViewStore((state) => state.setReaderWidth), setWindowWidth = useViewStore((state) => state.setWindowWidth);
+  const full = useViewStore((state) => state.readerFull);
+  const setReaderWidth = useViewStore((state) => state.setReaderWidth);
   type Width = Parameters<typeof setReaderWidth>[0];
   // The width kept is the one drawn: a window that stopped at its widest gives that back, not as far as the pointer went.
-  // One that never fills the screen keeps its width only, and leaves the reader full or not as it was.
   const set = (width: Width) => {
     const most = widest?.(innerWidth);
-    const kept = most === undefined ? width : width === "full" ? fills ? width : most : typeof width === "number" ? Math.min(width, most) : width;
-    if (fills) setReaderWidth(kept);
-    else setWindowWidth(kept === "full" ? most ?? null : kept);
+    setReaderWidth(most !== undefined && typeof width === "number" ? Math.min(width, most) : width);
   };
   // A change by the keys or a double press is the person's too, as one held for that change alone.
   const once = (width: Width) => { holdReaderEdge(true); set(width); holdReaderEdge(false); };

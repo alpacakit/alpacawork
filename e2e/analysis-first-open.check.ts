@@ -132,7 +132,7 @@ test("the analysis keeps its scrollbar's room beside its charts, not over them",
   expect(room).toBeGreaterThanOrEqual(12);
 });
 
-test("the window beside the analysis's charts is resized by its edge, no wider than leaves the charts readable", async ({ page, runtime }) => {
+test("the analysis's window is resized by its edge as the details window is, and past its limit takes the screen", async ({ page, runtime }) => {
   await page.setViewportSize({ width: 1600, height: 900 });
   await page.goto(`${runtime.origin}/?face=analysis`);
   // The card stands in the window a number's tasks open in.
@@ -150,27 +150,16 @@ test("the window beside the analysis's charts is resized by its edge, no wider t
     await page.mouse.up();
   };
   await drag(from.x + from.width / 2 - 80);
-  // It widens as far as the pointer went.
+  // It widens as far as the pointer went, and the charts are laid out again beside it.
   await expect.poll(width).toBeGreaterThan(start + 60);
   expect(await width()).toBeLessThan(start + 100);
-  // Far past what the charts can give: it stops where they keep their room, and stays beside them.
-  await drag(40);
-  await expect.poll(width).toBe(1600 - 24 - 36 - 760);
-  // Let go, the charts are laid out again beside it.
   await expect.poll(async () => {
     const charts = (await page.locator("[data-chart-row]").first().boundingBox())!;
     return charts.x + charts.width <= (await panel.boundingBox())!.x;
   }).toBe(true);
-});
-
-test("a details width wider than the charts can give still opens the analysis's window beside them, no wider than leaves them readable", async ({ page, runtime }) => {
-  await page.setViewportSize({ width: 1600, height: 900 });
-  await page.addInitScript(() => localStorage.setItem("alpacawork.screen.width", "1100"));
-  await page.goto(`${runtime.origin}/?face=analysis`);
-  await page.getByRole("button", { name: "Make a card", exact: true }).click();
-  const panel = page.locator("aside[data-analysis-panel]");
-  await expect(panel.locator("[data-window-width]")).toBeVisible();
-  await expect.poll(async () => Math.round((await panel.boundingBox())!.width)).toBe(1600 - 24 - 36 - 760);
+  // Far past the limit it takes the whole screen, as the details window does.
+  await drag(20);
+  await expect.poll(width).toBe(1600);
 });
 
 test.describe("phone", () => {

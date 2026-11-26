@@ -113,8 +113,6 @@ type ViewState = {
   /** Full/partial mode is projected from the URL; the partial width belongs to the device cell. */
   readerFull: boolean;
   setReaderFull: (full: boolean) => void;
-  /** The window at the page's right's width, kept on this device (null: the default), whether the reader is full or not. */
-  setWindowWidth: (width: number | null) => void;
   setReaderWidth: (width: number | "full" | null) => void;
   setQuery: (query: string) => void;
   clearSearch: () => void;
@@ -248,12 +246,11 @@ export const useViewStore = create<ViewState>((set, get) => ({
     : { searchOpen: true })),
   readerFull: false,
   setReaderFull: intent((readerFull) => set({ readerFull })),
-  setWindowWidth: (requested) => {
-    if (requested === null) readerWidth.remove();
-    else if (Number.isFinite(requested)) readerWidth.set(Math.round(fitReaderWidth(requested, innerWidth)));
-  },
   setReaderWidth: (requested) => {
-    if (requested !== "full") get().setWindowWidth(requested);
+    if (requested !== "full") {
+      if (requested === null) readerWidth.remove();
+      else if (Number.isFinite(requested)) readerWidth.set(Math.round(fitReaderWidth(requested, innerWidth)));
+    }
     get().setReaderFull(requested === "full");
   },
   setQuery: intent((query) => set((state) => ({ query, ...queryEdit(state), ...query && state.analysis ? { analysis: null } : {} }))),

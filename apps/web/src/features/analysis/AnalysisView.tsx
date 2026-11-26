@@ -11,6 +11,7 @@ import { daysBetween, spanLabel } from "./format";
 import { PointerTip, ReadPart, Seg, useChoices, useReadSet } from "./parts";
 import { cardSpanOf, listOnAnswer, PERIOD_BACK, stepChosen, type AnalysisPlace, type ListPlace } from "./place";
 import { AnalysisLayers } from "./AnalysisLayers";
+import type { ReaderMode } from "@/features/reader/Reader";
 import { TasksLook } from "./TasksLook";
 import { FaceSkeleton } from "./FaceSkeleton";
 import { UsageLook } from "./UsageLook";
@@ -32,7 +33,7 @@ function zoneName(zone: string) {
  * the look (tasks, or the AI's use) and the span of days at the top, then the look. Every number opens the tasks
  * behind it in a window beside the page, or over it where there is no room (`AnalysisLayers`).
  */
-export function AnalysisView({ place, beside }: { place: AnalysisPlace; beside: boolean }) {
+export function AnalysisView({ place, mode, canDock }: { place: AnalysisPlace; mode: ReaderMode; canDock: boolean }) {
   const { t } = useTranslation("analysis");
   useAnalysisFreshness();
   const project = useViewStore(state => state.project);
@@ -104,7 +105,7 @@ export function AnalysisView({ place, beside }: { place: AnalysisPlace; beside: 
             series={series} />}
     </ReadPart>
     </div></ListScroll>
-    <AnalysisLayers place={place} project={project} days={days} beside={beside} />
+    <AnalysisLayers place={place} project={project} days={days} mode={mode} canDock={canDock} />
     <PointerTip root={root} />
   </>;
 }

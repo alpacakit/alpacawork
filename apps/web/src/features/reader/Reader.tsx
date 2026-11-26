@@ -6,7 +6,7 @@ import { useAnswerCueLifetime } from "./answer-cue";
 import { ReaderSwipe } from './swipe-answer';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
-import { DOCKED_WINDOW, WindowWidthHandle } from "@/features/shell/docked-window";
+import { windowBox, WindowWidthHandle } from "@/features/shell/docked-window";
 import { closeReaderStep, isTurnSequenceNavigation } from "@/state/history-step";
 import { ReaderPeopleContext, useHomeList, useReaderPeople, useReadState, useTaskDetail, useReaderTask, useWorkspaceInfo } from "@/data/queries";
 import type { Task, TaskDetail } from "@/data/types";
@@ -359,9 +359,8 @@ function ReaderMoves({ box, mode }: { box: RefObject<HTMLElement | null>; mode: 
  */
 export function readerBox(mode: ReaderMode) {
   if (mode === "sheet") return `group/reader ${SHEET_SURFACE}`;
-  return mode === "overlay"
-    ? "group/reader fixed inset-0 z-(--layer-reader) flex flex-col overflow-hidden bg-lit"
-    : `group/reader ${DOCKED_WINDOW} w-(--window-fit) in-data-view-beside:right-auto in-data-view-beside:left-window`;
+  return mode === "overlay" ? `group/reader ${windowBox(mode)}`
+    : `group/reader ${windowBox(mode)} in-data-view-beside:right-auto in-data-view-beside:left-window`;
 }
 
 /** The reader's edge: while a diff or a file stands beside it, it widens only as far as leaves that its place. */

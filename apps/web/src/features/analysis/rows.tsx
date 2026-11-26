@@ -20,11 +20,13 @@ import type { Bucket, Group, ListSet, ListValue } from "./contract";
 export type Bin = { from: string; to: string; complete: boolean };
 type Days = { from: string; to: string };
 
-/** The rows' grid of 12 columns (on a wide page the lead numbers above stand three of them each). */
-export const GRID = "grid grid-cols-12 gap-x-6 narrow:block";
-// Where the page is narrower than a wide screen (a window beside it), the left takes a third, so its names and numbers
-// still stand side by side.
-export const LEFT = "col-span-3 col-start-1 @max-5xl:col-span-4 @max-5xl:col-start-1", RIGHT = "col-span-9 col-start-4 min-w-0 @max-5xl:col-span-8 @max-5xl:col-start-5";
+/**
+ * The rows' grid: the left (names and numbers) and the chart. On a wide page the left is as wide as one of the four lead
+ * numbers above (a quarter, less their gaps); narrower (a window beside it), a third. It never goes under 15rem, the room
+ * its names keep to one line each beside their numbers: below that the chart gives up its width instead.
+ */
+export const GRID = "grid grid-cols-[minmax(15rem,calc(25%_-_18px))_minmax(0,1fr)] gap-x-6 @max-5xl:grid-cols-[minmax(15rem,calc(33.333%_-_16px))_minmax(0,1fr)] narrow:block";
+export const LEFT = "col-start-1", RIGHT = "col-start-2 min-w-0";
 
 /** Four numbers across the top, three columns each; on a phone two by two. */
 export function Leads({ children }: { children: ReactNode }) {

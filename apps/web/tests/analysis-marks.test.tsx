@@ -329,7 +329,7 @@ test("a list's next page stands as rows while it is read, and one that could not
     return new Promise<Response>(resolve => { page = body => resolve(new Response(JSON.stringify(body ?? { error: { code: "unavailable", message: "x", retry: "later" } }), { status: body ? 200 : 503 })); });
   });
   const place = { ...analysisHome(), list: { set: "finished" as const, value: null, group: null, member: null } };
-  const view = render(<TestWorkspace data={screenData()}><AnalysisLayers place={place} project={null} days={null} beside={false} /></TestWorkspace>);
+  const view = render(<TestWorkspace data={screenData()}><AnalysisLayers place={place} project={null} days={null} mode="overlay" canDock={false} /></TestWorkspace>);
   await vi.waitFor(() => expect(view.container.querySelectorAll("[data-analysis-layer] li")).toHaveLength(100));
   await act(async () => view.getByRole("button", { name: /残り/ }).click());
   // Asked for: its rows' places stand where they will come, not nothing.

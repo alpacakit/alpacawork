@@ -31,7 +31,7 @@ import { useGlobalShortcuts } from "@/features/chrome/use-shortcuts";
 import { ListNavigationProvider } from "@/features/tree/list-navigation";
 import { TimeTree } from "@/features/tree/TimeTree";
 import { useDeviceValue } from "@/lib/device-storage";
-import { readerEdgeHeld, readerWidth, fitReaderWidth, MIN_DOCK_VIEWPORT_WIDTH, READER_MIN_WIDTH, readerListReservation, readerWidthBeside, stripHidden, urlValue, analysisFitsBeside, widestBesideAnalysis, windowMargin } from "@/state/screen-settings";
+import { readerEdgeHeld, readerWidth, fitReaderWidth, MIN_DOCK_VIEWPORT_WIDTH, READER_MIN_WIDTH, readerListReservation, readerWidthBeside, stripHidden, urlValue, windowMargin } from "@/state/screen-settings";
 import { VIEW_BESIDE_WIDTH } from "@/features/reader/viewer/viewer-layout";
 import { Reader, readerBox, type ReaderMode } from "@/features/reader/Reader";
 import { DialogHost } from "./DialogHost";
@@ -50,8 +50,6 @@ const subscribeReaderGeometry = (notify: () => void) => {
   return () => { stopWidth(); stopViewport(); };
 };
 const canFitDock = () => innerWidth >= MIN_DOCK_VIEWPORT_WIDTH;
-/** Beside the charts wherever the narrowest window leaves them their least, no wider than leaves them readable (dockedWidth). */
-const analysisBesideNow = () => analysisFitsBeside(innerWidth);
 const viewportWidth = () => innerWidth;
 const readerOverlaps = () => {
   const width = fitReaderWidth(readerWidth.get(), innerWidth);
@@ -61,13 +59,11 @@ const readerOverlaps = () => {
  * The docked reader's width: as set (fitReaderWidth), but while a diff or a file stands beside it,
  * no wider than leaves that place its least width (VIEW_BESIDE_WIDTH): widening the reader then stops at it, rather than
  * the diff giving its place up. One rule for every width of screen: the diff stands beside the reader wherever the
- * narrowest reader leaves it that much, else the reader takes the whole screen and the diff stands over its reports. The
- * same for what a number of the analysis opens beside its charts (`besideAnalysis`): no wider than leaves them readable.
+ * narrowest reader leaves it that much, else the reader takes the whole screen and the diff stands over its reports.
  */
-const dockedWidth = (width: number | null, viewport: number, viewing: boolean, besideAnalysis: boolean) => {
+const dockedWidth = (width: number | null, viewport: number, viewing: boolean) => {
   const fit = fitReaderWidth(width, viewport);
-  return viewing ? Math.min(fit, readerWidthBeside(viewport, VIEW_BESIDE_WIDTH))
-    : besideAnalysis ? Math.min(fit, widestBesideAnalysis(viewport)) : fit;
+  return viewing ? Math.min(fit, readerWidthBeside(viewport, VIEW_BESIDE_WIDTH)) : fit;
 };
 const viewFitsBeside = () => innerWidth - READER_MIN_WIDTH - 3 * windowMargin() >= VIEW_BESIDE_WIDTH;
 
@@ -117,20 +113,20 @@ export function Workbench() {
   // Below the room needed for both columns, the reader covers the list instead.
   const fitsDock = useSyncExternalStore(subscribeViewport, canFitDock, canFitDock);
   const canDock = !narrow && fitsDock;
-  // On a phone the task is a sheet from the bottom over the list, which stays in reach until the sheet is pulled whole.
-  const mode: ReaderMode = narrow ? "sheet" : !canDock || readerFull ? "overlay" : "docked";
-  const sheetWhole = useViewStore((state) => state.reader.whole === true);
-  // What a number of the analysis opens (its list, the share card) stands where the docked reader stands, and the page
-  // gives it the same room: the charts narrow beside it and stay in reach, never under it.
+  // What a number of the analysis opens (its list, the share card) is the window the reader is: it stands where the
+  // reader stands, by the same rules (beside the charts as the reader beside the list, full when the reader is, over
+  // the page where there is no room, a sheet on a phone), and a task opened from it is the reader in its place.
   const analysisShown = analysis && !(place === "lookup" && project) ? analysis : null;
+  const layerOpen = !readerOpen && !!analysisShown && analysisSurfaces(analysisShown).length > 0;
+  const windowFull = readerFull || layerOpen && full;
+  // On a phone the task is a sheet from the bottom over the list, which stays in reach until the sheet is pulled whole.
+  const mode: ReaderMode = narrow ? "sheet" : !canDock || windowFull ? "overlay" : "docked";
+  const sheetWhole = useViewStore((state) => state.reader.whole === true);
   // The list drawn in the analysis's place just now comes in, as the analysis does in the list's (TimeTree `entering`).
   const analysisWas = useRef(false);
   const leavingAnalysis = analysisWas.current && !analysisShown;
   useEffect(() => { analysisWas.current = !!analysisShown; });
-  // Where the charts would be left too narrow to read, it stands over them instead, as on a narrower screen.
-  const analysisBeside = useSyncExternalStore(subscribeReaderGeometry, analysisBesideNow, analysisBesideNow) && canDock;
-  const layerBeside = !!analysisShown && analysisBeside && analysisSurfaces(analysisShown).length > 0;
-  const docked = readerOpen ? mode === "docked" : layerBeside;
+  const docked = (readerOpen || layerOpen) && mode === "docked";
   // While it stands there, the list and its bar are out of reach at once, and out of sight once the reader has moved
   // over them (the page's data-panel-moving: lib/motion.ts moveAcross), kept as they were for its closing.
   const listAway = docked && viewing;
@@ -148,7 +144,7 @@ export function Workbench() {
     // The page is as tall as the screen: the bars take what they need and the tree (or the page reader) takes the
     // rest, down to its smallest height, below which the page scrolls. One pixel is left for the box that ends
     // the page (the Toaster's).
-    <ListNavigationProvider><PageFrame docked={docked} viewing={listAway} besideAnalysis={!readerOpen && layerBeside} barHeight={barHeight} barHidden={barHidden}>
+    <ListNavigationProvider><PageFrame docked={docked} viewing={listAway} barHeight={barHeight} barHidden={barHidden}>
       {ready && <WorkspaceEffects />}
       {ready && <TelemetryReaskDialog />}
       <Bar inert={covered || listAway} away={listAway}>
@@ -173,7 +169,7 @@ export function Workbench() {
         </>}>{() => <>
           <div inert={covered || listAway} className={cn("contents", listAway && AWAY)}>
             {/* The analysis face stands in the list's place whatever the list would show (a search ends as it opens). */}
-            {analysisShown ? <AnalysisView place={analysisShown} beside={analysisBeside} />
+            {analysisShown ? <AnalysisView place={analysisShown} mode={mode} canDock={canDock} />
               : place === "search" ? <ListScroll room><BarRoom /><SearchResults /></ListScroll>
               : place === "lookup" && project ? <div className="flex min-h-75 flex-1 flex-col narrow:min-h-67.5"><BarRoom /><AwaitedLookup address={project} placement="list" reason={{ kind: "scope_lookup_unavailable" }} skeleton={<RegionSkeleton shape="time" />} /></div>
               : place === "no-projects" ? <div className="flex-1"><BarRoom /><NoProjects onOpenArchive={() => openSettings("projects")} onCreateProject={() => useDialogStore.getState().openProject()} /></div>
@@ -213,11 +209,11 @@ function useReaderOpen() {
 
 /** The page's geometry changes synchronously with every requested width. Its children keep their own data
  * subscriptions; only a real change of their box (the time strip's ResizeObserver) needs to draw them again. */
-function PageFrame({ docked, viewing, besideAnalysis, barHeight, barHidden, children }: {
-  docked: boolean; viewing: boolean; besideAnalysis: boolean; barHeight: number; barHidden: boolean; children: ReactNode;
+function PageFrame({ docked, viewing, barHeight, barHidden, children }: {
+  docked: boolean; viewing: boolean; barHeight: number; barHidden: boolean; children: ReactNode;
 }) {
   const screen = useSyncExternalStore(subscribeViewport, viewportWidth, viewportWidth);
-  const width = dockedWidth(useDeviceValue(readerWidth), screen, viewing, besideAnalysis);
+  const width = dockedWidth(useDeviceValue(readerWidth), screen, viewing);
   // While the reader's edge is held, the page keeps the geometry it had (what is laid out by it, the list first, keeps
   // its layout until let go) and only the reader takes the width the hand asks: a change of the page's variables restyles
   // all it holds, too much for every move of the hand. A diff beside the reader stands by that geometry, so it follows.
