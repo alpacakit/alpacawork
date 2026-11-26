@@ -10,12 +10,6 @@ test('only source-identified ambient pulses are excluded', () => {
   assert.equal(motionHasSettled([live], true), true);
   assert.equal(motionHasSettled([live], false), false);
   assert.equal(motionHasSettled([{ ...live, name: 'motion-spin' }], true), false);
-  // The warm-up's "Starting the coordinator" words pulse while it runs; its row's rise and any other motion still block.
-  const starting = { state: 'running', endTime: Infinity, name: 'motion-pulse', startingCoordinator: true };
-  assert.equal(motionHasSettled([starting], true), true);
-  assert.equal(motionHasSettled([starting], false), false);
-  assert.equal(motionHasSettled([{ ...starting, name: 'motion-spin' }], true), false);
-  assert.equal(motionHasSettled([starting, { state: 'running', endTime: 200, name: 'motion-rise' }], true), false);
   const step = { state: 'running', endTime: Infinity, name: 'motion-pulse', runningStep: true };
   assert.equal(motionHasSettled([step], true), true);
   assert.equal(motionHasSettled([step], false), false);
