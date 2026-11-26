@@ -7,6 +7,7 @@ import { Seg, useChoices, type CallsBy } from "./parts";
 import { nameParts, type NamePart } from "./series";
 import type { Bin, PartItem, RowSay } from "./rows";
 import type { Bucket, UsageView } from "./contract";
+type Head = Pick<UsageView, "head">;
 import type { Span } from "./place";
 import type { Open } from "./TasksLook";
 
@@ -17,12 +18,14 @@ import type { Open } from "./TasksLook";
  * They are counted from the day counting began (`since`): the bins before it lie hatched, and a span wholly before it
  * has no record. A skill counts once for each launch that used it, so the parts add up to the count beside them.
  */
-export function useCalls(bins: Bin[], span: Span, bucket: Bucket, live = true) {
+export function useCalls(bins: Bin[], face: Head, span: Span, bucket: Bucket, live = true) {
   const { t } = useTranslation("analysis");
   const project = useViewStore(state => state.project);
   const by = useChoices(state => state.callsBy);
   const read = useBreakdown("usage", project, span, bucket, by, live);
-  const answer = read.data?.breakdown.look === "usage" ? read.data.breakdown : null;
+  // Only an answer for the face's project as of its day is drawn: one for a project the face has moved on from is not.
+  const data = read.data, ofFace = !!data && data.head.project === face.head.project && data.head.today === face.head.today;
+  const answer = ofFace && data.breakdown.look === "usage" ? data.breakdown : null;
   // An answer of other bins (another step of time, a span the face has moved on from) is not drawn.
   const series = answer?.series && answer.series.length === bins.length ? answer.series : null;
   const shownBy = (answer?.by ?? by) as CallsBy;
@@ -39,6 +42,8 @@ export function useCalls(bins: Bin[], span: Span, bucket: Bucket, live = true) {
   const total = answer?.counted?.value.calls ?? 0;
   return {
     by: shownBy, since, series, current: !!answer && answer.by === by && !read.isPlaceholderData,
+    /** Whether an answer has come: until it has, nothing is said of a record or of days before counting began. */
+    answered: !!answer,
     name: t(shownBy === "skill" ? "usage.skillUses" : shownBy === "tool" ? "usage.toolCalls" : "usage.mcpCalls"),
     total, previous: answer?.counted?.previous?.calls ?? null,
     failure: read.isError ? { error: read.error, retry: () => void read.refetch() } : null,
@@ -60,7 +65,7 @@ export function callsSay(calls: Calls, notCounted: string): RowSay {
   const share = (value: number, all: number) => all ? `${Math.round(value / all * 100)}%` : "";
   return {
     name: calls.name,
-    total: at => calls.series?.[at] ? format("times", calls.series[at]!.calls) : notCounted,
+    total: at => calls.series?.[at] ? format("times", calls.series[at]!.calls) : calls.series ? notCounted : "—",
     parts: at => calls.parts(at).map(({ part, value, names }) => ({
       color: part.color, name: calls.partName(part, names), value: format("times", value), share: share(value, calls.series![at]!.calls),
       list: part.key === null ? undefined : (bin: Bin) => ({ set: "used" as const, value: "calls" as const, group: calls.by, member: part.key, from: bin.from, to: bin.to }),

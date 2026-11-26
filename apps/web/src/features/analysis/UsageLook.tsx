@@ -70,7 +70,7 @@ export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days
 
   const points = view.series.points, today = view.head.today;
   const launches = useLaunches(points, view, series, span, bucket, live);
-  const calls = useCalls(points, span, bucket, live);
+  const calls = useCalls(points, view, span, bucket, live);
   const taskPoints = tasks?.series.points.length === points.length ? tasks.series.points : null;
   // Amounts a bin: the token total (output, input and cache), run time and launches; and the finished tasks they went to.
   // The launches are the series' (under its filter) where they stand on the same bins, the use's otherwise.
@@ -97,8 +97,9 @@ export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days
     tokens: useScale(...scaleArgs("tokens")), runMs: useScale(...scaleArgs("runMs")), launches: useScale(...scaleArgs("launches")),
     calls: useScale(spanMost(points, days, i => calls.series?.[i]?.calls ?? 0), 1, unitWord("times"), true),
   };
-  // Skills, tools and MCP are counted from a day on: a span wholly before it has no record of them.
-  const callsBefore = !calls.since || days.to < calls.since;
+  // Skills, tools and MCP are counted from a day on: a span wholly before it has no record of them. Until the answer
+  // comes, neither is said.
+  const callsBefore = calls.answered && (!calls.since || days.to < calls.since);
   const callsSince = calls.since ? points.findIndex(point => point.to >= calls.since!) : -1;
   const lineLabel = useLineLabel();
   const overlay = (key: Amount) => { const values = perFinished(key), top = lineTop(values, steady, inSpan);
@@ -190,8 +191,9 @@ export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days
       </Row>
       <Row row={first + 3} left={<>
         <div className={cn("transition-opacity duration-(--motion-base)", !calls.current && "opacity-50")}>
-          {callsBefore ? <><RowName>{calls.name}</RowName><p className="mt-1 text-soft">{t("usage.none")}</p></>
-            : <Num className="" label={calls.name} kind="times" value={calls.total} previous={null} length={length}
+          {!calls.answered ? <RowName>{calls.name}</RowName>
+            : callsBefore ? <><RowName>{calls.name}</RowName><p className="mt-1 text-soft">{t("usage.none")}</p></>
+            : <Num className="" label={calls.name} kind="times" value={calls.total} previous={calls.previous} length={length}
               onOpen={() => open({ set: "used", value: "calls", group: calls.by, member: null })} />}
         </div>
         <CallsControls calls={calls} />
@@ -199,7 +201,7 @@ export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days
       </>}>
         {/* Each bin's count stacked by name, the most counted at the foot; the days before counting began hatched. */}
         <div className={cn("transition-opacity duration-(--motion-base)", !calls.current && "opacity-50")}>
-          <BarChart row={first + 3} height="h-30 narrow:h-24" scale={scales.calls} uncounted={i => !calls.series || calls.series[i] === null}
+          <BarChart row={first + 3} height="h-30 narrow:h-24" scale={scales.calls} uncounted={i => !!calls.series && calls.series[i] === null}
             partial={i => !!calls.since && points[i]!.from < calls.since && points[i]!.to >= calls.since}
             values={i => calls.parts(i).map(({ part, value }, at) => [part.color, value, at] as [string, number, number])} />
         </div>
@@ -212,7 +214,7 @@ export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days
     {leads}
     <ChartHead />
     {rows}
-    <Breakdown view={view} span={span} root={root} group={usageGroup} days={days} open={open} choose={next => choose({ usageGroup: next, all: false })} />
+    <Breakdown span={span} root={root} group={usageGroup} days={days} open={open} choose={next => choose({ usageGroup: next, all: false })} />
     {/* Every name the look shows, in cards in the order the rows show them. */}
     <Rules>
       <RuleCard><Rule name={t("def.tokensName")}>{t("def.tokensText")}{now.tokensUnknown > 0 && <p>{t("def.tokensUnknown", { count: now.tokensUnknown })}</p>}</Rule>
@@ -236,13 +238,12 @@ export const UsageLook = memo(function UsageLook({ view, span, root, tasks, days
 });
 
 /**
- * The AI's use broken down, read on its own when it comes near the screen (after the numbers above it), so choosing
- * another breakdown waits for this part alone. Skills, tools and MCP are counted from the day counting began (`since`):
- * their chart stands over the table, the days before that day hatched and that day named in ink on the axis; a span wholly before it has no
- * record, and no table.
+ * The AI's use broken down, as a table for every axis (the rows above carry the days), read on its own when it comes
+ * near the screen (after the numbers above it), so choosing another breakdown waits for this part alone. Skills, tools
+ * and MCP are counted from the day counting began (`since`): a span wholly before it has no record, and no table.
  */
-function Breakdown({ view, span, root, group, days, open, choose }: {
-  view: UsageView; span: Span; root: HTMLElement | null; group: UsageGroup; days: Days; open: Open; choose: (next: UsageGroup) => void;
+function Breakdown({ span, root, group, days, open, choose }: {
+  span: Span; root: HTMLElement | null; group: UsageGroup; days: Days; open: Open; choose: (next: UsageGroup) => void;
 }) {
   const { t } = useTranslation("analysis");
   const { bucket } = useChoices();
