@@ -22,6 +22,8 @@ const atEnd = (kind: string) => kind === "file" || kind === "edit";
 const ONE_LINE = "min-w-0 overflow-hidden text-ellipsis whitespace-pre font-mono";
 /** What it ran keeps at least a few letters in sight on one line, however long the tool's name and the agent's words. */
 const TARGET = "flex-1 min-w-[8ch]";
+/** A step's one line: as high with a command's monospace as with the agent's words, its parts centred on it. */
+const LINE = "flex min-w-0 items-center gap-1.5";
 /** A tool's name gives way before what it ran: it never takes more than this of the line. */
 const TOOL = "max-w-[40%] flex-none truncate text-muted";
 
@@ -73,7 +75,9 @@ const LineWords = memo(function LineWords({ line }: { line: Line }) {
 export function WorkLine({ step, idle, label, end, className, ...data }: { step: RunStep | undefined; idle?: string; label?: string; end?: ReactNode; className?: string;
   [data: `data-${string}`]: true | undefined }) {
   if (!step && !idle && !label) return null;
-  return <div data-work-line {...data} className={cn("flex min-w-0 items-baseline gap-1.5 text-soft", className)}>
+  // Centred, not on one baseline: words and a command's monospace sit on different baselines, which would make a line
+  // with a command a pixel taller than one without (LINE).
+  return <div data-work-line {...data} className={cn(LINE, "text-soft", className)}>
     <WorkMark />
     {label !== undefined ? <span className="min-w-0 flex-1 truncate">{label}</span>
       : step ? <LineWords line={step} /> : <span className="min-w-0 flex-1 truncate">{idle}</span>}
@@ -238,7 +242,7 @@ const StepRow = memo(function StepRow({ run, step, generation, open, toggle, aga
   }, [shown]);
   return <li ref={item} data-run-step={step.state} className="min-w-0">
     <button type="button" aria-expanded={open} onClick={() => toggle(step)}
-      className="flex w-full min-w-0 cursor-pointer items-baseline gap-1.5 rounded-sm py-0.5 text-left text-soft outline-none hover:text-ink focus-visible:outline-2 focus-visible:outline-ring narrow:py-1.5">
+      className="flex w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-sm py-0.5 text-left text-soft outline-none hover:text-ink focus-visible:outline-2 focus-visible:outline-ring narrow:py-1.5">
       <span data-run-step-mark className={cn("w-2.5 flex-none text-center font-sans", step.state === "failed" ? "text-error" : step.state === "running" ? "text-working motion-safe:animate-pulse" : "text-muted")}>
         <span aria-hidden>{step.state === "running" ? "●" : step.state === "failed" ? "✗" : step.state === "unknown" ? "?" : "✓"}</span>
         <span className="sr-only">{step.state === "running" ? t("now.step.state.running") : step.state === "failed" ? t("now.step.state.failed")
