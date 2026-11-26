@@ -12,7 +12,7 @@ import { coordinatorStart, startValues, moveRow, newStackRow, repeatedRow, rowCh
 
 /** Which of config.yaml's two AI stacks a list edits: the one tasks run on (`aiStack`), or the input's (`coordinatorAiStack`). */
 export type StackKind = 'tasks' | 'coordinator';
-/** The id of each list's heading: the input's AI opens the settings onto its own (openSettings' `focus`). */
+/** The id of each list's heading: the input's AI and the bar's limits open the settings onto theirs (openSettings' `focus`). */
 export const stackHeadingId = (kind: StackKind) => `settings-ai-stack-${kind}`;
 /** The heading each list is named by, where a refused save says which list it is. */
 export const stackTitleKey = (kind: StackKind) => kind === 'tasks' ? 'agentSettings.aiStack.title' as const : 'agentSettings.coordinatorStack.title' as const;

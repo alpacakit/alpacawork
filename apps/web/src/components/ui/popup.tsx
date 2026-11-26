@@ -59,26 +59,33 @@ export function Popup({
   const narrow = useNarrow() && page === document;
   const [host] = React.useState(() => document.createElement("div"));
   const headingId = React.useId();
-  // Reattaching even to the same slot removes the focused descendant from the
-  // document. Only move the host when the surface actually changes.
-  const attach = React.useCallback((slot: HTMLElement | null) => {
-    if (slot && host.parentNode !== slot) slot.appendChild(host);
-  }, [host]);
   // The element focused when this opened (and, should it go, what opened the surface it stood in), to give the
   // focus back on close. The anchor is not a Radix trigger and the sheet is mounted before it opens, so neither
   // surface can remember that itself.
   const opener = React.useRef<Element[]>([]);
+  // Kept on the body and on the whole surface (its heading's buttons included), each time it is written, so whatever
+  // inside reads the opener of this opening: the nearest record to an element is the one it reads.
+  const remember = React.useCallback(() => {
+    rememberOpener(host, opener.current);
+    const surface = host.closest('[role="dialog"]');
+    if (surface) rememberOpener(surface, opener.current);
+  }, [host]);
+  // Reattaching even to the same slot removes the focused descendant from the
+  // document. Only move the host when the surface actually changes.
+  const attach = React.useCallback((slot: HTMLElement | null) => {
+    if (slot && host.parentNode !== slot) { slot.appendChild(host); remember(); }
+  }, [host, remember]);
   const wasOpen = React.useRef(false);
   // What has the focus inside the popup, for the surface that takes over when the width crosses 700px.
   const within = React.useRef<HTMLElement | null>(null);
   React.useLayoutEffect(() => {
     if (open && !wasOpen.current) {
       opener.current = openerChain(page.activeElement);
-      rememberOpener(host, opener.current);
+      remember();
       within.current = null;
     }
     wasOpen.current = open;
-  }, [open, host, page]);
+  }, [open, page, remember]);
   React.useEffect(() => {
     const note = (event: FocusEvent) => { within.current = event.target as HTMLElement; };
     host.addEventListener("focusin", note);

@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { ReadFailure } from "@/components/ui/loadable";
 import { cn } from "@/lib/utils";
 import { AgentSettings } from './AgentSettings';
-import { AiStack, stackHeadingId, stackTitleKey } from './AiStack';
+import { AiStack, stackHeadingId, stackTitleKey, type StackKind } from './AiStack';
 import { followRenames } from './ai-stack-draft';
 import { AgentObservationsProvider } from './AgentSettingsExecutable';
 import { EnvironmentFileLine, EnvironmentFileProblems, useEnvironmentFile } from './EnvironmentFile';
@@ -108,11 +108,11 @@ const useServerDraft = () => {
  * This PC's config.yaml as one draft for the whole settings dialog: what it was last read or saved as (with its hash),
  * saved when changed, all of it at once. The AI and General tabs each show a part of it with the same save row, so a
  * change made in one is saved from either. A save refused for a field takes the eye to it, in whichever tab it stands.
- * `focusCoordinatorAi`: asked again each time it changes (the dialog's request count): the input's AI stack is brought
- * into view with its heading focused, once the settings are read.
+ * `focusStack`: asked again each time its request (the dialog's request count) changes: that AI stack is brought into
+ * view with its heading focused, once the settings are read.
  */
-export function ServerDraftProvider({ show, focusCoordinatorAi, children }: {
-  show: (tab: ServerDraftTab) => void; focusCoordinatorAi?: number; children: ReactNode;
+export function ServerDraftProvider({ show, focusStack, children }: {
+  show: (tab: ServerDraftTab) => void; focusStack?: { kind: StackKind; request: number }; children: ReactNode;
 }) {
   const { t } = useTranslation("panels");
   const server = useServerSettings(true);
@@ -161,14 +161,15 @@ export function ServerDraftProvider({ show, focusCoordinatorAi, children }: {
   const actions = serverDraftActions({ dirty: isDirty, writable: !writeDisabled, saving: intent.status === "pending",
     unconfirmed: intent.status === "unconfirmed", otherWrite: intent.blocked,
     awaited: intent.status === "pending" || isSubmitting || reloading });
+  const focusKind = focusStack?.kind, focusRequest = focusStack?.request;
   useEffect(() => {
-    if (focusCoordinatorAi === undefined || !ready) return;
+    if (focusKind === undefined || !ready) return;
     afterPaint(() => {
-      const heading = document.getElementById(stackHeadingId('coordinator'));
+      const heading = document.getElementById(stackHeadingId(focusKind));
       heading?.closest('section')?.scrollIntoView?.({ block: 'start' });
       heading?.focus({ preventScroll: true });
     });
-  }, [focusCoordinatorAi, ready]);
+  }, [focusKind, focusRequest, ready]);
 
   const showStack = (field: StackField) => { show("ai"); afterPaint(() => focusStackIssue(field)); };
   /**

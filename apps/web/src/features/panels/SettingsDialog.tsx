@@ -44,6 +44,7 @@ const TABS = ["ai", "skills", "notifications", "projects", "general", "apps", "h
 
 export function SettingsBody({ initialTab = "ai", request, focus, inDialog = false }: { initialTab?: SettingsTab; request?: number; focus?: SettingsFocus; inDialog?: boolean }) {
   const focusNotifications = focus === "notifications";
+  const focusStack = focus === "tasksAi" ? "tasks" : focus === "coordinatorAi" ? "coordinator" : undefined;
   const { t } = useTranslation("panels");
   const coarsePointer = useCoarsePointer();
   const narrow = useNarrow();
@@ -81,7 +82,7 @@ export function SettingsBody({ initialTab = "ai", request, focus, inDialog = fal
     else if (chosen.right > bounds.right) row.scrollLeft += chosen.right - bounds.right;
   }, [tab]);
   return (
-    <ServerDraftProvider show={setTab} focusCoordinatorAi={focus === "coordinatorAi" ? request ?? 0 : undefined}>
+    <ServerDraftProvider show={setTab} focusStack={focusStack ? { kind: focusStack, request: request ?? 0 } : undefined}>
     <Tabs value={tab} orientation={narrow ? "horizontal" : "vertical"} onValueChange={(value) => setTab(value as SettingsTab)} className={cn("min-h-0 flex-1", !narrow && "flex-row")}>
       {/* A computer lists the sections down a tinted side, the dialog's title on its top line; a phone keeps them in a
           row that scrolls sideways, under the title. */}

@@ -26,9 +26,9 @@
     "barUnknown": "AI plan limits: {{agent}}'s limits could not be read",
     "barUnlimited": "AI plan limits: no limit holds {{agent}} now",
     "none": "No limits apply now",
+    "openStack": "Open “{{title}}” in settings",
     "place": {
       "model": "{{role}} ({{model}})",
-      "note": "What the header shows depends on the order in “{{title}}” in settings and on usage.",
       "notListed": "Not in “{{title}}”"
     },
     "readAgo_one": "Updated {{count}} min ago",

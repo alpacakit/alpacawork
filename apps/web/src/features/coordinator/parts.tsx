@@ -78,15 +78,16 @@ export function Thinking({ turn }: { turn: { id: string; at: string } }) {
 /* Hallmark · component: a turn's work in the open conversation, from its run to its answer · genre: modern-minimal ·
  * theme: the app's own tokens · states: at work with nothing run yet (the mark, "Working on it…", the seconds) · at work
  * (the latest words, then the mark, the step, the seconds, ⌄) · at work, open (the line counts the steps, every step so
- * far under it, ⌃) · answered (a small pill: the work's still mark, its words and ⌄ side by side) · answered, open (the
- * pill counts the steps, the steps' box under it, then the answer) · reading · not readable */
+ * far under it, ⌃) · answered (one quiet line at the answer's left edge: its words, then ›) · answered, open (the line
+ * counts the steps, ⌄, the steps' box under it, then the answer) · reading · not readable */
 /**
  * A turn's work, where the conversation is open, as one thing from its start to its answer. At work: its latest words,
  * then one line that says it all (the moving mark, the latest step or that it works, the seconds since the message),
- * which opens every step so far under it. Answered: one quiet pill, as wide as its words, in that line's place, above
- * the answer. It is the same press and the same list throughout, so what was opened or closed, a step opened in it and
- * the focus in it stay as they are when the answer comes; the list is read only while open, and once more when the work
- * ends, so no step is left at work.
+ * which opens every step so far under it. Answered: one quiet line, as wide as its words and at the answer's left
+ * edge, in that line's place, as far from the message over it as from the answer under it. It is the same press and
+ * the same list throughout, so what was opened or closed, a step opened in it and the focus in it stay as they are
+ * when the answer comes; the list is read only while open, and once more when the work ends, so no step is left at
+ * work.
  */
 export function TurnWork({ turn }: { turn: Pick<CoordinatorTurn, 'id' | 'at' | 'status' | 'workedBy'> }) {
   const { t } = useTranslation('ui'), { t: p } = useTranslation('people');
@@ -125,15 +126,14 @@ export function TurnWork({ turn }: { turn: Pick<CoordinatorTurn, 'id' | 'at' | '
   return <div>
     {running && mine?.words && <div data-working-words dir="auto" className="mb-2 [overflow-wrap:anywhere]"><MarkdownBody text={mine.words} task={null} variant="note" onFollow={followTask} /></div>}
     {/* The work line beside the message, at the size of its other states and the answer's own line. */}
-    <div ref={block} data-answer-steps={running ? undefined : ''} className={cn("scroll-mt-[max(3rem,calc(var(--pane-head,1.25rem)+1rem))] text-xs", !running && "mb-2")}>
+    <div ref={block} data-answer-steps={running ? undefined : ''} className={cn("scroll-mt-[max(3rem,calc(var(--pane-head,1.25rem)+1rem))] text-xs", !running && ANSWERED_PLACE)}>
     {!worked ? <WorkLine data-ask-thinking step={undefined} idle={t('coordinatorCard.thinking')} end={<WorkSeconds at={turn.at} />} />
-      : <button type="button" data-turn-work-line data-working-steps={running ? '' : undefined} aria-expanded={open} onClick={toggle} className={running ? STEPS_BUTTON : PILL}>
+      : <button type="button" data-turn-work-line data-working-steps={running ? '' : undefined} aria-expanded={open} onClick={toggle} className={running ? STEPS_BUTTON : ANSWERED_LINE}>
         {running ? <WorkLine data-ask-thinking step={mine?.steps.at(-1)} idle={t('coordinatorCard.thinking')} label={count === undefined ? undefined : p('now.step.count', { count })}
           className="min-w-0 flex-1 group-hover/steps:text-ink" end={<><WorkSeconds at={turn.at} /><Chevron open={open} /></>} />
-        : <><Icon name="code" className="size-3.5 flex-none text-muted group-hover/steps:text-ink" />
-          <span className="min-w-0 truncate">{count === undefined ? p('now.step.answered') : p('now.step.answeredCount', { count })}</span>
-          <Chevron open={open} /></>}</button>}
-    {worked && <StepList steps={steps} open={open} className={CHAT_LOG} />}
+        : <><span className="min-w-0 truncate">{count === undefined ? p('now.step.answered') : p('now.step.answeredCount', { count })}</span>
+          <Icon name="right" className={cn("size-3 flex-none text-muted transition-transform duration-(--motion-base) group-hover/steps:text-ink", open && "rotate-90")} /></>}</button>}
+    {worked && <StepList steps={steps} open={open} className={cn(CHAT_LOG, !running && ANSWERED_LOG)} />}
   </div></div>;
 }
 /**
@@ -142,8 +142,22 @@ export function TurnWork({ turn }: { turn: Pick<CoordinatorTurn, 'id' | 'at' | '
  * of a message is said).
  */
 const STEPS_BUTTON = "group/steps flex w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-sm -my-1 py-1 text-left outline-none focus-visible:outline-2 focus-visible:outline-ring narrow:min-h-11 narrow:-my-[calc((--spacing(11)-1lh)/2)]";
-/** The answered turn's way into its work: a pill as wide as its words, its arrow beside them, a finger's height on a phone. */
-const PILL = "group/steps inline-flex max-w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-full border border-line px-2.5 py-1 text-xs text-soft outline-none hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-ring aria-expanded:bg-hover aria-expanded:text-ink narrow:min-h-11 narrow:px-3";
+/**
+ * The answered turn's way into its work: one quiet line, its words at the answer's left edge and › after them. On a phone
+ * its press is a finger's height, overhanging the line by the room over and under it (ANSWERED_PLACE). Its focus ring
+ * is the app's own (base.css: shown while the keyboard is in use), so nothing here turns the outline off.
+ */
+const ANSWERED_LINE = "group/steps inline-flex max-w-full min-w-0 cursor-pointer items-center gap-1 rounded-sm -my-1 py-1 text-left text-muted hover:text-ink aria-expanded:text-ink narrow:-mt-(--press-up) narrow:-mb-(--press-down) narrow:pt-(--press-up) narrow:pb-(--press-down)";
+/**
+ * The answered line's letters stand as far from the message over it as from the answer's letters under it: the room over
+ * the line is the room under it and the answer's own half-leading, the white above the answer's letters in its line.
+ * Over it is the conversation's room between blocks (type-block of the answer's line, which the reply keeps over it
+ * already), so under it is half the answer's size. On a phone the two rooms are the press's overhang instead, a finger's
+ * height between them with the line, so the press covers neither the message nor the answer.
+ */
+const ANSWERED_PLACE = "mt-[calc(var(--text-base)*var(--text-base--line-height)/2)] mb-[calc(var(--text-base)/2)] narrow:[--press-up:calc((--spacing(11)-1lh)/2+(var(--text-base)*var(--text-base--line-height)-var(--text-base))/4)] narrow:[--press-down:calc((--spacing(11)-1lh)/2-(var(--text-base)*var(--text-base--line-height)-var(--text-base))/4)] narrow:mt-(--press-up) narrow:mb-(--press-down)";
+/** Open under the answered line on a phone, the steps start below the press's overhang, so their first step is pressed as itself. */
+const ANSWERED_LOG = "narrow:mt-(--press-down)";
 /** The conversation is short: its steps' box keeps the answer under it in sight, a step opened in it too. */
 const CHAT_LOG = "mt-1 max-h-[min(14rem,35vh)] narrow:max-h-[min(16rem,40vh)] has-[[data-run-step-open]]:max-h-[min(14rem,35vh)] narrow:has-[[data-run-step-open]]:max-h-[min(16rem,40vh)]";
 function Chevron({ open }: { open: boolean }) {

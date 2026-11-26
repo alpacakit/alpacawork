@@ -70,21 +70,17 @@ test.describe("phone", () => {
     await expect(sheet).toHaveCount(0);
   });
 
-  // Every divider in the limits sheet stands as far below the words over it, the closing note's included, whichever agent is last.
-  test("the limits sheet keeps one space above each divider", async ({ page, runtime }) => {
-    const observedAt = new Date().toISOString();
-    const ok = (adapter: string) => ({ adapter, state: "ok", account: null, observedAt,
+  // The limits sheet's gear closes it and opens the settings onto the order that decides the agent the bar shows.
+  test("the limits sheet's gear opens the settings onto the tasks' AI", async ({ page, runtime }) => {
+    const ok = (adapter: string) => ({ adapter, state: "ok", account: null, observedAt: new Date().toISOString(),
       windows: [{ kind: "weekly", minutes: 10_080, model: null, usedPercent: 30, resetsAt: null }] });
-    const pi = { adapter: "pi", state: "unsupported", account: null, observedAt: null, windows: [] };
-    await page.route("**/api/limits*", route => route.fulfill({ json: { stack: [{ adapter: "claude", model: null }], agents: [ok("claude"), ok("codex"), pi] } }));
+    await page.route("**/api/limits*", route => route.fulfill({ json: { stack: [{ adapter: "claude", model: null }], agents: [ok("claude"), ok("codex")] } }));
     await page.goto(runtime.origin);
     await page.locator("header [data-limits-trigger]").tap();
-    const gaps = await page.locator("[data-limits-menu]").evaluate(menu => {
-      const blocks = [...menu.querySelectorAll("[data-limit-agent]")];
-      const below = (block: Element) => block.lastElementChild!.getBoundingClientRect().bottom;
-      const dividers = [...blocks.slice(1), menu.querySelector(":scope > p")!];
-      return dividers.map((divider, at) => Math.round(divider.getBoundingClientRect().top - below(blocks[at]!)));
-    });
-    expect(new Set(gaps).size, `space above each divider: ${gaps}`).toBe(1);
+    await page.getByRole("button", { name: "Open “AI for tasks” in settings" }).tap();
+    await expect(page.locator("[data-limits-menu]")).toHaveCount(0);
+    const heading = page.getByRole("dialog").getByRole("heading", { name: "AI for tasks", exact: true });
+    await expect(heading).toBeFocused();
+    await expect(heading).toBeInViewport();
   });
 });
