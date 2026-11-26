@@ -211,8 +211,8 @@ export const TIME_SLOT = "inline-block min-w-[4.5em] text-right narrow:min-w-[3.
 /** The speed's slot on a phone, held while agents run so the columns stay put before a count arrives. */
 const NARROW_SPEED_SLOT = "inline-block min-w-[5ch] text-right tabular-nums";
 
-/** Room kept for the "+count" that stands for the agents left out. */
-const REST_WIDTH = 20, AGENT_GAP = 10;
+/** The gap between agents (gap-2.5). */
+const AGENT_GAP = 10;
 
 /**
  * Which agents run and how many: each agent's name and its count, most first, so a row says "claude 2  codex 1" at a
@@ -234,7 +234,9 @@ export function AgentCounts({ tasks }: { tasks: readonly Task[] }) {
     const widths = [...el.querySelectorAll<HTMLElement>("[data-agent]")].map((item) => item.offsetWidth);
     let count = widths.length;
     if (el.scrollWidth > el.clientWidth + 1) {
-      let used = REST_WIDTH;
+      // Room for the "+count" of all of them, its widest: a figure is about 0.6em, the plus about as wide.
+      const figure = 0.62 * parseFloat(getComputedStyle(el).fontSize);
+      let used = Math.ceil((String(agents.reduce((sum, [, n]) => sum + n, 0)).length + 1) * figure) + 2;
       count = 0;
       while (count < widths.length && used + widths[count]! + AGENT_GAP <= el.clientWidth) used += widths[count++]! + AGENT_GAP;
     }
