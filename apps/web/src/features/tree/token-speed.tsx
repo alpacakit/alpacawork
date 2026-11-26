@@ -11,7 +11,7 @@ import { useTranslation } from "react-i18next";
 import { runOutputSpeed, type RunOutputSpeed } from "@alpacawork/contract/run";
 import { Icon } from "@/components/ui/icon";
 import type { Task } from "@/data/types";
-import { useWorkspaceStore, type WorkspaceData } from "@/data/workspace-store";
+import { useWorkspaceSelector, useWorkspaceStore, type WorkspaceData } from "@/data/workspace-store";
 import { runningRunsSaid, shortLength } from "@/domain/row-status";
 import { cn } from "@/lib/utils";
 
@@ -37,6 +37,26 @@ function rowRunIds(task: Task, data: WorkspaceData): string[] {
   if (!runningRunsSaid(task)) return [];
   const own = (data.people.runsByTask.get(task.id) ?? []).filter((run) => run.state === "running").map((run) => run.id);
   return [...new Set([...own, ...(task.runsBelow ?? []).map(([id]) => id)])];
+}
+
+/**
+ * The agents running on rows and under them, by agent name, most first (then by name). The server counts them, so a
+ * Run no read has brought yet still counts: the count its Runs do not name stands under null.
+ */
+export function runningAgents(tasks: readonly Task[], data: WorkspaceData): [string | null, number][] {
+  const counts = new Map<string | null, number>();
+  for (const task of tasks) {
+    let named = 0;
+    for (const id of rowRunIds(task, data)) {
+      const agent = data.people.runs.get(id)?.agent;
+      if (!agent) continue;
+      named++;
+      counts.set(agent, (counts.get(agent) ?? 0) + 1);
+    }
+    const unnamed = runningRunsSaid(task) - named;
+    if (unnamed > 0) counts.set(null, (counts.get(null) ?? 0) + unnamed);
+  }
+  return [...counts].sort(([a, x], [b, y]) => y - x || (a === null ? 1 : b === null ? -1 : a.localeCompare(b)));
 }
 
 /**
@@ -186,23 +206,42 @@ export function HeadingTokenSpeed({ tops, compact }: { tops: readonly Task[]; co
   </span>;
 }
 
-/** The agents' slot at a row's end: the square and its count, right-aligned in a fixed width so the squares line up. */
-export const AGENT_SLOT = "inline-block min-w-[2.75em] text-right";
 /** The time's slot after it on In progress rows: a fixed width so the squares line up whatever the time says. */
 export const TIME_SLOT = "inline-block min-w-[4.5em] text-right narrow:min-w-[3.5em]";
 /** The speed's slot on a phone, held while agents run so the columns stay put before a count arrives. */
 const NARROW_SPEED_SLOT = "inline-block min-w-[5ch] text-right tabular-nums";
 
-/** The heading's agents in all, in the rows' square slot (with, on a phone, the total speed after it). */
-export function HeadingAgents({ tops, narrow }: { tops: readonly Task[]; narrow: boolean }) {
+/**
+ * Which agents run and how many: each agent's name and its count, most first, so a row says "claude 2  codex 1" at a
+ * glance. Past `shown` names the rest stand as one "+count", so a row's title keeps its room; its press lists them all.
+ * A count no loaded Run names keeps the square. Read as words, it is the total and then each agent's count.
+ */
+export function AgentCounts({ tasks, shown = 2 }: { tasks: readonly Task[]; shown?: number }) {
   const { t } = useTranslation("tree");
+  const key = useWorkspaceSelector((data) => JSON.stringify(runningAgents(tasks, data)));
+  const agents = JSON.parse(key) as [string | null, number][];
+  if (!agents.length) return null;
+  const total = agents.reduce((sum, [, count]) => sum + count, 0);
+  const words = agents.map(([agent, count]) => `${agent ?? "?"} ${count}`).join(", ");
+  const named = agents.length > shown ? agents.slice(0, shown - 1) : agents;
+  const rest = agents.slice(named.length).reduce((sum, [, count]) => sum + count, 0);
+  return <span data-agent-counts title={words} className="flex flex-none items-baseline gap-2.5 whitespace-nowrap tabular-nums">
+    <span className="sr-only">{`${t("status.runningRuns", { count: total })}: ${words}`}</span>
+    {named.map(([agent, count]) => <span key={agent ?? ""} aria-hidden="true">
+      {agent === null ? <Icon name="runningRuns" className="mr-0.5 inline size-[0.7em] align-[-0.02em] text-muted" />
+        : <span className="mr-1 text-muted">{agent}</span>}
+      <span className="text-ink/80">{count}</span>
+    </span>)}
+    {rest > 0 && <span aria-hidden="true" className="text-muted">+{rest}</span>}
+  </span>;
+}
+
+/** The heading's agents in all, as the rows say theirs (with, on a phone, the total speed after it). */
+export function HeadingAgents({ tops, narrow }: { tops: readonly Task[]; narrow: boolean }) {
   const agents = tops.reduce((sum, task) => sum + runningRunsSaid(task), 0);
   if (!agents) return null;
-  return <span data-heading-agents className="flex flex-none items-baseline gap-1.5 whitespace-nowrap text-xs font-normal tabular-nums text-muted">
-    <span className={AGENT_SLOT}>
-      <span aria-hidden="true"><Icon name="runningRuns" className="mr-0.5 inline size-[0.7em] align-[-0.02em]" />{agents}</span>
-      <span className="sr-only">{t("status.runningRuns", { count: agents })}</span>
-    </span>
+  return <span data-heading-agents className="flex min-w-0 items-baseline gap-1.5 whitespace-nowrap text-xs font-normal tabular-nums text-muted">
+    <AgentCounts tasks={tops} shown={3} />
     {narrow && <NarrowTotal tops={tops} />}
     <span aria-hidden="true" className={cn(TIME_SLOT, "invisible")}>0</span>
   </span>;
