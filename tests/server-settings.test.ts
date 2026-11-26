@@ -116,7 +116,7 @@ test('both AI stacks round-trip every selected value while the next launch displ
   owner.ask({ conversationId: conversation.id, id: crypto.randomUUID(), text: 'Synthetic message', attachments: [] });
   const store = new RunStore(root, { busyTimeoutMs: 1000 });
   try {
-    const launch = store.coordinatorRuns(conversation.id)[0]!.launch;
+    const launch = store.coordinatorHead(conversation.id)!.launch;
     assert.deepEqual(launch.values, expected[0]!.values);
     assert.ok(!launch.argv.includes('--effort'));
   } finally { store.close(); }

@@ -1,5 +1,5 @@
-import { announceConversation } from './conversation-fixture';
-import { snapshotJson } from './conversation-fixture';
+import { announceConversation, SERVED, type FixtureTurn } from './conversation-fixture';
+import { snapshotJson, messageJson } from './conversation-fixture';
 import { setConversationState } from './conversation-fixture';
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -18,7 +18,7 @@ import { setAutoSwipe } from "../src/features/reader/next-question";
 import * as messageTimes from '../src/features/coordinator/message-time';
 import { useDialogStore } from '../src/state/dialog-store';
 
-const empty = { id: "conversation-1", nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as 'none' | 'preparing' | 'ready' | 'failed', busy: false, cancelled: [], turns: [] };
+const empty = { id: "conversation-1", nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns: [] };
 const turn = { id: "turn-1", at: new Date().toISOString(), ask: "T13 ?", tasks: ["T13"],
   attachments: [], status: "running", waiting: false, answer: null, seen: false, answeredAt: null, error: null, result: null };
 /** The fetches a test answers; the skills catalog is answered for the AI the conversation goes to. */
@@ -46,7 +46,7 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); setConversationState({ conve
 
 test('selecting another Task leaves an unengaged conversation thread alone, while new turns and language still redraw it', async () => {
   await i18n.changeLanguage('en');
-  const first: CoordinatorTurn = { ...turn, status: 'succeeded', answer: 'Stable answer', answeredAt: turn.at, seen: true };
+  const first: FixtureTurn = { ...turn, status: 'succeeded', answer: 'Stable answer', answeredAt: turn.at, seen: true };
   setConversationState({ conversation: { ...empty, turns: [first] }, open: false, expanded: false, engaged: false, read: true });
   useViewStore.setState({ selected: null, reader: { ...useViewStore.getState().reader, open: false } });
   const get = vi.fn().mockImplementation(() => { throw new Error('an unengaged card must not fetch'); });
@@ -102,7 +102,7 @@ test("a failed turn says its cause and then the Run's error words in full, and o
   await i18n.changeLanguage("en");
   const weekly = "You've hit your weekly limit · resets Nov 8, 8pm (Asia/Tokyo)";
   const long = `API Error: 500 ${"x".repeat(1500)}\nend`;
-  const failed = (id: string, failure?: CoordinatorTurn["failure"]): CoordinatorTurn =>
+  const failed = (id: string, failure?: CoordinatorTurn["failure"]): FixtureTurn =>
     ({ ...turn, id, status: "failed", waiting: false, error: "exit", answeredAt: new Date().toISOString(), seen: true, ...failure ? { failure } : {} });
   stubFetch(vi.fn().mockResolvedValue(reply({ ...empty })));
   for (const [shown, reason, words] of [
@@ -123,7 +123,7 @@ test("a failed turn says its cause and then the Run's error words in full, and o
 test("a folded exchange and the folded conversation say the cause, not the Run's words", async () => {
   await i18n.changeLanguage("en");
   const weekly = "You've hit your weekly limit · resets Nov 8, 8pm (Asia/Tokyo)";
-  const failed: CoordinatorTurn = { ...turn, id: "weekly", status: "failed", waiting: false, error: "exit", seen: true,
+  const failed: FixtureTurn = { ...turn, id: "weekly", status: "failed", waiting: false, error: "exit", seen: true,
     answeredAt: new Date().toISOString(), failure: { cause: "weekly_limit", message: weekly } };
   stubFetch(vi.fn().mockResolvedValue(reply({ ...empty })));
   setConversationState({ conversation: { ...empty, turns: [failed] }, open: true, expanded: false, read: true });
@@ -143,7 +143,7 @@ test("a folded exchange and the folded conversation say the cause, not the Run's
 
 test("a busy turn can be sent again from the card", async () => {
   await i18n.changeLanguage("en");
-  const failed: CoordinatorTurn = { ...turn, status: "failed", waiting: false, error: "conversation_busy", answeredAt: new Date().toISOString(), seen: true };
+  const failed: FixtureTurn = { ...turn, status: "failed", waiting: false, error: "conversation_busy", answeredAt: new Date().toISOString(), seen: true };
   setConversationState({ conversation: { ...empty, turns: [failed] }, open: true, expanded: true, read: true });
   const fetcher = vi.fn().mockResolvedValue(reply({ ...empty, turns: [failed, { ...turn, id: "retry-1", status: "queued", waiting: true }] }));
   stubFetch(fetcher);
@@ -157,7 +157,7 @@ test("a turn sent again goes with the reply reference as well as the questions i
   await i18n.changeLanguage("en");
   const replyTo = { id: "source-request", answeredAt: new Date().toISOString(), head: "Original answer" };
   const answers = ["L-first", "L-second"].map(question => ({ task: "T13", question }));
-  const failed: CoordinatorTurn = { ...turn, status: "failed", waiting: false, error: "conversation_busy", answeredAt: new Date().toISOString(), seen: true, answers, replyTo };
+  const failed: FixtureTurn = { ...turn, status: "failed", waiting: false, error: "conversation_busy", answeredAt: new Date().toISOString(), seen: true, answers, replyTo };
   setConversationState({ conversation: { ...empty, turns: [failed] }, open: true, expanded: true, read: true });
   const fetcher = vi.fn().mockResolvedValue(reply({ ...empty, turns: [failed, { ...turn, id: "retry-1", status: "queued", waiting: true, answers }] }));
   stubFetch(fetcher);
@@ -171,7 +171,7 @@ test("a turn sent again goes with the reply reference as well as the questions i
 
 test("a server accepted message appears and a later read supplies its answer", async () => {
   const fetcher = vi.fn().mockResolvedValueOnce(reply(empty))
-    .mockResolvedValueOnce(reply({ ...empty, turns: [turn] }))
+    .mockResolvedValueOnce(new Response(messageJson({ ...empty, turns: [turn as FixtureTurn] }, turn.id)))
     .mockResolvedValueOnce(reply({ ...empty, turns: [{ ...turn, status: "succeeded", waiting: false, answer: "Checked", answeredAt: new Date().toISOString() }] }));
   stubFetch(fetcher);
   await useConversation.getState().refresh();
@@ -187,8 +187,8 @@ test("a server accepted message appears and a later read supplies its answer", a
 
 test("folded, a failed last turn says it failed, not the answer before it", async () => {
   await i18n.changeLanguage("en");
-  const earlier: CoordinatorTurn = { ...turn, id: "turn-0", status: "succeeded", waiting: false, answer: "Previous answer.Continued", answeredAt: "2026-10-16T08:00:00.000Z" };
-  const failed: CoordinatorTurn = { ...turn, status: "failed", waiting: false, error: "conversation_busy", answeredAt: "2026-10-16T09:00:00.000Z" };
+  const earlier: FixtureTurn = { ...turn, id: "turn-0", status: "succeeded", waiting: false, answer: "Previous answer.Continued", answeredAt: "2026-10-16T08:00:00.000Z" };
+  const failed: FixtureTurn = { ...turn, status: "failed", waiting: false, error: "conversation_busy", answeredAt: "2026-10-16T09:00:00.000Z" };
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue(reply({ ...empty, turns: [earlier, failed] })));
   render(<TestWorkspace data={screenData(tree({ tasks: [dto(), dto({ id: "T13" })] }))}><CoordinatorCard /></TestWorkspace>);
   await act(() => useConversation.getState().refresh());
@@ -201,126 +201,26 @@ test("clear replaces the conversation and ignores a stale read", async () => {
   let release!: (value: Response) => void;
   const stale = new Promise<Response>(resolve => { release = resolve; });
   vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(reply({ ...empty, turns: [turn] }))
-    .mockReturnValueOnce(stale).mockResolvedValueOnce(reply({ id: "conversation-2", nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [] })));
+    .mockReturnValueOnce(stale).mockResolvedValueOnce(reply({ id: "conversation-2", nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns: [] })));
   await useConversation.getState().refresh();
   const pending = useConversation.getState().refresh();
   await useConversation.getState().clear();
   release(reply({ ...empty, turns: [turn] }));
   await pending;
-  expect(useConversation.getState().conversation).toEqual({ id: "conversation-2", nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [] });
+  expect(useConversation.getState().conversation).toEqual({ id: "conversation-2", nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns: [] });
 });
 
-test("the input standing at the foot does not warm a new conversation up; opening the conversation warms it once", async () => {
-  await i18n.changeLanguage("en");
-  const fetcher = vi.fn().mockResolvedValueOnce(reply(empty)).mockResolvedValueOnce(reply({ ...empty, warm: 'preparing' as const, busy: true }))
-    .mockResolvedValue(reply({ ...empty, warm: 'preparing' as const, busy: true }));
-  stubFetch(fetcher);
-  render(<TestWorkspace data={screenData(tree({ tasks: [dto(), dto({ id: "T13" })] }))}><CoordinatorCard /></TestWorkspace>);
-  await act(() => useConversation.getState().refresh());
-  await waitFor(() => expect(useConversation.getState().conversation?.id).toBe(empty.id));
-  // Standing there from the page's start is not turning to it: nothing is loaded in the background yet.
-  expect(fetcher.mock.calls.filter(([url]) => url === "/api/coordinator/warm")).toHaveLength(0);
-  act(() => useConversation.getState().setExpanded(true));
-  await waitFor(() => expect(fetcher.mock.calls.filter(([url]) => url === "/api/coordinator/warm")).toHaveLength(1));
-  const warms = fetcher.mock.calls.filter(([url]) => url === "/api/coordinator/warm");
-  expect(warms).toHaveLength(1);
-  expect(JSON.parse(warms[0]![1].body)).toEqual({ conversationId: "conversation-1" });
-  // Already warming, a later open does not ask again.
-  act(() => { useConversation.getState().setExpanded(false); useConversation.getState().setExpanded(true); });
-  await waitFor(() => expect(fetcher.mock.calls.filter(([url]) => url === "/api/coordinator").length).toBeGreaterThan(1));
-  expect(fetcher.mock.calls.filter(([url]) => url === "/api/coordinator/warm")).toHaveLength(1);
-});
-
-test("a conversation that has messages is not warmed up and shows no getting ready", async () => {
-  const fetcher = vi.fn().mockResolvedValue(reply({ ...empty, turns: [{ ...turn, status: "succeeded", waiting: false, answer: "Done", answeredAt: new Date().toISOString(), seen: true }] }));
-  stubFetch(fetcher);
-  render(<TestWorkspace data={screenData(tree({ tasks: [dto(), dto({ id: "T13" })] }))}><CoordinatorCard /></TestWorkspace>);
-  act(() => useConversation.getState().setExpanded(true));
-  await waitFor(() => expect(document.querySelector("[data-ask-answer]")?.textContent).toBe("Done"));
-  expect(fetcher.mock.calls.filter(([url]) => url === "/api/coordinator/warm")).toHaveLength(0);
-  expect(document.querySelector("[data-coordinator-warm]")).toBeNull();
-});
-
-test("a cleared conversation says how far the coordinator has got ready, offers examples unless it failed, and nothing once it has a message", async () => {
+test("an empty conversation greets with four examples, and nothing of it once it has a message", async () => {
   await i18n.changeLanguage("ja");
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue(reply(empty)));
-  setConversationState({ conversation: { ...empty, warm: "preparing" }, open: true, expanded: true, read: true });
+  setConversationState({ conversation: empty, open: true, expanded: true, read: true });
   render(<TestWorkspace data={screenData(tree({ tasks: [dto(), dto({ id: "T13" })] }))}><CoordinatorCard /></TestWorkspace>);
-  const row = () => document.querySelector<HTMLElement>("[data-coordinator-warm]");
-  // The one status line goes through the states the person reads; four examples to start from stand under it, except
-  // when it could not start.
-  const says = (state: string, words: string) => {
-    expect(row()?.dataset.coordinatorWarm).toBe(state);
-    expect(row()?.querySelector('[role="status"]')?.textContent).toBe(words);
-    expect(row()?.querySelectorAll("[data-warm-example]")).toHaveLength(state === "failed" ? 0 : 4);
-  };
-  says("preparing", "コーディネーターを起動中です");
-  act(() => setConversationState({ conversation: { ...empty, warm: "ready" } }));
-  says("ready", "こんにちは。何をお手伝いしますか？");
-  act(() => setConversationState({ conversation: { ...empty, warm: "failed" } }));
-  says("failed", "コーディネーターの起動に失敗しました。");
-  // Before the server has a warm-up, the page's own ask stands for it: about to go or on its way, then refused.
-  act(() => setConversationState({ conversation: { ...empty, warm: "none" } }));
-  says("preparing", "コーディネーターを起動中です");
-  act(() => setConversationState({ warmRefused: empty.id }));
-  says("failed", "コーディネーターの起動に失敗しました。");
-  act(() => setConversationState({ warmRefused: null }));
-  act(() => setConversationState({ conversation: { ...empty, warm: "ready", turns: [{ ...turn, status: "succeeded", waiting: false, answer: "Done", answeredAt: new Date().toISOString() }] } }));
+  const start = () => document.querySelector<HTMLElement>("[data-coordinator-start]");
+  expect(start()?.querySelector("h2")?.textContent).toBe("こんにちは。何をお手伝いしますか？");
+  expect(start()?.querySelectorAll("[data-warm-example]")).toHaveLength(4);
+  act(() => setConversationState({ conversation: { ...empty, turns: [{ ...turn, status: "succeeded", waiting: false, answer: "Done", answeredAt: new Date().toISOString() }] } }));
   await waitFor(() => expect(document.querySelector("[data-ask-answer]")?.textContent).toBe("Done"));
-  expect(row()).toBeNull();
-});
-
-test("a first message sent while the coordinator is still getting ready takes the getting-ready line's place", async () => {
-  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(reply(empty)));
-  // Serve holds the message behind its warm-up: queued and waiting, in no list but the thread's end.
-  setConversationState({ conversation: { ...empty, warm: "preparing", busy: true, turns: [{ ...turn, status: "queued", waiting: true }] }, open: true, expanded: true, read: true });
-  render(<TestWorkspace data={screenData(tree({ tasks: [dto(), dto({ id: "T13" })] }))}><CoordinatorCard /></TestWorkspace>);
-  expect(document.querySelector("[data-coordinator-waiting]")).not.toBeNull();
-  expect(document.querySelector("[data-coordinator-warm]")).toBeNull();
-});
-
-test("a warm-up the server refuses leaves the cleared conversation saying it could not get ready", async () => {
-  await i18n.changeLanguage("ja");
-  const fetcher = vi.fn(async (url: string) => url === "/api/coordinator/warm"
-    ? new Response(JSON.stringify({ error: { code: "internal", message: "down" } }), { status: 500 }) : reply(empty));
-  stubFetch(fetcher);
-  render(<TestWorkspace data={screenData(tree({ tasks: [dto(), dto({ id: "T13" })] }))}><CoordinatorCard /></TestWorkspace>);
-  await act(() => useConversation.getState().refresh());
-  act(() => useConversation.getState().setExpanded(true));
-  await waitFor(() => expect(fetcher.mock.calls.filter(([url]) => url === "/api/coordinator/warm")).toHaveLength(1));
-  await waitFor(() => expect(document.querySelector("[data-coordinator-warm]")?.textContent).toBe("コーディネーターの起動に失敗しました。"));
-  expect(useConversation.getState().warmRefused).toBe(empty.id);
-});
-
-test("a late refusal of an earlier conversation's warm-up neither replaces the shown one's nor says it", async () => {
-  await i18n.changeLanguage("ja");
-  let refuseEarlier!: () => void;
-  const earlier = new Promise<Response>(resolve => { refuseEarlier = () => resolve(new Response(JSON.stringify({ error: { code: "internal", message: "down" } }), { status: 500 })); });
-  const refused = () => new Response(JSON.stringify({ error: { code: "internal", message: "down" } }), { status: 500 });
-  const fetcher = vi.fn(async (url: string, init?: RequestInit) => url !== "/api/coordinator/warm" ? reply(empty)
-    : JSON.parse(String(init?.body)).conversationId === "conversation-a" ? earlier : refused());
-  stubFetch(fetcher);
-  setConversationState({ conversation: { ...empty, id: "conversation-a" }, open: true, warmRefused: null });
-  const asking = useConversation.getState().warm();
-  await waitFor(() => expect(fetcher.mock.calls.filter(([url]) => url === "/api/coordinator/warm")).toHaveLength(1));
-  setConversationState({ conversation: { ...empty, id: "conversation-b" } });
-  await act(() => useConversation.getState().warm());
-  expect(useConversation.getState().warmRefused).toBe("conversation-b");
-  refuseEarlier(); await act(() => asking);
-  expect(useConversation.getState().warmRefused).toBe("conversation-b");
-});
-
-test("with no adapter configured the warm-up is asked all the same, and its refusal is said", async () => {
-  await i18n.changeLanguage("ja");
-  const fetcher = vi.fn(async (url: string, _init?: RequestInit) => url === "/api/coordinator/warm"
-    ? new Response(JSON.stringify({ error: { code: "invalid_settings", message: "No configured agent can be the coordinator" } }), { status: 400 }) : reply(empty));
-  stubFetch(fetcher);
-  render(<TestWorkspace data={screenData(tree({ tasks: [dto(), dto({ id: "T13" })], profiles: [] }))}><CoordinatorCard /></TestWorkspace>);
-  await act(() => useConversation.getState().refresh());
-  act(() => useConversation.getState().setExpanded(true));
-  await waitFor(() => expect(fetcher.mock.calls.filter(([url]) => url === "/api/coordinator/warm")).toHaveLength(1));
-  expect(JSON.parse(fetcher.mock.calls.find(([url]) => url === "/api/coordinator/warm")![1]!.body as string)).toEqual({ conversationId: empty.id });
-  await waitFor(() => expect(document.querySelector("[data-coordinator-warm]")?.textContent).toBe("コーディネーターの起動に失敗しました。"));
+  expect(start()).toBeNull();
 });
 
 test("an answer is drawn by the reports' Markdown and task references open the task through their card", async () => {
@@ -390,13 +290,13 @@ test("a send's answer arriving after a newer read of the conversation does not b
   const pending = useConversation.getState().ask({ conversationId: useConversation.getState().conversation!.id, id: turn.id, text: turn.ask, attachments: [] });
   announceConversation("a:answered");
   await waitFor(() => expect(useConversation.getState().conversation?.turns[0]?.answer).toBe("final answer"));
-  release(reply({ ...empty, turns: [{ ...turn, status: "queued", waiting: true }] }));
+  release(new Response(messageJson({ ...empty, turns: [{ ...turn, status: "queued", waiting: true }] }, turn.id)));
   expect(await pending).toBe(true);
   expect(useConversation.getState().conversation?.turns[0]?.answer).toBe("final answer");
 });
 
 test("a send that fails takes nothing from a read sent before it: the read's answer is shown", async () => {
-  setConversationState({ conversation: { ...empty, turns: [turn as CoordinatorTurn] }, open: false, read: true, error: null });
+  setConversationState({ conversation: { ...empty, turns: [turn as FixtureTurn] }, open: false, read: true, error: null });
   let release!: (value: Response) => void;
   const delayed = new Promise<Response>((resolve) => { release = resolve; });
   const done = { ...empty, turns: [{ ...turn, status: "succeeded", waiting: false, answer: "final answer", answeredAt: new Date().toISOString() }] };
@@ -410,25 +310,8 @@ test("a send that fails takes nothing from a read sent before it: the read's ans
   await waitFor(() => expect(useConversation.getState().conversation?.turns[0]?.answer).toBe("final answer"));
 });
 
-test("a warm-up that fails takes nothing from a read sent before it", async () => {
-  vi.spyOn(console, "warn").mockImplementation(() => {});
-  setConversationState({ conversation: empty, open: true, read: true, error: null });
-  let release!: (value: Response) => void;
-  const delayed = new Promise<Response>((resolve) => { release = resolve; });
-  const done = { ...empty, turns: [{ ...turn, status: "succeeded", waiting: false, answer: "elsewhere", answeredAt: new Date().toISOString() }] };
-  vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
-    if (String(input).endsWith("/warm")) throw new TypeError("warm offline");
-    return delayed;
-  }));
-  announceConversation("a:warm-failed");
-  await useConversation.getState().warm();
-  release(reply(done));
-  await waitFor(() => expect(useConversation.getState().conversation?.turns[0]?.answer).toBe("elsewhere"));
-  expect(useConversation.getState().error).toBeNull();
-});
-
 test("a late queue action cannot replace a newer completed conversation read", async () => {
-  setConversationState({ conversation: { ...empty, turns: [turn as CoordinatorTurn] }, open: false, read: true, error: null });
+  setConversationState({ conversation: { ...empty, turns: [turn as FixtureTurn] }, open: false, read: true, error: null });
   let release!: (value: Response) => void;
   const delayed = new Promise<Response>(resolve => { release = resolve; });
   const done = { ...empty, turns: [{ ...turn, status: 'succeeded', waiting: false, answer: 'newest answer', answeredAt: new Date().toISOString() }] };
@@ -436,14 +319,14 @@ test("a late queue action cannot replace a newer completed conversation read", a
   const action = useConversation.getState().messageAction('send-now', 'queued');
   announceConversation('a:queue-action-answered');
   await waitFor(() => expect(useConversation.getState().conversation?.turns[0]?.answer).toBe('newest answer'));
-  release(reply({ ...empty, turns: [{ ...turn, status: 'running', waiting: false }] }));
+  release(new Response(messageJson({ ...empty, turns: [{ ...turn, status: 'running', waiting: false }] }, 'queued')));
   await action;
   expect(useConversation.getState().conversation?.turns[0]?.answer).toBe('newest answer');
 });
 
 test("mounting a closed unread coordinator does not read it until it is opened", async () => {
   setConversationState({ conversation: null, open: false, read: false, error: null });
-  const fetcher = vi.fn().mockResolvedValue(reply({ ...empty, warm: 'preparing' as const, busy: true }));
+  const fetcher = vi.fn().mockResolvedValue(reply({ ...empty, busy: true }));
   stubFetch(fetcher);
   render(<TestWorkspace data={screenData(tree({ tasks: [dto(), dto({ id: "T13" })] }))}><CoordinatorCard /></TestWorkspace>);
   expect(document.querySelector('[data-coordinator-write]')).toBeTruthy();

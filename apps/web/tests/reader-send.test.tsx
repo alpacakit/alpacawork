@@ -1,4 +1,4 @@
-import { setConversationState } from './conversation-fixture';
+import { served, setConversationState, SERVED } from './conversation-fixture';
 import { answerTask } from './fixtures';
 import { useConversation } from '../src/features/coordinator/coordinator';
 import { labelled } from './fixtures';
@@ -53,7 +53,7 @@ const wrote = (kind: Write['kind'], more: Partial<Write> = {}): Write => ({ task
 /** The answer that closed `question` on T3. */
 const answered = (question: string) => result([wrote('answered', { question })]);
 const conversation = (id: string, status: CoordinatorTurn['status'] = 'running', outcome: CoordinatorResult | null = null) =>
-  ({ id: 'c', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [{ id, at: '', ask: '', attachments: [], status, waiting: status === "queued" || status === "sending", answer: null, seen: false, answeredAt: null, error: null, result: outcome }] });
+  served({ id: 'c', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns: [{ id, at: '', ask: '', attachments: [], status, waiting: status === "queued" || status === "sending", answer: null, seen: false, answeredAt: null, error: null, result: outcome }] });
 const receiptOf = (id: string) => [...useReaderSend.getState().receipts.values()].find(receipt=>receipt.root===scope.root&&receipt.conversationId===scope.conversationId&&receipt.id===id);
 /** The Run that answers the message ended, and the server says it wrote the answer that closed Q1. */
 const confirm = (id: string) => reconcileReaderSends(conversation(id, 'succeeded', answered('Q1')));
@@ -143,7 +143,7 @@ for (const failure of ['rejected', 'refused', 'cancelled'] as const) test(`last 
   moveOn([]);
   if (failure === 'cancelled') acknowledgeReaderSend('last', scope);
   if (failure === 'refused') failReaderSend('last', scope, new ApiError('Rejected before admission', 'conflict', 'fix'));
-  else if (failure === 'cancelled') reconcileReaderSends({ ...conversation('last'), cancelled: ['last'] });
+  else if (failure === 'cancelled') reconcileReaderSends({ ...conversation('last'), admitted: {}, cancelled: ['last'] });
   else failReaderSend('last', scope, new ApiError('Rejected', 'conflict', 'fix'));
   expect(useSitting.getState().emptied).toBeNull();
   expect(submittedAnswers()).toBeNull();
@@ -178,9 +178,9 @@ for (const move of ['close', 'reopen', 'other', 'other-and-back'] as const) test
 });
 test('cancellation releases only its pending receipt and cannot be rewound by a later queued snapshot', () => {
   captureReaderSend(doc, tasks, 'r1')();
-  reconcileReaderSends({ id: 'c', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: ['old'], turns: [] });
+  reconcileReaderSends({ id: 'c', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: ['old'], turns: [] });
   expect(useSitting.getState().departures[task.id]).toBeDefined();
-  reconcileReaderSends({ id: 'c', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: ['r1'], turns: [] });
+  reconcileReaderSends({ id: 'c', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: ['r1'], turns: [] });
   reconcileReaderSends(conversation('r1', 'queued'));
   expect(useSitting.getState().departures[task.id]?.status()).toBe('refused');
   expect(confirmedAnswers()).toEqual([]); expect(useSitting.getState().sent).toBeNull();
@@ -571,7 +571,7 @@ test('ordinary refusal observation is isolated by workspace, conversation, cance
   reconcileSends(response, '/other-root');
   reconcileSends({ ...response, id: 'other-conversation' }, scope.root);
   expect(error).not.toHaveBeenCalled();
-  reconcileReaderSends({ ...response, cancelled: ['scoped'] });
+  reconcileReaderSends({ ...response, admitted: {}, cancelled: ['scoped'] });
   reconcileReaderSends(response);
   expect(error).not.toHaveBeenCalled();
   captureReaderSend(plainDoc, tasks, 'closed')();

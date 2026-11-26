@@ -9,7 +9,7 @@ import { queryClient } from '@/data/query-client';
 import type { WriteBasis } from '@/data/connection';
 import { notify, recordFailure } from "@/lib/notify";
 import { ownsReaderSend, reconcileReaderSends, dismissRecoveredReaderSends, closeReaderConversation, observeReaderConversation } from './reader-send';
-import { awaitsDrawing, isolateConflicts, reconcileOutbox, rejectWithdrawal, beginWithdrawal, confirmStarted, cancelOutgoing, cancelBeforeSend, outgoingKey, resumeQueuedOutgoing, settleInterrupted, useOutbox } from './editor/outbox';
+import { awaitsDrawing, isolateConflicts, outgoing, reconcileOutbox, rejectWithdrawal, beginWithdrawal, confirmStarted, cancelOutgoing, cancelBeforeSend, outgoingKey, isLive, resumeQueuedOutgoing, settleInterrupted, useOutbox } from './editor/outbox';
 import { draftKey, useDraftStore } from '@/features/forms/draft-store';
 import { withdrawalStarted } from './delivery-copy';
 import { clearingConversation } from './press';
@@ -19,7 +19,7 @@ import { create } from "zustand";
 import { coordinatorAnswersInputSchema, type CoordinatorAnswers, type CoordinatorIntent } from "@alpacawork/contract/coordinator";
 import { onBackInReach, useConnection } from "@/data/connection";
 import { allRead, hasAnswer, learn, opening, type Opening } from "./read-boundary";
-import { askCoordinator, coordinatorMessageAction, clearCoordinator, markCoordinatorSeen, warmCoordinator, type CoordinatorConversation, type CoordinatorSnapshot } from "@/data/coordinator";
+import { askCoordinator, coordinatorMessageAction, clearCoordinator, resetCoordinator, readCoordinatorMessage, markCoordinatorSeen, type CoordinatorConversation, type CoordinatorSnapshot, type CoordinatorMessageResponse } from "@/data/coordinator";
 
 /** One question's answer in the input: its task, the asking it answers and its number there. */
 export type AnswerAt = { task: string; question: string; n: string };
@@ -57,7 +57,7 @@ type View = {
   written: number;
   /**
    * The person has turned to it (written in its input, opened its conversation, pressed its microphone):
-   * from then on what only writing needs is loaded (the skill catalog, the background warm-up).
+   * from then on what only writing needs is loaded (the skill catalog).
    */
   engaged: boolean;
   /** The one line's microphone pressed: the input comes up and records as soon as it can take the words. */
@@ -71,8 +71,11 @@ type View = {
   trying: boolean;
   /** How many requests this page has sent (ask: from the input, or sent again): the conversation goes to its end. */
   asked: number;
-  /** The conversation whose warm-up this page asked for and could not have taken (refused, or its answer lost). */
-  warmRefused: string | null;
+  /**
+   * Single messages' statuses this page has learnt, in their conversation (learnStatus): a snapshot holds recent turns
+   * only and names no withdrawal, so the conversation carries what these say (withLearnt).
+   */
+  learnt: { conversationId: string; statuses: Readonly<Record<string, CoordinatorMessageResponse['message']>> } | null;
   /** The last read failed: said by its toast (READ_FAILURE) until a read succeeds. */
   error: string | null;
   /** Closing the input folds the conversation too. */
@@ -94,7 +97,8 @@ type View = {
     intent?: CoordinatorIntent; answers?: CoordinatorAnswers; replyTo?: string | null; retryOf?: string }, basis?: WriteBasis, keepalive?: boolean) => Promise<boolean>;
   messageAction: (action: "withdraw" | "send-now", id: string) => Promise<void>;
   clear: () => Promise<void>;
-  warm: () => Promise<void>;
+  /** The coordinator starts again from the next message, with its memo; the conversation stays. */
+  reset: () => Promise<void>;
 };
 let revision = 0;
 /**
@@ -156,7 +160,7 @@ const currentInputKey = () => {
   return conversation ? draftKey(root, 'coordinator', conversation.id) : null;
 };
 /** One recovery rule for a pressed operation: one read, then fulfilled, still pending, or unknown. */
-type Action = 'send-now' | 'withdraw' | 'clear';
+type Action = 'send-now' | 'withdraw' | 'clear' | 'reset';
 type ActionResult = 'done' | 'pending' | 'unknown';
 function actionResult(action: Action, conversationId: string, id: string | undefined, next: CoordinatorConversation | null): ActionResult {
   if (!next) return 'unknown';
@@ -168,7 +172,12 @@ function actionResult(action: Action, conversationId: string, id: string | undef
   return 'pending';
 }
 async function checkAction(action: Action, conversationId: string, id?: string): Promise<ActionResult> {
-  try { await readConversationSnapshot(); }
+  try {
+    const read = (await readConversationSnapshot()).conversation;
+    // A message the snapshot no longer holds may have been withdrawn: its own status says so (a snapshot names none).
+    if (id && action !== 'clear' && read.id === conversationId && !read.turns.some(turn => turn.id === id))
+      learnStatus(conversationId, await readCoordinatorMessage(id));
+  }
   catch (error) {
     recordFailure(error, 'coordinator action check');
     // A newer accepted snapshot may already prove completion even if this read failed.
@@ -182,6 +191,8 @@ function sayActionFailure(action: Action, result: ActionResult, error: unknown, 
     ? result === 'pending' ? i18n.t('ui:coordinatorCard.withdrawFailed') : i18n.t('ui:coordinatorCard.withdrawUnknown')
     : action === 'clear'
     ? result === 'unknown' ? i18n.t('ui:coordinatorCard.clearUnknown') : i18n.t('ui:coordinatorCard.clearFailed')
+    : action === 'reset'
+    ? result === 'unknown' ? i18n.t('ui:coordinatorCard.reset.unknown') : i18n.t('ui:coordinatorCard.reset.failed')
     : result === 'unknown' ? i18n.t('ui:coordinatorCard.sendNowUnknown') : i18n.t('ui:coordinatorCard.sendNowFailed');
   // This Owner has checked the operation's result; the original transport retry no longer classifies its words.
   tell(text);
@@ -216,9 +227,10 @@ async function withdraw(root: string, conversation: CoordinatorConversation, mes
   const origin = sending();
   try {
     const next = await coordinatorMessageAction('withdraw', id, messageId);
-    const holdsTurn = next.conversation.turns.some(turn => turn.id === messageId);
-    if (next.conversation.id === id && !next.conversation.cancelled.includes(messageId) && !holdsTurn)
+    if (next.conversation.id === id && next.message.id !== messageId)
       throw new ApiError('Withdrawal response does not identify this request', 'invalid_response', 'check');
+    learnStatus(next.conversation.id, next.message);
+    const holdsTurn = next.message.status !== 'withdrawn' && next.message.status !== 'missing';
     if (next.root === origin.root && next.conversation.id === id && holdsTurn) confirmStarted(root, messageId);
     if (takeSnapshot(next, origin) === 'satisfied') await useConversation.getState().refresh();
   } catch (error) {
@@ -246,8 +258,62 @@ async function withdraw(root: string, conversation: CoordinatorConversation, mes
     throw error;
   } finally { withdrawal.finish(); }
 }
+type Learnt = Pick<CoordinatorConversation, 'cancelled' | 'admitted'>;
+const NOTHING_LEARNT: Learnt = { cancelled: [], admitted: {} };
+/** What the learnt statuses say, worked out once per set of them: the same arrays for every projection until it changes. */
+const learntOf = new WeakMap<object, Learnt>();
+function learnt(statuses: Readonly<Record<string, CoordinatorMessageResponse['message']>>): Learnt {
+  let said = learntOf.get(statuses);
+  if (!said) {
+    const all = Object.values(statuses);
+    said = all.length ? { cancelled: all.flatMap(status => status.status === 'withdrawn' ? [status.id] : []),
+      admitted: Object.fromEntries(all.flatMap(status => 'inputDigest' in status
+        ? [[status.id, { digest: status.inputDigest, ended: !['queued', 'sending', 'running'].includes(status.status) }]] : [])) } : NOTHING_LEARNT;
+    learntOf.set(statuses, said);
+  }
+  return said;
+}
+/** Serve's conversation with what this page has learnt of its messages: those withdrawn, and the inputs serve took. */
+export function withLearnt(conversation: CoordinatorSnapshot['conversation'], known = useConversationUi.getState().learnt): CoordinatorConversation {
+  return { ...conversation, ...known?.conversationId === conversation.id ? learnt(known.statuses) : NOTHING_LEARNT };
+}
+/**
+ * Statuses are kept while a send of this page's still waits to be settled by them: once its record is settled (drawn,
+ * withdrawn, refused), nothing reads its status again, so it is let go rather than kept for every send of the session.
+ */
+function keepLearntFor(root: string) {
+  const known = useConversationUi.getState().learnt;
+  if (!known) return;
+  const open = new Set(outgoing(useDraftStore.getState().entries, root, known.conversationId).map(item => item.requestId));
+  const ids = Object.keys(known.statuses), kept = ids.filter(id => open.has(id));
+  if (kept.length === ids.length) return;
+  useConversationUi.setState({ learnt: kept.length ? { conversationId: known.conversationId,
+    statuses: Object.fromEntries(kept.map(id => [id, known.statuses[id]!])) } : null });
+}
+/**
+ * One sent message's status read from serve, for a send whose answer was lost: what it says is kept (learnStatus), and
+ * the conversation given is returned with it.
+ */
+export async function withStatus(conversation: CoordinatorSnapshot['conversation'], id: string): Promise<CoordinatorConversation> {
+  learnStatus(conversation.id, await readCoordinatorMessage(id));
+  return withLearnt(conversation);
+}
+/**
+ * What one message's status says, kept for its conversation (a new conversation starts with none): withdrawn, or taken
+ * with the digest of its input. Missing says nothing to keep.
+ */
+function learnStatus(conversationId: string, message: CoordinatorMessageResponse['message']): boolean {
+  if (message.status === 'missing') return false;
+  const known = useConversationUi.getState().learnt, statuses = known?.conversationId === conversationId ? known.statuses : {};
+  const before = statuses[message.id];
+  // A withdrawal is final: a status read before it (an older answer arriving late) does not undo it.
+  if (before?.status === 'withdrawn' || before?.status === message.status && ('inputDigest' in before) === ('inputDigest' in message)) return false;
+  useConversationUi.setState({ learnt: { conversationId, statuses: { ...statuses, [message.id]: message } } });
+  return true;
+}
 type Taken = 'shown' | 'satisfied' | 'scope-lost';
-function take(next: CoordinatorConversation, origin: Sending, replace = false, drawable = true): Taken {
+function take(received: CoordinatorSnapshot['conversation'], origin: Sending, replace = false, drawable = true): Taken {
+  const next = withLearnt(received);
   const conflict = i18n.t('ui:coordinatorCard.conflict');
   // Facts are received even when this snapshot loses the display race; a turn under a sent request's ID with other
   // words is not a fact about that request.
@@ -268,6 +334,8 @@ function take(next: CoordinatorConversation, origin: Sending, replace = false, d
     if (drawn) reconcile(drawn, true);
     if (!drawn || awaitsDrawing(useDraftStore.getState().entries, origin.root, drawn)) void useConversation.getState().refresh();
   }
+  // Every snapshot drawn, the same as the one held or not, is a moment to ask after sends it does not hold.
+  if (taken === 'shown') { keepLearntFor(origin.root); void askAbsentSends(origin.root, next); }
   return taken;
 }
 function draw(next: CoordinatorConversation, origin: Sending, replace: boolean): Taken {
@@ -287,10 +355,17 @@ function draw(next: CoordinatorConversation, origin: Sending, replace: boolean):
   return 'shown';
 }
 
+/**
+ * The read marks this page holds: those of the turns served now only. Older ones count as read (serve's rule), so every
+ * way a mark arrives (a read, a drawing, a read receipt's answer) keeps the set within the range.
+ */
+function heldSeen(ids: Iterable<string>, conversation: Pick<CoordinatorConversation, 'turns'> | null): Set<string> {
+  const served = new Set(conversation?.turns.map(turn => turn.id));
+  return new Set([...ids].filter(id => served.has(id)));
+}
 function receive(next: CoordinatorConversation, request: number) {
   const state = useConversation.getState();
-  const seen = new Set(state.conversation?.id === next.id ? state.seen : []);
-  for (const turn of next.turns) if (turn.seen) seen.add(turn.id);
+  const seen = heldSeen([...state.conversation?.id === next.id ? state.seen : [], ...next.turns.flatMap(turn => turn.seen ? [turn.id] : [])], next);
 
   const previous = useConversation.getState().conversation;
   // The opening learns from this conversation's reads (another conversation takes its own: the store's subscription).
@@ -310,7 +385,7 @@ const useConversationUi = create<Ui>((set) => {
   const get = () => useConversation.getState();
   return ({
   root: '', opening: null,
-  seen: new Set(), pendingSeen: new Set(), seenError: null, open: false, expanded: false, focusRequested: false, written: 0, engaged: false, listen: false, wanted: false, asked: 0, warmRefused: null, error: null,
+  seen: new Set(), pendingSeen: new Set(), seenError: null, open: false, expanded: false, focusRequested: false, written: 0, engaged: false, listen: false, wanted: false, asked: 0, learnt: null, error: null,
   observeSeen: ids => {
     if (isAgentView() || readScope(queryClient)?.restored) return;
     const state = get(), valid = new Set(state.conversation?.turns.filter(hasAnswer).map(turn => turn.id));
@@ -373,8 +448,9 @@ const useConversationUi = create<Ui>((set) => {
       throw new ApiError(i18n.t('ui:input.questionsChanged'), 'conflict', 'reread');
     set(state => ({ asked: state.asked + 1 }));
     const next = await askCoordinator({ ...message, ...captured ? { answers: captured.data } : {} }, basis, keepalive);
-    if (next.conversation.id !== input.conversationId || !next.conversation.turns.some(turn => turn.id === input.id) && !next.conversation.cancelled.includes(input.id))
+    if (next.conversation.id !== input.conversationId || next.message.id !== input.id || next.message.status === 'missing')
       throw new ApiError('Coordinator response does not identify this request', 'unavailable', 'check');
+    learnStatus(next.conversation.id, next.message);
     takeSnapshot(next, origin);
     return inScope(origin);
   },
@@ -390,30 +466,24 @@ const useConversationUi = create<Ui>((set) => {
     revision++;
     await checkedAction('clear', id, undefined, () => clearCoordinator(id), true);
   },
-  /**
-   * Opened on a conversation with no message yet, the server loads the coordinator's instructions in the background.
-   * Only a speed-up: when it cannot start, the first message loads them itself.
-   */
-  warm: async () => {
-    const { conversation, open } = get();
-    if (!open || !conversation || conversation.turns.length || conversation.warm !== "none") return;
-    const origin = sending();
-    try {
-      const next = await warmCoordinator(conversation.id);
-      // A message sent meanwhile is newer than this answer; the next read brings both.
-      takeSnapshot(next, origin);
-      if (get().warmRefused === conversation.id) set({ warmRefused: null });
-    }
+  reset: async () => {
+    const id = get().conversation?.id;
+    if (!id) return;
+    // One press is one operation: serve keeps the reset it made under it, so a lost answer is checked by asking again
+    // with the same one (answered with that reset, or making it now), never by reading what the conversation holds.
+    const opId = crypto.randomUUID();
+    const post = async () => { const origin = sending(); if (takeSnapshot(await resetCoordinator(id, opId), origin) === 'satisfied') await get().refresh(); };
+    try { await post(); }
     catch (error) {
-      recordFailure(error, "coordinator warm-up");
-      // An earlier conversation's late refusal says nothing of the one shown now, nor takes its own away.
-      if (get().conversation?.id === conversation.id) set({ warmRefused: conversation.id });
+      if (retryOf(error) !== 'check') { sayActionFailure('reset', 'pending', error); throw error; }
+      try { await post(); }
+      catch (again) { sayActionFailure('reset', retryOf(again) === 'check' ? 'unknown' : 'pending', again); throw again; }
     }
   },
 });
 });
 /** The sole displayed conversation is a projection of QueryCache and session ACK evidence. */
-let projected: { ui: Ui; root: string; data: CoordinatorConversation | null; trying: boolean; view: View } | undefined;
+let projected: { ui: Ui; root: string; data: CoordinatorSnapshot['conversation'] | null; trying: boolean; view: View } | undefined;
 function conversationView(): View {
   const ui = useConversationUi.getState();
   const root = ui.root || readIndex(queryClient)?.root || '';
@@ -421,8 +491,9 @@ function conversationView(): View {
   const data = coordinatorReadState(queryClient, root).snapshot?.conversation ?? null;
   const trying = !!query && query.state.fetchStatus !== 'idle';
   if (projected?.ui === ui && projected.root === root && projected.data === data && projected.trying === trying) return projected.view;
-  const conversation = data && data.turns.some(turn => !turn.seen && ui.seen.has(turn.id))
-    ? { ...data, turns: data.turns.map(turn => ui.seen.has(turn.id) && !turn.seen ? { ...turn, seen: true } : turn) } : data;
+  const known = data && withLearnt(data, ui.learnt);
+  const conversation = known && known.turns.some(turn => !turn.seen && ui.seen.has(turn.id))
+    ? { ...known, turns: known.turns.map(turn => ui.seen.has(turn.id) && !turn.seen ? { ...turn, seen: true } : turn) } : known;
   const view: View = { ...ui, root, conversation, read: allRead(conversation), trying };
   projected = { ui, root, data, trying, view }; return view;
 }
@@ -472,7 +543,9 @@ function takeSnapshot(snapshot: CoordinatorSnapshot, origin: Sending, replace = 
     throw new ApiError('Conversation response answered another scope', 'invalid_response', 'check');
   // Persisted delivery facts survive a serve generation change; only drawing requires its read proof.
   const taken = take(snapshot.conversation, origin, replace, snapshot.generation === origin.proof.generation);
-  if (taken === 'shown') acceptCoordinatorSnapshot(queryClient, snapshot, origin.proof);
+  // The read keeps the snapshot alone: an answer's own facts (its message, its reset) are not part of it.
+  const { root, generation, revision, conversation } = snapshot;
+  if (taken === 'shown') acceptCoordinatorSnapshot(queryClient, { root, generation, revision, conversation }, origin.proof);
   return taken;
 }
 async function fetchSnapshot(fetch: () => Promise<CoordinatorSnapshot>): Promise<CoordinatorSnapshot> {
@@ -511,9 +584,8 @@ const inScope = (origin: Origin): boolean => {
   return sameReadSession(queryClient, origin.reception.boundary) && origin.id !== null && sameScope(origin, current);
 };
 function confirmSeen(ids: readonly string[]) {
-  const current = useConversation.getState(), seen = new Set(current.seen);
-  for (const id of ids) seen.add(id);
-  if (seen.size === current.seen.size) return;
+  const current = useConversation.getState(), seen = heldSeen([...current.seen, ...ids], current.conversation);
+  if (seen.size === current.seen.size && [...seen].every(id => current.seen.has(id))) return;
   useConversation.setState({ seen });
 }
 function queueSeen() {
@@ -534,10 +606,12 @@ async function sendSeen() {
     const accepted = new Set(ack.seen);
     if (ack.conversationId !== flight.origin.id || accepted.size !== flight.ids.length || flight.ids.some(id => !accepted.has(id)))
       throw new ApiError('Read acknowledgement does not identify the submitted replies', 'invalid_response', 'check');
-    const current = useConversation.getState(), pending = new Set(current.pendingSeen), seen = new Set(current.seen);
+    const current = useConversation.getState(), pending = new Set(current.pendingSeen);
     // An ACK knows only its request, never the observations added while it was in flight. Confirmed in the same
-    // update that drops them from pending, so no observer meets the same replies neither pending nor seen.
-    for (const id of flight.ids) { pending.delete(id); seen.add(id); }
+    // update that drops them from pending, so no observer meets the same replies neither pending nor seen; those the
+    // range has left meanwhile are read already.
+    for (const id of flight.ids) pending.delete(id);
+    const seen = heldSeen([...current.seen, ...flight.ids], current.conversation);
     useConversation.setState({ pendingSeen: pending, seen, seenError: null });
   } catch (error) {
     if (!inScope(flight.origin)) return;
@@ -579,16 +653,61 @@ const recoverOutbox = (root: string) => {
   settleInterrupted(root, i18n.t('ui:coordinatorCard.interrupted'));
   resumeQueuedOutgoing(root);
 };
+/**
+ * A send serve took that its snapshot no longer holds was withdrawn (here or on another page), or has ended among the
+ * turns older than the snapshot's: its own status says which. It is asked while the send's record stands unsettled (one
+ * question at a time); once its status settles the record, nothing is left to ask about.
+ */
+const statusAsking = new Set<string>();
+/**
+ * Sends serve said it does not have (missing): asked again only once that can have changed, the page back in reach or a
+ * send attempted again (a new snapshot alone does not change it).
+ */
+const statusMissing = new Set<string>();
+/** `received`: the snapshot just taken, before the read holds it (a first read has nothing held yet). */
+async function askAbsentSends(root: string, received: CoordinatorConversation) {
+  const conversation = received;
+  const absent = outgoing(useDraftStore.getState().entries, root, conversation.id).filter(item => (item.stage === 'posted' || item.stage === 'accepted')
+    && !statusAsking.has(item.requestId) && !statusMissing.has(item.requestId) && !isLive(item.key) && !conversation.turns.some(turn => turn.id === item.requestId)
+    // Withdrawn is final: its record settles with what is known.
+    && !conversation.cancelled.includes(item.requestId));
+  let learnt = false;
+  for (const item of absent) {
+    statusAsking.add(item.requestId);
+    try {
+      const status = await readCoordinatorMessage(item.requestId);
+      if (status.status === 'missing') statusMissing.add(item.requestId);
+      learnt = learnStatus(conversation.id, status) || learnt;
+    }
+    catch (error) { recordFailure(error, 'coordinator message status'); return; }
+    finally { statusAsking.delete(item.requestId); }
+  }
+  const now = useConversation.getState();
+  // Only what a status newly said can settle anything here.
+  if (learnt && now.root === root && now.conversation?.id === conversation.id) {
+    // As a snapshot's facts are taken: other words under its ID kept apart, then the rest settled.
+    isolateConflicts(now.conversation, root, i18n.t('ui:coordinatorCard.conflict'));
+    const result = reconcileOutbox(now.conversation, root, currentInputKey());
+    for (const id of result.restored) dismissRecoveredReaderSends(id, { root, conversationId: conversation.id });
+    reconcileReaderSends(now.conversation, root);
+    // Newly known to be taken and still at work, yet not in this snapshot: a newer one holds it. Asked once per status
+    // learnt, so a snapshot that keeps lacking it waits for the next change rather than reading again and again.
+    if (result.undrawn) void useConversation.getState().refresh();
+  }
+}
 useConversation.subscribe((next, before) => {
   if (next.conversation && (next.root !== before.root || next.conversation !== before.conversation)) recoverOutbox(next.root);
 });
 useOutbox.subscribe((next, before) => {
+  // A send attempted again (here, or a resend) can have reached serve since it was missing.
+  if ([...next.live].some(key => !before.live.has(key))) statusMissing.clear();
   const { root, conversation } = useConversation.getState();
   // Drafts that cannot be saved cannot change: the attempt has said so, and recovering would only take that notice away.
   if (conversation && next.live.size < before.live.size && !useDraftStore.getState().unavailable) recoverOutbox(root);
 });
 useConnection.subscribe((next, before) => { if (next.offline !== before.offline) sayReadFailure(); });
 onBackInReach(() => {
+  statusMissing.clear();
   const state = useConversation.getState();
   if (state.error) void state.refresh();
   state.resumeSeen();

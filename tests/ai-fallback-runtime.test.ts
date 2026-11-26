@@ -106,7 +106,8 @@ test('a worker uses a named model just for its request and retains the prior con
   finally { placements.close(); }
   const service = new TaskRequestService(h.root);
   const ask = async (body: string, aiStack?: AiStackPrefix, newConversation?: boolean) => {
-    const request = await service.request({ task: h.taskId, agent: placement.id, opId: randomUUID(), body, aiStack, newConversation,
+    const request = await service.request({ task: h.taskId, agent: placement.id, opId: randomUUID(), body, aiStack, newConversation, taken: 'addition',
+      ...(aiStack && { placedAs: 'policy' as const }),
       expectedTaskHash: currentTaskHash(h.root, h.taskId), expectedPlacementRevision: placement.revision },
     { kind: 'placement', placementId: h.ownerPlacementId },
     { kind: 'run', runId: owner.id, placementId: h.ownerPlacementId, taskId: h.taskId, role: 'owner', responsible: true });
@@ -179,7 +180,7 @@ test('a waiting worker request keeps its own stack when the preceding request na
   const service = new TaskRequestService(h.root);
   const ask = async (plan: object, aiStack?: AiStackPrefix) => {
     const request = await service.request({ task: h.taskId, agent: placement.id, opId: randomUUID(), body: JSON.stringify(plan), aiStack,
-      expectedTaskHash: currentTaskHash(h.root, h.taskId), expectedPlacementRevision: placement.revision },
+      ...(aiStack && { placedAs: 'policy' as const }), expectedTaskHash: currentTaskHash(h.root, h.taskId), expectedPlacementRevision: placement.revision },
     { kind: 'placement', placementId: h.ownerPlacementId },
     { kind: 'run', runId: owner.id, placementId: h.ownerPlacementId, taskId: h.taskId, role: 'owner', responsible: true });
     if (request.outcome.kind !== 'request_accepted') throw new Error('Worker request must be accepted');
@@ -251,7 +252,10 @@ test('a queued coordinator message follows the replacement conversation using th
     await until(() => receipts(h.root).some(item => item.pid === h.store.runtimeGet(active.id)?.pids.agent), 'the replacement receives the prompt');
     assert.equal(sourceMessage(h.store.connection, active.id, joined), joined);
     assert.throws(() => sourceMessage(h.store.connection, active.id, pending), { code: 'invalid_input' });
-    assert.match(receipts(h.root).find(item => item.pid === h.store.runtimeGet(active.id)?.pids.agent)!.prompt, /An extra instruction/);
+    const fallbackPrompt = receipts(h.root).find(item => item.pid === h.store.runtimeGet(active.id)?.pids.agent)!.prompt;
+    assert.equal(fallbackPrompt.split('An extra instruction').length, 2);
+    assert.equal(fallbackPrompt.split('Read the alpacawork skill').length, 2);
+    assert.deepEqual(conversation.read().resets, [], 'switching within one reply creates no separate history row');
     h.release('answer');
     await until(() => conversation.read().turns.filter(turn => turn.status === 'succeeded').length === 2, 'both replies arrive in order');
     const turns = conversation.read().turns;
@@ -268,6 +272,20 @@ test('a queued coordinator message follows the replacement conversation using th
     assert.equal(following?.resumes, active?.id);
     assert.equal(following?.session?.id, h.store.runtimeGet(active.id)?.session?.id);
     assert.equal(conversation.read().nextLaunch?.agent, 'codex');
+
+    // The next request goes back to the primary after its recorded window ends.
+    h.store.write(tx => {
+      const initial = h.store.connection.prepare('SELECT id FROM runs WHERE request_id=? AND attempt=0').get(first);
+      const expired = tx.runtimeGet(`R${initial?.id}`);
+      assert.ok(expired?.role === 'coordinator' && expired.state === 'failed');
+      tx.update({ ...expired, availability: { ...expired.availability!, resetsAt: '2000-01-01T00:00:00Z' } });
+    });
+    assert.equal(conversation.read().nextLaunch?.agent, 'claude');
+    const recovered = randomUUID();
+    send(recovered, { output: 'Primary reply' });
+    await until(() => conversation.read().turns.some(turn => turn.id === recovered && turn.status === 'succeeded'), 'primary replies again');
+    assert.equal(h.store.read().find(run => run.requestId === recovered)?.agent, 'claude');
+    assert.equal(conversation.read().resets.at(-1)?.reason.kind, 'recovered');
 
     const later = randomUUID();
     writeFileSync(join(h.root, 'config.yaml'), stringify({ ...h.config,

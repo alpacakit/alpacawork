@@ -1,4 +1,4 @@
-import { snapshotJson } from './conversation-fixture';
+import { snapshotJson, messageJson, serving, served, SERVED } from './conversation-fixture';
 import { setConversationState } from './conversation-fixture';
 import { answerTask } from './fixtures';
 import { labelled } from './fixtures';
@@ -31,7 +31,7 @@ import { WaitingReportActions } from "../src/features/reader/WaitingReportAction
 // The outbox and its projection keep a request in the conversation it
 // was sent to, take a turn for it only as it was sent, and settle it only where a drawn snapshot holds it.
 const root = "/fixture", cid = "old-conversation", key = draftKey(root, "coordinator", cid);
-const conv = (id = cid, turns: any[] = []) => ({ id, nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns });
+const conv = (id = cid, turns: any[] = []) => served({ id, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns });
 const values = (text = "", id: string = crypto.randomUUID()) => ({ body: "", doc: JSON.stringify(textDocument(text)), requestId: id });
 const fixed = (text = "sent") => ({ conversationId: cid, text, attachments: [] });
 const sentTurn = (id: string, ask = "sent", status = "running") => ({ id, at: new Date().toISOString(), ask, attachments: [], status, waiting: status === "queued" || status === "sending", answer: null, seen: false, answeredAt: null, error: null, result: null });
@@ -115,15 +115,51 @@ test("a card mounted again while a request is sent still draws it, from the outb
   await act(async () => { resolve(); await result; });
 });
 
+test("a send whose answer was lost and whose turn left the recent ones is settled by its own status", async () => {
+  const id = setup(); freeze(root, fixed(), useDraftStore.getState().entries[key]?.values ?? {}, { from: key });
+  const attempt = begin(root, id)!; attempt.check(); attempt.finish();
+  // Twenty newer exchanges since: the read holds none of it; its status says serve took this very input and answered.
+  const taken = conv(cid, [{ ...sentTurn(id, "sent", "succeeded"), answer: "done", answeredAt: new Date().toISOString() }]);
+  vi.stubGlobal("fetch", vi.fn((url: string, init?: RequestInit) => url === "/api/coordinator"
+    ? Promise.resolve(new Response(snapshotJson(conv(cid, [])))) : serving(taken)(url, init)));
+  setConversationState({ conversation: conv(cid, []) });
+  await useConversation.getState().refresh();
+  await waitFor(() => expect(useDraftStore.getState().entries[outgoingKey(root, id)]).toBeUndefined());
+});
+
+test("a send serve does not have is asked after once, not again for every new snapshot", async () => {
+  const id = setup(); freeze(root, fixed(), useDraftStore.getState().entries[key]?.values ?? {}, { from: key });
+  const attempt = begin(root, id)!; attempt.check(); attempt.finish();
+  let reads = 0;
+  const fetcher = vi.fn((url: string) => url === "/api/coordinator"
+    ? Promise.resolve(new Response(snapshotJson(conv(cid, [{ ...sentTurn(`other-${reads++}`, "other", "succeeded"), answer: "x", answeredAt: new Date().toISOString() }]))))
+    : Promise.resolve(new Response(JSON.stringify({ id, status: "missing" }))));
+  vi.stubGlobal("fetch", fetcher);
+  for (let n = 0; n < 3; n++) await useConversation.getState().refresh();
+  await waitFor(() => expect(reads).toBe(3));
+  expect(fetcher.mock.calls.filter(([url]) => String(url).endsWith(`/${id}/status`))).toHaveLength(1);
+});
+
+test("a status learnt for a send is let go once its send is settled", async () => {
+  const id = setup(); freeze(root, fixed(), useDraftStore.getState().entries[key]?.values ?? {}, { from: key });
+  const attempt = begin(root, id)!; attempt.check(); attempt.finish();
+  const answered = conv(cid, [{ ...sentTurn(id, "sent", "succeeded"), answer: "done", answeredAt: new Date().toISOString() }]);
+  vi.stubGlobal("fetch", vi.fn(serving(answered)));
+  await useConversation.getState().ask({ ...fixed(), id });
+  await waitFor(() => expect(useDraftStore.getState().entries[outgoingKey(root, id)]).toBeUndefined());
+  expect(useConversation.getState().learnt).toBeNull();
+});
+
 test("an accepted answer that loses the race to be drawn keeps the request drawn and asks for a newer read", async () => {
   const id = setup(); freeze(root, fixed(), useDraftStore.getState().entries[key]?.values ?? {}, { from: key });
   const attempt = begin(root, id)!; attempt.check(); attempt.finish();
   let resolve!: (response: Response) => void; const pending = new Promise<Response>(done => { resolve = done; });
-  const fetcher = vi.fn().mockReturnValueOnce(pending).mockResolvedValueOnce(reply(conv())).mockResolvedValue(reply(conv(cid, [sentTurn(id, "sent", "queued")])));
+  const queued = conv(cid, [sentTurn(id, "sent", "queued")]);
+  const fetcher = vi.fn().mockReturnValueOnce(pending).mockResolvedValueOnce(reply(conv())).mockImplementation(serving(queued));
   vi.stubGlobal("fetch", fetcher);
   const post = useConversation.getState().ask({ ...fixed(), id });
   await useConversation.getState().refresh();
-  resolve(reply(conv(cid, [sentTurn(id, "sent", "queued")])));
+  resolve(new Response(messageJson(queued, id)));
   await post;
   // Not drawn yet: kept to draw (accepted, not holding the next send), and a newer read is asked for.
   expect(useDraftStore.getState().entries[outgoingKey(root, id)]?.values.stage).toBe("accepted");
@@ -229,7 +265,7 @@ test(`ordinary text (${about}, ${state}) has no expected write or failure toast`
   vi.stubGlobal('fetch', vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
     if (url === '/api/coordinator/messages') {
       posted = JSON.parse(String(init!.body));
-      return reply(conv(cid, [{ ...sentTurn(id, posted.text, 'succeeded'), result: { writes: [], refused: [] } }]));
+      return new Response(messageJson(conv(cid, [{ ...sentTurn(id, posted.text, 'succeeded'), result: { writes: [], refused: [] } }]), id));
     }
     return reply({ status: 'unavailable', profile: 'claude', skills: [] });
   }));
@@ -334,7 +370,7 @@ for (const replacement of ['all','operation','context-operation','append'] as co
  useDraftStore.setState({entries:{[key]:{status:'editing',values:{...values('',id),doc:JSON.stringify(markReaderOperation(textDocument(`${task.id} Approve`))),readerIntent:JSON.stringify({task:task.id,action:'continue',aboutRun:'R1',expectedTaskHash:task.hash}),readerIntentTurn:JSON.stringify(readerTurn(task))}}}});
  let posted:any;const errors=vi.spyOn(notify,'error');
  vi.stubGlobal('fetch',vi.fn().mockImplementation(async(url:string,init?:RequestInit)=>{
-  if(url==='/api/coordinator/messages'){posted=JSON.parse(String(init!.body));return reply(conv(cid,[{...sentTurn(id,posted.text,'succeeded'),context:task.id,result:{writes:posted.intent ? [{task:task.id,record:'L9',kind:'request_accepted',toState:null}] : [],refused:[]}}]));}
+  if(url==='/api/coordinator/messages'){posted=JSON.parse(String(init!.body));return new Response(messageJson(conv(cid,[{...sentTurn(id,posted.text,'succeeded'),context:task.id,result:{writes:posted.intent ? [{task:task.id,record:'L9',kind:'request_accepted',toState:null}] : [],refused:[]}}]),id));}
   return reply({status:'unavailable',profile:'claude',skills:[]});
  }));
  render(<TestWorkspace data={data}><CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }}/></TestWorkspace>);

@@ -127,7 +127,7 @@ test('on a computer, an empty conversation fits under its head without scrolling
   await page.setViewportSize({ width: 1440, height: 900 });
   await open(page, runtime, '?agent=1');
   await openCoordinator(page);
-  await expect(page.locator('[data-coordinator-warm]')).toBeVisible();
+  await expect(page.locator('[data-coordinator-start]')).toBeVisible();
   await settled(page);
   const area = await page.locator('[data-coordinator-panel] [data-card-scroll]').evaluate(el => ({ scroll: el.scrollHeight, client: el.clientHeight }));
   expect(area.scroll).toBeLessThanOrEqual(area.client);

@@ -34,7 +34,6 @@ test('config selection is captured for admission and later settings cannot chang
   assert.equal(assignedSession(launch, 'codex'), null);
   const claude = coordinatorLaunchSnapshot(saved, 'claude', 'start', '/bin');
   assert.ok(claude.ok);
-  assert.equal(claude.restartArgv, null);
   assert.ok(assignedSession(claude.launch, 'claude'));
   assert.equal(parseAgentsSettings(stringify({ agents: { codex: saved.agents.codex } })).agents.codex!.enabled, false);
 });

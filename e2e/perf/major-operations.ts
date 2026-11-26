@@ -200,7 +200,7 @@ try {
           await measure(page,cdp,'send',round,device,{receipt:true,textSelector:'[data-coordinator-turn] [data-sent-message]',text},()=>tap(page,page.locator('[data-ask-send]'),mobile));
           // Keep generation/completion work outside subsequent measured sends.
           const doneBy=Date.now()+30_000;
-          for(;;){const c:any=await fetch(server.url+'/api/coordinator').then(r=>r.json());if(!c.conversation.busy&&c.conversation.warm!=='preparing')break;if(Date.now()>doneBy)throw Error('Fake coordinator did not finish');await page.waitForTimeout(100);}
+          for(;;){const c:any=await fetch(server.url+'/api/coordinator').then(r=>r.json());if(!c.conversation.busy)break;if(Date.now()>doneBy)throw Error('Fake coordinator did not finish');await page.waitForTimeout(100);}
           await page.waitForTimeout(350);
         }
       }

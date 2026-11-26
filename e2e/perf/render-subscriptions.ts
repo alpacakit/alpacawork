@@ -25,7 +25,7 @@ declare global { interface Window {
 const output = resolve(process.argv[2]!);
 mkdirSync(dirname(output), { recursive: true });
 const results: unknown[] = [], errors: string[] = [];
-const conversation = coordinatorConversationSchema.parse({ id: 'subscriptions', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [],
+const conversation = coordinatorConversationSchema.parse({ id: 'subscriptions', nextLaunch: { agent: 'claude', values: {} }, busy: false, earlier: null, resets: [], context: null, autoReset: { tokens: 200_000, percent: 50 },
   turns: Array.from({ length: 3 }, (_, n) => ({ id: `reply-${n}`, at: `2026-01-01T00:0${n}:00Z`, ask: `Request ${n}`,
     attachments: [], status: 'succeeded', waiting: false, seen: n < 2, error: null, result: null,
     answer: Array.from({ length: 20 }, (_, i) => `Paragraph ${i}: a stable answer for scrolling and read checks.\n\n`).join(''),
@@ -48,7 +48,7 @@ try {
     const original = await (await page.request.get(runtime.origin + '/api/coordinator')).json();
     const snapshot = { ...original, conversation };
     await page.route('**/api/coordinator', route => route.fulfill({ json: snapshot }));
-    await page.route('**/api/coordinator/warm', route => route.fulfill({ json: snapshot }));
+
     await page.route('**/api/coordinator/read', async route => {
       const data = route.request().postDataJSON();
       await route.fulfill({ json: { conversationId: conversation.id, seen: data.seen } });

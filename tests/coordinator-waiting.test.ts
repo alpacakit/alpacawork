@@ -1,3 +1,4 @@
+import { coordinatorRunFor } from './helpers/coordinator-run.ts';
 import { fixtureAgentSetting } from './helpers/agent-stub.ts';
 import { stringify } from 'yaml';
 import { managerScript } from '@alpacawork/backend/test-dist/runs/scheduler.js';
@@ -11,7 +12,7 @@ import { join } from 'node:path';
 import { RunStore, laneAhead } from '@alpacawork/runs';
 import type { CoordinatorRunRecord } from '@alpacawork/contract/run';
 import { CoordinatorConversation } from '@alpacawork/backend/test-dist/coordinator/conversation.js';
-import { reserveAttempt, blockedInvocations, queuedInputReservations } from '@alpacawork/backend/test-dist/runs/execution-control.js';
+import { reserveAttempt } from '@alpacawork/backend/test-dist/runs/execution-control.js';
 import { initializeControlFixture } from './helpers/control-fixture.ts';
 // The fixture never starts a process, so the admission supplies the session.
 const config = stringify({ agents: { "fake": fixtureAgentSetting('claude') } });
@@ -22,7 +23,7 @@ function fixture(t: TestContext) {
   const store = new RunStore(root, { busyTimeoutMs: 1000 });
   t.after(() => { store.close(); rmSync(root, { recursive: true, force: true }); });
   const ask = () => { const request = randomUUID(); conversation.ask({ conversationId: id, id: request, text: request, attachments: [] }); return request; };
-  const run = (request: string, tx?: import("@alpacawork/runs").RunTransaction) => (tx ? tx.coordinatorRuns(id) : store.coordinatorRuns(id)).find(run => run.requestId === request)!;
+  const run = (request: string, tx?: import("@alpacawork/runs").RunTransaction) => coordinatorRunFor(store, request, tx);
   const running = (request: string) => store.write(tx => tx.update({ ...run(request, tx), state: 'running', started_at: new Date().toISOString() }));
   return { root, conversation, id, store, ask, run, running, read: () => conversation.read() };
 }
@@ -43,24 +44,6 @@ test('a running predecessor, including needs_review holding execution, blocks th
   assert.equal(f.read().turns.find(turn => turn.id === next)!.waiting, true);
   f.store.write(tx => tx.update({ ...f.run(first, tx), reason: 'conversation_busy' }));
   assert.equal(f.read().turns.find(turn => turn.id === next)!.waiting, false);
-});
-test('hidden warm-up uses the same lane order; waiting is withdrawable and warming is not counted as a chat message', t => {
-  const f = fixture(t); f.conversation.warm(f.id);
-  assert.equal(f.read().busy, true); const message = f.ask();
-  assert.equal(f.read().warm, 'preparing'); assert.equal(f.read().turns.length, 1);
-  assert.equal(f.read().turns[0]!.waiting, true);
-  f.conversation.withdraw(f.id, message); assert.deepEqual(f.read().turns, []);
-});
-test('the warm-up says how far it has come: none, preparing while queued or running, then ready or failed', t => {
-  for (const [state, reason, said] of [['succeeded', null, 'ready'], ['failed', 'exit', 'failed'], ['cancelled', 'stopped', 'failed']] as const) {
-    const f = fixture(t); assert.equal(f.read().warm, 'none');
-    f.conversation.warm(f.id); assert.equal(f.read().warm, 'preparing');
-    const warm = (tx: import('@alpacawork/runs').RunTransaction) => tx.coordinatorRuns(f.id)[0]!;
-    f.store.write(tx => tx.update({ ...warm(tx), state: 'running', started_at: new Date().toISOString() }));
-    assert.equal(f.read().warm, 'preparing');
-    f.store.write(tx => tx.finish({ ...warm(tx), state, reason, ended_at: new Date().toISOString() }, { state: 'present', text: 'ready' }));
-    assert.equal(f.read().warm, said); assert.deepEqual(f.read().turns, []);
-  }
 });
 test('a successful predecessor with uncertain input holds the next until its receipt settles, even without running work', t => {
   const f = fixture(t), first = f.ask();
@@ -100,9 +83,11 @@ test('send-now is visible while queued, then the unsettled input owns the projec
 test('send-now before reservation can be cancelled, and neither send-now nor late ask revives that ID', t => {
   const f = fixture(t), first = f.ask(); f.running(first); const next = f.ask();
   f.conversation.sendNow(f.id, next);
-  assert.deepEqual(f.conversation.withdraw(f.id, next).cancelled, [next]);
+  f.conversation.withdraw(f.id, next);
+  assert.equal(f.conversation.messageStatus(next).status, 'withdrawn');
   assert.throws(() => f.conversation.sendNow(f.id, next), (error: any) => error.reason?.kind === 'message_has_already_left_queue');
-  assert.deepEqual(f.conversation.ask({ conversationId: f.id, id: next, text: 'late words', attachments: [] }).cancelled, [next]);
+  f.conversation.ask({ conversationId: f.id, id: next, text: 'late words', attachments: [] });
+  assert.equal(f.conversation.messageStatus(next).status, 'withdrawn');
   assert.equal(f.store.connection.prepare('SELECT count(*) AS n FROM runs WHERE request_id=?').get(next)!.n, 1);
 });
 
@@ -119,16 +104,18 @@ test('the conversation snapshot retains shared-session holds without reading unr
     db.prepare("UPDATE run_inputs SET state='uncertain' WHERE instruction_run_no=1000").run();
     tx.update({ ...own, session: shared.session });
   });
-  const scoped = f.store.readForSettle(f.id), global = f.store.readForSettle();
-  assert.deepEqual(scoped.map(run => run.id), global.map(run => run.id));
-  const blocked = blockedInvocations(f.store, scoped.map(run => run.id));
-  assert.deepEqual(laneAhead(scoped, f.run(message), blocked, queuedInputReservations(f.store, scoped.map(run => run.id))), { kind: 'delivery', run: shared.id });
-  assert.deepEqual(queuedInputReservations(f.store, scoped.map(run => run.id)), queuedInputReservations(f.store));
-  assert.deepEqual(queuedInputReservations(f.store, []), new Set());
-  assert.equal(f.read().turns[0]!.waiting, true);
+  assert.equal(f.read().turns[0]!.waiting, true, 'an unresolved receipt holds a shared session');
+  const diagnostic = (kind: string) => f.store.write(() => {
+    const db = f.store.connection;
+    db.prepare("UPDATE run_inputs SET state='resolved' WHERE instruction_run_no=1000").run();
+    db.prepare('UPDATE run_attempts SET diagnostic=? WHERE run_no=1000').run(JSON.stringify({ kind }));
+  });
+  diagnostic('launch_aborted');
+  assert.equal(f.read().turns[0]!.waiting, false, 'an aborted launch does not hold the session');
+  diagnostic('execution_fault');
+  assert.equal(f.read().turns[0]!.waiting, true, 'a diagnostic holds the shared session');
   f.store.write(tx => tx.update({ ...f.run(message, tx), session: null }));
-  assert.deepEqual(f.store.readForSettle(f.id).map(run => run.id), [own.id]);
-  assert.equal(f.read().turns[0]!.waiting, false);
+  assert.equal(f.read().turns[0]!.waiting, false, 'a diagnostic from an unrelated session is ignored');
 });
 test('a failed message is sent again once: the server marks it, keeps its ID readable, and refuses a second copy', t => {
   const f = fixture(t), first = f.ask();
@@ -144,7 +131,7 @@ test('a failed message is sent again once: the server marks it, keeps its ID rea
   fail(second, 'cancelled');
   const third = again(second);
   assert.deepEqual(f.read().turns.map(turn => [turn.id, turn.status, turn.sentAgain ?? false, turn.seen]), [[first, 'failed', true, false], [second, 'failed', true, true], [third, 'queued', false, false]]);
-  assert.equal(f.store.coordinatorRuns(f.id).filter(run => run.state === 'queued').length, 1);
+  assert.equal(f.read().turns.filter(turn => turn.status === 'queued').length, 1);
   // One that answers after all, as a Run back from review does, is not hidden.
   f.store.write(tx => tx.finish({ ...f.run(first, tx), state: 'succeeded', reason: null, ended_at: new Date().toISOString() }, { state: 'present', text: 'Late answer' }));
   assert.equal(f.read().turns.find(turn => turn.id === first)!.sentAgain, undefined);

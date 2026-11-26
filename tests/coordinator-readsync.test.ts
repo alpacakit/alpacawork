@@ -1,3 +1,4 @@
+import { coordinatorRunFor } from './helpers/coordinator-run.ts';
 import { fixtureAgentSetting } from './helpers/agent-stub.ts';
 import { stringify } from 'yaml';
 import { test, type TestContext } from 'node:test';
@@ -86,7 +87,7 @@ test('equal timestamps and a late older reply keep separate identities and stabl
   assert.deepEqual(h.seen(), [older, newer]);
 });
 
-test('an invalid batch commits nothing; unfinished, warm, joined and withdrawn requests are not readable answers', async t => {
+test('an invalid batch commits nothing; unfinished, joined and withdrawn requests are not readable answers', async t => {
   const h = fixture(t); await h.conversation.seedSeen();
   const done = await h.answer(), queued = await h.ask();
   const before = h.state();
@@ -95,14 +96,14 @@ test('an invalid batch commits nothing; unfinished, warm, joined and withdrawn r
   assert.deepEqual(h.state(), before); assert.deepEqual(h.seen(), []);
   const joined = await h.ask(), store = new RunStore(h.root, { busyTimeoutMs: 1000 });
   try {
-    const head = store.coordinatorRuns(h.id).find(run => run.requestId === done)!;
-    const run = store.coordinatorRuns(h.id).find(run => run.requestId === joined)!;
+    const head = coordinatorRunFor(store, done);
+    const run = coordinatorRunFor(store, joined);
     store.write(tx => tx.update({ ...run, state: 'joined', into: head.id, ended_at: new Date().toISOString() }));
   } finally { store.close(); }
   await assert.rejects(h.conversation.markSeen(h.id, [joined]), { code: PROBLEM_CODE.invalidInput });
   const provisional = await h.ask(), reviewing = new RunStore(h.root, { busyTimeoutMs: 1000 });
   try {
-    const run = reviewing.coordinatorRuns(h.id).find(run => run.requestId === provisional)!;
+    const run = coordinatorRunFor(reviewing, provisional);
     reviewing.write(tx => {
       const running = { ...run, state: 'running' as const, started_at: new Date().toISOString() };
       tx.update(running);
@@ -116,12 +117,7 @@ test('an invalid batch commits nothing; unfinished, warm, joined and withdrawn r
   await assert.rejects(h.conversation.markSeen(h.id, [crypto.randomUUID()]), { code: PROBLEM_CODE.invalidInput });
   for (const batch of [[], Array(129).fill(done)])
     await assert.rejects(h.conversation.markSeen(h.id, batch), { code: PROBLEM_CODE.invalidInput });
-  const warm = fixture(t); warm.conversation.warm(warm.id); const warmStore = new RunStore(warm.root, { busyTimeoutMs: 1000 });
-  let warmId: string;
-  try { warmId = warmStore.coordinatorRuns(warm.id)[0]!.requestId; } finally { warmStore.close(); }
-  warm.complete(warmId);
-  await assert.rejects(warm.conversation.markSeen(warm.id, [warmId]), { code: PROBLEM_CODE.invalidInput });
-  assert.equal(warm.conversation.read().turns.length, 0);
+
 });
 
 test('seed is once, includes only completed visible replies, and does not acknowledge a later recovery answer', async t => {
@@ -268,15 +264,11 @@ test('serve publishes personal-only seen changes over SSE, ACK stays small, dupl
   await delay(100);
   const revision = h.state().revision, inode = statSync(h.file).ino;
   const published = JSON.parse(server.feed()!.index()).person.coordinator;
-  let changes = 0;
-  const feed = server.feed()!, update = feed.update.bind(feed);
-  const hook = t.mock.method(feed, 'update', (...args: Parameters<typeof feed.update>) => {
-    const result = update(...args); if (result) changes++; return result;
-  });
+  const feed = server.feed()!, publishedRevision = feed.rev;
   await (await post()).arrayBuffer(); await delay(150);
   assert.equal(h.state().revision, revision); assert.equal(statSync(h.file).ino, inode);
-  assert.deepEqual(JSON.parse(feed.index()).person.coordinator, published); assert.equal(changes, 0);
-  hook.mock.restore(); abort.abort(); await server.close();
+  assert.deepEqual(JSON.parse(feed.index()).person.coordinator, published); assert.equal(feed.rev, publishedRevision);
+  abort.abort(); await server.close();
   server = await startServer(h.root, 0);
   const restarted = coordinatorSnapshotSchema.parse(await (await fetch(new URL('/api/coordinator', server.url))).json()).conversation;
   assert.equal(restarted.turns.find(turn => turn.id === id)!.seen, true);

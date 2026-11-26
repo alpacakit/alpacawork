@@ -1,4 +1,4 @@
-import { setConversationState } from './conversation-fixture';
+import { setConversationState, SERVED } from './conversation-fixture';
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { useRef } from 'react';
@@ -20,7 +20,7 @@ import { guardPinchZoom } from '../src/lib/pinch-zoom';
  */
 const dataOf = (plain: string, html: string) => ({ files: [], getData: (type: string) => type === 'text/html' ? html : type === 'text/plain' ? plain : '' }) as unknown as DataTransfer;
 beforeAll(() => startI18n());
-beforeEach(() => setConversationState({ conversation: { id: 'clipboard-paste', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, turns: [], cancelled: [] } }));
+beforeEach(() => setConversationState({ conversation: { id: 'clipboard-paste', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, turns: [], admitted: {}, cancelled: [] } }));
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals(); });
 const current = () => (screen.getByRole('textbox') as HTMLElement & { editor: Editor }).editor;
 const skills = [{ name: 'deploy', description: 'local', invocation: '/' as const }];

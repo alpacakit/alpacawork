@@ -147,14 +147,13 @@ export function launchIfResumable<T>(prepare: () => T): T | undefined {
         !error.reason.problems.every(problem => problem.recovery === 'new_conversation')) throw error;
   }
 }
-/** Freezes the coordinator's start alternative on resume. */
+/** Resolve the coordinator's invocation and the choices its command applies. */
 export function coordinatorLaunchSnapshot(config: AgentsSettings, agentName: string, mode: 'start' | 'resume', path: string,
   selected: Selection = {}, previous?: Pick<RunRecord['launch'], 'adapter' | 'values'>) {
   const prepared = snapshotAdmission(config, agentName, mode, path, selected, previous);
   if (prepared.ok === false) return prepared;
   const result = admission(() => prepareCoordinatorLaunch(prepared.compiled, prepared.input));
-  const prefix = pinCommand(result.launch, prepared.compiled.setting);
-  if (result.restartArgv) result.restartArgv = [...prefix, ...result.restartArgv.slice(AGENT_ADAPTERS[prepared.compiled.adapter].prefix.length)];
+  pinCommand(result.launch, prepared.compiled.setting);
   return { ok: true as const, ...result };
 }
 

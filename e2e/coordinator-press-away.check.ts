@@ -23,7 +23,6 @@ const panel = (page: Page) => page.locator('[data-coordinator-panel]');
 
 /** An answered conversation, open, with words written in the input under it. */
 async function talking(page: Page, runtime: Runtime, draft: string) {
-  // The gesture starts from an answered conversation; background warm-up has its own lifetime.
   await readyCoordinator(page, runtime);
   await writeCoordinator(page);
   // Sent without the open task's label, it answers no card, so the task stays open (a send with the label sends an answered card off).

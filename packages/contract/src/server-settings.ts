@@ -15,22 +15,23 @@ import { digestSchema } from './fields.js';
 export const DEFAULT_LIMITS = Object.freeze({
   parallel: 8, run_minutes: 0, depth: 8, children_per_run: 200, automatic_per_placement: 20, attachment_mib: 50,
   coordinator_run_minutes: 30, coordinator_command_seconds: 10,
+  coordinator_reset_tokens: 200_000, coordinator_reset_percent: 50, coordinator_attachment_days: 30,
 });
 export const LIMIT_KEYS = Object.keys(DEFAULT_LIMITS) as (keyof typeof DEFAULT_LIMITS)[];
 export const LIMIT_MINIMUM = Object.freeze({
   parallel: 1, run_minutes: 0, depth: 1, children_per_run: 1, automatic_per_placement: 0, attachment_mib: 1,
   coordinator_run_minutes: 1, coordinator_command_seconds: 1,
+  coordinator_reset_tokens: 0, coordinator_reset_percent: 0, coordinator_attachment_days: 0,
 }) satisfies Record<keyof typeof DEFAULT_LIMITS, number>;
 /**
  * The backend holds a whole file in memory while it receives, compares and serves it, and the framed
  * HTML view decodes it to one string (V8 stops near 512 MiB). The receiver's request deadline is set
  * for the default on a slow link; a larger limit needs a faster one.
  */
-export const LIMIT_MAXIMUM = Object.freeze({ attachment_mib: 500 }) satisfies Partial<Record<keyof typeof DEFAULT_LIMITS, number>>;
+export const LIMIT_MAXIMUM = Object.freeze({ attachment_mib: 500, coordinator_reset_percent: 100 }) satisfies Partial<Record<keyof typeof DEFAULT_LIMITS, number>>;
 const limit = (key: keyof typeof DEFAULT_LIMITS) => key === 'run_minutes'
   ? z.number().finite().min(LIMIT_MINIMUM[key])
-  : key === 'attachment_mib' ? z.number().int().min(LIMIT_MINIMUM[key]).max(LIMIT_MAXIMUM[key])
-    : z.number().int().min(LIMIT_MINIMUM[key]);
+  : z.number().int().min(LIMIT_MINIMUM[key]).max((LIMIT_MAXIMUM as Partial<Record<keyof typeof DEFAULT_LIMITS, number>>)[key] ?? Number.MAX_SAFE_INTEGER);
 /** One attached, written or shown file at most this many bytes. */
 export const attachmentBytes = (limits: Pick<Limits, 'attachment_mib'>) => limits.attachment_mib * 1024 * 1024;
 /** What the backend may ever read into memory for one file, whatever the setting is now. */

@@ -1,7 +1,6 @@
 import { Workbench } from "../src/features/shell/Workbench";
 import { readQuery } from '../src/data/read-model';
-import type { CoordinatorTurn } from '@alpacawork/contract/coordinator';
-import { snapshotJson, conversationRevision, conversationSnapshot } from './conversation-fixture';
+import { snapshotJson, conversationRevision, conversationSnapshot, SERVED, type FixtureTurn } from './conversation-fixture';
 import { setConversationState } from './conversation-fixture';
 import { startRequiredReadSession } from '../src/data/resources';
 import { timeoutClock } from "./timing";
@@ -100,7 +99,7 @@ const serveSettings = () => {
     // A search finds every task the server holds.
     if (target.pathname === "/api/task/search") return new Response(snapshotJson(searchAnswer(served.tasks.filter((task) => task.kind === "task").map((task) => task.id))));
     // The coordinator's input stands at the screen's foot from the start, so its conversation is read with the page.
-    if (path === "/api/coordinator") return new Response(snapshotJson({ id: "conversation-1", nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [] }));
+    if (path === "/api/coordinator") return new Response(snapshotJson({ id: "conversation-1", nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns: [] }));
     if (path === "/api/commands/settings/get") return new Response(snapshotJson({ values, revision: "person-1" }));
     if (path === "/api/person/notices") return new Response(snapshotJson({ state: notices, revision: revision ? String(revision) : null, ...(!notices ? { initialBaselines: Object.fromEntries(indexOf(served).tasks.map(row => [row.id, taskBaseline(row)])) } : {}) }));
     if (path === "/api/person/notices/save") {
@@ -529,7 +528,7 @@ test("the coordinator's conversation is read when the index says it changed; not
   let failNext = false;
   fetcher.mockImplementation((url, init) => String(url) !== "/api/coordinator" ? respond(url, init)
     : failNext ? (failNext = false, Promise.reject(new TypeError("offline")))
-    : Promise.resolve(new Response(snapshotJson({ id: "conversation-1", nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [] }))));
+    : Promise.resolve(new Response(snapshotJson({ id: "conversation-1", nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns: [] }))));
   const reads = () => fetcher.mock.calls.filter(([url]) => String(url) === "/api/coordinator").length;
   mount();
   await waitFor(() => expect(fetchEventSource).toHaveBeenCalled());
@@ -639,10 +638,10 @@ const holdConversation = (failure: () => Response = () => problemResponse("busy"
   unsettled.forEach(each => each.reject());
   const fetcher = serveSettings();
   const respond = fetcher.getMockImplementation()!;
-  const held: { resolve: (turns?: CoordinatorTurn[]) => void; reject: () => void; serverFailure: () => void }[] = [];
+  const held: { resolve: (turns?: FixtureTurn[]) => void; reject: () => void; serverFailure: () => void }[] = [];
   fetcher.mockImplementation((url, init) => String(url) !== "/api/coordinator" ? respond(url, init)
     : new Promise<Response>((resolve, reject) => held.push({
-      resolve: (turns = []) => resolve(new Response(snapshotJson({ id: "conversation-1", nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns }))),
+      resolve: (turns = []) => resolve(new Response(snapshotJson({ id: "conversation-1", nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns }))),
       reject: () => reject(new TypeError("offline")), serverFailure: () => resolve(failure()) })));
   // A visit of its own: no conversation read yet, nothing pressed.
   setConversationState({ root: "", conversation: null, error: null, wanted: false, open: false, expanded: false });
@@ -650,10 +649,10 @@ const holdConversation = (failure: () => Response = () => problemResponse("busy"
   return { held, reads: () => fetcher.mock.calls.filter(([url]) => String(url) === "/api/coordinator").length };
 };
 const line = () => document.querySelector<HTMLButtonElement>("[data-coordinator-write]")!;
-const drawn = async (version: string, turns?: CoordinatorTurn[]) => {
+const drawn = async (version: string, turns?: FixtureTurn[]) => {
   mount();
   await waitFor(() => expect(fetchEventSource).toHaveBeenCalled());
-  await send(listing(), "a:1", { settings: null, notices: null, coordinator: { id: 'conversation-1', revision: turns ? conversationSnapshot({ id: 'conversation-1', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns }).revision : conversationRevision(version) } });
+  await send(listing(), "a:1", { settings: null, notices: null, coordinator: { id: 'conversation-1', revision: turns ? conversationSnapshot({ id: 'conversation-1', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns }).revision : conversationRevision(version) } });
   await listed();
   await waitFor(() => expect(line()).toBeTruthy());
 };
@@ -693,7 +692,7 @@ test("pressed while the conversation is read, the input comes up once it is; Esc
   expect(useConversation.getState().open).toBe(false);
 });
 
-const savedTurns: CoordinatorTurn[] = [{ id: 'saved-turn', at: '2026-10-26T00:00:00Z', ask: 'Saved question',
+const savedTurns: FixtureTurn[] = [{ id: 'saved-turn', at: '2026-10-26T00:00:00Z', ask: 'Saved question',
   attachments: [], status: 'succeeded', waiting: false, answer: 'Saved conversation answer', seen: true,
   answeredAt: '2026-10-26T00:00:01Z', error: null, result: null }];
 const conversationQuery = () => readQuery(queryClient, ['coordinator', '/fixture'])!;

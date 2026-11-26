@@ -18,6 +18,7 @@ import { z } from 'zod';
 import type { WriteGrant } from './control/file-journal.js';
 import { removeTaskAttachment, moveTaskAttachments } from './control/task-files.js';
 import type { CommandInput, CommandName } from '@alpacawork/contract/commands';
+import { readCoordinatorMemo, setCoordinatorMemo } from './coordinator/memo.js';
 import { replySource, replyPage } from './coordinator/reply.js';
 import { mayReadReply } from './coordinator/messages.js';
 import { initializeInstallation } from './installation/setup.js';
@@ -605,6 +606,13 @@ export const taskCommands = {
   'workspace/returns': {
     act: () => ({ action: { name: 'admin' }, task: null }),
     run: root => new ReturnRouter(root).pass(),
+  },
+  'coordinator/memo/get': {
+    run: (root, _input, context) => readControl(root, db => readCoordinatorMemo(db, requireCaller(context))),
+  },
+  'coordinator/memo/set': {
+    act: () => ({ action: { name: 'coordinator.memo' }, task: null }),
+    run: (root, input, context) => withControlWrite(root, (_tx, db) => setCoordinatorMemo(db, requireCaller(context), input.text)),
   },
   'coordinator/reply/get': {
     run: async (root, input, context) => readControl(root, db => {

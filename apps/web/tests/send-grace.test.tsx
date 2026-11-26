@@ -13,7 +13,7 @@ import { queryClient } from '../src/data/query-client';
 import { draftKey, readDrafts, useDraftStore } from '../src/features/forms/draft-store';
 import { begin, beginWithdrawal, cancelUnsent, freeze, nextDelivery, offerOutgoingUndo, resumeQueuedOutgoing, flushLeavingOutbox, outgoingKey, useOutbox } from '../src/features/coordinator/editor/outbox';
 import { textDocument } from '../src/features/coordinator/editor/document';
-import { setConversationState } from './conversation-fixture';
+import { setConversationState, SERVED } from './conversation-fixture';
 import { CoordinatorThread } from '../src/features/coordinator/CoordinatorThread';
 import { ShownConversationProvider } from '../src/features/coordinator/shown';
 import { TestWorkspace, dto, screenData, tree } from './fixtures';
@@ -268,7 +268,7 @@ function showQueuedConversation() {
   const view = render(<TestWorkspace><ShownConversationProvider><CoordinatorThread turns={[]} retry={() => {}} /><Toaster /></ShownConversationProvider></TestWorkspace>);
   // No server in this fixture; opening the recovered input may refresh its conversation.
   act(() => setConversationState({ root, open: true, expanded: true, refresh: async () => {}, conversation: {
-    id: 'C1', nextLaunch: { agent: 'claude', values: {} }, warm: 'none', busy: false, cancelled: [], turns: [],
+    id: 'C1', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns: [],
   } }));
   return view;
 }
@@ -313,7 +313,7 @@ test('inline undo of a card send retains its terminal identity across reload and
   fireEvent.click(document.querySelector('[data-coordinator-cancel-unsent]')!);
   expect(document.querySelector('[data-coordinator-cancel-unsent]')).toBeNull();
   useDraftStore.setState(readDrafts());
-  const conversation = { id: 'C1', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, turns: [], cancelled: [] };
+  const conversation = { id: 'C1', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, turns: [], admitted: {}, cancelled: [] };
   expect(beginWithdrawal(root, id, conversation)).toBeNull();
   expect(begin(root, id)).toBeNull();
   expect(useUndoOffers.getState().offers.some(offer => offer.id === id)).toBe(false);

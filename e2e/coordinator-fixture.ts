@@ -1,6 +1,5 @@
 import { fixtureAgentSetting, installAgentStub } from '../tests/helpers/agent-stub.ts';
 import { coordinatorSnapshotSchema, coordinatorMessageInputSchema } from '@alpacawork/contract/coordinator';
-import type { CoordinatorConversation } from '@alpacawork/contract/coordinator';
 import type { Page, Route } from '@playwright/test';
 import { expect } from '@playwright/test';
 import type { Runtime } from './server.ts';
@@ -41,37 +40,27 @@ export function startFakeCoordinator(root: string): void {
   } }, { lineWidth: 0 }));
 }
 
-/** Answer/gesture checks start after the separate background warm-up, before their timed send.
- * Warm-input/queue checks deliberately do not use this preparation. */
+/** Wait for the configured fixture AI and an idle conversation before a timed send. */
 export async function readyCoordinator(page: Page, runtime: Runtime) {
-  const conversation = async (): Promise<CoordinatorConversation> => {
+  await expect.poll(async () => {
     const response = await page.request.get(runtime.origin + '/api/coordinator');
     expect(response.ok()).toBe(true);
-    return coordinatorSnapshotSchema.parse(await response.json()).conversation;
-  };
-  const opening = await conversation();
-  const warmed = await page.request.post(runtime.origin + '/api/coordinator/warm', {
-    data: { conversationId: opening.id },
-  });
-  expect(warmed.ok()).toBe(true);
-  // The fake is the input's AI (configureCoordinator), at its first model and effort.
-  await expect.poll(async () => {
-    const current = await conversation();
-    return { id: current.id, agent: current.nextLaunch?.agent, preparing: current.warm === 'preparing' };
-  }, { timeout: 20_000 }).toEqual({ id: opening.id, agent: 'fake', preparing: false });
+    const { conversation } = coordinatorSnapshotSchema.parse(await response.json());
+    return { agent: conversation.nextLaunch?.agent, busy: conversation.busy };
+  }, { timeout: 20_000 }).toEqual({ agent: 'fake', busy: false });
 }
 
-/** The same real running/queued set must back every size comparison; warm-up is a separate lifetime. */
+/** The same real running and queued set backs every size comparison. */
 export async function expectCoordinatorQueue(page: Page, runtime: Runtime,
   expected: { conversationId: string; running: string; waiting: string[] }, expanded = false) {
   await expect.poll(async () => {
     const response = await page.request.get(runtime.origin + '/api/coordinator');
     expect(response.ok()).toBe(true);
     const conversation = coordinatorSnapshotSchema.parse(await response.json()).conversation;
-    return { conversationId: conversation.id, preparing: conversation.warm === 'preparing',
+    return { conversationId: conversation.id,
       active: conversation.turns.filter(turn => ['running', 'queued', 'sending'].includes(turn.status))
         .map(({ id, status }) => ({ id, status })) };
-  }).toEqual({ conversationId: expected.conversationId, preparing: false,
+  }).toEqual({ conversationId: expected.conversationId,
     active: [{ id: expected.running, status: 'running' }, ...expected.waiting.map(id => ({ id, status: 'queued' }))] });
   const queue = page.locator('[data-coordinator-queue-over]');
   const button = page.locator('[data-coordinator-queue-button]');

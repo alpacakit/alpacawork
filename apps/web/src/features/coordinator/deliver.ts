@@ -9,7 +9,7 @@ import { draftKey, useDraftStore } from '@/features/forms/draft-store';
 import type { ReaderAdmission } from '@/features/reader/next-question';
 import { deliveryNotice, deliveryNoticeId } from './delivery-notice';
 import { acknowledgeReaderSend, failReaderSend } from './reader-send';
-import { useConversation, readConversationSnapshot } from './coordinator';
+import { useConversation, readConversationSnapshot, withStatus, withLearnt } from './coordinator';
 import { replyIn, inlines } from './editor/document';
 import { begin, outgoingBlock, outgoingBlockText, deliveryOutcome, isWithdrawn, simpleOutgoing, outgoingKey, refuse as refuseOutgoing } from './editor/outbox';
 import { copyRecoveredFiles } from './editor/recovered-files';
@@ -73,7 +73,9 @@ export function deliverOutgoing({ root, client, surface, draw }: DeliveryPlace, 
       // A fixed request may already be admitted: reconcile that fact before asking for new Task authority.
       if (attempt.checked) {
         readAfterPost = true;
-        const received = (await readConversationSnapshot()).conversation;
+        const read = (await readConversationSnapshot()).conversation;
+        // Not among the open turns, it may have been withdrawn elsewhere: its own status says so.
+        const received = read.turns.some(turn => turn.id === requestId) ? withLearnt(read) : await withStatus(read, requestId);
         if (deliveryOutcome(received, requestId, fixed) === 'cancelled') return 'retained';
         if (deliveryOutcome(received, requestId, fixed) === 'accepted')
           return sameSession() && acknowledgeReaderSend(requestId, scope) ? 'retired' : 'retained';
@@ -123,7 +125,11 @@ export function deliverOutgoing({ root, client, surface, draw }: DeliveryPlace, 
       const certainRefusal = !attempt.checked && (!posted || error instanceof ApiError && error.retry !== 'check');
       if (outcome === 'unknown' && posted && !certainRefusal && !readAfterPost) {
         readAfterPost = true;
-        try { await readConversationSnapshot(); } catch (readError) { recordFailure(readError, 'coordinator send check'); }
+        try {
+          const read = (await readConversationSnapshot()).conversation;
+          // Not among the open turns: its own status says whether serve took it and it was withdrawn since.
+          if (sameSession() && !read.turns.some(turn => turn.id === requestId)) await withStatus(read, requestId);
+        } catch (readError) { recordFailure(readError, 'coordinator send check'); }
         if (!sameSession()) return 'rejected';
         outcome = settled();
       }

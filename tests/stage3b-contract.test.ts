@@ -29,10 +29,9 @@ test('Run, protocol and request share nullable selections and launch shape', () 
   assert.equal(runRecordSchema.safeParse({ ...base, launch: { ...launch, read: null } }).success, false);
   assert.equal(requestInputSchema.shape.selected.safeParse({ fast: null }).success, true);
   const coord = prepareCoordinatorLaunch(compiled, { mode: 'resume', path: '/tmp', previous: { adapter: 'codex', values: launch.values } });
-  assert.ok(coord.restartArgv);
   const coordinator = { ...base, task: null, placementId: null, caller: null, role: 'coordinator',
     conversationId: '11111111-1111-4111-8111-111111111111', message: { context: null, attachments: [], intent: null },
-    launch: coord.launch, restartArgv: coord.restartArgv };
+    launch: coord.launch };
   assert.equal(coordinatorRunRecordSchema.safeParse(coordinator).success, true);
-  assert.equal(invocationSchema.safeParse({ launch: coord.launch, mode: 'resume', session: null, restartArgv: coord.restartArgv }).success, false);
+  assert.equal(invocationSchema.safeParse({ launch: coord.launch, mode: 'resume', session: null }).success, true);
 });

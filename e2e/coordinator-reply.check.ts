@@ -14,7 +14,6 @@ for (const phone of [false]) test.describe(phone ? 'phone reply' : 'pc reply', (
   test('reply takes every Task label off the draft for good, keeping a project label, words, files and the caret', async ({ page, runtime }) => {
     // The person's case: a message sent with the open Task's label keeps that label in the input; replying is not to it.
     await open(page, runtime, '?agent=1&task=T111'); await openCoordinator(page);
-    // The answer replied to is the send's own; the background warm-up it would otherwise wait behind has its own lifetime.
     await readyCoordinator(page, runtime);
     const field = page.locator('[data-coordinator-card] [data-one-input]');
     const tasks = labelLayer(field).locator('[data-label=task]');

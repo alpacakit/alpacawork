@@ -87,10 +87,8 @@ try {
       const showing = () => reader.locator('[data-reader-task-id]').innerText();
       await page.goto(`${runtime.origin}/?agent=1&project=${project}&task=${ids[0]}`);
       await reader.locator('[data-reader-task-id]').waitFor();
-      // Warmed once outside the windows: the first open loads the catalog and starts the coordinator.
-      const warmed = page.waitForResponse(response => new URL(response.url()).pathname === '/api/coordinator/warm');
+      // First open loads the catalog outside the measurement windows.
       await page.locator('[data-coordinator-expand]').first().click();
-      await warmed;
       await page.waitForTimeout(1500);
       await folded();
       // --slow <ms>: every base-length motion drawn that long, to see its shape frame by frame (never for timing).

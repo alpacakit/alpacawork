@@ -49,7 +49,7 @@ function lastWords(shown: Shown, now: Speaking | undefined, read: boolean, worki
     : last.status === "failed" ? t("coordinatorCard.failed", { reason: coordinatorErrorReason(last) }) : null;
   const unread = !read && !!answer;
   if (now) {
-    const words = deliveryLineWords(now.line, shown.preparing, t) ?? '';
+    const words = deliveryLineWords(now.line, t) ?? '';
     if (now.line.kind === 'working') return { running: true, said: null, unread: false, saying: working };
     // An answer not read yet stays the notice over a message that only waits.
     if (waits(now.line)) return unread ? { running: false, said: answer, unread } : { running: false, said: words, unread: false, waiting: true };
@@ -57,7 +57,7 @@ function lastWords(shown: Shown, now: Speaking | undefined, read: boolean, worki
     return { running: true, said: null, unread: false, saying: words };
   }
   // A send that did not go, when nothing is under way, is the conversation's last word.
-  if (mine) return { running: false, said: localDeliveryText(mine, t, shown.preparing), unread: true };
+  if (mine) return { running: false, said: localDeliveryText(mine, t), unread: true };
   return { running: false, said: answer, unread };
 }
 function useLastWords(): LastWords {

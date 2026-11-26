@@ -1,6 +1,6 @@
 import { parse, stringify } from 'yaml';
 import { fixtureAgentSetting, installAgentStub } from './helpers/agent-stub.ts';
-import { coordinatorSnapshotSchema } from '@alpacawork/contract/coordinator';
+import { coordinatorMessageResponseSchema, coordinatorSnapshotSchema } from '@alpacawork/contract/coordinator';
 /**
  * Sending a waiting message to the coordinator at work ("send now") through serve: the Run layer hands it to the
  * working Run's manager as input, and the agent's receipt joins it there. What was handed over, and how far it got, is
@@ -16,10 +16,8 @@ import { RunStore } from '@alpacawork/runs';
 import { FileWriter } from '@alpacawork/backend/test-dist/raw/storage.js';
 import { startServer } from '@alpacawork/backend/test-dist/receiver/server.js';
 import { initializeControlFixture } from './helpers/control-fixture.ts';
-import { ReturnRouter } from '@alpacawork/backend/test-dist/control/return-router.js';
-import { RunEventImporter } from '@alpacawork/backend/test-dist/runs/event-importer.js';
 import { names } from '@alpacawork/backend/test-dist/runs/execution-files.js';
-import { preserveTestFailure } from './helpers/failure-workspace.ts';
+import { messagePart } from './helpers/coordinator-http-fixture.ts';
 import { httpStatus } from './helpers/http-cli.ts';
 import { until as untilFact } from './runs-runtime.fixture.ts';
 
@@ -45,7 +43,8 @@ async function fixture(t: { after: (fn: () => Promise<void>) => void }, agent = 
     const response = await fetch(new URL(`/api/coordinator/${path}`, server.url), { method: 'POST',
       headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ conversationId, ...body as object }) });
     const raw = await response.json();
-    const result = response.ok && ['messages', 'warm', 'clear', 'messages/withdraw', 'messages/send-now'].includes(path) ? coordinatorSnapshotSchema.parse(raw).conversation : raw;
+    const result = !response.ok ? raw : path === 'clear' ? coordinatorSnapshotSchema.parse(raw).conversation :
+      coordinatorMessageResponseSchema.parse(raw).conversation;
     return { status: response.status, result };
   };
   t.after(async () => {
@@ -94,64 +93,37 @@ async function fixture(t: { after: (fn: () => Promise<void>) => void }, agent = 
     return row ? { id: String(row.input_id), state: String(row.state) } : null;
   });
   return { root, project, get, post, ask, choose, begin, until, conversationId, url: () => server.url, run, input,
+    projection: () => server.feed()!,
     release: () => writeFileSync(join(root, 'release'), ''),
     stop: () => server.close(),
     restart: async () => { await server.close(); server = await startServer(root); },
     output: (id: string) => readFileSync(join(root, '.alpacawork/runs', run(id).id, 'stdout.log'), 'utf8') };
 }
 
-test('a published taken receipt joins B during the tree pass backoff, without releasing A or another write', async t => {
-  let measuredCost = 0, arm = false, routes = 0, imports = 0;
-  const nativeNow = performance.now.bind(performance);
-  t.mock.method(performance, 'now', () => nativeNow() + measuredCost);
-  const lines: { step: string; gapMs?: number }[] = [], error = console.error;
-  t.mock.method(console, 'error', (...args: unknown[]) => {
-    if (typeof args[0] === 'string' && args[0].startsWith('{"timing"')) lines.push(JSON.parse(args[0]));
-    else error(...args);
-  });
-  const route = ReturnRouter.prototype.pass, imported = RunEventImporter.prototype.pass;
-  t.mock.method(ReturnRouter.prototype, 'pass', async function (this: ReturnRouter, ...args: Parameters<typeof route>) {
-    routes++;
-    const result = await route.apply(this, args);
-    // Model a costly, completed tree pass without blocking the receiver's event loop or delaying a real manager.
-    if (arm) { arm = false; measuredCost += 5_000; }
-    return result;
-  });
-  t.mock.method(RunEventImporter.prototype, 'pass', function (this: RunEventImporter, ...args: Parameters<typeof imported>) {
-    imports++; return imported.apply(this, args);
-  });
-  const h = await fixture(t, fake, { timing: true });
-  try {
-    const a = await h.begin(), gate = join(h.root, 'take-B');
-    const b = await h.ask('take:' + gate);
-    arm = true;
-    assert.equal((await h.post('messages/send-now', { id: b })).status, 200);
-    await untilFact(() => lines.some(line => line.step === 'pass' && (line.gapMs ?? 0) >= 15_000), 'the measured tree backoff was installed');
-    const protocol = join(h.root, '.alpacawork/runs', h.run(a).id, 'protocol');
-    const bRun = h.run(b).id;
-    await untilFact(() => readdirSync(protocol).some(attempt => {
-      const events = join(protocol, attempt, 'events');
-      return names(events).some(name => {
-        const event = JSON.parse(readFileSync(join(events, name), 'utf8'));
-        return event.type === 'input_attempt' && event.payload.instructionRunId === bRun;
-      });
-    }), 'the real manager transferred B before its receipt');
-    const before = { routes, imports };
-    writeFileSync(gate, 'taken');
-    await untilFact(() => h.run(b).state === 'joined',
-      'published input receipt reaches the real coordinator API during tree backoff', 5_000);
-    assert.equal((await h.get()).turns.find(turn => turn.id === b)?.status, 'joined');
-    assert.equal(h.run(b).into, h.run(a).id);
-    assert.equal(h.input(b)?.state, 'taken');
-    assert.equal(existsSync(join(h.root, 'release')), false, 'A stays at its original gate');
-    assert.equal(routes, before.routes, 'receipt demand does not restart the backed-off tree routing');
-    assert.ok(imports > before.imports, 'the authoritative event importer accepted the receipt');
-    t.diagnostic(JSON.stringify({ a, b, before, after: { routes, imports }, lines }));
-  } catch (error) {
-    await preserveTestFailure(t, h.root, { failure: { error }, origin: h.url(),
-      diagnostics: async () => ({ lines, routes, imports, measuredCost, conversation: await h.get() }) });
-    throw error;
-  }
+test('a published receipt joins the working coordinator while the workspace projection is paused', async t => {
+  const h = await fixture(t);
+  const parent = await h.begin(), gate = join(h.root, 'take-B');
+  const child = await h.ask('take:' + gate);
+  assert.equal((await h.post('messages/send-now', { id: child })).status, 200);
+  const protocol = join(h.root, '.alpacawork/runs', h.run(parent).id, 'protocol');
+  const childRun = h.run(child).id;
+  await untilFact(() => readdirSync(protocol).some(attempt => {
+    const events = join(protocol, attempt, 'events');
+    return names(events).some(name => {
+      const event = JSON.parse(readFileSync(join(events, name), 'utf8'));
+      return event.type === 'input_attempt' && event.payload.instructionRunId === childRun;
+    });
+  }), 'the manager transferred the child before its receipt');
+  const projection = h.projection();
+  projection.pause();
+  const revision = projection.rev;
+  writeFileSync(gate, 'taken');
+  await untilFact(() => h.run(child).state === 'joined', 'the coordinator imports the receipt', 5_000);
+  assert.equal((await h.get()).turns.find(turn => turn.id === child)?.status, 'joined');
+  assert.equal(h.run(child).into, h.run(parent).id);
+  assert.equal(h.input(child)?.state, 'taken');
+  assert.equal(existsSync(join(h.root, 'release')), false);
+  assert.equal(projection.rev, revision);
 });
 
 test('withdraw removes only queued work, retains attachments for recovery, and refuses running and stale conversations', async t => {
@@ -240,7 +212,7 @@ test('send now preserves explicit recipients without adding viewing context to t
   const { prompts } = JSON.parse(state.turns.find(turn => turn.id === parent)!.answer!) as { prompts: string[] };
   prompts.slice(1).forEach((prompt, index) => assert.match(prompt,
     new RegExp(`Request ID of this input: ${requests[index]}.*--source-request ${requests[index]}`)));
-  assert.deepEqual(prompts.slice(1).map(prompt => prompt.replace(/^Request ID of this input: [^\n]+\n/m, '')), inputs.map(input => input.text));
+  assert.deepEqual(prompts.slice(1).map(prompt => messagePart(prompt)), inputs.map(input => input.text));
 });
 
 test('a message the working agent cannot take, for its model or effort, answers on its own and holds back no later one', async t => {
@@ -348,7 +320,7 @@ test('a receipt taken while serve was down joins on restart, without delivering 
   assert.equal(state.turns.find(turn => turn.id === id)?.into, parent);
   assert.equal(state.turns.find(turn => turn.id === id)?.answer, null);
   assert.deepEqual(JSON.parse(state.turns.find(turn => turn.id === parent)!.answer!).prompts.map((prompt: string) =>
-    prompt.replace(/^Request ID of this input: [^\n]+\n/m, '')),
+    messagePart(prompt)),
     [`hold:${join(h.root, 'release')}`, text]);
 });
 

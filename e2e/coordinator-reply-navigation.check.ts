@@ -1,7 +1,8 @@
 
 import { writeFileSync } from 'node:fs';
 import { test as base, expect, open, openCoordinator } from './fixtures.ts';
-import { configureCoordinator, readyCoordinator } from './coordinator-fixture.ts';
+import { configureCoordinator, readyCoordinator, revealReplies } from './coordinator-fixture.ts';
+import { coordinatorSnapshotSchema } from '@alpacawork/contract/coordinator';
 import { start } from './server.ts';
 
 const test = base.extend({ runtime: async ({}, use) => {
@@ -17,13 +18,14 @@ for (const phone of [false, true]) test.describe(phone ? 'phone reply navigation
 
   if (!phone) test('an unconfirmed queued reply returns to its sent message and cannot jump after acceptance or another disclosure', async ({ page, runtime }) => {
     await open(page, runtime, '?agent=1'); await openCoordinator(page);
-    // The answer replied to is the send's own; the background warm-up it would otherwise wait behind has its own lifetime.
     await readyCoordinator(page, runtime);
     const field = page.locator('[data-one-input]'), send = page.locator('[data-ask-send]');
     await field.fill('answer-from:' + runtime.root + '/answer.md'); await send.click();
     const source = page.locator('[data-coordinator-turn=succeeded]').first(); await expect(source).toBeVisible();
     await field.fill('wait:' + runtime.root + '/gate'); await send.click();
     await expect(page.locator('[data-coordinator-turn=running]')).toBeVisible();
+    await revealReplies(page);
+    if (await source.getAttribute('data-exchange') === 'folded') await source.locator('[data-exchange-toggle]').click();
     await source.locator('[data-reply-answer]').click(); await field.press('End'); await field.pressSequentially('unconfirmed reply');
     let release!: () => void, localId = '';
     const held = new Promise<void>(resolve => { release = resolve; });
@@ -58,5 +60,51 @@ for (const phone of [false, true]) test.describe(phone ? 'phone reply navigation
     } finally {
       release(); writeFileSync(runtime.root + '/gate', ''); await page.unrouteAll({ behavior: 'wait' });
     }
+  });
+
+  if (!phone) test('after a reset from the usage ring, a reply to a message no longer among the recent ones still goes, and the ring takes the new figure', async ({ page, runtime }) => {
+    await open(page, runtime, '?agent=1'); await openCoordinator(page);
+    await readyCoordinator(page, runtime);
+    const field = page.locator('[data-one-input]'), send = page.locator('[data-ask-send]');
+    const snapshot = async () => coordinatorSnapshotSchema.parse(await (await page.request.get(runtime.origin + '/api/coordinator')).json()).conversation;
+    await field.fill('answer-from:' + runtime.root + '/answer.md'); await send.click();
+    await expect(page.locator('[data-coordinator-turn=succeeded]').first()).toBeVisible();
+    const { id: conversationId, turns: [source] } = await snapshot();
+    // Twenty more exchanges push it out of the recent ones the conversation is served with; the last one reports usage.
+    for (let n = 1; n <= 20; n++) {
+      const posted = await page.request.post(runtime.origin + '/api/coordinator/messages',
+        { data: { conversationId, id: crypto.randomUUID(), text: n === 20 ? 'usage:150000' : `filler ${n}`, attachments: [] } });
+      expect(posted.ok()).toBe(true);
+    }
+    await expect.poll(async () => { const now = await snapshot(); return !now.busy && now.turns.every(turn => turn.status === 'succeeded'); }, { timeout: 60_000 }).toBe(true);
+    const before = await snapshot();
+    expect(before.turns.some(turn => turn.id === source!.id)).toBe(false);
+    expect(before.earlier).not.toBeNull();
+    const ring = page.locator('[data-coordinator-context]');
+    await expect(ring).not.toHaveText('—');
+
+    // Reset from the ring's menu: one line where it happened, and no figure until the new coordinator answers.
+    await ring.click(); await page.locator('[data-coordinator-reset]').click();
+    await expect(page.locator('[data-coordinator-reset-line=asked]')).toBeVisible();
+    await expect(ring).toHaveText('—');
+
+    // The source is read back a page at a time, then replied to.
+    await revealReplies(page);
+    const origin = page.locator(`[data-coordinator-message="${source!.id}"]`);
+    // Opening reads the first older page; a further one is read while the source is not there yet.
+    const more = page.locator('[data-earlier-more]:not([data-earlier-more=reading]) button');
+    for (;;) { await expect(origin.or(more)).toBeVisible(); if (await origin.count()) break; await more.click(); }
+    if (await origin.getAttribute('data-exchange') === 'folded') await origin.locator('[data-exchange-toggle]').click();
+    await origin.locator('[data-reply-answer]').click(); await field.press('End'); await field.pressSequentially('reply after reset');
+    await send.click();
+    await expect.poll(async () => (await snapshot()).turns.find(turn => turn.replyTo?.id === source!.id)?.status, { timeout: 30_000 }).toBe('succeeded');
+    // From the reply sent, read afresh: its label leads back to the original answer, read back from the older pages.
+    const reply = (await snapshot()).turns.find(turn => turn.replyTo?.id === source!.id)!;
+    await page.reload(); await openCoordinator(page);
+    await page.locator(`[data-coordinator-message="${reply.id}"] [data-label=reply] [aria-haspopup]`).click();
+    await page.getByRole('button', { name: 'Go to the original reply', exact: true }).click();
+    await expect(page.locator(`[data-coordinator-message="${source!.id}"] [data-ask-answer][data-reply-flash]`)).toBeInViewport({ timeout: 15_000 });
+    await field.fill('usage:90000'); await send.click();
+    await expect(ring).not.toHaveText('—', { timeout: 30_000 });
   });
 });

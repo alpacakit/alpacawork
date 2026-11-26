@@ -118,6 +118,7 @@
     "otherIn": "Other in {{folder}}",
     "otherMedia": "Other media",
     "path": "Path",
+    "removed": "File removed: {{name}}",
     "unavailable": "Could not display file: {{name}}",
     "videos": "Videos",
     "work": "Work files"

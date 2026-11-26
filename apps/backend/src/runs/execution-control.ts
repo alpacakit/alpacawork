@@ -1,4 +1,7 @@
-import { continuationSession } from './session-continuation.js';
+import { coordinatorInputSession } from '../coordinator/continuation.js';
+import { activeCoordinatorRuns } from '../coordinator/requests.js';
+import { readAgentsSettings } from '../agents-settings.js';
+import { taskInputSession } from './session-continuation.js';
 import { existsSync } from 'node:fs';
 import { controlSchemaState, inspectDatabaseHistory, inTransaction, touch } from '@alpacawork/db';
 import { startDecision } from '../control/task-start-facts.js';
@@ -26,8 +29,6 @@ import { claimCompaction } from './compactions.js';
  * attempt), never the workspace or a Task's code. It is under the root, so the agent finds the root's skills.
  */
 export const coordinatorCwd = (root: string): string => join(root, '.alpacawork', 'coordinator', 'cwd');
-/** A warm-up only has the coordinator read its skills and references. */
-const WARM_MINUTES = 2;
 
 export function attemptOf(store: Pick<RunStore, 'connection'>, id: string): LaunchSnapshot | null {
   const row = store.connection.prepare('SELECT a.launch_json,r.prompt FROM run_attempts a JOIN runs r ON r.id=a.run_no WHERE a.run_no=?').get(runNumber(id));
@@ -36,8 +37,7 @@ export function attemptOf(store: Pick<RunStore, 'connection'>, id: string): Laun
 /**
  * Fixes what one attempt launches. A Task's Run calls alpacawork with its own credential, below its callers, in its
  * own directory, for `run_minutes`. A coordinator's Run gets no credential and no callers (its agent is the user's direct
- * caller), works in its empty folder, and runs for at most a coordinator turn (a warm-up for less). `invocation` is
- * the Run's own unless the scheduler starts the coordinator's conversation anew.
+ * caller), works in its empty folder, and runs for at most a coordinator turn and uses the scheduler's bound invocation.
  */
 export function reserveAttempt(store: RunStore, tx: RunTransaction, run: RuntimeRunRecord, entry: string,
   limits: Pick<Limits, 'run_minutes' | 'coordinator_run_minutes' | 'coordinator_command_seconds'>, invocation: AgentInvocation = invocationForRun(run)): LaunchSnapshot {
@@ -54,8 +54,7 @@ export function reserveAttempt(store: RunStore, tx: RunTransaction, run: Runtime
   let server: string | null = null;
   try { server = readConnection(connectionPath(store.root)).url.origin; } catch { /* Offline maintenance does not launch. */ }
   const coordinator = run.role === 'coordinator';
-  const warm = coordinator && !!db.prepare('SELECT 1 FROM coordinator_conversations WHERE warm_request_id=?').get(run.requestId);
-  const runMinutes = !coordinator ? limits.run_minutes : warm ? WARM_MINUTES : limits.coordinator_run_minutes;
+  const runMinutes = coordinator ? limits.coordinator_run_minutes : limits.run_minutes;
   const attemptId = randomUUID();
   const compaction = coordinator ? null : claimCompaction(db, run.id, attemptId, invocation, new Date().toISOString());
   const launch = launchSchema.parse({ protocol: 1, workspaceId, runId: run.id,
@@ -184,7 +183,7 @@ export function planInputs(store: RunStore): void {
         inputs.some(i => inputUnsettled(i.state));
       if (!takesInput(run, closed)) continue;
       const lane: readonly RuntimeRunRecord[] = run.role === 'coordinator'
-        ? tx.coordinatorRuns(run.conversationId) : tx.conversationRuns(run.placementId);
+        ? activeCoordinatorRuns(store.connection, run.conversationId) : tx.conversationRuns(run.placementId);
       for (const next of lane) {
         if (next.state !== 'queued' || next.role === 'coordinator' && !next.joinRequested) continue;
         if (next.role !== 'coordinator' && queuedStart(store, tx, next).kind !== 'go') break;
@@ -192,7 +191,12 @@ export function planInputs(store: RunStore): void {
         if (reserved) { if (reserved.state === 'taken') continue; break; }
         // One the working invocation cannot take: a Task's work waits in order; a coordinator message answers on its
         // own and holds back no later one.
-        const session = continuationSession(runs, next, { kind: 'input', working: run });
+        let session: RuntimeRunRecord['session'];
+        if (run.role === 'coordinator' && next.role === 'coordinator') {
+          const settings = readAgentsSettings(store.root);
+          if (!settings.ok) continue;
+          session = coordinatorInputSession(store.connection, settings.config, run, next);
+        } else session = taskInputSession(runs, next, run);
         if (next.stop_requested || !session || !compatibleFallbacks(store.connection, run, next)) { if (next.role === 'coordinator') continue; break; }
         const promptRow = store.connection.prepare('SELECT prompt FROM runs WHERE id=?').get(runNumber(next.id));
         const prompt = promptRow ? String(promptRow.prompt) : null;

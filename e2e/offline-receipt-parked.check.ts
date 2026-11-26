@@ -100,8 +100,8 @@ for (const [width, ways] of [[1280, ['anchor']], [390, ['anchor', 'explicit']]] 
     await controlledPwa(page);
     await bindClient(page);
     await goto(page, a);
-    const warm = page.waitForResponse(v => new URL(v.url()).pathname === '/api/coordinator/warm'); await openCoordinator(page); await warm;
-    await expect.poll(async () => (await conversation(page, runtime)).warm, { timeout: 20_000 }).toMatch(/^(?:none|ready|failed)$/);
+    await openCoordinator(page);
+    await expect.poll(async () => (await conversation(page, runtime)).busy, { timeout: 20_000 }).toBe(false);
     // The current formal answer caller parks the unchanged same-turn A document.
     await fold(page); await reader(page).locator('[data-question="1"]').getByRole('button', { name: /A 青/ }).click();
     await ensureOpen(page); await input(page).press('End'); await page.keyboard.insertText('PARKED A ORIGINAL');

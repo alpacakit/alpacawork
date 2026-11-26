@@ -1,5 +1,5 @@
 import { Workbench } from "../src/features/shell/Workbench";
-import { snapshotJson } from './conversation-fixture';
+import { snapshotJson, SERVED } from './conversation-fixture';
 /**
  * Receipt display probes (test only). Each case states a requirement of the receipt plan (scope scalar + same Task
  * Query detail admission + server/display API split) against the actual production callers.
@@ -101,7 +101,7 @@ test('the Workspace frame, Reader and coordinator card stay mounted while server
       return view ? new Response(snapshotJson(view)) : problemResponse('not_found', 'No task');
     }
     if (target.pathname === '/api/task/history') return new Response(snapshotJson({ events: [], nextBefore: null }));
-    if (path === '/api/coordinator') return new Response(snapshotJson({ id: 'conversation-1', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [] }));
+    if (path === '/api/coordinator') return new Response(snapshotJson({ id: 'conversation-1', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns: [] }));
     if (path === '/api/commands/settings/get') return new Response(snapshotJson({ values, revision: 'person-1' }));
     if (path === '/api/person/notices') return new Response(snapshotJson({ state: null, revision: null, initialBaselines: Object.fromEntries(indexOf(served).tasks.map(row => [row.id, taskBaseline(row)])) }));
     if (path.startsWith('/api/task/timeline-axis?')) {

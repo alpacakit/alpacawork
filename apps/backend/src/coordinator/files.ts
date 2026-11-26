@@ -20,7 +20,6 @@ export const coordinatorRequestId = (id: string) => {
 };
 /** A message's own files: those the person attached, and the snapshots of local files its answer links to. */
 type Area = 'attachments' | 'answers';
-const attachments = (conversation: string) => `${FOLDER}/${conversation}/attachments`;
 const base = (conversation: string, id: string, area: Area = 'attachments') =>
   `${FOLDER}/${conversation}/${area}/${coordinatorRequestId(id)}`;
 export const coordinatorFilePath = (conversation: string, id: string, name: string, area: Area = 'attachments') => {
@@ -101,22 +100,25 @@ export function moveCoordinatorAttachments(root: string, conversation: string, f
  * The folders directly below the coordinator's (with `conversation`, its messages' attachment folders), for a sweep to
  * judge by the records whose they are.
  */
-export function coordinatorFolders(root: string, conversation?: string): string[] {
+export function coordinatorFolders(root: string, conversation?: string, area: Area = 'attachments'): string[] {
   const writer = new FileWriter(root);
   try {
     let folder: string;
-    try { folder = writer.directory(conversation === undefined ? FOLDER : attachments(conversation)); }
+    try { folder = writer.directory(conversation === undefined ? FOLDER : `${FOLDER}/${conversation}/${area}`); }
     catch (error) { if (hasCode(error, 'ENOENT')) return []; throw error; }
     return writer.entries(folder).map(entry => entry.name);
   } finally { writer.close(); }
 }
 /**
- * Removes the files no one owns any more: a cleared conversation's, or (with `id`) a withdrawn message's. What is
+ * Removes a cleared conversation's or an expired message's files. What is
  * already gone is skipped, so a sweep that stopped part way is simply run again. Refused while a file publication there
  * is pending.
  */
 export function discardCoordinatorFiles(root: string, conversation: string, id?: string) {
-  const target = id === undefined ? `${FOLDER}/${conversation}` : base(conversation, id);
+  for (const target of id === undefined ? [`${FOLDER}/${conversation}`] : (['attachments', 'answers'] as const).map(area => base(conversation, id, area)))
+    discardFolder(root, target);
+}
+function discardFolder(root: string, target: string) {
   new FileJournal(root).assertAvailable(target);
   const writer = new FileWriter(root);
   try {

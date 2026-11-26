@@ -1,7 +1,7 @@
 import { labelLayer } from './editor-surface.ts';
 import type { Page } from '@playwright/test';
 import { test as base, expect } from './fixtures.ts';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { start, type Runtime } from './server.ts';
 import { configureCoordinator, foldConversation } from './coordinator-fixture.ts';
@@ -11,12 +11,19 @@ import { SAMPLE_PROJECT } from './fixture/sample.ts';
 import { decideValues } from '../tests/helpers/task-values.ts';
 type StoredEntry = { status: string; values: Record<string, string> };
 const test = base.extend<{ runtime: Runtime }>({ runtime: async ({}, use, info) => {
-  const runtime = await start(undefined, root => {
-    configureCoordinator(root); const folder = join(root, '.alpacawork/coordinator');
-    mkdirSync(folder, { recursive: true }); writeFileSync(join(folder, '.warm-hold'), 'fixture gate: keep real queue pending');
-  });
-  writeFileSync(info.outputPath('runtime.json'), JSON.stringify({ root: runtime.root, origin: runtime.origin }));
-  try { await use(runtime); } finally { await runtime.stop(); }
+  const runtime = await start(undefined, configureCoordinator);
+  const gate = join(runtime.root, 'terminal-delivery-gate');
+  try {
+    const current = await (await fetch(runtime.origin + '/api/coordinator')).json();
+    const response = await fetch(runtime.origin + '/api/coordinator/messages', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ conversationId: current.conversation.id, id: crypto.randomUUID(),
+        text: `wait:${gate}`, attachments: [] }),
+    });
+    expect(response.status, await response.text()).toBe(200);
+    writeFileSync(info.outputPath('runtime.json'), JSON.stringify({ root: runtime.root, origin: runtime.origin }));
+    await use(runtime);
+  } finally { writeFileSync(gate, 'release'); await runtime.stop(); }
 } });
 test.use({ fixedTime: false }); // Preserve the real clock these host-time delivery cases used with Playwright base.
 // Its sends from the input are read leaving their cards: auto-swipe on.
@@ -52,7 +59,8 @@ async function prepare(page: Page, runtime: Runtime, explicit = true) {
   if (explicit) {
     // A saved conversation frame can cover the reader's choice. Fold it as a person would before answering behind it.
     await foldConversation(page);
-    await settleMotion(page);
+    // The fixture's message keeps the coordinator at work: its folded dot pulses throughout, so only finite motion waits.
+    await settleMotion(page, undefined, true);
     await page.locator('aside[data-reader-mode] [data-question="1"]').getByRole('button', { name: /Option1/ }).click();
     await openCoordinator(page);
   }
@@ -81,7 +89,9 @@ test('saved ask reply loss followed by another browser cancellation settles the 
   const beforePost = await (await page.request.get(runtime.origin + '/api/coordinator')).json();
   const reads = new Promise<void>(resolve => { releaseReads = resolve; });
   await page.route('**/api/coordinator', async route => {
-    if (answerOldReads) { await route.fulfill({ json: beforePost }); return; }
+    // The old reads stand for a version of the conversation before this send, not the one serve holds after the other
+    // browser's cancellation (whose words are the same): a version of its own, so that read is still new here.
+    if (answerOldReads) { await route.fulfill({ json: { ...beforePost, revision: 'e'.repeat(64) } }); return; }
     await reads; await route.continue();
   });
   try {
@@ -192,6 +202,8 @@ for (const [mode, elsewhere] of [['live', false]] as ['live' | 'lost-reply', boo
       expect(turn.ask).toBe(input.text); expect(turn.attachments).toEqual(input.attachments); expect(turn.status).toBe('queued');
       const clearPage = async (target: Page) => {
         const done = target.waitForResponse(response => new URL(response.url()).pathname === '/api/coordinator/clear');
+        // Clearing is in the usage ring's menu, pressed twice.
+        await target.locator('[data-coordinator-context]').click();
         const button = target.locator('[data-coordinator-clear]'); await button.click(); await button.click();
         const response = await done; expect(response.ok()).toBe(true); return (await response.json()).conversation;
       };
@@ -264,7 +276,8 @@ test.describe('pre-admission cancellation', () => {
     const input = bodies[0];
     const before = (await (await page.request.get(runtime.origin + '/api/coordinator')).json()).conversation;
     expect(before.turns.some((turn: any) => turn.id === input.id)).toBe(false);
-    expect(before.cancelled).not.toContain(input.id);
+    const status = await page.request.get(`${runtime.origin}/api/coordinator/messages/${input.id}/status`);
+    expect((await status.json()).status).toBe('missing');
     const local = page.locator('[data-coordinator-thread] [data-coordinator-local="unknown"]');
     await expect(local.getByRole('button', { name: 'Send again', exact: true })).toBeVisible();
     await expect(local.locator('[data-coordinator-withdraw], [data-coordinator-cancel-unsent]')).toHaveCount(1);
@@ -278,9 +291,9 @@ test.describe('pre-admission cancellation', () => {
     // APIRequestContext bypasses the browser route: deliver the exact original POST after the cancellation committed.
     const delayed = await page.request.post(runtime.origin + '/api/coordinator/messages', { data: input });
     expect(delayed.ok()).toBe(true);
-    const after = (await delayed.json()).conversation;
-    expect(after.cancelled).toContain(input.id);
-    expect(after.turns.some((turn: any) => turn.id === input.id)).toBe(false);
+    const after = await delayed.json();
+    expect(after.message).toEqual({ id: input.id, status: 'withdrawn' });
+    expect(after.conversation.turns.some((turn: any) => turn.id === input.id)).toBe(false);
     await page.reload(); await openCoordinator(page);
     await expect(field(page)).toHaveText(words);
     await expect(page.locator('[data-coordinator-waiting]')).toHaveCount(0);

@@ -1,7 +1,8 @@
 import { freezeReadJson, readPayloadMatches, isReadDataImmutable } from './read-json';
 export { isReadDataImmutable } from './read-json';
 import { requestRead, readDemandPending, readFreshnessPending, readRecoveryPending, planRead, completeReadDemand, failReadDemand, retireReadDemand, noteReadInvalidation, type ReadExecution } from './read-demand';
-import { coordinatorSnapshotSchema, type CoordinatorSnapshot } from '@alpacawork/contract/coordinator';
+import { coordinatorSnapshotSchema } from '@alpacawork/contract/coordinator';
+import type { CoordinatorSnapshot } from './coordinator';
 import { z } from 'zod';
 import { startReadRetention } from './read-retention';
 import { hashKey, notifyManager, replaceEqualDeep, type Query as QueryRecord, type QueryClient, type QueryKey } from '@tanstack/react-query';

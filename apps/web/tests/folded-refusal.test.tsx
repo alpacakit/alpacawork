@@ -1,4 +1,4 @@
-import { snapshotJson } from './conversation-fixture';
+import { snapshotJson, SERVED } from './conversation-fixture';
 import { setConversationState } from './conversation-fixture';
 import { afterEach, beforeAll, expect, test, vi } from 'vitest';
 import { cleanup, fireEvent, render, waitFor } from '@testing-library/react';
@@ -26,7 +26,7 @@ function mount(changed:boolean){
  const source=data.tasks.find(task=>task.id==='T3')!,original={...source,hash:originalHash};
  const intent={task:'T3',action:'sendback' as const,aboutRun:'R3',expectedTaskHash:originalHash,expectedPlacementRevision:7};
  const doc=labelled(markReaderOperation(textDocument('Send the original result back')),source);
- setConversationState({root,conversation:{id:cid,nextLaunch: { agent: 'claude', values: {} },warm: 'none' as const,busy:false,cancelled:[],turns:[]},open:false,expanded:false,engaged:false,read:true,error:null});
+ setConversationState({root,conversation:{id:cid,nextLaunch: { agent: 'claude', values: {} },...SERVED,busy:false,cancelled:[],turns:[]},open:false,expanded:false,engaged:false,read:true,error:null});
  useSitting.setState({card:{taskId:'T1'},departures:{},sent:null,emptied:null} as never);
  useDraftStore.setState({entries:{[key]:{status:'editing',values:{doc:JSON.stringify(doc),requestId:crypto.randomUUID(),phase:'composing',...editableIntentValues(intent,readerTurn(original))}}},unavailable:false});
  const before=structuredClone(useDraftStore.getState().entries[key]!.values),posts:any[]=[];

@@ -1,4 +1,4 @@
-import { setConversationState } from './conversation-fixture';
+import { setConversationState, SERVED, servedTurn } from './conversation-fixture';
 import { useRef } from 'react';
 import { afterEach, beforeAll, expect, test, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
@@ -17,9 +17,9 @@ import { useUndoOffers } from '../src/data/undo-offers';
 import { endSendGrace } from '../src/data/send-grace';
 import { TestWorkspace } from './fixtures';
 
-const turn = (extra: Partial<CoordinatorTurn> = {}): CoordinatorTurn => ({ id: 'first', at: new Date().toISOString(), ask: 'One instruction',
+const turn = (extra: Partial<CoordinatorTurn> = {}): CoordinatorTurn => servedTurn('waiting-test', { id: 'first', at: new Date().toISOString(), ask: 'One instruction',
   attachments: [], status: 'queued', waiting: false, answer: null, answeredAt: null, seen: false, error: null, result: null, ...extra });
-const conversation = (turns: CoordinatorTurn[] = [], busy = false) => ({ id: 'waiting-test', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy, cancelled: [], turns });
+const conversation = (turns: CoordinatorTurn[] = [], busy = false) => ({ id: 'waiting-test', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy, admitted: {}, cancelled: [], turns });
 function Surface() {
   const turns = useConversation(state => state.conversation?.turns ?? []);
   const expanded = useConversation(state => state.expanded);
@@ -79,7 +79,7 @@ test.each([false, true])('only blocked accepted turns are queued; removing the p
   expect(row.querySelector('[data-exchange-toggle]')).toBeNull();
   expect(document.querySelectorAll('[data-coordinator-queue-button]')).toHaveLength(expanded ? 0 : 1);
   expect(document.querySelector('[data-coordinator-queue-over]')).toBeNull();
-  act(() => setConversationState({ conversation: { ...conversation([{ ...next, waiting: false }], true), cancelled: ['first'] } }));
+  act(() => setConversationState({ conversation: { ...conversation([{ ...next, waiting: false }], true), admitted: {}, cancelled: ['first'] } }));
   expect(document.querySelector('[data-coordinator-queue-button], [data-coordinator-queue-over]')).toBeNull();
   expect(document.querySelectorAll('[data-coordinator-turn]')).toHaveLength(1);
   expect(screen.getAllByText('Next instruction', { exact: true })).toHaveLength(1);
@@ -265,27 +265,15 @@ test('when all local rows are finished the folded line shows the latest outcome'
   expect(document.querySelector('[data-coordinator-pill]')!.textContent).toContain('latest refusal');
 });
 
-test('preparation projects accepted queued messages as waiting, without a Send now action', () => {
-  setConversationState({ root: '/fixture', expanded: true, conversation: { ...conversation([turn()], true), warm: 'preparing' } });
-  render(<Surface />);
-  const row = document.querySelector('[data-coordinator-thread] [data-coordinator-waiting=first]')!;
-  expect(row.textContent).toContain('Starting the coordinator');
-  expect(row.querySelector('[data-coordinator-send-now]')).toBeNull();
-  expect(row.querySelector('[data-coordinator-posting]')).toBeNull();
-});
-
 // The folded line says what the open conversation's row says, from the same facts: never at work while the row waits.
 test.each([
-  ['the coordinator is starting', { ...conversation([turn()], true), warm: 'preparing' as const }, 'Starting the coordinator'],
   ['it waits its turn', conversation([turn({ waiting: true })], true), 'Queued'],
   ['it is on its way', conversation([turn()]), 'Sending…'],
   ['it is at work', conversation([turn({ status: 'running' })], true), 'Working on it…'],
   ['it is sent now to the work under way', conversation([turn({ id: 'work', status: 'running' }), turn({ waiting: true, joinRequested: true })], true), 'Sending…'],
   ['it is handed to the work under way', conversation([turn({ id: 'work', status: 'running' }), turn({ status: 'sending', waiting: true })], true), 'Sending…'],
-  ['it is taken back while the coordinator starts', { ...conversation([turn()], true), warm: 'preparing' as const }, 'Cancelling…', true],
-])('the folded line and the row say the same while %s', (_, value, words, withdraw = false) => {
+])('the folded line and the row say the same while %s', (_, value, words) => {
   setConversationState({ root: '/fixture', expanded: true, conversation: value });
-  if (withdraw) beginWithdrawal('/fixture', 'first', value);
   render(<Surface />);
   expect(document.querySelector('[data-coordinator-thread] [data-coordinator-message=first]')!.textContent).toContain(words);
   expect(document.querySelector('[data-coordinator-pill]')!.textContent).toContain(words);
@@ -321,7 +309,7 @@ test('an earlier cancelled recovery row precedes later server waiting words, eve
   // admission restores it into that input instead.
   const current = useDraftStore.getState().entries[key]!.values;
   updateDraft(key, { values: { ...current, doc: JSON.stringify(textDocument('Newer unsent words')), phase: 'composing' } });
-  const snapshot = { ...conversation([work, turn({ id: second, ask: 'Later waiting', waiting: true })], true), cancelled: [first] };
+  const snapshot = { ...conversation([work, turn({ id: second, ask: 'Later waiting', waiting: true })], true), admitted: {}, cancelled: [first] };
   reconcileOutbox(snapshot, root, key);
   setConversationState({ conversation: snapshot });
   render(<Surface />);

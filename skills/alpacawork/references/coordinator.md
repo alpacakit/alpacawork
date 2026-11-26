@@ -159,3 +159,11 @@ For an action received in the conversation, record the user's words with `--quot
 
 - The user's turn (["Waking" in "Delivery and completion"](lifecycle.md#waking)) appears in the list and in notifications. A hold on a top task also appears in the list. A child appears in the list only when it is the user's turn; otherwise, how a child is doing (holds included) is seen in the tree. If the user asks, read it with `task get` and tell them.
 - When you tell the user the current state, verify it with `alpacawork workspace url` and `task list` right before you reply. When the user has answered a question on a task that is in the user's turn, say in your reply whether that answer resumes the work or which question still awaits an answer. If you are asking for work, send a `task request`. Before deciding what to ask or drafting a question or report for the user, follow [Open the skills for your next action](../SKILL.md#open-the-skills-for-your-next-action).
+
+## Coordinator memo
+
+In a Run in the screen's open conversation, update the memo when you settle a direction, ask someone to work, or receive an answer or a result. Keep the live context in at most 2,000 characters. Include decisions, instructions still in effect, tasks you are following and why they are waiting, and unanswered questions. Record enough for the next session to pick up the work. The memo is carried into a new session when the coordinator resets.
+
+Read it with `alpacawork coordinator memo get`. Replace it with `alpacawork coordinator memo set --text-file <absolute-path>` or pass `--text-file -` to read from stdin.
+
+When requesting work that uses an image, video, or other file from the coordinator conversation, copy it to the task's folder as part of the request. Refer to the task's copy in the request and the memo. Conversation files can expire after a reset.

@@ -130,6 +130,7 @@
     "otherIn": "Outros em {{folder}}",
     "otherMedia": "Outras mídias",
     "path": "Caminho",
+    "removed": "Arquivo removido: {{name}}",
     "unavailable": "Não foi possível exibir o arquivo: {{name}}",
     "videos": "Vídeos",
     "work": "Arquivos de trabalho"

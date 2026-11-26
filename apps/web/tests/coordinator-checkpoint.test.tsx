@@ -5,7 +5,9 @@ import { waitFor } from '@testing-library/react';
 import { QueryClient } from '@tanstack/react-query';
 const { CoordinatorConversation: ServerConversation } = createRequire(import.meta.url)('../../backend/test-dist/coordinator/conversation.js') as typeof import('../../backend/src/coordinator/conversation');
 const { installCoordinatorRoutes } = createRequire(import.meta.url)('../../backend/test-dist/receiver/coordinator-routes.js') as typeof import('../../backend/src/receiver/coordinator-routes');
-import type { CoordinatorConversation } from '@alpacawork/contract/coordinator';
+import type { CoordinatorSnapshot } from '../src/data/coordinator';
+/** What serve holds: the page's learnt withdrawals are never served. */
+type ServedConversation = CoordinatorSnapshot['conversation'];
 import { coordinatorSnapshotSchema } from '@alpacawork/contract/coordinator';
 let queryClient: typeof import('../src/data/query-client')['queryClient'];
 let useConversation: typeof import('../src/features/coordinator/coordinator')['useConversation'];
@@ -26,10 +28,12 @@ let onReadEvent: typeof import('../src/data/resources')['onReadEvent'];
 let useConnection: typeof import('../src/data/connection')['useConnection'];
 import { indexOf, tree } from './fixtures';
 import { checkpointFixture } from './checkpoint-fixture';
+import { messageStatus, SERVED, turnDigest } from './conversation-fixture';
 const { Hono } = createRequire(process.cwd() + '/apps/backend/package.json')('hono');
-const empty = (): CoordinatorConversation => ({ id: 'checkpoint-conversation', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [] });
-const answered = (): CoordinatorConversation => ({ ...empty(), turns: [{ id: 'reply', at: '2026-10-21T10:00:00Z', ask: 'question', attachments: [],
-  status: 'succeeded' as const, waiting: false, answer: 'ACQUIRED WORDS', answeredAt: '2026-10-21T10:01:00Z', seen: false, error: null, result: null }] });
+const empty = (): ServedConversation => ({ id: 'checkpoint-conversation', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, turns: [] });
+const answered = (): ServedConversation => { const held = empty(); const turn = { id: 'reply', at: '2026-10-21T10:00:00Z', ask: 'question', attachments: [],
+  status: 'succeeded' as const, waiting: false, answer: 'ACQUIRED WORDS', answeredAt: '2026-10-21T10:01:00Z', seen: false, error: null, result: null };
+  return { ...held, turns: [{ ...turn, inputDigest: turnDigest(held.id, turn) }] }; };
 let stops: (() => void)[] = [];
 beforeEach(async () => {
   vi.resetModules();
@@ -45,12 +49,15 @@ beforeEach(async () => {
 });
 afterEach(() => { stops.forEach(stop => stop()); stops = []; queryClient.clear(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
-async function fixture(conversation: CoordinatorConversation = answered()) {
+async function fixture(conversation: ServedConversation = answered()) {
   const storage = checkpointFixture(); vi.stubGlobal('indexedDB', storage.factory);
-  const server = new ServerConversation('/fixture'); let current: CoordinatorConversation = conversation, failure = 0;
+  const server = new ServerConversation('/fixture'); let current: ServedConversation = conversation, failure = 0;
   vi.spyOn(server, 'read').mockImplementation(() => current);
   vi.spyOn(server, 'ask').mockImplementation(() => current);
-  vi.spyOn(server, 'warm').mockImplementation(() => current);
+  vi.spyOn(server, 'messageStatus').mockImplementation(id => {
+    const turn = current.turns.find(each => each.id === id);
+    return turn ? { id, status: turn.status, inputDigest: 'f'.repeat(64) } : { id, status: 'missing' as const };
+  });
   vi.spyOn(server, 'clear').mockImplementation(() => { current = { ...empty(), id: 'cleared-conversation' }; return current; });
   vi.spyOn(server, 'withdraw').mockImplementation(() => current); vi.spyOn(server, 'sendNow').mockImplementation(() => current);
   vi.spyOn(server, 'markSeen').mockImplementation(async (_id, seen) => ({ conversationId: current.id, seen: [...seen] }));
@@ -74,7 +81,7 @@ async function fixture(conversation: CoordinatorConversation = answered()) {
   stops.push(startReadPersistence(queryClient, listener => onReadEvent(queryClient, listener)));
   await useConversation.getState().refresh();
   await waitFor(() => expect(storage.read()?.slots.some((read: any) => read.key[0] === 'coordinator')).toBe(true));
-  return { storage, server, app, calls, index, snapshot, fail: (status: number) => { failure = status; }, change: (value: CoordinatorConversation) => { current = value; } };
+  return { storage, server, app, calls, index, snapshot, fail: (status: number) => { failure = status; }, change: (value: ServedConversation) => { current = value; } };
 }
 async function restored() {
   const next = new QueryClient(); await restoreReadPersistence(next);
@@ -164,12 +171,14 @@ test('old FORMAT, expired bundle and foreign origin are discarded instead of ada
 
 test('all snapshot routes use the same scope/digest rule; ACK retains its narrow contract', async () => {
   const h = await fixture();
-  for (const path of ['', '/messages', '/warm', '/messages/withdraw', '/messages/send-now', '/clear']) {
+  for (const path of ['', '/messages', '/messages/withdraw', '/messages/send-now', '/clear']) {
     const response = await h.app.request('http://fixture/api/coordinator' + path, path ? { method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ conversationId: h.server.read().id, ...(path === '/messages' ? { id: 'send', text: 'hello', attachments: [] }
         : path.startsWith('/messages/') ? { id: 'send' } : {}) }) } : undefined);
     expect(response.status).toBe(200);
-    const snapshot = await response.json(); coordinatorSnapshotSchema.parse(snapshot);
+    // A message's answer is its snapshot and the message's own status.
+    const { message, ...snapshot } = await response.json(); coordinatorSnapshotSchema.parse(snapshot);
+    expect(message === undefined).toBe(!path.startsWith('/messages'));
     expect(snapshot).toEqual(h.server.snapshot('a', snapshot.conversation));
   }
   const ack = await h.app.request('http://fixture/api/coordinator/read', { method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -249,7 +258,7 @@ test('scope token rotation excludes a former writer without a new tombstone or q
 
 for (const field of ['root', 'generation'] as const) test(`a POST snapshot from another ${field} ${field === "root" ? "cannot certify acceptance" : "can certify acceptance"} without replacing the current read`, async () => {
   const h = await fixture(), before = coordinatorReadState(queryClient, h.index.root);
-  const fetcher = vi.fn().mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ ...h.snapshot, [field]: 'foreign' }))));
+  const fetcher = vi.fn().mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ ...h.snapshot, [field]: 'foreign', message: messageStatus(h.snapshot.conversation, 'reply') }))));
   vi.stubGlobal('fetch', fetcher);
   rememberWriteIdentity(h.index.root, 'reply', 'initial');
   const asking = useConversation.getState().ask({ conversationId: h.snapshot.conversation.id, id: 'reply', text: 'question', attachments: [] });

@@ -470,10 +470,10 @@ function allRequests(db: DatabaseSync, root: string, project?: string, taskIds?:
   return rows.map(read.decode);
 }
 /** A conversation's Runs except those whose Request was aborted. */
-function conversationRows(db: DatabaseSync, key: ConversationKey, id: string): Record<string, unknown>[] {
+function placementConversationRows(db: DatabaseSync, id: string): Record<string, unknown>[] {
   return storageOperation(() => db.prepare(`SELECT r.id, r.record FROM runs r
     LEFT JOIN requests q ON q.id = r.request_id
-    WHERE ${conversationWhere(key)} ORDER BY r.id`)
+    WHERE ${conversationWhere('placement_id')} ORDER BY r.id`)
     .all(id, DELIVERY_STATE.aborted));
 }
 /** A joined Run's work and reply belong to the Run it joined, so it is never the head. */
@@ -555,24 +555,11 @@ function inputClosedRuns(db: DatabaseSync, condition: string, parameters: readon
       AND i.state IN (${UNSETTLED_INPUTS_SQL}))) AND ${TASK_RUN_SQL} AND ${condition}`).all(...parameters))
     .map(row => runIdOf(row.run_no)));
 }
-function decisionRecords(db: DatabaseSync, conversationId?: string): RuntimeRunRecord[] {
-  // Include unfinished runs.
-  // Close over children and ancestors so pure rules see every
-  // relationship of an included record. Completed unrelated history stays out.
-  // The next admission can resume a completed head. Include its ancestry for the conversation's "send now"
-  // prediction too: an uncertain receipt must not disappear just because there is no queued successor yet.
-  const head = conversationId === undefined ? undefined : conversationHeadRow(db, 'conversation_id', conversationId)?.id;
-  // A screen needs its conversation and shared sessions, not the unfinished graph of every Task. Keep the
-  // scheduler's unscoped seed unchanged, and close over the same relationships from the screen's own seed.
-  const inConversation = conversationId !== undefined;
+function decisionRecords(db: DatabaseSync): RuntimeRunRecord[] {
+  // Close over children and ancestors of unfinished Runs. Completed unrelated history stays out.
   return storageOperation(() => db.prepare(`
-    WITH RECURSIVE ${inConversation ? `relevant(id) AS (
-      SELECT id FROM runs WHERE conversation_id = ?
-      UNION SELECT r.id FROM runs r WHERE r.session_id IN
-        (SELECT session_id FROM runs WHERE conversation_id = ? AND session_id IS NOT NULL)
-    ),` : ''} selected(id) AS (
-      SELECT id FROM runs WHERE state IN (${UNFINISHED_SQL}) ${inConversation ? 'AND id IN (SELECT id FROM relevant)' : ''}
-      UNION SELECT id FROM runs WHERE id = ?
+    WITH RECURSIVE selected(id) AS (
+      SELECT id FROM runs WHERE state IN (${UNFINISHED_SQL})
       UNION SELECT r.id FROM runs r JOIN selected s
         ON r.caller_run = 'R' || s.id
       UNION SELECT p.id FROM runs c JOIN selected s ON c.id = s.id
@@ -581,10 +568,8 @@ function decisionRecords(db: DatabaseSync, conversationId?: string): RuntimeRunR
         JOIN runs p ON p.id = ${runNumberSql('c.resumes_id')}
       UNION SELECT next.id FROM runs c JOIN selected s ON c.id=s.id
         JOIN runs next ON next.id=${runNumberSql("json_extract(c.record,'$.supersededBy')")}
-    ) SELECT r.id, r.record FROM runs r JOIN selected s ON r.id = s.id
-    ${inConversation ? 'WHERE r.id IN (SELECT id FROM relevant)' : ''}
-    ORDER BY r.id
-  `).all(...inConversation ? [conversationId, conversationId, head === undefined ? null : Number(head)] : [null]).map(parseRuntimeRow));
+    ) SELECT r.id, r.record FROM runs r JOIN selected s ON r.id = s.id ORDER BY r.id
+  `).all().map(parseRuntimeRow));
 }
 
 /** The reads a write transaction may make; the store offers those it needs outside one at a read point of their own. */
@@ -667,7 +652,7 @@ export function transactionReads(db: DatabaseSync, root: string) {
     },
     /** A placement's conversation: its Runs except those whose Request was aborted. */
     conversationRuns(placementId: string): RunRecord[] {
-      return conversationRows(db, 'placement_id', placementId).map(parseRow);
+      return placementConversationRows(db, placementId).map(parseRow);
     },
     /** Latest Run in a placement's conversation, optionally excluding one pending Request. */
     conversationHead(placementId: string, exceptRequestId?: string): RunRecord | null {
@@ -683,13 +668,9 @@ export function transactionReads(db: DatabaseSync, root: string) {
     },
     /** Whether a Run's input is closed: the same read as a snapshot's `inputClosed`, for one Run at the write's read point. */
     inputClosed(id: RunId): boolean { return inputClosedRuns(db, 'r.id = ?', [runNumber(id)]).has(id); },
-    /** The coordinator conversation's Runs except those whose Request was aborted. */
-    coordinatorRuns(conversationId: string): CoordinatorRunRecord[] {
-      return conversationRows(db, 'conversation_id', conversationId).map(parseCoordinatorRow);
-    },
-    /** Latest Run in the coordinator conversation, optionally excluding one pending Request. */
-    coordinatorHead(conversationId: string, exceptRequestId?: string): CoordinatorRunRecord | null {
-      const row = conversationHeadRow(db, 'conversation_id', conversationId, exceptRequestId);
+    /** Latest non-joined Run for admission into this coordinator conversation. */
+    coordinatorHead(conversationId: string): CoordinatorRunRecord | null {
+      const row = conversationHeadRow(db, 'conversation_id', conversationId);
       return row ? parseCoordinatorRow(row) : null;
     },
     /** Complete relationship closure for slot and parent decisions. */
@@ -876,7 +857,7 @@ export function storeReads(db: DatabaseSync, root: string) {
         return { returns: decodeReturns(db, rows), nextAfter: keys.length > input.limit ? ids.at(-1)! : null };
       });
     },
-    /** A conversation reads only its lane and shared sessions, so an unrelated broken Task Run cannot hide it. */
-    forSettle(conversationId?: string): RuntimeRunRecord[] { return decisionRecords(db, conversationId); },
+    /** The execution graph of unfinished Runs and their related Runs. */
+    forSettle(): RuntimeRunRecord[] { return decisionRecords(db); },
   };
 }

@@ -22,9 +22,9 @@ test('Done sends once without opening the form, and a second press while the rea
   expect(sent).toBe(1);
 });
 
-// In the conversation's foot on a computer the tools say their words where they all fit, else they are marks
-// (also when the pane is narrowed under them); Clear, left of them, asks again over itself without moving.
-test('the conversation foot words its tools where they fit, and Clear asks over itself', async ({ page, runtime }) => {
+// In the conversation's foot on a computer the tools say their words where they all fit (narrower, they are marks:
+// the next test, in its own window).
+test('the conversation foot words its tools where they fit', async ({ page, runtime }) => {
   configureCoordinator(runtime.root);
   await page.setViewportSize({ width: 1440, height: 900 });
   await open(page, runtime, '?agent=1');
@@ -33,24 +33,9 @@ test('the conversation foot words its tools where they fit, and Clear asks over 
   await page.evaluate(() => localStorage.setItem('alpacawork.coordinatorFrame', JSON.stringify({ side: 'right', x: 16, edge: 'bottom', y: 12, width: 640, height: 400 })));
   await open(page, runtime, '?task=T112&agent=1');
   await openCoordinator(page);
-  const foot = page.locator('[data-coordinator-end]'), clear = foot.locator('[data-coordinator-clear]');
+  const foot = page.locator('[data-coordinator-end]'), state = foot.locator('[data-task-state]');
   await expect(foot.locator('[data-task-done]')).toBeVisible();
-  await expect(clear).toHaveText('Clear conversation');
-  await expect(foot.locator('[data-task-state]')).toHaveText('Change state');
-  // Narrowed by the hand under its words, they become marks.
-  const edge = (await page.locator('[data-frame-edge="left"]').boundingBox())!;
-  await page.mouse.move(edge.x + edge.width / 2, edge.y + edge.height / 2); await page.mouse.down();
-  await page.mouse.move(edge.x + edge.width / 2 + 300, edge.y + edge.height / 2, { steps: 10 }); await page.mouse.up();
-  await expect(clear).toHaveText('');
-  await settleMotion(page, undefined, true);
-  const before = (await clear.boundingBox())!;
-  expect(before.x).toBeLessThan((await foot.locator('[data-task-state]').boundingBox())!.x);
-  await clear.click();
-  await expect(page.locator('[data-coordinator-clear-ask]')).toHaveText('Click again to clear');
-  expect(await clear.boundingBox()).toEqual(before);
-  await page.keyboard.press('Escape');
-  await expect(page.locator('[data-coordinator-clear-ask]')).toHaveCount(0);
-  await expect(clear).toHaveAttribute('aria-label', 'Clear conversation');
+  await expect(state).toHaveText('Change state');
 });
 
 // In the conversation's own window the same: words while they fit, marks once it narrows.
@@ -65,14 +50,14 @@ test('in its own window the foot words its tools while they fit, and narrowed th
   const opened = page.context().waitForEvent('page');
   await page.locator('[data-coordinator-pop-out]').click();
   const own = await opened;
-  const clear = own.locator('[data-coordinator-clear]');
+  const state = own.locator('[data-coordinator-end] [data-task-state]');
   await expect(own.locator('[data-task-done]')).toBeVisible();
-  await expect(clear).toHaveText('Clear conversation');
+  await expect(state).toHaveText('Change state');
   // The window narrowed (its body, as a narrower window draws it): marks.
-  await own.evaluate(() => { document.body.style.width = '380px'; });
-  await expect(clear).toHaveText('');
+  await own.evaluate(() => { document.body.style.width = '260px'; });
+  await expect(state).toHaveText('');
   await own.evaluate(() => { document.body.style.width = ''; });
-  await expect(clear).toHaveText('Clear conversation');
+  await expect(state).toHaveText('Change state');
 });
 
 // Folded over the input, the row holds its tools by the same rule: on a narrow computer pane they are marks and

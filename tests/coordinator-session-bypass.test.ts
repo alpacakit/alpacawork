@@ -1,3 +1,4 @@
+import { coordinatorRunFor } from './helpers/coordinator-run.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
@@ -26,7 +27,7 @@ test('send now bypasses a waiting message with different choices', () => {
         coordinatorAiStack: [{ agent: 'fake', values: { effort } }] }));
       const id = randomUUID();
       conversation.ask({ conversationId: cid, id, text: `Use effort ${effort}`, attachments: [] });
-      return store!.coordinatorRuns(cid).find(run => run.requestId === id)!;
+      return coordinatorRunFor(store!, id);
     };
     const first = ask('high');
     const launch = store.write(tx => {
@@ -44,7 +45,6 @@ test('send now bypasses a waiting message with different choices', () => {
     journal.append('session', { id: 'established-same-session' });
     new RunEventImporter(store).pass();
     const waiting = ask('low'), sent = ask('high');
-    assert.equal(sent.resumes, waiting.id); assert.equal(waiting.resumes, first.id);
     assert.deepEqual(sent.launch.values, first.launch.values);
     assert.notDeepEqual(waiting.launch.values, sent.launch.values);
     assert.deepEqual(sent.session, store.runtimeGet(first.id)!.session);

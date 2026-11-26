@@ -11,7 +11,7 @@ import { MediaThumb } from "@/features/reader/TaskMedia";
  * What a message's files need: whose request they were uploaded under, and their names; one not yet held by serve also
  * says where each is read from meanwhile (`files`).
  */
-type Files = Pick<CoordinatorTurn, "id" | "attachments"> & { files?: readonly string[] };
+type Files = Pick<CoordinatorTurn, "id" | "attachments"> & { files?: readonly string[]; filesExpired?: true };
 const fileUrl = (turn: Files, name: string, index: number) => turn.files?.[index] ?? coordinatorFileUrl(turn.id, name);
 /** Its images and videos, in the order attached: the slider plays a video where it shows an image. */
 export const messageMedia = (turn: Files): SliderImage[] => {
@@ -21,10 +21,16 @@ export const messageMedia = (turn: Files): SliderImage[] => {
   });
   return media;
 };
-/** An answer's files as its body draws them: one not ready keeps its link's words, with nothing to open. */
-export const answerBodyFiles = (turn: Pick<CoordinatorTurn, "id" | "answerFiles">) => turn.answerFiles?.map(file => {
-  const url = file.state === "ready" ? coordinatorFileUrl(turn.id, file.name, "answers") : null;
-  return { path: file.href, name: file.state === "ready" ? file.name : file.href, size: file.state === "ready" ? file.size : 0, src: url, href: url };
+/**
+ * An answer's files as its body draws them: one not ready keeps its link's words, with nothing to open; one cleaned away
+ * with the old files says it was removed, as a message's own files do.
+ */
+export const answerBodyFiles = (turn: Pick<CoordinatorTurn, "id" | "answerFiles" | "filesExpired">) => turn.answerFiles?.map(file => {
+  if (file.state !== "ready") return { path: file.href, name: file.href, size: 0, src: null, href: null };
+  // Only a file that was kept can have been cleaned away.
+  if (turn.filesExpired) return { path: file.href, name: file.name, size: file.size, src: null, href: null, removed: true as const };
+  const url = coordinatorFileUrl(turn.id, file.name, "answers");
+  return { path: file.href, name: file.name, size: file.size, src: url, href: url };
 });
 export type OpenMessageImages = ReturnType<typeof useImageViewer>["open"];
 
@@ -33,6 +39,9 @@ export function MessageFiles({ turn, open, all = false }: {
   turn: Files; open: OpenMessageImages; all?: boolean;
 }) {
   const { t } = useTranslation("ui");
+  // Removed by the cleaning of old conversation files: said once in their place, with nothing to open.
+  if (turn.filesExpired) return <p data-coordinator-files-expired className="m-0 inline-flex items-center gap-1 text-xs text-muted">
+    <Icon name="file" className="size-3.5 flex-none" />{t("coordinatorCard.filesExpired", { count: turn.attachments.length })}</p>;
   const media = messageMedia(turn);
   const visible = !all && media.length > 4 ? media.slice(0, 3) : media;
   const rest = media.length - visible.length;

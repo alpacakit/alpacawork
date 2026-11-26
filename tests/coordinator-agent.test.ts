@@ -1,3 +1,4 @@
+import { coordinatorRunFor } from './helpers/coordinator-run.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
@@ -31,10 +32,9 @@ function fixture(t: any) {
 test('each coordinator input snapshots the saved reply language at admission, leaving unset inputs unchanged', async t => {
   const f = fixture(t);
   f.config({ first: claude() });
-  f.owner.warm(f.conversation.id);
   const settings = createPersonSettings(f.root), store = new RunStore(f.root, { busyTimeoutMs: 1000 });
   t.after(() => store.close());
-  const prompt = (id: string) => store.getText(store.coordinatorRuns(f.conversation.id).find(run => run.requestId === id)!.id)!.prompt!;
+  const prompt = (id: string) => store.getText(coordinatorRunFor(store, id).id)!.prompt!;
   const send = () => {
     const input = { conversationId: f.conversation.id, id: randomUUID(), text: 'Synthetic message', attachments: [] };
     f.owner.ask(input);
@@ -45,10 +45,9 @@ test('each coordinator input snapshots the saved reply language at admission, le
   const set = async (value: string | null) => settings.set('ai.language', value, (await settings.get()).revision);
   await set('ja-JP');
   const japanese = send(), original = prompt(japanese.id);
-  assert.equal(original.split('\n').slice(1).join('\n'),
-    languageLine('ja-JP') + 'Synthetic message');
+  assert.equal(original.split('\n')[0] + '\n', languageLine('ja-JP'));
   await set('en-US');
-  assert.equal(prompt(send().id).split('\n')[1] + '\n', languageLine('en-US'));
+  assert.equal(prompt(send().id).split('\n')[0] + '\n', languageLine('en-US'));
   f.owner.ask(japanese);
   assert.equal(prompt(japanese.id), original, 'replaying an accepted input retains its admitted language');
   await set(null);
@@ -132,8 +131,7 @@ test('literal command paths agree across launch, continuation, coordinator resta
     const continued = launchSnapshot(config, 'chosen', 'resume', bin, {}, start.launch); assert.ok(continued.ok);
     const coordinator = coordinatorLaunchSnapshot(config, 'chosen', 'start', bin); assert.ok(coordinator.ok);
     const resumed = coordinatorLaunchSnapshot(config, 'chosen', 'resume', bin, {}, coordinator.launch); assert.ok(resumed.ok);
-    assert.ok(resumed.restartArgv);
-    for (const launch of [start.launch, continued.launch, coordinator.launch, resumed.launch, { ...resumed.launch, argv: resumed.restartArgv }]) {
+    for (const launch of [start.launch, continued.launch, coordinator.launch, resumed.launch]) {
       const argv = launchArgv({ launch, session: { provider: adapter, id: 'synthetic-session' } }, '/synthetic-run');
       assert.equal(argv[adapter === 'claude' ? 0 : 3], command);
       assert.ok(argv.includes('synthetic-model'), 'editable option references still resolve');
@@ -145,7 +143,7 @@ test('literal command paths agree across launch, continuation, coordinator resta
   }
 });
 
-test('after another agent fails to launch, the screen and serve both go on from the last Run that got going', t => {
+test('switching back after a failed launch starts again in the selected profile', t => {
   const { root, owner, conversation, config, ask } = fixture(t);
   const agents = { first: claude(), second: claude() };
   const first = { agent: 'first', values: { model: 'synthetic-b' } };
@@ -153,22 +151,22 @@ test('after another agent fails to launch, the screen and serve both go on from 
   const store = new RunStore(root, { busyTimeoutMs: 1000 });
   t.after(() => store.close());
   const end = (requestId: string, state: 'succeeded' | 'failed') => store.write(tx => {
-    const run = tx.coordinatorRuns(conversation.id).find(each => each.requestId === requestId)!;
+    const run = coordinatorRunFor(store, requestId, tx);
     tx.update({ ...run, state: 'running', started_at: new Date().toISOString() });
-    tx.finish({ ...tx.coordinatorRuns(conversation.id).find(each => each.id === run.id)!, state, ended_at: new Date().toISOString(),
+    tx.finish({ ...run, state, ended_at: new Date().toISOString(),
       reason: state === 'failed' ? 'exit' : null }, state === 'failed' ? { state: 'missing', text: null } : { state: 'present', text: 'Synthetic answer' });
   });
-  const lastRequest = () => store.coordinatorRuns(conversation.id).at(-1)!;
+  const lastRequest = () => store.coordinatorHead(conversation.id)!;
   ask();
   const answered = lastRequest();
   end(answered.requestId, 'succeeded');
   config(agents, [{ agent: 'second', values: {} }]);
   ask();
   end(lastRequest().requestId, 'failed');
-  // A later failed Run for another agent does not replace the first agent's session.
+  // Changing the selected profile makes a new session with the selected model.
   config(agents, [first, { agent: 'second', values: {} }]);
   assert.deepEqual(owner.read().nextLaunch, first);
   ask();
   assert.deepEqual([lastRequest().agent, lastRequest().resumes, lastRequest().launch.values],
-    ['first', answered.id, { ...first.values, effort: null }]);
+    ['first', null, { ...first.values, effort: null }]);
 });

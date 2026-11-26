@@ -3,7 +3,7 @@ import { agentContextSchema, contextViewSchema, compactionMetrics } from './agen
 import { z } from 'zod';
 import { conversationContextSchema } from '@alpacawork/raw/conversation-context';
 import { runIdSchema, taskIdSchema, type RunId } from './fields.js';
-import { agentLaunchSchema, coordinatorRestartSchema } from './agent-launch.js';
+import { agentLaunchSchema } from './agent-launch.js';
 import { coordinatorMessageSchema } from './coordinator-contract.js';
 import { runAvailabilitySchema } from './run-failure.js';
 import { answerFileSchema } from './coordinator-files.js';
@@ -281,7 +281,6 @@ export type ReadRunRecord = DeepReadonly<RunRecord>;
  */
 export const coordinatorRunRecordSchema = taskRunObject.extend({
   task: z.null(), placementId: z.null(), role: z.literal(RUN_ROLE.coordinator), caller: z.null(),
-  ...coordinatorRestartSchema.shape,
   conversationId: z.uuid(), message: coordinatorMessageSchema, joinRequested: z.literal(true).optional(),
   answerFiles: z.array(answerFileSchema).min(1).optional(),
 }).superRefine(checkRunRecord);

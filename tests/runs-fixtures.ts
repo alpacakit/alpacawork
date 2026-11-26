@@ -19,10 +19,10 @@ export const ids = (runs: RunRecord[]) => runs.map(run => run.id);
 /** A synthetic new coordinator turn, validated as the persisted execution record. */
 export function coordinatorRecord(id = 'R1', overrides: Partial<CoordinatorRunRecord> = {}): CoordinatorRunRecord {
   return coordinatorRunRecordSchema.parse({ ...record(id), task: null, placementId: null, role: 'coordinator', caller: null,
-    conversationId: '00000000-0000-4000-8000-000000000000', restartArgv: null,
+    conversationId: '00000000-0000-4000-8000-000000000000',
     message: { context: null, attachments: [], intent: null }, ...overrides });
 }
 export function coordinatorFields(overrides: Partial<CreateCoordinatorRunFields> = {}): CreateCoordinatorRunFields {
-  const { conversationId, agent, resumes, session, cwd, launch, restartArgv, message } = coordinatorRecord();
-  return { conversationId, requestId: globalThis.crypto.randomUUID(), agent, resumes, session, cwd, launch, restartArgv, message, ...overrides };
+  const { conversationId, agent, resumes, session, cwd, launch, message } = coordinatorRecord();
+  return { conversationId, requestId: globalThis.crypto.randomUUID(), agent, resumes, session, cwd, launch, message, ...overrides };
 }

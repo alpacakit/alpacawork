@@ -9,6 +9,7 @@ import { resources } from '../src/data/resources';
 import { openScreenLink } from '../src/state/bootstrap';
 import { useSitting } from '../src/features/reader/next-question';
 import { TestWorkspace, dto, tree, screenData, searchAnswer } from './fixtures';
+import { SERVED } from './conversation-fixture';
 const flush=()=>act(async()=>{await new Promise(r=>setTimeout(r,20));});
 beforeAll(()=>startI18n());
 beforeEach(()=>{queryClient.clear();useViewStore.setState(useViewStore.getInitialState());useSitting.setState(useSitting.getInitialState());history.replaceState(null,'','/?agent=1&q=tasks&task=T1');});
@@ -21,7 +22,7 @@ for(const leave of ["stays", "task", "filter", "project"] as const) test(`the se
   vi.spyOn(globalThis,'fetch').mockImplementation(async (input)=>{
     const url=String(input);
     if(url.startsWith('/api/task/search?')&&url.includes('after=cursor')){received=true;await gate;return new Response(JSON.stringify(searchAnswer(['T2'],{},null,2)));}
-    return new Response(JSON.stringify({id:'fixture',nextLaunch: { agent: 'claude', values: {} },warm: 'none' as const, busy: false,cancelled:[],turns:[]}));
+    return new Response(JSON.stringify({id:'fixture',nextLaunch: { agent: 'claude', values: {} },...SERVED, busy: false,cancelled:[],turns:[]}));
   });
   render(<TestWorkspace data={data}><Workbench/></TestWorkspace>);await flush();
   const next=document.querySelector('[data-reader-mode] [data-gathered-pager] button:last-child')!;

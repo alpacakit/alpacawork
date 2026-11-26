@@ -33,7 +33,7 @@ const output = resolve(positionals[0] ?? '/tmp/height-drag-motion.json');
 const throttle = Number(args.throttle), rounds = Number(args.rounds);
 mkdirSync(dirname(output), { recursive: true });
 const answer = Array.from({ length: 25 }, (_, n) => `### Item ${n}\nText with explanations and **checks**.\n\n- Result ${n}\n- Next review\n\n`).join('');
-const conversation = coordinatorConversationSchema.parse({ id: 'height-drag', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [],
+const conversation = coordinatorConversationSchema.parse({ id: 'height-drag', nextLaunch: { agent: 'claude', values: {} }, busy: false, earlier: null, resets: [], context: null, autoReset: { tokens: 200_000, percent: 50 },
   turns: Array.from({ length: 12 }, (_, i) => ({ id: `turn-${i}`, at: `2026-01-01T00:${String(i).padStart(2, '0')}:00Z`,
     ask: `Measurement request ${i}`, attachments: [], status: 'succeeded', waiting: false, seen: true, error: null, result: null,
     answer, answeredAt: `2026-01-01T00:${String(i).padStart(2, '0')}:30Z` })) });
@@ -96,7 +96,7 @@ try {
       page.on('pageerror', error => console.error('pageerror', error.message));
       const fixed = async (route: Route) => { const response = await route.fetch(); route.fulfill({ response, json: { ...await response.json(), conversation } }); };
       await page.route('**/api/coordinator', fixed);
-      await page.route('**/api/coordinator/warm', route => route.fulfill({ json: conversation }));
+
       await installProbe(page);
       const cdp = await context.newCDPSession(page);
       const measure = await measurer(page, context, { output, width, throttle, film: args.film, profile: args.profile }, results);

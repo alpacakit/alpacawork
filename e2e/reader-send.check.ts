@@ -198,7 +198,7 @@ test.describe('phone report gestures', () => {
     const conversation = (await (await page.request.get(runtime.origin + '/api/coordinator')).json()).conversation;
     expect(conversation.turns.at(-1).ask).toContain(task.id); expect(conversation.turns.at(-1).ask).toContain('1-Option1'); expect(conversation.turns.at(-1).ask).toContain('Send the added instruction too');
     // Finish the right swipe's work before testing a different operation. Admission already moved the card, but
-    // the coordinator may still be warming up or carrying that answer out; the next hold must not inherit that wait.
+    // the coordinator may still be carrying that answer out; the next hold must not inherit that wait.
     const answerId = conversation.turns.at(-1).id;
     await expect.poll(async () => ((await (await page.request.get(runtime.origin + '/api/coordinator')).json()).conversation)
       .turns.find((turn: { id: string }) => turn.id === answerId)?.status, { timeout: 30_000 }).toBe('succeeded');
@@ -263,7 +263,7 @@ for (const [width, mode, context] of [[390, 'withdraw', 'raw ID']] as const) tes
   await page.setViewportSize({ width, height: 844 });
   const task = await prepare(page, runtime, { acting: true });
   await launch(page);
-  await expect.poll(async () => (await (await page.request.get(runtime.origin + '/api/coordinator')).json()).conversation.warm, { timeout: 20000 }).toMatch(/^(?:none|ready|failed)$/);
+  await expect.poll(async () => (await (await page.request.get(runtime.origin + '/api/coordinator')).json()).conversation.busy, { timeout: 20000 }).toBe(false);
   writeFileSync(join(runtime.root, 'refuse-coordinator-write'), mode);
   if (context === 'raw ID') await field(page).evaluate((element: any, id) => {
     element.editor.commands.setContent({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: `${id} 中止にして` }] }] });

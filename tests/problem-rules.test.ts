@@ -14,7 +14,7 @@ const expected = {
   '413/fix/2': 'too_large voice_too_large',
   '409/reread/2': 'conflict idempotency_conflict invalid_root already_initialized question_closed question_expired question_stopped',
   '409/fix/2': 'not_resumable finished_branch handover_required automatic_limit restore_changed',
-  '409/later/2': 'busy handoff_pending conversation_busy responsible_missing parent_unavailable',
+  '409/later/2': 'busy handoff_pending conversation_busy coordinator_busy responsible_missing parent_unavailable',
   '503/later/2': 'runs_unavailable database_unavailable unstable unsupported_platform',
   '503/check/3': 'save_unconfirmed read_failed io_failure unavailable voice_recognition_failed publication_pending publication_needs_review',
 } as const;

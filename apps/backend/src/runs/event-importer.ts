@@ -19,6 +19,7 @@ import { executionFolder, identityOf, messageName, names, sameIdentity } from '.
 import { captureAnswer, recordEnd, type AnswerCapture } from './ending.js';
 import { reserveAiFallback } from './ai-fallback.js';
 import type { EndObservation, Outcome } from './result-observation.js';
+import { reserveAutomaticCoordinatorReset } from '../coordinator/continuation.js';
 import { linkMessage } from '../coordinator/messages.js';
 import { executionImportCandidates, executionReference } from './execution-obligations.js';
 import { runtimeAdapter } from '../agents/registry.js';
@@ -261,6 +262,8 @@ export class RunEventImporter {
       settleCompaction(db, attempt, observation.compaction ?? null, event.occurredAt);
       const next = reserveAiFallback(this.store, tx, run, end, attempt);
       recordEnd(db, tx, run, end, event.occurredAt, answer, next);
+      if (run.role === 'coordinator' && !next && outcome.state === 'succeeded' && answer !== 'unsaved')
+        reserveAutomaticCoordinatorReset(db, this.store.root, run, event.occurredAt);
       db.prepare('UPDATE run_attempts SET completed_digest=? WHERE attempt_id=?').run(digest, attempt);
     }
   }

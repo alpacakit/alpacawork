@@ -1,5 +1,5 @@
 import { Workbench } from "../src/features/shell/Workbench";
-import { snapshotJson } from './conversation-fixture';
+import { snapshotJson, SERVED } from './conversation-fixture';
 import { startRequiredReadSession, resources } from '../src/data/resources';
 import { basisForRead } from '../src/data/connection';
 import { beforeAll, beforeEach, afterEach, afterAll, test, expect, vi } from "vitest";
@@ -89,7 +89,7 @@ function serve() {
     calls.push(`${init?.method ?? "GET"} ${path}`);
     if (unreachable) throw new TypeError("Failed to fetch");
     if (path === "/api/commands/config/get") return new Response(snapshotJson({ hash: "c".repeat(64), limits: { ...DEFAULT_LIMITS }, agentsText: "agents: {}\n" }));
-    if (path === "/api/coordinator") return new Response(snapshotJson({ id: "conversation-1", nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, cancelled: [], turns: [] }));
+    if (path === "/api/coordinator") return new Response(snapshotJson({ id: "conversation-1", nextLaunch: { agent: 'claude', values: {} }, ...SERVED, admitted: {}, cancelled: [], turns: [] }));
     if (path === "/api/commands/settings/get") {
       if (failing.has("settings")) return problemResponse("unavailable");
       personRevision = (indexNow()?.person.settings ?? personRevision) || personRevision;

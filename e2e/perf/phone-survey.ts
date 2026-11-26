@@ -119,13 +119,13 @@ try {
     });
     writeFileSync(join(out,'count-patches.json'),JSON.stringify(patches,null,2));
   }
-  const conversation = { id: 'interaction-latency', nextLaunch: { agent: 'claude', values: {} }, warm: 'none', busy: false, cancelled: [],
+  const conversation = { id: 'interaction-latency', nextLaunch: { agent: 'claude', values: {} }, busy: false, earlier: null, resets: [], context: null, autoReset: { tokens: 200_000, percent: 50 },
     turns: Array.from({ length: 40 }, (_, i) => ({ id: `turn-${i}`, at: new Date(Date.UTC(2026, 9, 1, 0, i)).toISOString(),
       ask: `Measured request ${i} about T2 and T3`, attachments: [], status: 'succeeded', waiting: false, seen: true, error: null, result: null,
       answer: Array.from({ length: i === 39 ? Number(args.paragraphs) : 2 }, (_, n) => `### Result ${n}\nT2 continues after T3. **Check** the report and its result.\n\n- First point\n- Second point\n`).join(''),
       answeredAt: new Date(Date.UTC(2026, 9, 1, 0, i, 30)).toISOString() })) };
   if (!args.questions) await page.route('**/api/coordinator', async route => { const reply = await route.fetch(); await route.fulfill({ response: reply, json: { ...await reply.json(), conversation } }); });
-  if (!args.questions) await page.route('**/api/coordinator/warm', route => route.fulfill({ json: conversation }));
+
   await page.addInitScript(() => {
     const state = (window as any).interaction = { armed: false, start: 0, received: 0, done: 0, last: 0, frames: [] as number[],
       animations: [] as Animation[], loaf: [] as any[], commits: 0, quiet: 0, scrolled: 0, gesture: false, expect: '', previousTask: undefined as string | undefined, collected: false, endProbe: null as unknown };
@@ -334,10 +334,15 @@ try {
   } else if (args.questions) {
     // The fake coordinator performs real local command writes, never a provider call.
     await tap(page.locator('[data-coordinator-expand]').first());
-    const warmLimit=Date.now()+30000;let warm:any;
-    while(Date.now()<warmLimit){warm=await fetch(url+'/api/coordinator').then(r=>r.json());if(warm.conversation?.warm==='ready')break;if(warm.conversation?.warm==='failed')throw Error('Fake coordinator warm failed: '+JSON.stringify(warm));await page.waitForTimeout(100);}
-    writeFileSync(join(out,'coordinator-warmed.json'),JSON.stringify(warm,null,2));
-    if(warm.conversation?.warm!=='ready')throw Error('Fake coordinator did not warm: '+JSON.stringify(warm));
+    const readyLimit = Date.now() + 30_000;
+    let snapshot: any;
+    while (Date.now() < readyLimit) {
+      snapshot = await fetch(url + '/api/coordinator').then(response => response.json());
+      if (snapshot.conversation?.nextLaunch && !snapshot.conversation.busy) break;
+      await page.waitForTimeout(100);
+    }
+    if (!snapshot.conversation?.nextLaunch || snapshot.conversation.busy) throw Error('Fixture coordinator is unavailable');
+    writeFileSync(join(out, 'coordinator-ready.json'), JSON.stringify(snapshot, null, 2));
     await page.waitForTimeout(500);
     await foldChat(page, tap); await page.keyboard.press('Escape'); await page.waitForTimeout(500);
     const custom=async(name:string,action:()=>Promise<unknown>,complete:string)=>measure(name,'custom',action,complete);

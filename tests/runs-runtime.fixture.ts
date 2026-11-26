@@ -150,13 +150,14 @@ export async function setup(t: TestContext, limits: Partial<AgentsSettings['limi
     if (!settings.ok) throw settings.error;
     const snapshot = launchSnapshot(settings.config, agent, 'start', path);
     assert.equal(snapshot.ok, true); if (!snapshot.ok) throw new Error(snapshot.code);
+    const prompt = JSON.stringify(plan);
     const conversationId = new CoordinatorConversation(root).read().id, requestId = randomUUID();
     const run = store.write(tx => {
       tx.insertConversationRequest({ id: requestId, conversationId, headRunId: tx.coordinatorHead(conversationId)?.id ?? null,
-        mode: 'new', body: 'fixture message', submittedAt: now(), deliveryState: 'queued' });
+        mode: 'new', body: 'fixture message', coordinatorInput: { text: prompt, language: '' }, submittedAt: now(), deliveryState: 'queued' });
       return tx.createCoordinatorRun({ conversationId, requestId, agent, resumes: null, session: snapshot.launch.adapter === 'claude' ? { provider: 'claude', id: randomUUID() } : null,
-        cwd: coordinatorCwd(root), restartArgv: null, launch: snapshot.launch, message: { context: null, attachments: [], intent: null } },
-      JSON.stringify(plan));
+        cwd: coordinatorCwd(root), launch: snapshot.launch, message: { context: null, attachments: [], intent: null } },
+      prompt);
     });
     store.prepareFolder(run.id);
     return run;

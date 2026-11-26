@@ -1,6 +1,6 @@
 /** Coordinator HTTP mutation admission starts after bounded input parsing. */
 import type { Hono } from 'hono';
-import { coordinatorConversationInputSchema, coordinatorMessageInputSchema, coordinatorReadInputSchema } from '@alpacawork/contract/coordinator';
+import { coordinatorConversationInputSchema, coordinatorMessageInputSchema, coordinatorReadInputSchema, coordinatorResetInputSchema, coordinatorTurnsInputSchema } from '@alpacawork/contract/coordinator';
 import { fileBytesResponse } from './file-response.js';
 import type { Mutate } from './lifecycle.js';
 import { parseInput, Problem, PROBLEM_CODE } from '@alpacawork/core';
@@ -17,6 +17,23 @@ export function installCoordinatorRoutes(api: Hono, root: string, generation: st
     catch (error) { if (error instanceof SyntaxError) throw new Problem(PROBLEM_CODE.invalidInput, 'Expected JSON', undefined, { reason: { kind: 'expected_json' } }); throw error; }
   };
   api.get('/api/coordinator', c => { authorize(c.req.raw); return c.json(conversation.snapshot(generation)); });
+  api.get('/api/coordinator/turns', c => {
+    authorize(c.req.raw); return c.json(conversation.turns(parseInput(coordinatorTurnsInputSchema, c.req.query())));
+  });
+  api.get('/api/coordinator/messages/:id/status', c => {
+    authorize(c.req.raw); return c.json(conversation.messageStatus(c.req.param('id')));
+  });
+  api.get('/api/coordinator/resets/:id/memo', c => {
+    authorize(c.req.raw); return c.json(conversation.resetMemo(c.req.param('id')));
+  });
+  api.post('/api/coordinator/reset', async c => {
+    authorize(c.req.raw);
+    const { conversationId, opId } = parseInput(coordinatorResetInputSchema, await json(c.req.raw));
+    return c.json(await mutate(() => {
+      const { conversation: view, reset } = conversation.reset(conversationId, opId);
+      return { ...conversation.snapshot(generation, view), reset };
+    }));
+  });
   api.post('/api/coordinator/read', async c => {
     authorize(c.req.raw); const input = parseInput(coordinatorReadInputSchema, await json(c.req.raw));
     return c.json(await mutate(() => conversation.markSeen(input.conversationId, input.seen)));
@@ -28,18 +45,24 @@ export function installCoordinatorRoutes(api: Hono, root: string, generation: st
   });
   api.post('/api/coordinator/messages', async c => {
     authorize(c.req.raw); const input = parseInput(coordinatorMessageInputSchema, await json(c.req.raw));
-    return c.json(conversation.snapshot(generation, await mutate(() => conversation.ask(input))));
+    return c.json(await mutate(() => {
+      const view = conversation.ask(input);
+      return { ...conversation.snapshot(generation, view), message: conversation.messageStatus(input.id) };
+    }));
   });
   for (const action of ['withdraw', 'send-now'] as const) api.post(`/api/coordinator/messages/${action}`, async c => {
     authorize(c.req.raw); const input = await json(c.req.raw);
     if (typeof input.conversationId !== 'string' || typeof input.id !== 'string') throw new Problem(PROBLEM_CODE.invalidInput, 'Conversation and message IDs are required', undefined, { reason: { kind: 'conversation_and_message_ids_required' } });
     const { conversationId, id } = input;
-    return c.json(conversation.snapshot(generation, await mutate(() => action === 'withdraw' ? conversation.withdraw(conversationId, id) : conversation.sendNow(conversationId, id))));
+    return c.json(await mutate(() => {
+      const view = action === 'withdraw' ? conversation.withdraw(conversationId, id) : conversation.sendNow(conversationId, id);
+      return { ...conversation.snapshot(generation, view), message: conversation.messageStatus(id) };
+    }));
   });
-  for (const action of ['warm','clear'] as const) api.post(`/api/coordinator/${action}`, async c => {
+  api.post('/api/coordinator/clear', async c => {
     authorize(c.req.raw);
     const { conversationId } = parseInput(coordinatorConversationInputSchema, await json(c.req.raw));
-    return c.json(conversation.snapshot(generation, await mutate(() => action === 'warm' ? conversation.warm(conversationId) : conversation.clear(conversationId))));
+    return c.json(conversation.snapshot(generation, await mutate(() => conversation.clear(conversationId))));
   });
   api.post('/api/coordinator/attachments', async c => {
     authorize(c.req.raw); const id = c.req.query('requestId') ?? '';

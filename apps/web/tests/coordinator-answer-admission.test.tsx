@@ -11,11 +11,11 @@ import { useReaderSend } from '../src/features/coordinator/reader-send';
 import { queryClient } from '../src/data/query-client';
 import { notify } from '../src/lib/notify';
 import { receiveFullIndex } from '../src/data/resources';
-import { setConversationState, snapshotJson } from './conversation-fixture';
+import { setConversationState, snapshotJson, messageJson, served, SERVED } from './conversation-fixture';
 import { TestWorkspace, tree, dto, screenData, decideItem, questionFixture } from './fixtures';
 
 const cid = 'fixed-answer-admission';
-const conversation = (turns: any[] = []) => ({ id: cid, nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns });
+const conversation = (turns: any[] = []) => served({ id: cid, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns });
 const doc = (question: string) => ({ type: 'doc', content: [{ type: 'paragraph', content: [
   { type: 'answerLabel', attrs: { task: 'T1', question, n: '1', name: 'Yes', answer: '1-Yes' } },
 ] }] });
@@ -35,8 +35,8 @@ test('consecutive fixed-question answers reach HTTP despite Task changes and una
     if (url.includes('/task/view')) { gets.push(url); throw new TypeError('detail connection unavailable'); }
     if (url === '/api/coordinator/messages') {
       const input = JSON.parse(String(init?.body)); posts.push(input);
-      return new Response(snapshotJson(conversation(posts.map(each => ({ id: each.id, at: new Date().toISOString(), ask: each.text,
-        answers: each.answers, attachments: [], status: 'queued', waiting: true, answer: null, seen: false, answeredAt: null, error: null, result: null })))));
+      return new Response(messageJson(conversation(posts.map(each => ({ id: each.id, at: new Date().toISOString(), ask: each.text,
+        answers: each.answers, attachments: [], status: 'queued', waiting: true, answer: null, seen: false, answeredAt: null, error: null, result: null }))), input.id));
     }
     return new Response(snapshotJson(url.includes('/skills') ? { status: 'unavailable', profile: 'claude', skills: [] } : conversation()));
   }));

@@ -75,18 +75,6 @@ for (const [name, prepare] of [['agent', prepareAgentLaunch], ['coordinator', pr
   });
 }
 
-test('coordinator restart uses the accepted resume values and start declaration without readmitting history as a new start', () => {
-  const compiled = compileAgentSetting('claude', defaultAgentSetting('claude'));
-  const saved = prepareCoordinatorLaunch(compiled, { mode: 'resume', path, previous: { adapter: 'claude', values: { effort: 'low' } } });
-  const before = structuredClone(saved);
-  assert.ok(saved.restartArgv); assert.ok(saved.restartArgv.includes('--session-id')); assert.ok(!saved.restartArgv.includes('--resume'));
-  const fresh = agentInvocationSchema.parse({ mode: 'start', launch: { ...saved.launch, argv: saved.restartArgv } });
-  const argv = resolveLaunchArgv(fresh.launch.argv, fresh.launch.values, { session: 'fresh-synthetic-session' });
-  assert.equal(argv[argv.indexOf('--effort') + 1], 'low'); assert.ok(argv.includes('fresh-synthetic-session'));
-  assert.deepEqual(saved, before);
-  assert.equal(prepareCoordinatorLaunch(compiled, { mode: 'start', path }).launch.values.effort, 'medium');
-});
-
 for (const reason of ['removed', 'unused'] as const) for (const value of ['x', null])
   test(`recovery ${reason}, previous=${value}: new conversation required; null is not permission to delete history`, () => {
     const compiled = compileAgentSetting('copilot', edited(reason === 'removed' ? {} : { extra: ['x'] }, 'literal'));

@@ -8,7 +8,7 @@ const diagnosticIssue = z.object({ code: z.string(), path: z.string().optional()
 /** Technical values supplied by libraries/OS are retained separately from application wording. */
 const atomicReasonSchema = z.discriminatedUnion('kind', [
   ...businessReasonOptions,
-  z.object({ kind: z.literal('authorization_required'), action: z.string(), grants: z.array(z.tuple([z.enum(['own', 'parent', 'placement', 'asked', 'responsible', 'run', 'user', 'human'])]).rest(z.enum(['held', 'same_project', 'project_above', 'within'])).readonly()).readonly() }).strict(),
+  z.object({ kind: z.literal('authorization_required'), action: z.string(), grants: z.array(z.tuple([z.enum(['own', 'parent', 'placement', 'asked', 'responsible', 'run', 'user', 'human', 'screen_coordinator'])]).rest(z.enum(['held', 'same_project', 'project_above', 'within'])).readonly()).readonly() }).strict(),
   z.object({ kind: z.literal('file_missing'), path: z.string() }).strict(),
   z.object({ kind: z.literal('config_section_missing'), path: z.string(), section: z.string() }).strict(),
   z.object({ kind: z.literal('config_invalid'), path: z.string(), issues: z.array(diagnosticIssue) }).strict(),

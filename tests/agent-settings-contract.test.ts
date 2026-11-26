@@ -5,7 +5,7 @@ import { defaultAgentSetting, compileAgentSetting, agentSettingSchemaFor, agentS
   selectionSchema, type AgentSetting } from '@alpacawork/contract/agent-settings';
 import { resolveAgentSelection, SelectionRequired, InvalidAgentSelection, AgentUnavailable, agentChoices } from '@alpacawork/contract/agent-selection';
 import { resolveLaunchOptions, resolveLaunchArgv } from '@alpacawork/contract/launch-options';
-import { agentLaunchSchema, agentInvocationSchema, coordinatorRestartSchema } from '@alpacawork/contract/agent-launch';
+import { agentLaunchSchema, agentInvocationSchema } from '@alpacawork/contract/agent-launch';
 const modelsWithOptionalEffort = {
   ...defaultAgentSetting('grok'),
   params: { model: ['model-with-effort', 'fixed-model'], effort: ['high', 'low', 'medium'] },
@@ -158,7 +158,7 @@ test('disabled admission is an explicit typed rejection', () => {
   const compiled = compileAgentSetting('copilot', { ...defaultAgentSetting('copilot'), enabled: false });
   assert.throws(() => resolveAgentSelection(compiled), AgentUnavailable);
 });
-test('launch shared schema retains adapter/argv/path/null values/env; restart is coordinator-only and invocation has mode', () => {
+test('launch shared schema retains adapter/argv/path/null values/env; invocation has mode', () => {
   const input = { adapter: 'codex', argv: ['alpacawork-agent', 'codex', '-o', '{result}'], path: '/synthetic/bin', values: { effort: null }, env: ['CODEX_HOME', 'MY_KEY'] };
   const launch = agentLaunchSchema.parse(input); input.argv.push('mutated'); input.env.length = 0;
   assert.deepEqual(launch.argv, ['alpacawork-agent', 'codex', '-o', '{result}']); assert.deepEqual(launch.values, { effort: null });
@@ -167,8 +167,6 @@ test('launch shared schema retains adapter/argv/path/null values/env; restart is
   assert.equal(agentInvocationSchema.safeParse({ mode: 'resume', launch }).success, true);
   assert.equal(agentInvocationSchema.safeParse({ mode: 'start', launch, restartArgv: ['x'] }).success, false);
   assert.equal(agentInvocationSchema.safeParse({ mode: 'unknown', launch }).success, false);
-  assert.equal(coordinatorRestartSchema.safeParse({ restartArgv: null }).success, true);
-  assert.deepEqual(coordinatorRestartSchema.parse({ restartArgv: ['alpacawork-agent', 'codex'] }).restartArgv, ['alpacawork-agent', 'codex']);
   assert.equal(agentLaunchSchema.safeParse({ ...launch, input: {} }).success, false);
 });
 
@@ -197,24 +195,6 @@ test('admission retains without values but removes their whole argument group be
   assert.equal(launch.values.effort, 'medium'); assert.equal(launch.argv.includes('--effort'), false);
 });
 
-test('coordinator resume freezes a start alternative from the same values; fresh invocation mode changes without rewriting the record', async () => {
-  const { prepareCoordinatorLaunch, coordinatorLaunchAdmissionSchema } = await import('@alpacawork/contract/agent-launch');
-  const { resolveLaunchArgv } = await import('@alpacawork/contract/launch-options');
-  const setting = defaultAgentSetting('claude'); const compiled = compileAgentSetting('claude', setting);
-  const saved = prepareCoordinatorLaunch(compiled, { mode: 'resume', path: '/synthetic/bin', explicit: { effort: 'low' }, previous: { adapter: 'claude', values: {} } });
-  const before = structuredClone(saved);
-  assert.equal(saved.mode, 'resume'); assert.ok(saved.restartArgv?.includes('--session-id'));
-  assert.ok(saved.launch.argv.includes('--resume')); assert.equal(saved.launch.values.effort, 'low');
-  assert.ok(saved.launch.argv.includes('--include-partial-messages'));
-  assert.ok(saved.restartArgv?.includes('--include-partial-messages'));
-  const fresh = agentInvocationSchema.parse({ mode: 'start', launch: { ...saved.launch, argv: saved.restartArgv } });
-  assert.ok(resolveLaunchArgv(fresh.launch.argv, fresh.launch.values, { session: 'new-synthetic-session' }).includes('new-synthetic-session'));
-  assert.deepEqual(saved, before);
-  assert.equal(prepareCoordinatorLaunch(compiled, { mode: 'start', path: 'x' }).restartArgv, null);
-  assert.equal(coordinatorLaunchAdmissionSchema.safeParse({ ...saved, restartArgv: null }).success, false);
-  assert.equal(agentInvocationSchema.safeParse(saved).success, false);
-});
-
 test('candidate names that also exist on Object.prototype are ordinary values, never inherited without rules', () => {
   const compiled = compileAgentSetting('copilot', edited({ model: ['constructor', 'toString'], constructor: ['v'] }, '[{model}] [{constructor}]'));
   assert.deepEqual(resolveAgentSelection(compiled).values, { model: 'constructor', constructor: 'v' });
@@ -235,4 +215,12 @@ test('pi keeps provider/model as one value, off as an ordinary value, and adapte
   assert.throws(() => prepareAgentLaunch(compiled, { mode: 'start', path: '/synthetic/bin', explicit: { effort: null } }), InvalidAgentSelection);
   assert.deepEqual(explicit.launch.env, ['PI_CODING_AGENT_DIR', 'PI_CODING_AGENT_SESSION_DIR']);
   assert.ok(paths('pi', { ...setting, env: ['PI_CODING_AGENT_DIR'] }).includes('env.0'));
+});
+
+test('a coordinator launch, started or resumed, streams its partial messages so its output speed can be read', async () => {
+  const { prepareCoordinatorLaunch } = await import('@alpacawork/contract/agent-launch');
+  const compiled = compileAgentSetting('claude', defaultAgentSetting('claude'));
+  const started = prepareCoordinatorLaunch(compiled, { mode: 'start', path: '/synthetic/bin' });
+  const resumed = prepareCoordinatorLaunch(compiled, { mode: 'resume', path: '/synthetic/bin', explicit: { effort: 'low' }, previous: { adapter: 'claude', values: {} } });
+  for (const each of [started, resumed]) assert.ok(each.launch.argv.includes('--include-partial-messages'), each.mode);
 });

@@ -91,14 +91,14 @@ export type Action =
   | { name: 'update.review' | 'update.confirm' | 'update.cancel' }
   /** settings get and settings set: the person's own settings, the screen's and the AI's reply language. */
   | { name: 'settings.read' | 'settings.set' }
-  | { name: 'screen' | 'coordinator.screen' | 'runtime' | 'config.inspect' | 'config.set' | 'admin' | 'release' };
+  | { name: 'screen' | 'coordinator.screen' | 'coordinator.memo' | 'runtime' | 'config.inspect' | 'config.set' | 'admin' | 'release' };
 
 /**
  * Who a grant names. own: the Task's responsible Run. parent: the responsible Run of the Task's parent. placement: a
  * Run of a current placement of the Task. asked: whoever the question asked. responsible: the responsible Run of any
  * Task. user: a person or coordinator (raw speaksForUser).
  */
-export type Seat = 'own' | 'parent' | 'placement' | 'asked' | 'responsible' | 'run' | 'user' | 'human';
+export type Seat = 'own' | 'parent' | 'placement' | 'asked' | 'responsible' | 'run' | 'user' | 'human' | 'screen_coordinator';
 /** What a grant also requires: of the Task, or (within) that a move keeps it below the Run's own Task. */
 type Condition = 'held' | 'same_project' | 'project_above' | 'within';
 type Grant = readonly [Seat, ...Condition[]];
@@ -181,6 +181,7 @@ export const ACTIONS = {
   'update.cancel': { grants: [['human']] },
   'screen': { grants: [['human']] },
   'coordinator.screen': { grants: [['human']] },
+  'coordinator.memo': { grants: [['screen_coordinator']] },
   'runtime': { grants: [['human']] },
   'config.inspect': { grants: [['user']] },
   'config.set': { grants: [['user']] },
@@ -197,7 +198,7 @@ export const ACTIONS = {
 export type Act = keyof typeof ACTIONS;
 /** Whether the table lets some Run do `act`: else no Run's facts need reading to refuse it. */
 export const runMayDo = (act: Act): boolean =>
-  (ACTIONS[act].grants as readonly Grant[]).some(([seat]) => seat !== 'user' && seat !== 'human');
+  (ACTIONS[act].grants as readonly Grant[]).some(([seat]) => seat !== 'user' && seat !== 'human' && seat !== 'screen_coordinator');
 
 /** Who the history and a Request record as acting, and where a Run reads. */
 export type Decision = { actor: TaskActor; readScope: string | null };
@@ -266,6 +267,7 @@ function seated(seat: Seat, caller: Caller, actor: TaskActor, action: Action, ta
     case 'run': return caller.kind === 'run';
     case 'user': return speaksForUser(actor);
     case 'human': return caller.kind === 'human';
+    case 'screen_coordinator': return caller.kind === 'coordinator' && caller.source === 'screen';
   }
 }
 
@@ -288,6 +290,7 @@ export const SEAT_TEXT: Record<Seat, string> = {
   run: 'a Run',
   user: 'a person or the coordinator',
   human: 'a person',
+  screen_coordinator: 'the running screen coordinator',
 };
 export const CONDITION_TEXT: Record<Condition, string> = {
   held: 'while the Task is held',

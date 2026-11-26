@@ -48,8 +48,7 @@ try {
   const update = copied.prepare('UPDATE runs SET record=? WHERE id=?');
   for (const row of copied.prepare('SELECT id,record FROM runs').all()) {
     const run = runtimeRunRecordSchema.parse(JSON.parse(String(row.record)));
-    const inert = runtimeRunRecordSchema.parse({ ...run, launch: inertFixtureLaunch(run.launch.adapter, run.launch.values),
-      ...(run.role === 'coordinator' ? { restartArgv: null } : {}) });
+    const inert = runtimeRunRecordSchema.parse({ ...run, launch: inertFixtureLaunch(run.launch.adapter, run.launch.values) });
     update.run(JSON.stringify(inert), row.id);
   }
 } finally { copied.close(); }

@@ -238,10 +238,10 @@ function continueAfter(h: Runtime, previous: CoordinatorRunRecord, body: string)
   const requestId = randomUUID();
   const run = h.store.write(tx => {
     tx.insertConversationRequest({ id: requestId, conversationId: latest.conversationId, headRunId: latest.id, mode: 'continue',
-      body, submittedAt: now(), deliveryState: latest.session === null ? DELIVERY_STATE.waiting_for_session
+      body, coordinatorInput: { text: body, language: '' }, submittedAt: now(), deliveryState: latest.session === null ? DELIVERY_STATE.waiting_for_session
         : isUnfinished(latest) ? DELIVERY_STATE.waiting_for_run : DELIVERY_STATE.queued });
     return tx.createCoordinatorRun({ conversationId: latest.conversationId, requestId, agent: latest.agent, resumes: latest.id,
-      session: latest.session, cwd: coordinatorCwd(h.root), restartArgv: resume.restartArgv, launch: resume.launch,
+      session: latest.session, cwd: coordinatorCwd(h.root), launch: resume.launch,
       message: { context: null, attachments: [], intent: null } }, body);
   });
   h.store.prepareFolder(run.id);
@@ -257,6 +257,7 @@ async function reserve(h: Runtime) {
 function addInputAgent(h: Runtime): void {
   const path = join(h.root, 'config.yaml'), config = parse(readFileSync(path, 'utf8')) as { agents: Record<string, unknown> };
   config.agents.stdin = fixtureAgentSetting('codex');
+  Object.assign(config, { coordinatorAiStack: [{ agent: 'stdin', values: {} }] });
   writeFileSync(path, stringify(config));
 }
 /**
@@ -339,8 +340,9 @@ test('a message going on from a first launch that failed without a session start
   assert.equal(String(h.store.connection.prepare('SELECT delivery_state FROM requests WHERE id = ?').get(next.requestId)!.delivery_state),
     DELIVERY_STATE.queued, 'its Request no longer waits for a session');
   await h.waitState(next, 'succeeded');
-  assert.equal(h.store.getText(next.id)?.prompt, words);
-  assert.ok(receipts(h.root).some(item => item.prompt === words), 'the agent started anew reads the admitted text unchanged');
+  const receipt = receipts(h.root).find(item => item.prompt.endsWith(words));
+  assert.ok(receipt, 'the agent started anew reads the admitted text unchanged');
+  assert.match(receipt.prompt, /Read the alpacawork skill and its coordinator reference/);
 });
 
 test('a coordinator Run is reserved without a credential or callers, in its own empty folder, for one coordinator turn', async t => {
@@ -353,12 +355,6 @@ test('a coordinator Run is reserved without a credential or callers, in its own 
   assert.equal(launch.credential, null); assert.deepEqual(launch.ancestors, []);
   assert.equal(launch.cwd, cwd); assert.equal(launch.runMinutes, 7, 'a coordinator turn ends whatever run_minutes says');
   assert.equal(statSync(cwd).mode & 0o777, 0o700); assert.deepEqual(readdirSync(cwd), []);
-  // The conversation's warm-up only has its agent read the skills: two minutes.
-  h.finish(message);
-  const warm = h.createCoordinator();
-  h.store.connection.prepare('UPDATE coordinator_conversations SET warm_request_id = ? WHERE id = ?').run(warm.requestId, warm.conversationId);
-  await reserve(h);
-  assert.equal(attemptOf(h.store, warm.id)!.runMinutes, 2);
 });
 
 test('a coordinator agent gets the workspace but no Run identity or credential, and works in its own folder', async t => {
@@ -367,7 +363,7 @@ test('a coordinator agent gets the workspace but no Run identity or credential, 
   const expected = agentEnvironment(process.env, h.path, undefined, message.launch.env);
   await h.tick(); await h.waitState(message, 'succeeded');
   assertEnvironment(JSON.parse(h.store.getText(message.id)!.result!), { ...expected, PWD: coordinatorCwd(h.root), ALPACAWORK_WORKSPACE: h.root });
-  const receipt = receipts(h.root).find(item => item.prompt === JSON.stringify({ environment: true }));
+  const receipt = receipts(h.root).find(item => item.prompt.endsWith(JSON.stringify({ environment: true })));
   assert.equal(receipt?.cwd, coordinatorCwd(h.root));
 });
 

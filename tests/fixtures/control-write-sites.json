@@ -50,14 +50,14 @@
   },
   {
     "file": "packages/runs/src/store.ts",
-    "sql": "INSERT INTO requests (id, task_id, placement_id, placement_revision, task_hash, wait_cycle_id, head_run_id, about_run_id, mode, body, purpose, author, submitted_at, delivery_state, answers_question, ai_stack, ai_explicit, ai_prefix) SELECT ?, external_id, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? FROM tasks WHERE external_id = ? AND kind = 'task'",
+    "sql": "INSERT INTO requests (id, task_id, placement_id, placement_revision, task_hash, wait_cycle_id, head_run_id, about_run_id, mode, body, purpose, author, submitted_at, delivery_state, answers_question, ai_stack, ai_explicit, ai_prefix, reason) SELECT ?, external_id, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? FROM tasks WHERE external_id = ? AND kind = 'task'",
     "table": "requests",
     "line": 238,
     "status": "touch"
   },
   {
     "file": "packages/runs/src/store.ts",
-    "sql": "INSERT INTO requests (id, conversation_id, head_run_id, mode, body, purpose, author, submitted_at, delivery_state, reply_to, ai_stack, ai_explicit) SELECT ?, id, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? FROM coordinator_conversations WHERE id = ?",
+    "sql": "INSERT INTO requests (id, conversation_id, head_run_id, mode, body, purpose, author, submitted_at, delivery_state, reply_to, ai_stack, ai_explicit, coordinator_input, coordinator_turn_no) SELECT ?, id, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? <> 'aborted' THEN coalesce((SELECT max(coordinator_turn_no) FROM requests WHERE conversation_id=c.id AND coordinator_turn_no IS NOT NULL),0)+1 END FROM coordinator_conversations c WHERE id = ?",
     "table": "requests",
     "line": 251,
     "status": "touch"
@@ -379,9 +379,9 @@
   },
   {
     "file": "apps/backend/src/control/task-values-store.ts",
-    "sql": "INSERT INTO task_value_versions(task_id,field_id,replaced_at,value) VALUES (?,?,?,?)",
+    "sql": "INSERT INTO task_value_versions(task_id,field_id,replaced_at,value,change_log_id) VALUES (?,?,?,?,?)",
     "table": "task_value_versions",
-    "line": 202,
+    "line": 210,
     "status": "unobserved"
   },
   {
@@ -407,16 +407,37 @@
   },
   {
     "file": "apps/backend/src/coordinator/conversation.ts",
-    "sql": "UPDATE coordinator_conversations SET warm_request_id = ? WHERE id = ?",
+    "sql": "UPDATE coordinator_conversations SET cleared_at = ?,memo_text=NULL,memo_updated_at=NULL,memo_through_turn_no=NULL WHERE id = ?",
     "table": "coordinator_conversations",
-    "line": 219,
+    "line": 357,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/coordinator/conversation.ts",
-    "sql": "UPDATE coordinator_conversations SET cleared_at = ? WHERE id = ?",
+    "sql": "DELETE FROM coordinator_reset_ops WHERE reset_id IN (SELECT id FROM coordinator_resets WHERE conversation_id=?)",
+    "table": "coordinator_reset_ops",
+    "line": 358,
+    "status": "unobserved"
+  },
+  {
+    "file": "apps/backend/src/coordinator/conversation.ts",
+    "sql": "DELETE FROM coordinator_resets WHERE conversation_id=?",
+    "table": "coordinator_resets",
+    "line": 359,
+    "status": "touch"
+  },
+  {
+    "file": "apps/backend/src/coordinator/conversation.ts",
+    "sql": "UPDATE requests SET coordinator_files_expired_at=? WHERE id=?",
+    "table": "requests",
+    "line": 432,
+    "status": "touch"
+  },
+  {
+    "file": "apps/backend/src/coordinator/memo.ts",
+    "sql": "UPDATE coordinator_conversations SET memo_text=?,memo_updated_at=?,memo_through_turn_no=? WHERE id=?",
     "table": "coordinator_conversations",
-    "line": 341,
+    "line": 30,
     "status": "touch"
   },
   {
@@ -432,6 +453,34 @@
     "table": "coordinator_refusals",
     "line": 88,
     "status": "touch"
+  },
+  {
+    "file": "apps/backend/src/coordinator/resets.ts",
+    "sql": "INSERT INTO coordinator_resets(id,conversation_id,reason,requested_at,memo_text,memo_updated_at) SELECT ?,id,?,?,memo_text,memo_updated_at FROM coordinator_conversations WHERE id=?",
+    "table": "coordinator_resets",
+    "line": 44,
+    "status": "touch"
+  },
+  {
+    "file": "apps/backend/src/coordinator/resets.ts",
+    "sql": "INSERT INTO coordinator_reset_ops(id,reset_id) VALUES (?,?)",
+    "table": "coordinator_reset_ops",
+    "line": 49,
+    "status": "unobserved"
+  },
+  {
+    "file": "apps/backend/src/coordinator/resets.ts",
+    "sql": "UPDATE coordinator_resets SET before_request_id=?,start_run_no=? WHERE id=? AND conversation_id=? AND start_run_no IS NULL",
+    "table": "coordinator_resets",
+    "line": 61,
+    "status": "touch"
+  },
+  {
+    "file": "apps/backend/src/maintenance.ts",
+    "sql": "UPDATE field_defs SET definition=json_set(definition,'$.direction',json('true')) WHERE id IN (SELECT value FROM json_each(?)) AND json_type(definition,'$.direction') IS NULL",
+    "table": "field_defs",
+    "line": 18,
+    "status": "maintenance"
   },
   {
     "file": "apps/backend/src/runs/compactions.ts",

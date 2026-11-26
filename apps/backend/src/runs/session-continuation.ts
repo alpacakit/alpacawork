@@ -40,20 +40,15 @@ export function appliedConversationValues(head: RunRecord, runs: readonly RunRec
   return previous?.applied ?? applied;
 }
 
-/** Resolve continuation sessions from the resume chain for launch and live input alike. */
-export function continuationSession(runs: readonly RuntimeRunRecord[], from: RuntimeRunRecord,
-  purpose: { kind: 'launch'; coordinator: boolean } | { kind: 'input'; working: RuntimeRunRecord }): RuntimeRunRecord['session'] {
-  if (purpose.kind === 'launch' && !purpose.coordinator) return from.session;
-  const working = purpose.kind === 'input' ? purpose.working : null;
-  const session = working?.session;
-  if (working && (working.state !== 'running' || !session ||
-      !isDeepStrictEqual(from.launch.values, working.launch.values))) return null;
+/** A Task message can join only the live invocation in its compatible resume chain. */
+export function taskInputSession(runs: readonly RuntimeRunRecord[], from: RuntimeRunRecord,
+  working: RuntimeRunRecord): RuntimeRunRecord['session'] {
+  const session = working.session;
+  if (working.state !== 'running' || !session || !isDeepStrictEqual(from.launch.values, working.launch.values)) return null;
   for (const current of ancestors(from, id => runs.find(run => run.id === id))) {
-    // A failed coordinator turn establishes no session; its earlier successful turn still stands.
-    if (!working) { if (current.state === 'succeeded') return current.session; continue; }
     if (!isConversationAgent(current, working.agent) || current.launch.adapter !== working.launch.adapter ||
         current.session && !isDeepStrictEqual(current.session, session)) return null;
-    if (current.id === working.id) return session ?? null;
+    if (current.id === working.id) return session;
     if (current.state === 'running') return null;
   }
   return null;

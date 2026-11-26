@@ -18,20 +18,22 @@ type Screen = { source: string; conversation: string; runId?: string };
 export function messageForRun(db: DatabaseSync, runId: string): string | undefined {
   const row = db.prepare(`SELECT q.id FROM runs r JOIN requests q ON q.id=r.request_id
     JOIN coordinator_conversations c ON c.id=q.conversation_id
-    WHERE r.id=? AND c.warm_request_id IS NOT q.id`).get(runNumber(runId));
+    WHERE r.id=? AND q.coordinator_turn_no IS NOT NULL`).get(runNumber(runId));
   return row ? String(row.id) : undefined;
 }
 /** The original message and every input proved taken into the trial or a trial it replaced. */
 export function deliveredMessages(db: DatabaseSync, runId: string): string[] {
-  return db.prepare(`SELECT q.id FROM runs trial
-    JOIN runs r ON r.conversation_id=trial.conversation_id
-    JOIN requests q ON q.id=r.request_id JOIN coordinator_conversations c ON c.id=q.conversation_id
-    WHERE trial.id=? AND c.warm_request_id IS NOT q.id AND (r.id=trial.id OR
-      (r.state='joined' AND EXISTS (SELECT 1 FROM run_inputs i JOIN run_attempts a USING(attempt_id)
-        JOIN runs carrier ON carrier.id=a.run_no
-        WHERE i.instruction_run_no=r.id AND r.into_id='R' || carrier.id AND i.initial=0 AND i.state='taken'
-          AND carrier.request_id=trial.request_id AND carrier.attempt<=trial.attempt))) ORDER BY r.id`)
-    .all(runNumber(runId)).map(row => String(row.id));
+  return db.prepare(`WITH trial AS (SELECT request_id,conversation_id,attempt FROM runs WHERE id=?)
+    SELECT q.id, q.coordinator_turn_no AS turn FROM trial JOIN requests q ON q.id=trial.request_id
+    WHERE q.coordinator_turn_no IS NOT NULL
+    UNION
+    SELECT q.id, q.coordinator_turn_no AS turn FROM trial
+    JOIN runs carrier ON carrier.request_id=trial.request_id AND carrier.attempt<=trial.attempt
+    JOIN run_attempts a ON a.run_no=carrier.id JOIN run_inputs i USING(attempt_id)
+    JOIN runs r ON r.id=i.instruction_run_no JOIN requests q ON q.id=r.request_id
+    WHERE q.conversation_id=trial.conversation_id AND q.coordinator_turn_no IS NOT NULL
+      AND r.state='joined' AND r.into_id='R' || carrier.id AND i.initial=0 AND i.state='taken'
+    ORDER BY turn`).all(runNumber(runId)).map(row => String(row.id));
 }
 /** A reference whose manager may still publish its receipt. Unrelated queued messages are never candidates. */
 export function pendingInput(db: DatabaseSync, runId: string,
@@ -74,7 +76,7 @@ export const actedTasks = (message: CoordinatorMessage): Set<string> => new Set(
 export const messageTasks = (message: CoordinatorMessage): Set<string> => new Set([...(message.tasks ?? []), ...actedTasks(message)]);
 /** Execution or a taken input links the message's fixed explicit recipients, never inferred prose or AI writes. */
 export function linkMessage(db: DatabaseSync, run: CoordinatorRunRecord): void {
-  if (db.prepare('SELECT 1 FROM coordinator_conversations WHERE warm_request_id=?').get(run.requestId)) return;
+  if (db.prepare('SELECT 1 FROM requests WHERE id=? AND coordinator_turn_no IS NULL').get(run.requestId)) return;
   const selected = [...messageTasks(run.message)];
   if (!selected.length) return;
   const tasks = db.prepare(`SELECT t.id FROM json_each(?) selected JOIN tasks t ON t.external_id=selected.value
@@ -156,11 +158,12 @@ export type Dialogue = { taskId: string; messageId: string; at: string; words: s
 export function dialoguesOf(db: DatabaseSync, tasks: readonly Pick<ControlTask, 'id' | 'meta'>[]): Dialogue[] {
   const ids = JSON.stringify(tasks.map(task => task.id));
   const screen = db.prepare(`SELECT k.external_id AS task_id,q.id AS message_id,q.submitted_at AS at,q.body AS words,
-      a.result AS answer,a.request_id AS kept_by,CASE WHEN c.id IS NOT NULL AND c.cleared_at IS NULL THEN json_extract(a.record,'$.answerFiles') END AS answer_files
+      a.result AS answer,a.request_id AS kept_by,CASE WHEN c.id IS NOT NULL AND c.cleared_at IS NULL AND kept.coordinator_files_expired_at IS NULL THEN json_extract(a.record,'$.answerFiles') END AS answer_files
     FROM task_dialogues d JOIN tasks k ON k.id=d.task_uuid JOIN requests q ON q.id=d.request_id
     LEFT JOIN runs a ON a.id=(${messageCarrier('q.id')})
       AND a.state='succeeded' AND a.result_state='present'
     LEFT JOIN coordinator_conversations c ON c.id=a.conversation_id
+    LEFT JOIN requests kept ON kept.id=a.request_id
     WHERE k.external_id IN (SELECT value FROM json_each(?))`).all(ids);
   // An independent Task record may quote an outside conversation. A Request's author is part of that Request,
   // not an additional Task dialogue with the same identity; its words and provenance remain on the Request.

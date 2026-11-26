@@ -4,18 +4,23 @@
  */
 import type { DatabaseSync } from 'node:sqlite';
 import { DELIVERY_STATE } from '@alpacawork/contract/control';
-import { carrierOf, isRunMoving, runFolder, tookSteps, type CoordinatorRunRecord } from '@alpacawork/contract/run';
+import { coordinatorRunRecordSchema, runFolder, runNumber, tookSteps, type CoordinatorRunRecord, type RuntimeRunRecord } from '@alpacawork/contract/run';
 import type { RunId } from '@alpacawork/contract/fields';
 import { inputUnsettled } from '@alpacawork/contract/run-protocol';
-import type { CoordinatorConversation as ConversationView, CoordinatorError, CoordinatorResult, CoordinatorTurn } from '@alpacawork/contract/coordinator';
-import { isEnded, laneAhead, type RunStore } from '@alpacawork/runs';
+import { COORDINATOR_RECENT_TURNS, COORDINATOR_HISTORY_PAGE, coordinatorMessageDigest, coordinatorMessageSchema, type CoordinatorConversation as ConversationView,
+  type CoordinatorError, type CoordinatorMessageStatus, type CoordinatorResult, type CoordinatorTurn,
+  type CoordinatorTurnsPage } from '@alpacawork/contract/coordinator';
+import { currentRequestRun, isEnded, laneAhead, type RunStore } from '@alpacawork/runs';
 import { blockedInvocations, queuedInputReservations } from '../runs/execution-control.js';
 import { readRunFailure } from '../runs/error-cause.js';
 import { readRunActivity } from '../runs/activity.js';
-import { resultsOf } from './messages.js';
+import { deliveredMessages, messageCarrier, resultsOf } from './messages.js';
 import { replyView } from './reply.js';
+import { activeCoordinatorRuns, visible } from './requests.js';
+import { coordinatorResetsFor, pendingCoordinatorReset } from './resets.js';
+import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 
-export type Conversation = { id: string; warmRequestId: string | null };
+export type Conversation = { id: string };
 /** The last time a queued message was handed to the agent at work: how far it got, and into whose Run. */
 type Handover = { state: string; refused: boolean; into: string };
 /** How a coordinator Run that did not answer says why; any other end is an interruption. */
@@ -35,10 +40,11 @@ function endedRunTookSteps(root: string, id: RunId): boolean {
   return value;
 }
 /** Each queued message's last handover, by its Run. */
-export function handovers(db: DatabaseSync, conversation: string): Map<string, Handover> {
+export function handovers(db: DatabaseSync, runs: readonly RunId[]): Map<string, Handover> {
   const rows = db.prepare(`SELECT i.instruction_run_no, i.state, json_extract(i.receipt_json, '$.evidence') AS evidence,
-    a.run_no FROM run_inputs i JOIN run_attempts a USING(attempt_id) JOIN runs r ON r.id = i.instruction_run_no
-    WHERE i.initial = 0 AND r.conversation_id = ? ORDER BY i.rowid`).all(conversation);
+    a.run_no FROM run_inputs i JOIN run_attempts a USING(attempt_id)
+    WHERE i.initial = 0 AND i.instruction_run_no IN (SELECT value FROM json_each(?)) ORDER BY i.rowid`)
+    .all(JSON.stringify(runs.map(runNumber)));
   return new Map(rows.map(row => [`R${row.instruction_run_no}`, { state: String(row.state),
     refused: row.evidence === 'transfer_not_started', into: `R${row.run_no}` }]));
 }
@@ -47,13 +53,14 @@ export function handovers(db: DatabaseSync, conversation: string): Map<string, H
  * `into` is a message ID: the one whose Run took this message in, or is taking it.
  */
 function drawnTurn(request: Record<string, unknown>, run: CoordinatorRunRecord, result: { text: string | null; state: string } | undefined,
-  handover: Handover | undefined, messageOf: ReadonlyMap<string, string>, done: CoordinatorResult | null, waiting: boolean): CoordinatorTurn {
+  handover: Handover | undefined, messageOf: ReadonlyMap<string, string>, done: CoordinatorResult | null, waiting: boolean, inputDigest: string): CoordinatorTurn {
   const into = (runId: string | null) => {
     const message = runId === null ? undefined : messageOf.get(runId);
     return message === undefined ? {} : { into: message };
   };
-  const turn = { id: String(request.id), at: String(request.submitted_at), ask: String(request.body),
+  const turn = { id: String(request.id), at: String(request.submitted_at), ask: String(request.body), inputDigest,
     attachments: run.message.attachments,
+    ...(request.coordinator_files_expired_at !== null ? { filesExpired: true as const } : {}),
     ...run.message.skills === undefined ? {} : { skills: run.message.skills },
     ...run.message.intent === null ? {} : { intent: run.message.intent },
     ...run.message.answers === undefined ? {} : { answers: run.message.answers }, answer: null, answeredAt: null, error: null,
@@ -76,75 +83,194 @@ function drawnTurn(request: Record<string, unknown>, run: CoordinatorRunRecord, 
 export function failedRun(run: CoordinatorRunRecord): boolean {
   return !(['queued', 'running', 'joined', 'succeeded'] as const).some(state => state === run.state);
 }
-/**
- * Whether the Run that answers a message has ended (its own, or the one it joined, `into`): its turn lives no longer,
- * so what it did is final.
- */
-function answered(run: CoordinatorRunRecord, byId: ReadonlyMap<string, CoordinatorRunRecord>): boolean {
-  const head = carrierOf(run, id => byId.get(id));
-  return head === undefined || isEnded(head);
-}
 /** An answer the person can have read. */
 export function readable(turn: CoordinatorTurn): boolean {
   return (turn.status === 'succeeded' || turn.status === 'failed') && turn.answeredAt !== null;
 }
-/**
- * The conversation as the screen shows it, from its Requests, their coordinator Runs and those Runs' inputs: the
- * messages in the order they were sent, the warm-up apart.
- */
-export function view(db: DatabaseSync, store: RunStore, conversation: Conversation,
-  runs: readonly CoordinatorRunRecord[] = store.coordinatorRuns(conversation.id), seen: ReadonlySet<string> = new Set(),
-  running: (run: CoordinatorRunRecord | null) => void = () => {}): Omit<ConversationView, 'nextLaunch'> {
-  const inputs = handovers(db, conversation.id);
-  running(runs.filter(run => run.state === 'running' && run.requestId !== conversation.warmRequestId).at(-1) ?? null);
-  // The same decision snapshot and turn-order rule as the scheduler, including hidden warm-up and delivery holds.
-  const decisions = store.readForSettle(conversation.id);
-  const runIds = decisions.map(run => run.id);
-  const blocked = blockedInvocations(store, runIds), reservations = queuedInputReservations(store, runIds);
-  const trialsByRequest = new Map<string, CoordinatorRunRecord[]>();
-  for (const run of runs) {
-    const trials = trialsByRequest.get(run.requestId) ?? [];
-    trials.push(run);
-    trialsByRequest.set(run.requestId, trials);
-  }
-  const byRequest = new Map([...trialsByRequest].map(([id, trials]) => [id, trials.at(-1)!])), messageOf = new Map(runs.map(run => [run.id, run.requestId]));
-  const results = new Map(db.prepare('SELECT id, result, result_state FROM runs WHERE conversation_id = ?').all(conversation.id)
-    .map(row => [`R${row.id}`, { text: row.result === null ? null : String(row.result), state: String(row.result_state) }]));
-  const warm = conversation.warmRequestId === null ? undefined : byRequest.get(conversation.warmRequestId);
-  const byId = new Map(runs.map(run => [run.id, run]));
-  const done = resultsOf(db, runs.filter(run => run.requestId !== conversation.warmRequestId && answered(run, byId))
-    .map(run => run.requestId));
-  // A failed message sent again stays readable by its ID (an unconfirmed send, a read mark, what joined it), marked so.
-  const sentAgain = new Set(runs.flatMap(run => run.message.retryOf ?? []));
-  const cancelled: string[] = [], turns: CoordinatorTurn[] = [];
-  const replies = new Map<string, ReturnType<typeof replyView>>();
-  const reply = (id: string) => {
-    if (!replies.has(id)) replies.set(id, replyView(db, conversation.id, id));
-    return replies.get(id)!;
-  };
-  for (const request of db.prepare(`SELECT q.id, q.body, q.submitted_at, q.delivery_state, q.reply_to FROM requests q
-    LEFT JOIN runs r ON r.request_id = q.id AND r.attempt=0 WHERE q.conversation_id = ? ORDER BY r.id, q.rowid`).all(conversation.id)) {
-    const id = String(request.id), run = byRequest.get(id);
-    if (id === conversation.warmRequestId) continue;
-    if (request.delivery_state === DELIVERY_STATE.aborted) cancelled.push(id);
-    else if (run) {
-      const handover = inputs.get(run.id);
-      const waiting = run.state === 'queued' && (!!handover && inputUnsettled(handover.state) || !!laneAhead(decisions, run, blocked, reservations));
-      const turn = drawnTurn(request, run, results.get(run.id), handover, messageOf, done.get(id) ?? null, waiting);
-      const trials = trialsByRequest.get(id)!;
-      const attempts = trials.length < 2 && !run.availability ? undefined : trials.map(trial => ({
-        agent: trial.agent, values: trial.launch.values, ...(trial.availability ? { availability: trial.availability } : {}),
-      }));
-      const failure = turn.status === 'failed' ? readRunFailure(store.root, run) : undefined;
-      // The message sent in its place carries what is left to read, while this one stays failed: one that answers after
-      // all (a Run back from review) is shown with its answer.
-      const again = sentAgain.has(id) && turn.status === 'failed';
-      const workedBy = readable(turn) && isEnded(run) && endedRunTookSteps(store.root, run.id) ? run.id : undefined;
-      turns.push({ ...turn, ...attempts ? { attempts } : {}, ...failure ? { failure } : {}, ...(typeof request.reply_to === 'string' ? { replyTo: reply(request.reply_to) } : {}),
-        ...again ? { sentAgain: true as const } : {}, ...workedBy ? { workedBy } : {}, seen: readable(turn) && (again || seen.has(id)) });
+
+const requestColumns = 'q.id,q.body,q.submitted_at,q.reply_to,q.coordinator_turn_no,q.coordinator_files_expired_at';
+type Row = Record<string, unknown>;
+type TurnRow = Row & { id: string; coordinator_turn_no: number };
+function turnRows(rows: Row[]): TurnRow[] { return rows as TurnRow[]; }
+
+function coordinatorLane(db: DatabaseSync, store: RunStore, conversation: string, active: readonly CoordinatorRunRecord[]) {
+  const sessions = active.flatMap(run => run.session ? [run.session.id] : []);
+  const scope = [conversation, JSON.stringify(sessions)] as const;
+  const diagnosed = 'a.run_no=r.id AND a.diagnostic IS NOT NULL';
+  const candidates = db.prepare(`SELECT r.id FROM runs r INDEXED BY runs_conversation
+    CROSS JOIN run_attempts a INDEXED BY coordinator_delivery_diagnostics
+    WHERE r.conversation_id=? AND ${diagnosed}
+    UNION
+    SELECT r.id FROM runs r INDEXED BY runs_session
+    CROSS JOIN run_attempts a INDEXED BY coordinator_delivery_diagnostics
+    WHERE r.session_id IN (SELECT value FROM json_each(?)) AND ${diagnosed}
+    UNION
+    SELECT r.id FROM run_inputs i INDEXED BY coordinator_delivery_inputs
+    CROSS JOIN run_attempts a CROSS JOIN runs r
+    WHERE i.state IN ('reserved','attempted','uncertain') AND a.attempt_id=i.attempt_id
+      AND r.id=a.run_no AND (r.conversation_id=? OR r.session_id IN (SELECT value FROM json_each(?)))
+    `).all(...scope, ...scope).map(row => `R${row.id}`);
+  const activeIds = active.map(run => run.id);
+  const blocked = blockedInvocations(store, candidates);
+  const lane: RuntimeRunRecord[] = [...active];
+  for (const id of blocked) {
+    if (!activeIds.includes(`R${id}`)) {
+      const run = store.runtimeGet(`R${id}`);
+      if (run) lane.push(run);
     }
   }
-  return { id: conversation.id,
-    warm: !warm ? 'none' : isRunMoving(warm.state) ? 'preparing' : warm.state === 'succeeded' ? 'ready' : 'failed',
-    busy: !!laneAhead(decisions, { role: 'coordinator', conversationId: conversation.id }, blocked, reservations), cancelled, turns };
+  return { lane, blocked, reservations: queuedInputReservations(store, activeIds) };
+}
+
+function recent(db: DatabaseSync, conversation: string): TurnRow[] {
+  return turnRows(db.prepare(`SELECT ${requestColumns} FROM requests q
+    JOIN runs r ON r.id=(${currentRequestRun('q.id')})
+    WHERE q.conversation_id=? AND ${visible}
+      AND r.state IN ('succeeded','failed','cancelled','joined')
+      AND (r.state <> 'joined' OR EXISTS (SELECT 1 FROM runs carrier WHERE carrier.id=(${messageCarrier('q.id')})
+        AND carrier.state IN ('succeeded','failed','cancelled')))
+    ORDER BY q.coordinator_turn_no DESC LIMIT ?`)
+    .all(conversation, COORDINATOR_RECENT_TURNS)).reverse();
+}
+
+function trialRows(db: DatabaseSync, ids: readonly string[]) {
+  return db.prepare(`SELECT trial.record,trial.result,trial.result_state,
+    (SELECT carrier.state FROM runs carrier WHERE carrier.id=(${messageCarrier('trial.request_id')})) AS carrier_state,
+    EXISTS(SELECT 1 FROM runs retry
+      WHERE retry.conversation_id=trial.conversation_id AND retry.conversation_id IS NOT NULL AND json_extract(retry.record,'$.message.retryOf')=trial.request_id
+      AND EXISTS (SELECT 1 FROM requests q WHERE q.id=retry.request_id AND ${visible})) AS sent_again
+    FROM json_each(?) scope JOIN runs trial ON trial.request_id=scope.value ORDER BY trial.id`).all(JSON.stringify(ids));
+}
+
+function draw(db: DatabaseSync, store: RunStore, conversation: string, requests: readonly TurnRow[],
+  seen: (request: TurnRow) => boolean, active: readonly CoordinatorRunRecord[],
+  { lane, blocked, reservations }: ReturnType<typeof coordinatorLane>): CoordinatorTurn[] {
+  const trials = new Map<string, { run: CoordinatorRunRecord; row: Row }[]>();
+  for (const row of trialRows(db, requests.map(request => request.id))) {
+    const run = coordinatorRunRecordSchema.parse(JSON.parse(String(row.record)));
+    const group = trials.get(run.requestId);
+    if (group) group.push({ run, row }); else trials.set(run.requestId, [{ run, row }]);
+  }
+  const unfinished = active.map(run => run.id);
+  const inputs = handovers(db, unfinished);
+  const last = requests.flatMap(request => {
+    const latest = trials.get(request.id)?.at(-1);
+    return latest ? [{ request, ...latest }] : [];
+  });
+  const done = resultsOf(db, last.filter(({ run, row }) => isEnded(run) &&
+    (run.state !== 'joined' || !['queued', 'running', 'needs_review'].includes(String(row.carrier_state)))).map(({ run }) => run.requestId));
+  const messageOf = new Map<string, string>();
+  const carrier = db.prepare('SELECT request_id FROM runs WHERE id=?');
+  for (const { run } of last) {
+    const handover = inputs.get(run.id);
+    const id = run.into ?? handover?.into;
+    if (id && !messageOf.has(id)) {
+      const row = carrier.get(Number(id.slice(1)));
+      if (row) messageOf.set(id, String(row.request_id));
+    }
+  }
+  return last.map(({ request, run, row }) => {
+    const handover = inputs.get(run.id);
+    const waiting = run.state === 'queued' && (!!handover && inputUnsettled(handover.state) || !!laneAhead(lane, run, blocked, reservations));
+    const attempts = trials.get(run.requestId)!;
+    // The admitted input is the first attempt's, as a status's receipt reads it (admittedMessageDigest).
+    const inputDigest = coordinatorMessageDigest({ ...attempts[0]!.run.message, conversationId: conversation, id: String(request.id),
+      text: String(request.body), replyTo: typeof request.reply_to === 'string' ? request.reply_to : null });
+    const turn = drawnTurn(request, run, { text: row.result as string | null, state: String(row.result_state) },
+      handover, messageOf, done.get(run.requestId) ?? null, waiting, inputDigest);
+    const failed = turn.status === 'failed';
+    const failure = failed ? readRunFailure(store.root, run) : undefined;
+    const again = failed && !!row.sent_again;
+    const workedBy = readable(turn) && isEnded(run) && endedRunTookSteps(store.root, run.id) ? run.id : undefined;
+    return { ...turn,
+      ...(attempts.length < 2 && !run.availability ? {} : { attempts: attempts.map(({ run: trial }) => ({
+        agent: trial.agent, values: trial.launch.values, ...(trial.availability ? { availability: trial.availability } : {}),
+      })) }),
+      ...(failure ? { failure } : {}),
+      ...(typeof request.reply_to === 'string' ? { replyTo: replyView(db, conversation, request.reply_to) } : {}),
+      ...(again ? { sentAgain: true as const } : {}), ...(workedBy ? { workedBy } : {}),
+      seen: readable(turn) && (again || seen(request)) };
+  });
+}
+
+export function coordinatorBusy(db: DatabaseSync, store: RunStore, id: string): boolean {
+  const active = activeCoordinatorRuns(db, id);
+  const { lane, blocked, reservations } = coordinatorLane(db, store, id, active);
+  return !!laneAhead(lane, { role: 'coordinator', conversationId: id }, blocked, reservations);
+}
+
+export function view(db: DatabaseSync, store: RunStore, conversation: Conversation, seen: ReadonlySet<string>,
+  active: readonly CoordinatorRunRecord[]): Pick<ConversationView, 'id' | 'busy' | 'turns' | 'earlier' | 'resets'> {
+  const id = conversation.id, window = recent(db, id);
+  const inWindow = new Set(window.map(turn => turn.id));
+  const readRequest = db.prepare(`SELECT ${requestColumns} FROM requests q WHERE q.id=? AND ${visible}`);
+  const activeRequests = new Set(active.flatMap(run => run.state === 'queued' && !run.attempt
+    ? [run.requestId] : deliveredMessages(db, run.id)));
+  const olderActive = [...activeRequests].flatMap(request => {
+    if (inWindow.has(request)) return [];
+    const row = readRequest.get(request);
+    return row ? [row as TurnRow] : [];
+  });
+  const requests = [...olderActive, ...window].sort((a, b) => a.coordinator_turn_no - b.coordinator_turn_no);
+  const remaining = Number(db.prepare('SELECT visible_turns FROM coordinator_conversations WHERE id=?').get(id)?.visible_turns) - requests.length;
+  const earlier = remaining > 0 && window.length ? { count: remaining, before: window[0]!.id } : null;
+  const resets = coordinatorResetsFor(db, id, requests.map(turn => turn.id));
+  const pending = pendingCoordinatorReset(db, id);
+  if (pending) resets.push(pending);
+  const lane = coordinatorLane(db, store, id, active);
+  return { id, busy: !!laneAhead(lane.lane, { role: 'coordinator', conversationId: id }, lane.blocked, lane.reservations),
+    turns: draw(db, store, id, requests, request => seen.has(request.id), active, lane), earlier, resets };
+}
+
+export function historyPage(db: DatabaseSync, store: RunStore, conversation: string,
+  cursor: { before?: string; around?: string }, seen: ReadonlySet<string>): CoordinatorTurnsPage {
+  const anchor = db.prepare(`SELECT coordinator_turn_no FROM requests q WHERE q.id=? AND q.conversation_id=?
+    AND coordinator_turn_no IS NOT NULL`).get(cursor.before ?? cursor.around!, conversation);
+  if (!anchor) throw new Problem(PROBLEM_CODE.notFound, 'History cursor is not in this conversation');
+  const requests = turnRows(db.prepare(`SELECT ${requestColumns} FROM requests q WHERE q.conversation_id=? AND ${visible}
+    AND q.coordinator_turn_no <= ? ORDER BY q.coordinator_turn_no DESC LIMIT ?`)
+    .all(conversation, Number(anchor.coordinator_turn_no) - (cursor.before ? 1 : 0), COORDINATOR_HISTORY_PAGE + 1));
+  const more = requests.length > COORDINATOR_HISTORY_PAGE;
+  const page = requests.slice(0, COORDINATOR_HISTORY_PAGE).reverse();
+  const active = activeCoordinatorRuns(db, conversation);
+  const recentStart = recent(db, conversation)[0]?.coordinator_turn_no ?? 0;
+  const hasRead = (request: TurnRow) => request.coordinator_turn_no < recentStart || seen.has(request.id);
+  return { turns: draw(db, store, conversation, page, hasRead, active, coordinatorLane(db, store, conversation, active)),
+    resets: coordinatorResetsFor(db, conversation, page.map(turn => turn.id)), more: more ? page[0]!.id : null };
+}
+
+/** The receipt is derived from the Request and its immutable admission metadata on the first Run. */
+export function admittedMessageDigest(db: DatabaseSync, conversation: string, id: string): string {
+  const row = db.prepare(`SELECT q.body,q.reply_to,json_extract(first.record,'$.message') AS message
+    FROM requests q JOIN runs first ON first.request_id=q.id AND first.attempt=0
+    WHERE q.id=? AND q.conversation_id=?`).get(id, conversation);
+  if (!row) throw new Error(`Accepted coordinator message ${id} has no initial Run`);
+  const message = coordinatorMessageSchema.parse(JSON.parse(String(row.message)));
+  return coordinatorMessageDigest({ ...message, conversationId: conversation, id, text: String(row.body), replyTo: row.reply_to as string | null });
+}
+
+export function messageStatus(db: DatabaseSync, conversation: string, id: string): CoordinatorMessageStatus {
+  const row = db.prepare(`SELECT q.delivery_state,q.coordinator_turn_no,r.state,
+    EXISTS (SELECT 1 FROM run_inputs i WHERE i.instruction_run_no=r.id AND i.initial=0
+      AND i.state IN ('reserved','attempted','uncertain')) AS sending
+    FROM requests q LEFT JOIN runs r ON r.id=(${currentRequestRun('q.id')}) WHERE q.id=? AND q.conversation_id=?`).get(id, conversation);
+  if (!row) return { id, status: 'missing' };
+  if (row.delivery_state === DELIVERY_STATE.aborted) return { id, status: 'withdrawn' };
+  if (row.coordinator_turn_no === null) return { id, status: 'missing' };
+  const inputDigest = admittedMessageDigest(db, conversation, id);
+  switch (row.state) {
+    case 'queued': return { id, status: row.sending ? 'sending' : 'queued', inputDigest };
+    case 'running': case 'joined': case 'succeeded': return { id, status: row.state, inputDigest };
+    default: return { id, status: 'failed', inputDigest };
+  }
+}
+
+export function recentReadableIds(db: DatabaseSync, conversation: string): string[] {
+  return recent(db, conversation).map(row => row.id).filter(id => completedAnswer(db, conversation, id));
+}
+
+export function completedAnswer(db: DatabaseSync, conversation: string, id: string): boolean {
+  return !!db.prepare(`SELECT 1 FROM requests q JOIN runs r ON r.id=(${currentRequestRun('q.id')})
+    WHERE q.id=? AND q.conversation_id=? AND ${visible} AND r.state IN ('succeeded','failed','cancelled')
+    AND json_extract(r.record,'$.ended_at') IS NOT NULL`).get(id, conversation);
 }

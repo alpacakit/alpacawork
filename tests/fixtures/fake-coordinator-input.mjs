@@ -23,7 +23,7 @@ for await (const line of createInterface({ input: process.stdin })) {
   const input = JSON.parse(line);
   const id = native ? input.uuid : input.id, rawPrompt = native ? input.message.content : input.text;
   prompts.push(rawPrompt);
-  const prompt = rawPrompt.replace(/^Request ID of this input: [^\n]+\n/m, '');
+  const prompt = rawPrompt.split(/^Request ID of this input: [^\n]+\n/m).at(-1);
   if (prompts.length > 1 && prompt === 'refuse') { event({ type: 'input.uncertain', id }); continue; }
   if (prompts.length > 1 && prompt === 'untaken') continue;
   if (prompts.length > 1 && prompt.startsWith('take:')) {

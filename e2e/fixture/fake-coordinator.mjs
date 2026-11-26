@@ -40,7 +40,8 @@ const LOG_ENTRIES = '1000';
  * files.
  */
 function read(text) {
-  const lines = text.split('\n');
+  const boundary = /^Request ID of this input: [0-9a-f-]+\b/m.exec(text);
+  const lines = text.slice(boundary?.index ?? 0).split('\n');
   const sourceRequest = /Request ID of this input: ([0-9a-f-]+)\b/.exec(lines[0])?.[1];
   if (sourceRequest) lines.shift();
   const context = /^（画面で (\S+) を開いています）$/.exec(lines[0])?.[1] ?? null;

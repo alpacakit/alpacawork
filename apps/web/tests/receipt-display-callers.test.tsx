@@ -1,6 +1,6 @@
 import { Workbench } from "../src/features/shell/Workbench";
 import * as directWrites from '../src/data/direct-write';
-import { snapshotJson } from './conversation-fixture';
+import { snapshotJson, SERVED } from './conversation-fixture';
 /**
  * Regression for the receipt display contract's server-only callers. The whole Workspace is mounted, so the
  * actual feed adapter, Workspace mapping, read-store, Reader (useShowCard → observeReaderTurns) and connection gate run.
@@ -105,7 +105,7 @@ function serve() {
       return view ? new Response(snapshotJson(view)) : problemResponse('not_found', 'No task');
     }
     if (target.pathname === '/api/task/history') return new Response(snapshotJson({ ...historyWindowAnswer(), sourcePv: live.sourcePv }));
-    if (path === '/api/coordinator') return new Response(snapshotJson({ id: 'conversation-1', nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [] }));
+    if (path === '/api/coordinator') return new Response(snapshotJson({ id: 'conversation-1', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns: [] }));
     if (path === '/api/commands/settings/get') return new Response(snapshotJson({ values, revision: 'person-1' }));
     if (path === '/api/person/notices') return new Response(snapshotJson({ state: { version: NOTICE_VERSION, checkpoint, reads: {} }, revision: notices }));
     // The fixture server keeps the notice revision the live index names and does not retain Task reads, so every

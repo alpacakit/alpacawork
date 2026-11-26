@@ -1,4 +1,4 @@
-import { announceConversation } from './conversation-fixture';
+import { announceConversation, SERVED, servedTurn } from './conversation-fixture';
 import { snapshotJson } from './conversation-fixture';
 import { setConversationState } from './conversation-fixture';
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
@@ -13,9 +13,9 @@ import { screenData, tree } from "./fixtures";
 import { queryClient } from "../src/data/query-client";
 
 const at = "2026-10-21T10:00:00Z";
-const turn = (id: string, extra: Partial<CoordinatorTurn> = {}): CoordinatorTurn => ({ id, at, ask: id, attachments: [],
+const turn = (id: string, extra: Partial<CoordinatorTurn> = {}): CoordinatorTurn => servedTurn('conversation', { id, at, ask: id, attachments: [],
   status: "succeeded", waiting: false, answer: "answer", answeredAt: at, seen: false, error: null, result: null, ...extra });
-const snapshot = (turns = [turn("a"), turn("b"), turn("c")], id = "conversation"): CoordinatorConversation => ({ id, nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns });
+const snapshot = (turns = [turn("a"), turn("b"), turn("c")], id = "conversation"): CoordinatorConversation => ({ id, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns });
 const json = (value: unknown) => new Response(snapshotJson(value));
 const deferred = <T,>() => { let resolve!: (value: T) => void; let reject!: (reason: unknown) => void;
   const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; };

@@ -1,4 +1,4 @@
-import { coordinatorSnapshotSchema, coordinatorMessageInputSchema, type CoordinatorTurn } from '@alpacawork/contract/coordinator';
+import { coordinatorSnapshotSchema, coordinatorMessageInputSchema, coordinatorMessageStatusSchema, coordinatorTurnsPageSchema, type CoordinatorTurn } from '@alpacawork/contract/coordinator';
 import type { Page, Request } from '@playwright/test';
 import { until } from '../tests/acceptance/processes.ts';
 import type { Runtime } from './server.ts';
@@ -37,8 +37,19 @@ export async function coordinatorCompleted(page: Page, runtime: Runtime, request
       const conversation = coordinatorSnapshotSchema.parse(await reply.json()).conversation;
       remaining();
       if (conversation.id !== input.conversationId) throw new Error(`Conversation changed: ${conversation.id}`);
-      if (conversation.cancelled.includes(input.id)) throw new Error('Message was cancelled');
-      const turn = conversation.turns.find(turn => turn.id === input.id);
+      let turn = conversation.turns.find(turn => turn.id === input.id);
+      if (!turn) {
+        const response = await page.request.get(`${runtime.origin}/api/coordinator/messages/${input.id}/status`, { timeout: remaining() });
+        if (!response.ok()) throw new Error(`Coordinator status read failed: ${response.status()}`);
+        const { status } = coordinatorMessageStatusSchema.parse(await response.json());
+        if (status === 'withdrawn' || status === 'failed') throw new Error(`Message is ${status}`);
+        if (status === 'succeeded') {
+          const query = new URLSearchParams({ conversationId: conversation.id, around: input.id });
+          const response = await page.request.get(`${runtime.origin}/api/coordinator/turns?${query}`, { timeout: remaining() });
+          if (!response.ok()) throw new Error(`Coordinator history read failed: ${response.status()}`);
+          turn = coordinatorTurnsPageSchema.parse(await response.json()).turns.find(turn => turn.id === input.id);
+        }
+      }
       observed = turn ? JSON.stringify({ status: turn.status, answer: turn.answer !== null, error: turn.error, into: turn.into }) : 'message absent';
       if (turn?.status === 'failed') throw new Error(`Message failed: ${observed}`);
       return turn?.status === 'succeeded' && turn.answer !== null && turn.answeredAt !== null ? turn : false;

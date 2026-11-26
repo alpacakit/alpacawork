@@ -10,6 +10,8 @@ import { recordedProblemSchema } from './problem.js';
 import { taskLogSchema } from '@alpacawork/raw/task-log-schema';
 import { digestSchema, logIdSchema, runIdSchema, taskIdSchema } from './fields.js';
 import { answerFileSchema } from './coordinator-files.js';
+import { contextViewSchema } from './agent-context.js';
+import { sha256Utf8 } from './options-base.js';
 
 const COORDINATOR_ATTACHMENT_LIMIT = 20;
 /** Immutable historical operation data. This is not an executable input contract. */
@@ -70,6 +72,25 @@ export const coordinatorMessageInputSchema = z.object({
 }).strict().refine(input => input.text.trim() !== '' || input.attachments.length > 0,
   { message: 'A message needs words or a file', path: ['text'] });
 export type CoordinatorMessageInput = z.input<typeof coordinatorMessageInputSchema>;
+
+/** Admission treats task IDs and invoked skills as sets; attachments and answers keep their order. */
+export function coordinatorMessageContent(input: Pick<CoordinatorMessage, 'tasks' | 'skills' | 'attachments' | 'answers' | 'retryOf'>
+  & { intent?: CoordinatorMessage['intent'] }): CoordinatorMessage {
+  return { context: null, tasks: [...new Set(input.tasks ?? [])].sort(), attachments: input.attachments,
+    intent: input.intent ?? null, ...(input.skills?.length ? { skills: [...new Set(input.skills)].sort() } : {}),
+    ...(input.answers === undefined ? {} : { answers: input.answers }), ...(input.retryOf === undefined ? {} : { retryOf: input.retryOf }) };
+}
+
+/** Both serve and the outbox hash the same admitted input, scoped to its conversation and message ID. */
+export function coordinatorMessageDigest(input: Parameters<typeof coordinatorMessageContent>[0]
+  & Pick<CoordinatorMessageInput, 'id' | 'conversationId' | 'text' | 'replyTo'>): string {
+  const payload = [input.conversationId, input.id, input.text, input.replyTo ?? null, coordinatorMessageContent(input)];
+  return sha256Utf8(JSON.stringify(payload, (_key, value: unknown) => {
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) return value;
+    return Object.fromEntries(Object.entries(value).sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0));
+  }));
+}
+
 export const coordinatorConversationInputSchema = z.object({ conversationId: z.string().min(1) }).strict();
 
 /** Completed replies acknowledged by reading or explicitly opening history, scoped to the conversation; set union makes retries idempotent. */
@@ -103,6 +124,8 @@ export type CoordinatorResult = z.infer<typeof coordinatorResultSchema>;
  */
 export const coordinatorTurnSchema = z.object({
   id: z.string(), at: z.string(), ask: z.string(),
+  /** Serve's receipt of the input it took (coordinatorMessageDigest of the admitted message), as a status carries it. */
+  inputDigest: digestSchema,
   tasks: coordinatorMessageSchema.shape.tasks,
   skills: coordinatorMessageSchema.shape.skills,
   attachments: coordinatorMessageSchema.shape.attachments,
@@ -122,6 +145,7 @@ export const coordinatorTurnSchema = z.object({
   attempts: z.array(aiRowSchema.extend({ availability: runAvailabilitySchema.optional() })).optional(),
   seen: z.boolean(),
   answerFiles: z.array(answerFileSchema).optional(),
+  filesExpired: z.literal(true).optional(),
   result: coordinatorResultSchema.nullable(),
   /** The Run that answered it, once ended, when that Run took steps: they open under the answer. */
   workedBy: runIdSchema.optional(),
@@ -129,21 +153,61 @@ export const coordinatorTurnSchema = z.object({
 /** The agent and selected values actually passed in the next message's launch arguments. */
 export const coordinatorNextLaunchSchema = z.object({ agent: aiRowSchema.shape.agent, values: launchArgumentValuesSchema }).strict();
 export type CoordinatorNextLaunch = z.infer<typeof coordinatorNextLaunchSchema>;
-/**
- * `warm`: how far the background first turn of a new conversation, which loads its instructions, has come: none asked
- * yet, still `preparing`, `ready`, or `failed` (ended any other way). It is not one of the turns.
- * `nextLaunch`: the agent and values passed in the next message's launch arguments, or null if no row can run.
- * `cancelled`: the messages withdrawn before they went.
- */
+const coordinatorMessageId = z.string().min(1).max(256);
+export const COORDINATOR_RECENT_TURNS = 20;
+export const COORDINATOR_HISTORY_PAGE = 50;
+export const COORDINATOR_MEMO_LIMIT = 2000;
+
+export const coordinatorResetReasonSchema = z.object({
+  kind: z.enum(['asked', 'context', 'another_ai', 'fallback', 'recovered', 'unresumable']),
+  over: z.union([z.object({ tokens: z.number().int().nonnegative() }).strict(),
+    z.object({ percent: z.number().nonnegative() }).strict()]).optional(),
+  from: aiRowSchema.optional(), to: aiRowSchema.optional(),
+}).strict();
+export type CoordinatorResetReason = z.infer<typeof coordinatorResetReasonSchema>;
+export const coordinatorResetSchema = z.object({
+  id: z.string().uuid(), beforeRequestId: coordinatorMessageId.nullable(), at: z.iso.datetime({ offset: true }),
+  reason: coordinatorResetReasonSchema,
+}).strict();
+export type CoordinatorReset = z.infer<typeof coordinatorResetSchema>;
+export const coordinatorResetInputSchema = coordinatorConversationInputSchema.extend({ opId: z.uuid() });
+export const coordinatorMemoSchema = z.object({ text: z.string(), updatedAt: z.iso.datetime({ offset: true }) }).strict().nullable();
+export const coordinatorMemoSetInputSchema = z.object({
+  text: z.string().refine(text => Array.from(text).length <= COORDINATOR_MEMO_LIMIT,
+    { message: 'Coordinator memo is limited to 2,000 characters' }),
+}).strict();
+
+/** A page can seek an older reply directly, or continue backwards from an exclusive cursor. */
+export const coordinatorTurnsInputSchema = coordinatorConversationInputSchema.extend({
+  before: coordinatorMessageId.optional(), around: coordinatorMessageId.optional(),
+}).refine(input => (input.before === undefined) !== (input.around === undefined),
+  { message: 'Provide either before or around' });
+export const coordinatorTurnsPageSchema = z.object({
+  turns: z.array(coordinatorTurnSchema).max(COORDINATOR_HISTORY_PAGE),
+  resets: z.array(coordinatorResetSchema), more: coordinatorMessageId.nullable(),
+}).strict();
+export type CoordinatorTurnsPage = z.infer<typeof coordinatorTurnsPageSchema>;
+
+/** An accepted status carries proof of the fixed input even when the turn is outside the snapshot. */
+export const coordinatorMessageStatusSchema = z.discriminatedUnion('status', [
+  z.object({ id: coordinatorMessageId, status: coordinatorTurnSchema.shape.status, inputDigest: digestSchema }).strict(),
+  z.object({ id: coordinatorMessageId, status: z.enum(['withdrawn', 'missing']) }).strict(),
+]);
+export type CoordinatorMessageStatus = z.infer<typeof coordinatorMessageStatusSchema>;
+
+/** The bounded snapshot, including any active turns and the usage of the current session. */
 export const coordinatorConversationSchema = z.object({
-  id: z.string().min(1), nextLaunch: coordinatorNextLaunchSchema.nullable(), warm: z.enum(['none', 'preparing', 'ready', 'failed']),
-  /** A message admitted at the end of this conversation now would wait behind its work or delivery. */
-  busy: z.boolean(),
-  cancelled: z.array(z.string()), turns: z.array(coordinatorTurnSchema),
+  id: z.string().min(1), nextLaunch: coordinatorNextLaunchSchema.nullable(), busy: z.boolean(),
+  turns: z.array(coordinatorTurnSchema),
+  earlier: z.object({ count: z.number().int().positive(), before: coordinatorMessageId }).strict().nullable(),
+  resets: z.array(coordinatorResetSchema), context: contextViewSchema.nullable(),
+  autoReset: z.object({ tokens: z.number().int().nonnegative(), percent: z.number().int().min(0).max(100) }).strict(),
 });
 /** One server snapshot, with the scope and digest of that exact conversation object. */
 export const coordinatorSnapshotSchema = z.object({ root: z.string().min(1), generation: z.string().min(1),
   revision: digestSchema, conversation: coordinatorConversationSchema }).strict();
+export const coordinatorMessageResponseSchema = coordinatorSnapshotSchema.extend({ message: coordinatorMessageStatusSchema });
+export const coordinatorResetResponseSchema = coordinatorSnapshotSchema.extend({ reset: coordinatorResetSchema });
 export const coordinatorMarkerSchema = z.object({ id: z.string().min(1), revision: digestSchema }).strict();
 export type CoordinatorSnapshot = z.infer<typeof coordinatorSnapshotSchema>;
 export type CoordinatorTurn = z.infer<typeof coordinatorTurnSchema>;

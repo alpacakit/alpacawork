@@ -32,7 +32,7 @@ export function ReplyLabel({ reply, origin, remove }: {
     <LabelPopover kind="reply" name={t('coordinatorCard.replySource')} face={<ReplyLabelFace name={name} />}
       tail={remove && <LabelRemove name={t('coordinatorCard.removeContext', { id: name })} remove={remove} />}
       header={<><Icon name="reply" className="size-3.5" />{time} {t('coordinatorCard.replySource')}</>}
-      actions={close => <><button type="button" className="rounded-sm border border-line px-2 py-1" disabled={!source}
+      actions={close => <><button type="button" className="rounded-sm border border-line px-2 py-1" disabled={!reply.answeredAt}
         onClick={() => { close(); goToReply(reply.id, origin ?? { at: new Date().toISOString() }); }}>{t('coordinatorCard.goToReply')}</button>
         {remove && <button type="button" className="px-2 py-1 text-muted" onClick={() => { close(); remove(); }}>{t('input.remove')}</button>}</>}>
       <div data-reply-preview className="mt-1 max-h-[9.6em] overflow-hidden [mask-image:linear-gradient(black_70%,transparent)]">

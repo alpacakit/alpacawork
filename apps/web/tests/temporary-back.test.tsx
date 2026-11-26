@@ -1,4 +1,4 @@
-import { snapshotJson } from './conversation-fixture';
+import { snapshotJson, SERVED } from './conversation-fixture';
 import { setConversationState } from './conversation-fixture';
 /** On a phone, what is open for a moment over the reader (the model picker, a task label's card) closes on Back with the page's step. */
 import { beforeAll, beforeEach, afterEach, expect, test, vi } from 'vitest';
@@ -13,7 +13,7 @@ import { textDocument, taskLabel } from '../src/features/coordinator/editor/docu
 import { TestWorkspace, dto, screenData, tree, narrowScreen, at } from './fixtures';
 import * as reads from '../src/state/read-store';
 const flush = async () => act(async () => { await new Promise(resolve => setTimeout(resolve, 25)); });
-const conversation = {id:'audit',nextLaunch: { agent: 'claude', values: {} },warm: 'none' as const, busy: false,cancelled: [],turns:[]};
+const conversation = {id:'audit',nextLaunch: { agent: 'claude', values: {} },...SERVED, busy: false,admitted: {}, cancelled: [],turns:[]};
 const f = (name:string) => ({name,size:10,at,revision:'r1'});
 let mobile:ReturnType<typeof narrowScreen>;
 beforeAll(async () => { startI18n(); await i18n.changeLanguage('en'); });

@@ -216,7 +216,7 @@ try {
   db.prepare(`INSERT INTO requests(id,conversation_id,mode,body,purpose,author,submitted_at,delivery_state)
     VALUES(?,?,'new',?,'instruction',?,?,'queued')`).run(said, conversation, 'When will the failure guidance be ready?', JSON.stringify({ kind: 'human' }), saidAt);
   const replyNumber = ++runNumber, reply = `R${replyNumber}`;
-  insertRun.run(replyNumber, JSON.stringify(coordinatorRunRecordSchema.parse({ ...record(reply), task: null, placementId: null, restartArgv: null, requestId: said, agent: 'claude', role: 'coordinator', caller: null, cwd: root,
+  insertRun.run(replyNumber, JSON.stringify(coordinatorRunRecordSchema.parse({ ...record(reply), task: null, placementId: null, requestId: said, agent: 'claude', role: 'coordinator', caller: null, cwd: root,
     state: 'succeeded', reason: null, created_at: saidAt, started_at: saidAt, ended_at: saidAt, exit: { code: 0, signal: null }, ...{ conversationId: conversation, message: { context: 'T102', tasks: ['T102'], attachments: [], intent: null } },
     launch: inertFixtureLaunch('claude', { model: 'opus', effort: 'high' }) })), 'When will the failure guidance be ready?', 'Wording review is still pending.\n\nOnce reviewed, it should be ready today.');
   db.prepare('INSERT INTO task_dialogues(task_uuid,request_id) VALUES(?,?)').run(internal(102), said);

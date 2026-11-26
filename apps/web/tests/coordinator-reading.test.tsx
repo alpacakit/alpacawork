@@ -1,4 +1,4 @@
-import { setConversationState } from './conversation-fixture';
+import { setConversationState, SERVED, servedTurn } from './conversation-fixture';
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { act, cleanup, render } from "@testing-library/react";
 import { useConversationReading, opening } from "../src/features/coordinator/read-boundary";
@@ -6,12 +6,12 @@ import { useConversation } from "../src/features/coordinator/coordinator";
 import type { CoordinatorTurn } from "../src/data/coordinator";
 
 // A person's action on a visible page with the conversation open reads what it shows; history folding never controls reading.
-const reply = (id: string, seen = false): CoordinatorTurn => ({ id, at: "", ask: id, attachments: [], status: "succeeded",
+const reply = (id: string, seen = false): CoordinatorTurn => servedTurn('conversation', { id, at: "", ask: id, attachments: [], status: "succeeded",
   waiting: false, answer: "Done", answeredAt: "2026-10-21T10:00:00Z", seen, error: null, result: null });
 let observed: ReturnType<typeof vi.fn<(ids: readonly string[]) => void>>, flushed: ReturnType<typeof vi.fn<(keepalive?: boolean) => void>>;
 let visibility: DocumentVisibilityState;
 function Harness() { useConversationReading(document, "fixture", "conversation"); return null; }
-const conversation = (turns: CoordinatorTurn[]) => ({ id: "conversation", nextLaunch: { agent: 'claude', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns });
+const conversation = (turns: CoordinatorTurn[]) => ({ id: "conversation", nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns });
 const read = () => observed.mock.calls.flatMap(call => call[0]);
 const touch = (type = "pointerdown") => act(() => { document.dispatchEvent(new Event(type)); });
 // Mounted folded, then opened by a press: the opening is the first action.

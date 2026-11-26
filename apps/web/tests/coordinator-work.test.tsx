@@ -7,23 +7,23 @@ import { workNameWords, workWords } from '../src/domain/work-words';
 import { useConnection } from '../src/data/connection';
 import { useActivityText } from '../src/features/people/labels';
 import { screenData, TestWorkspace } from './fixtures';
-import { setConversationState } from './conversation-fixture';
+import { setConversationState, SERVED, servedTurn } from './conversation-fixture';
 import type { CoordinatorTurn } from '../src/data/coordinator';
 
 beforeAll(async () => { await startI18n(); await i18n.changeLanguage('en'); });
 afterEach(() => { vi.useRealTimers(); cleanup(); setConversationState({ conversation: null }); });
-const turn: CoordinatorTurn = { id: 'turn', at: new Date(0).toISOString(), ask: 'work', status: 'running', attachments: [],
-  waiting: false, answer: null, answeredAt: null, seen: false, error: null, result: null };
+const turn: CoordinatorTurn = servedTurn('conversation', { id: 'turn', at: new Date(0).toISOString(), ask: 'work', status: 'running', attachments: [],
+  waiting: false, answer: null, answeredAt: null, seen: false, error: null, result: null });
 
 test('every place shows one paced work name and the seconds since sending: held 2 s from the DOM, latest after, released at once', () => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
   vi.setSystemTime(0);
-  const conversation = { id: 'conversation', nextLaunch: { agent: 'fake', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [turn] };
+  const conversation = { id: 'conversation', nextLaunch: { agent: 'fake', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns: [turn] };
   setConversationState({ conversation });
   useConnection.setState({ offline: false });
   const base = screenData();
   const at = (work: Partial<NonNullable<typeof base.info.coordinatorWork>> | null, rev = base.info.rev) => ({ ...base, info: { ...base.info, rev,
-    coordinatorWork: work && { conversation: 'conversation', turn: turn.id, run: 'R1', name: 'command' as const, count: 1, steps: [], stepEvents: 0, stepsStarted: 0, words: null, ...work } } });
+    coordinatorWork: work && { conversation: 'conversation', turn: turn.id, run: 'R1', name: 'command' as const, count: 1, steps: [], stepEvents: 0, stepsStarted: 0, words: null, context: null, ...work } } });
   function RunWork() {
     const text = useActivityText();
     return <span data-testid="run">{text({ at: turn.at, kind: 'output', toolName: null, note: null, context: null, steps: [],
@@ -87,7 +87,7 @@ test('every place shows one paced work name and the seconds since sending: held 
 test('each message counts from its own sending, also when drawn again', () => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
   vi.setSystemTime(32_400);
-  const conversation = { id: 'conversation', nextLaunch: { agent: 'fake', values: {} }, warm: 'none' as const, busy: false, cancelled: [], turns: [turn] };
+  const conversation = { id: 'conversation', nextLaunch: { agent: 'fake', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns: [turn] };
   setConversationState({ conversation });
   useConnection.setState({ offline: false });
   const page = (running: CoordinatorTurn) => <TestWorkspace data={screenData()}><LastWordsPill style={{}} /><Thinking turn={running} /></TestWorkspace>;
@@ -118,7 +118,7 @@ test('operation and work-name wording is available in Japanese and English', asy
 });
 
 test('folded words follow the last active turn before a later finished reply', () => {
-  setConversationState({ conversation: { id: 'conversation', nextLaunch: { agent: 'fake', values: {} }, warm: 'none', busy: false, cancelled: [], turns: [
+  setConversationState({ conversation: { id: 'conversation', nextLaunch: { agent: 'fake', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns: [
     turn,
     { ...turn, id: 'queued', status: 'queued' },
     { ...turn, id: 'finished', status: 'succeeded', answer: 'Finished reply', answeredAt: turn.at },

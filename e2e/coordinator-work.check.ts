@@ -1,3 +1,4 @@
+import { activeCoordinatorRuns } from '@alpacawork/backend/test-dist/coordinator/requests.js';
 import { fixtureAgentSetting, installAgentStub } from '../tests/helpers/agent-stub.ts';
 import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -22,7 +23,6 @@ for (const phone of [false]) test(`observed work reaches folded and open convers
   page.on('request', request => { if (request.method() === 'GET' && new URL(request.url()).pathname === '/api/coordinator') reads++; });
   await open(page, runtime);
   await writeCoordinator(page);
-  // The work shown is the send's own; the background warm-up it would otherwise wait behind has its own lifetime.
   await readyCoordinator(page, runtime);
   await page.keyboard.insertText('Show the observed work');
   await page.locator('[data-ask-send]').click();
@@ -53,7 +53,7 @@ for (const phone of [false]) test(`observed work reaches folded and open convers
     const { RunStore } = await import('@alpacawork/runs');
     const store = new RunStore(runtime.root, { busyTimeoutMs: 1000 }, true);
     try {
-      const run = store.coordinatorRuns(first.conversation.id).filter(run => run.state === 'running').at(-1);
+      const run = activeCoordinatorRuns(store.connection, first.conversation.id).filter(run => run.state === 'running').at(-1);
       const activity = run ? JSON.parse(readFileSync(join(store.folder(run.id), 'activity.json'), 'utf8')) : null;
       return activity?.doing ? { tool: activity.doing.toolName, command: activity.doing.command } : null;
     } finally { store.close(); }

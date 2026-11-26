@@ -28,7 +28,7 @@ try {
     const page = await context.newPage(); page.setDefaultTimeout(10000);
     await page.clock.setFixedTime(new Date(SAMPLE_NOW));
     await page.route('**/api/coordinator', route => route.fulfill({ json: conversation }));
-    await page.route('**/api/coordinator/warm', route => route.fulfill({ json: conversation }));
+
     await page.addInitScript((count) => {
       localStorage.setItem('alpacawork.coordinatorExtent', '240');
       const probe: Probe = window.panelTimeline = { phase: { commits: 0, renders: 0, byName: {} }, frames: [], long: [], last: 0, observers: 0, observerEntries: 0, pointers: 0, animations: [] };
