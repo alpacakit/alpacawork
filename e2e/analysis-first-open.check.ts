@@ -49,7 +49,7 @@ test("in a short window the share card's picture keeps its size when its code ar
     await settleMotion(page, card, true);
     const body = card.locator("[data-analysis-layer]");
     // [the room kept for the scrollbar, taller than the window]. The room is there while the card waits.
-    const scroll = () => body.evaluate(node => [node.offsetWidth - node.clientWidth, node.scrollHeight > node.clientHeight]);
+    const scroll = () => body.evaluate(node => [Math.round(node.getBoundingClientRect().width) - node.clientWidth, node.scrollHeight > node.clientHeight]);
     const [barWhileWaiting] = await scroll();
     const waiting = (await frame.boundingBox())!;
     releaseCardCode();
