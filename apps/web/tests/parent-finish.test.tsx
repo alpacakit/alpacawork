@@ -189,6 +189,12 @@ test("a parent's future band says its children's end, or a not-before time", () 
   fireEvent.click(document.querySelector('[data-row="T1"] svg[data-time-strip] [data-future-tip]')!);
   expect(document.querySelector("[data-time-tip]")?.textContent).toContain(`Expected report ${clock(90)}`);
   expect(useViewStore.getState().reader.open).toBe(false);
+  fireEvent.keyDown(document.querySelector("[data-time-tip]")!, { key: "Escape" });
+  expect(document.querySelector("[data-time-tip]")).toBeNull();
+  // A keyboard opens it too.
+  fireEvent.keyDown(document.querySelector('[data-row="T1"] svg[data-time-strip] [data-future-tip]')!, { key: "Enter" });
+  expect(document.querySelector("[data-time-tip]")).not.toBeNull();
+  expect(useViewStore.getState().reader.open).toBe(false);
   expect(document.querySelector('[data-row="T1"] [data-row-meta]')).toBeNull();
   expect(document.querySelector('[data-row="T1"] [data-read]')?.textContent).not.toContain("Report estimate");
   cleanup();
