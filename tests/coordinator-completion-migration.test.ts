@@ -9,7 +9,7 @@ import { coordinatorCompleted } from '../e2e/coordinator-completion.ts';
 import type { Runtime } from '../e2e/server.ts';
 
 const input = { conversationId: 'deadline-conversation', id: 'deadline-message', text: 'held-admission', attachments: [] };
-const terminal = { id: input.conversationId, nextLaunch: null, warm: 'none' as const, busy: false, cancelled: [], turns: [{
+const terminal = { id: input.conversationId, nextLaunch: null, busy: false, earlier: null, resets: [], context: null, autoReset: { tokens: 200_000, percent: 50 }, turns: [{
   id: input.id, at: '2026-10-16T00:00:00Z', ask: input.text, attachments: [], status: 'succeeded', waiting: false,
   answer: 'Imported', seen: false, answeredAt: '2026-10-16T00:00:01Z', error: null, result: { writes: [], refused: [] },
 }] };
