@@ -107,7 +107,7 @@ try {
     });
     let positions: unknown[] = [];
     const dragReader = async () => {
-      const box = await page.locator('[data-reader-width]').boundingBox(); if (!box) throw Error('No width edge');
+      const box = await page.locator('[data-window-width]').boundingBox(); if (!box) throw Error('No width edge');
       const y = box.y + box.height / 2;
       await page.mouse.move(box.x + 8, y); await page.mouse.down();
       for (const x of [820, 700, 576, 480, 576, 700, 820, 900, 820]) {

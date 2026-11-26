@@ -7,7 +7,9 @@ import { ReadFailure, ReadNote } from "@/components/ui/loadable";
 import { useOfflineShown } from "@/data/reach";
 import { RegionSkeleton } from "@/components/ui/skeleton";
 import { Icon } from "@/components/ui/icon";
+import { Caret, DisclosureSummary } from "@/components/ui/caret";
 import { subscribeStep } from "@/state/history-step";
+import { useNarrow } from "@/state/view-store";
 import { comparison, parts, type Kind } from "./format";
 import type { AnalysisModel } from "@alpacawork/contract/analysis";
 import type { Bucket } from "./contract";
@@ -16,14 +18,18 @@ import { NO_FILTER, type LaunchFilter, type SeriesBy } from "./series";
 /**
  * How the analysis is drawn, kept while the page stands (not in the URL: Back does not undo them): the step of time
  * on the charts, how each look is broken down, which value the use chart draws, whether a table shows every row and
- * `grow` says the next drawing of the charts grows their bars.
  */
 export type TaskGroup = "model" | "agent" | "project";
 export type UsageGroup = "model" | "agent" | "skill" | "tool" | "mcp";
-/** `launchBy`, `launchFilter`: what the launches chart is coloured by, and the model and effort it is filtered to. */
-type Choices = { bucket: Bucket; taskGroup: TaskGroup; usageGroup: UsageGroup; all: boolean; grow: number; launchBy: SeriesBy; launchFilter: LaunchFilter };
+/** What the calls row of the use counts. */
+export type CallsBy = "skill" | "tool" | "mcp";
+/**
+ * `launchBy`, `launchFilter`: what the launches chart is coloured by, and the model and effort it is filtered to.
+ * `callsBy`: whether the calls row counts skills, tools or MCP.
+ */
+type Choices = { bucket: Bucket; taskGroup: TaskGroup; usageGroup: UsageGroup; all: boolean; launchBy: SeriesBy; launchFilter: LaunchFilter; callsBy: CallsBy };
 export const useChoices = create<Choices & { choose: (next: Partial<Choices>) => void }>((set) => ({
-  bucket: "day", taskGroup: "model", usageGroup: "model", all: false, grow: 0, launchBy: "model", launchFilter: NO_FILTER,
+  bucket: "day", taskGroup: "model", usageGroup: "model", all: false, launchBy: "model", launchFilter: NO_FILTER, callsBy: "skill",
   choose: (next) => set(next),
 }));
 
@@ -126,34 +132,43 @@ export function Num({ label, square, kind, value, previous, length, onOpen, afte
  */
 export function ChartHead() {
   const { t } = useTranslation("analysis");
-  const { bucket, grow } = useChoices();
+  const { bucket } = useChoices();
   return <div className="mt-14 flex flex-wrap items-center justify-between gap-x-4 gap-y-3 narrow:mt-10">
     {/* A way to a place on the page, not a way into tasks (no ›): pressed, the rules come into view and take the focus. */}
     <a href={`#${RULES}`} onClick={event => { event.preventDefault(); toRules(); }}
       className="-ms-1 rounded-sm px-1 text-base whitespace-nowrap text-muted decoration-ink underline-offset-4 hover:bg-hover hover:text-ink hover:underline">
       {t("tasks.howCounted")}</a>
-    <Seg label={t("bucket.label")} value={bucket} onChange={next => useChoices.getState().choose({ bucket: next, grow: grow + 1 })}
+    <Seg label={t("bucket.label")} value={bucket} onChange={next => useChoices.getState().choose({ bucket: next })}
       items={[["day", t("bucket.day")], ["week", t("bucket.week")], ["month", t("bucket.month")]]} />
   </div>;
 }
 /** Where the counting rules stand, by the id of their heading. */
 const RULES = "analysis-rules";
-/** Brings the counting rules into view and gives their heading the focus (read out, and the keys go on from there). */
+/** Brings the counting rules into view, open, and gives their heading the focus (read out, and the keys go on from there). */
 function toRules() {
   const heading = document.getElementById(RULES);
+  const folded = heading?.closest("details");
+  if (folded) folded.open = true;
   heading?.scrollIntoView({ block: "start", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   heading?.focus({ preventScroll: true });
 }
 /**
- * How the numbers are counted, always open under the breakdown: a heading, then cards of rules that belong together, in
- * the order the rows show them (three across, two on a narrower page, one on a phone). Each card is a list of names and
- * what each counts.
+ * How the numbers are counted, under the breakdown: a heading, then cards of rules that belong together, in the order
+ * the rows show them (three across, two on a narrower page, one on a phone). Each card is a list of names and what each
+ * counts. Open on a computer; on a phone, where the cards run to screens of their own, folded under the heading until
+ * it (or the way down to it at the charts' head) is pressed.
  */
 export function Rules({ children }: { children: ReactNode }) {
   const { t } = useTranslation("analysis");
+  const narrow = useNarrow();
+  const heading = <h2 id={RULES} tabIndex={-1} className="scroll-mt-[calc(var(--bar-h)+1.5rem)] text-heading font-semibold outline-none">{t("tasks.howCounted")}</h2>;
+  const cards = <div className="mt-4 grid grid-cols-3 items-start gap-6 @max-5xl:grid-cols-2 narrow:grid-cols-1 narrow:gap-3">{children}</div>;
   return <section aria-labelledby={RULES} className="mt-16 narrow:mt-12">
-    <h2 id={RULES} tabIndex={-1} className="mb-4 scroll-mt-[calc(var(--bar-h)+1.5rem)] text-heading font-semibold outline-none">{t("tasks.howCounted")}</h2>
-    <div className="grid grid-cols-3 items-start gap-6 @max-5xl:grid-cols-2 narrow:grid-cols-1 narrow:gap-3">{children}</div>
+    {narrow
+      ? <details className="group/rules">
+        <DisclosureSummary className="min-h-11 gap-2"><Caret className="group-open/rules:rotate-90" />{heading}</DisclosureSummary>
+        {cards}</details>
+      : <>{heading}{cards}</>}
   </section>;
 }
 /** A card of rules that belong together: each name over what it counts. */

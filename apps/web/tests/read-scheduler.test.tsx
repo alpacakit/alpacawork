@@ -5,6 +5,8 @@ import { readScheduler, startReadScheduler } from '../src/data/read-scheduler';
 import { useConnection } from '../src/data/connection';
 import { observeReadProofs } from '../src/data/read-model';
 import { indexKey, receiveFullIndex, receivePatch, resources } from '../src/data/resources';
+import { analysisHome } from '../src/features/analysis/place';
+import { useViewStore } from '../src/state/view-store';
 import { dto, homeFixture, indexOf, tree, viewsOf } from './fixtures';
 
 // The real scheduler, resources and Query; fetch answers each read when the test lets it, and records the order.
@@ -17,7 +19,8 @@ function setVisible(visible: boolean) { visibility = visible ? 'visible' : 'hidd
 const ids = ['T1', 'T2', 'T3', 'T4'];
 const plain = tree({ tasks: ids.map(id => dto({ id })) });
 
-function screen(value = plain) {
+function screen(value = plain, navigationReady = true) {
+  useViewStore.setState({ navigationReady, project: null, query: '', analysis: null });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } });
   clients.push(client); observeReadProofs(client);
   receiveFullIndex(client, indexOf(value));
@@ -115,4 +118,18 @@ test("the user's turn rows nothing is held of are read ahead, after what is open
   s.answerAll();
   await new Promise(resolve => setTimeout(resolve, 10));
   expect(s.asked).toEqual(['view T4', 'view T3', 'view T1', 'history T1']);
+});
+
+test("opening analysis skips the home list's reads until the list is shown", async () => {
+  const turns = tree({ tasks: ids.map(id => dto({ id })), home: homeFixture([{ taskId: 'T1', section: 'review' }]) });
+  const s = screen(turns, false);
+  raise(s.client, {});
+  useViewStore.setState({ navigationReady: true, analysis: analysisHome() });
+  raise(s.client, {});
+  // A task opened over the analysis still reads its detail and History.
+  s.scheduler.opened('T2', true);
+  await eventually(() => expect(s.asked).toEqual(['view T2', 'history T2']));
+  // Returning to the list needs no new index receipt to prepare its rows.
+  useViewStore.setState({ analysis: null });
+  await eventually(() => expect(s.asked).toEqual(['view T2', 'history T2', 'view T1', 'history T1']));
 });

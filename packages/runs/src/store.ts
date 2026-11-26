@@ -12,7 +12,7 @@ import { RUN_ENDED_STATES, RUN_RESULT_LIMIT, RUN_ROLE, coordinatorRunRecordSchem
 import { runIdSchema, type RunId } from '@alpacawork/contract/fields';
 import { DELIVERY_STATE, actorSchema, requestPurposeSchema, type DeliveryState, type RequestMode } from '@alpacawork/contract/control';
 import { isSeatContinuation, type AiRow, type AiStackPrefix } from '@alpacawork/contract';
-import type { TaskActor } from '@alpacawork/raw';
+import { requestActionReasonSchema, type TaskActor } from '@alpacawork/raw';
 import { canTransition } from './rules.js';
 import { storageOperation } from './record-codec.js';
 import { parseRow, parseRuntimeRow, storeReads, transactionReads, type RunSnapshot, type StoredRequest,
@@ -235,13 +235,14 @@ export class RunStore {
           check();
           // Invalid input is the caller's error; CHECK constraints also refuse the enumerated columns.
           const author = JSON.stringify(actorSchema.parse(request.author));
+          const reason = request.reason === undefined ? null : JSON.stringify(requestActionReasonSchema.parse(request.reason));
           const changes = storageOperation(() => this.db.prepare(`INSERT INTO requests
             (id, task_id, placement_id, placement_revision, task_hash, wait_cycle_id, head_run_id, about_run_id, mode, body, purpose, author,
-              submitted_at, delivery_state, answers_question, ai_stack, ai_explicit, ai_prefix)
-            SELECT ?, external_id, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? FROM tasks
+              submitted_at, delivery_state, answers_question, ai_stack, ai_explicit, ai_prefix, reason)
+            SELECT ?, external_id, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? FROM tasks
               WHERE external_id = ? AND kind = 'task'`).run(request.id, request.placementId,
             request.placementRevision, request.taskHash, request.waitCycleId, request.headRunId, request.aboutRunId ?? null, request.mode, request.body,
-            request.purpose, author, request.submittedAt, request.deliveryState, request.answersQuestion ?? null, request.aiStack ? JSON.stringify(request.aiStack) : null, Number(request.aiExplicit ?? false), request.aiPrefix ? JSON.stringify(request.aiPrefix) : null, request.taskId).changes);
+            request.purpose, author, request.submittedAt, request.deliveryState, request.answersQuestion ?? null, request.aiStack ? JSON.stringify(request.aiStack) : null, Number(request.aiExplicit ?? false), request.aiPrefix ? JSON.stringify(request.aiPrefix) : null, reason, request.taskId).changes);
           if (Number(changes) !== 1) throw new Problem(PROBLEM_CODE.notFound, 'Request Task does not exist', undefined, { reason: { kind: 'request_task_does_not_exist' } });
           touch(this.db, { kind: 'request', id: request.id });
         },

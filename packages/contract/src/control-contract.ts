@@ -703,6 +703,7 @@ export const fieldUseResultSchema = taskWriteResultSchema;
 /** `task new --plan-file` returns the heads of the sibling Tasks it created. */
 export const taskPlanResultSchema = z.object({ tasks: z.array(controlTaskHeadSchema).min(1) }).strict();
 export const taskReportResultSchema = taskWriteResultSchema.extend({
+  ignoredTrigger: z.literal(true).optional(), ignoredTaken: z.literal(true).optional(),
   outcome: z.discriminatedUnion('kind', [
     z.object({ kind: z.literal('recorded'), opId: z.string().min(1).optional() }).strict(),
     z.object({ kind: z.enum(['accepted', 'stopped']), opId: z.string().min(1) }).strict(),
@@ -710,6 +711,7 @@ export const taskReportResultSchema = taskWriteResultSchema.extend({
 }).strict();
 /** `task request` sends a Request (an instruction or a send-back) or records an answer to the Task's question. */
 export const taskRequestResultSchema = taskWriteResultSchema.extend({
+  ignoredTaken: z.literal(true).optional(),
   outcome: z.discriminatedUnion('kind', [
     z.object({ kind: z.literal('request_accepted'), opId: z.string().min(1), request: requestReceiptSchema, answers: logIdSchema.optional() }).strict(),
     z.object({ kind: z.literal('answered'), opId: z.string().min(1) }).strict(),
@@ -744,7 +746,7 @@ export const setResponsibleInputSchema = z.object({
 export const setResponsibleReceiptSchema = z.object({ placement: placementRecordSchema,
   previousPlacement: placementRecordSchema.nullable() }).strict();
 export const releaseAgentInputSchema = setResponsibleInputSchema;
-export const releaseAgentReceiptSchema = z.object({ placement: placementRecordSchema }).strict();
+export const releaseAgentReceiptSchema = z.object({ placement: placementRecordSchema, ignoredTaken: z.literal(true).optional() }).strict();
 export const placeMemberInputSchema = z.object({ taskId: taskIdSchema, selected: selectionSchema.optional(), aiStack: aiStackPrefixSchema.optional(),
   agentId: z.string().min(1).optional(),
   profileKey: z.string().min(1).optional(), expectedTaskHash: digestSchema,
@@ -757,7 +759,7 @@ export const releaseMemberInputSchema = z.object({ taskId: taskIdSchema,
   expectedResponsibleRevision: z.number().int().positive(),
   expectedPlacementRevision: z.number().int().positive(),
 }).strict();
-export const releaseMemberReceiptSchema = z.object({ placement: placementRecordSchema }).strict();
+export const releaseMemberReceiptSchema = releaseAgentReceiptSchema;
 export const taskPlacementResultSchema = taskWriteResultSchema.extend({ agent: z.union([
   placeAgentReceiptSchema, setResponsibleReceiptSchema, placeMemberReceiptSchema, releaseAgentReceiptSchema,
 ]) }).strict();
@@ -962,14 +964,80 @@ export const taskTimelineLaneSchema = z.object({
   ])),
   belowRuns: z.array(z.tuple([runIdSchema, z.number().int(), z.number().int()])),
   placements: z.array(timelinePlacementSchema),
+  /** The server's name for this strip, which a later read gives back as its `base` to receive only what changed. */
+  token: z.string().min(1).max(128),
   ...projectionSourceFields,
 }).strict();
 export type TaskTimelineLaneDTO = z.infer<typeof taskTimelineLaneSchema>;
 /**
- * Whole rows, in the order asked, until the answer holds about `limit` events (always at least one row): the rows not
+ * A strip as it is sent: whole when `base` is null; otherwise only what differs from the strip named `base` (the strip
+ * the reader holds, for this range or another): its items added or changed, and the keys (timelineItemKey) of those gone.
+ */
+export const taskTimelineLanePatchSchema = taskTimelineLaneSchema.extend({
+  base: z.string().min(1).max(128).nullable(), drop: z.array(z.string()),
+}).strict();
+export type TaskTimelineLanePatchDTO = z.infer<typeof taskTimelineLanePatchSchema>;
+/**
+ * Rows, in the order asked, until the answer holds about `limit` events (always at least one row): the rows not
  * answered are asked again. `gone` names the rows asked for that the server does not hold.
  */
-export const taskTimelineLanesSchema = z.object({ lanes: z.array(taskTimelineLaneSchema), gone: z.array(taskIdSchema) }).strict();
+export const taskTimelineLanesSchema = z.object({ lanes: z.array(taskTimelineLanePatchSchema), gone: z.array(taskIdSchema) }).strict();
 export type TaskTimelineLanesDTO = z.infer<typeof taskTimelineLanesSchema>;
+type TimelineEvent = TaskTimelineLaneDTO['events'][number];
+type TimelineItems = Pick<TaskTimelineLaneDTO, 'events' | 'belowRuns' | 'placements'>;
+/** Each item of a strip by one name, the same whichever range it was read for: what a patch adds, changes and drops. */
+export const timelineItemKey = {
+  event: (event: TimelineEvent) => event.kind === 'log' ? `log:${event.taskId}:${event.entry.id}`
+    : event.kind === 'run' ? `run:${event.run.id}` : `note:${event.taskId}:${event.event.kind}:${event.event.id}`,
+  below: ([run]: TaskTimelineLaneDTO['belowRuns'][number]) => `below:${run}`,
+  placement: (placement: TaskTimelineLaneDTO['placements'][number]) => `placement:${placement.id}`,
+};
+/** When an event of a strip happened: a log entry when its cause was, a note at its mark, a Run when it started. */
+const timelineEventAt = (event: TimelineEvent) => Date.parse(event.kind === 'log' ? event.entry.causeAt ?? event.entry.at
+  : event.kind === 'note' ? event.event.at : event.run.startedAt ?? event.run.createdAt);
+/** Keys compared as text in one language whatever the machine's, so the server and every screen agree. */
+const timelineKeyText = new Intl.Collator('en');
+/**
+ * The one order of a strip's events, whoever puts them together (the server making it, the screen laying a patch on
+ * it): the screen keeps that order among records of the same time.
+ */
+export const timelineEventOrder = (a: TimelineEvent, b: TimelineEvent) => {
+  return timelineEventAt(a) - timelineEventAt(b) || timelineKeyText.compare(timelineItemKey.event(a), timelineItemKey.event(b));
+};
+type TimelineItem = TimelineEvent | TaskTimelineLaneDTO['belowRuns'][number] | TaskTimelineLaneDTO['placements'][number];
+const keyedItems = (lane: TimelineItems): (readonly [string, TimelineItem])[] => [
+  ...lane.events.map(item => [timelineItemKey.event(item), item] as const),
+  ...lane.belowRuns.map(item => [timelineItemKey.below(item), item] as const),
+  ...lane.placements.map(item => [timelineItemKey.placement(item), item] as const),
+];
+/**
+ * What `next` changes in `base`: the items of `next` that are new or differ, and the keys of the items `next` no longer
+ * has. `text` writes an item out to compare it (a reader may keep each item's text). Items are found by key; the order of
+ * events is timelineEventOrder's.
+ */
+export function diffTimelineItems(base: TimelineItems, next: TimelineItems, text: (item: object) => string = item => JSON.stringify(item)): TimelineItems & { drop: string[] } {
+  const before = new Map<string, TimelineItem>(keyedItems(base)), changed: TimelineItems = { events: [], belowRuns: [], placements: [] };
+  for (const [key, item] of keyedItems(next)) {
+    const held = before.get(key);
+    before.delete(key);
+    if (held !== undefined && (held === item || text(held) === text(item))) continue;
+    if (key.startsWith('below:')) changed.belowRuns.push(item as TaskTimelineLaneDTO['belowRuns'][number]);
+    else if (key.startsWith('placement:')) changed.placements.push(item as TaskTimelineLaneDTO['placements'][number]);
+    else changed.events.push(item as TimelineEvent);
+  }
+  return { ...changed, drop: [...before.keys()] };
+}
+/** A strip as sent made whole again on the strip it was made against (`held`, named by its `base`), in its one order. */
+export function applyTimelinePatch(held: TaskTimelineLaneDTO | null, patch: TaskTimelineLanePatchDTO): TaskTimelineLaneDTO {
+  const { base, drop, ...lane } = patch;
+  if (base === null) return lane;
+  if (!held || held.token !== base || held.lane !== patch.lane) throw new Error(`Timeline patch for ${patch.lane} is not against the strip held`);
+  const gone = new Set(drop), put = new Set(keyedItems(patch).map(([key]) => key));
+  const kept = <T,>(items: readonly T[], key: (item: T) => string, added: readonly T[]) =>
+    [...items.filter(item => !gone.has(key(item)) && !put.has(key(item))), ...added];
+  return { ...lane, events: kept(held.events, timelineItemKey.event, patch.events).sort(timelineEventOrder),
+    belowRuns: kept(held.belowRuns, timelineItemKey.below, patch.belowRuns),
+    placements: kept(held.placements, timelineItemKey.placement, patch.placements) };
+}
 export const taskProjectedTimelineAxisSchema = taskTimelineAxisSchema.extend(projectionSourceFields).strict();
 export type TaskProjectedTimelineAxisDTO = z.infer<typeof taskProjectedTimelineAxisSchema>;

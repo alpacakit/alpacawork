@@ -1,3 +1,4 @@
+import { readRunSummary } from './analysis/run-summary-read.js';
 import { managedInstallation } from './installation/setup.js';
 import { localCaller } from '@alpacawork/contract/access-boundaries';
 import { controlTaskHead } from './control/task-dto.js';
@@ -36,7 +37,7 @@ import { readConditionsView } from './runs/conditions.js';
 import { RUN_STEPS_PAGE_LIMIT } from '@alpacawork/contract/run';
 import { emptyInput, configSetInput, chooseFolderInput, foldersInput, makeFolderInput } from '@alpacawork/contract/inputs';
 import { deleteField, listFields, readSchema, setField } from './control/field-commands.js';
-import { readValuesAt } from './control/task-values-store.js';
+import { readValuesAt, readValuesChange } from './control/task-values-store.js';
 import { now } from '@alpacawork/raw';
 import { ReturnRouter } from './control/return-router.js';
 import { readTaskReturns } from './control/return-views.js';
@@ -370,7 +371,8 @@ export const taskCommands = {
   'task/values': {
     run: async (root, input, context) => {
       authorizeRead(root, context, { name: 'task.read' }, input.task);
-      return readControl(root, db => readValuesAt(db, input.task, input.at));
+      return readControl(root, db => input.changeLog !== undefined
+        ? readValuesChange(db, input.task, input.changeLog) : readValuesAt(db, input.task, input.at!));
     },
     readThread: () => true,
   },
@@ -397,11 +399,11 @@ export const taskCommands = {
     act: input => taskAct('task.update', input),
     run: async (root, input, context) => {
       authorizeAnalysisSubject(root, context, input.analysisSubject);
-      const { task } = await new ControlTaskCommands(root, requireActor(context)).update({ id: input.task,
+      const { task, result } = await new ControlTaskCommands(root, requireActor(context)).update({ id: input.task,
         title: input.title, values: input.values, color: input.color, userRequested: input.fromUser, analysisSubject: input.analysisSubject,
-        expectedTaskHash: input.expectedTaskHash });
+        expectedTaskHash: input.expectedTaskHash, trigger: input.trigger, triggerNote: input.triggerNote });
       if (input.cwd !== undefined) await writeProjectLocation(root, input.task, input.cwd, locationOperation(context));
-      return { task };
+      return { task, ...(result && { ignoredTrigger: true as const }) };
     },
     limit: DOCUMENT_REQUEST_LIMIT,
   },
@@ -462,7 +464,7 @@ export const taskCommands = {
     act: input => taskAct('agent.assign', input),
     run: async (root, input, context) => {
       const commands = new PlacementCommands(root), actor = requireActor(context);
-      const launch = { selected: input.selected, aiStack: input.aiStack };
+      const launch = { selected: input.selected, aiStack: input.aiStack, placedAs: input.placedAs, placedNote: input.placedNote };
       const agent = input.role === 'responsible'
         ? await commands.placeNewResponsible({ taskId: input.task, profileKey: input.profile,
           ...launch,
@@ -479,8 +481,8 @@ export const taskCommands = {
     act: input => taskAct('agent.handover', input),
     run: async (root, input, context) => {
       const agent = await new PlacementCommands(root).setResponsible({ taskId: input.task, placementId: input.agent,
-        expectedTaskHash: input.expectedTaskHash, expectedPlacementRevision: input.expectedPlacementRevision },
-      requireActor(context));
+        expectedTaskHash: input.expectedTaskHash, expectedPlacementRevision: input.expectedPlacementRevision,
+        placedAs: input.placedAs, placedNote: input.placedNote }, requireActor(context));
       return placementReceipt(root, agent, input.task);
     },
   },
@@ -488,13 +490,15 @@ export const taskCommands = {
     act: (input, { root, db }) => taskAct('agent.release', input, { worker: isWorker(root, db, input.task, input.agent) }),
     run: async (root, input, context) => {
       const commands = new PlacementCommands(root), actor = requireActor(context);
+      const caller = requireCaller(context);
       const placement = { taskId: input.task, placementId: input.agent, expectedTaskHash: input.expectedTaskHash,
-        expectedPlacementRevision: input.expectedPlacementRevision };
+        expectedPlacementRevision: input.expectedPlacementRevision, taken: input.taken, cause: input.cause,
+        aspects: input.aspects, causeNote: input.causeNote };
       // The same fact its act took for authorize: a member's release answers to the responsible's revision.
       const agent = readControl(root, db => isWorker(root, db, input.task, input.agent))
         ? await commands.releaseMember({ ...placement,
           expectedResponsibleRevision: responsibleRevision(input.expectedResponsibleRevision) }, actor)
-        : await commands.release(placement, actor);
+        : await commands.release(placement, actor, caller.kind === 'run' ? caller.taskId : null);
       return placementReceipt(root, agent, input.task);
     },
   },
@@ -521,6 +525,13 @@ export const taskCommands = {
     run: async (root, input, context) => {
       authorizeRead(root, context, { name: 'task.read' }, readControl(root, db => runTask(root, db, input.run)));
       return readConditionsView(root, input.run);
+    },
+    readThread: () => true,
+  },
+  'run/summary': {
+    run: async (root, input, context) => {
+      authorizeRead(root, context, { name: 'task.read' }, readControl(root, db => runTask(root, db, input.run)));
+      return readRunSummary(root, input.run);
     },
     readThread: () => true,
   },

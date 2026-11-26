@@ -86,7 +86,7 @@ function creditAcceptedPrs(units: readonly DatedUnit[]): Map<Unit, number> {
 /** `waits`: a unit's waits split by where the user was (clues.waitsOf over the facts counted). */
 type Waits = (unit: Unit) => WaitSplit;
 function acceptedTotals(units: readonly CountedUnit[], waits: Waits): AnalysisAcceptedTotals {
-  let submits = 0, questions = 0, prs = 0, noQuestions = 0, passedNoQuestions = 0, submitsEstimated = 0;
+  let submits = 0, questions = 0, prs = 0, noQuestions = 0, passedNoQuestions = 0;
   const leads: number[] = [], time = emptyClock(), clues = new CluesSum();
   const rounds = { first: { ms: 0, tokens: 0 }, later: { ms: 0, tokens: 0 } };
   for (const { unit, prCount } of units) {
@@ -98,7 +98,6 @@ function acceptedTotals(units: readonly CountedUnit[], waits: Waits): AnalysisAc
       noQuestions++;
       if (unit.outcome.passed) passedNoQuestions++;
     }
-    if (unit.outcome.estimated) submitsEstimated++;
     const clock = finishedClock(unit)!.time;
     time.review += clock.review; time.answer += clock.answer; time.ai += clock.ai; time.other += clock.other;
     clues.add(unit, waits(unit));
@@ -107,7 +106,7 @@ function acceptedTotals(units: readonly CountedUnit[], waits: Waits): AnalysisAc
       sum.ms += round.to - round.from; sum.tokens += round.tokens;
     });
   }
-  return { leadMedianMs: median(leads), submits, questions, prs, time, ...clues.clues(), noQuestions, passedNoQuestions, submitsEstimated, rounds };
+  return { leadMedianMs: median(leads), submits, questions, prs, time, ...clues.clues(), noQuestions, passedNoQuestions, rounds };
 }
 
 /** Counts distinct units (by slot) again and again, each count in one pass, without a set per count. */
@@ -192,7 +191,12 @@ class DailyUsage {
   }
 }
 
-function tallyCalls(tally: Tally, by: Exclude<AnalysisTallyBy, 'skill'>, name?: string) {
+/**
+ * A launch's count of one name (or of all of them): a tool's or an MCP tool's calls; a skill once for each launch that
+ * used it, however many times it read it, so the skills of a bin or a span add up to its count.
+ */
+function tallyCalls(tally: Tally, by: AnalysisTallyBy, name?: string) {
+  if (by === 'skill') return name === undefined ? Object.keys(tally.skills).length : tally.skills[name] ? 1 : 0;
   const counts = tally[tallyFields[by]];
   return name === undefined ? Object.values(counts).reduce((sum, count) => sum + count, 0) : counts[name] ?? 0;
 }
@@ -201,7 +205,7 @@ function countedTotals(items: readonly TalliedLaunch[], by: AnalysisTallyBy) {
   let calls = 0, launches = 0;
   for (const { tally } of items) {
     if (Object.keys(tally[tallyFields[by]]).length) launches++;
-    if (by !== 'skill') calls += tallyCalls(tally, by);
+    calls += tallyCalls(tally, by);
   }
   return { calls, launches };
 }
@@ -420,8 +424,8 @@ class ScopedAnalysis {
 
   private calls(run: FactLaunch, by: AnalysisUsageBy | undefined, key: string | undefined): number {
     const tally = this.tallies.get(run.id);
-    if (!tally || by !== 'tool' && by !== 'mcp') return 0;
-    const name = key === undefined ? undefined : (JSON.parse(key) as [string, string])[1];
+    if (!tally || !isAnalysisTallyBy(by)) return 0;
+    const name = key === undefined || by === 'skill' ? key : (JSON.parse(key) as [string, string])[1];
     return tallyCalls(tally, by, name);
   }
 
@@ -640,12 +644,12 @@ class ScopedAnalysis {
     const rows = hasAnalysisUsageFilters(filters) ? this.usageGroups(this.launchesIn(head.period, filters), by)
       : (await this.dimensionDays(by, slices)).map(({ daily, ...dimension }) => ({ ...dimension, counts: daily.count(head.period, this.now), calls: null }))
         .filter(row => row.counts.launches > 0).sort((a, b) => b.counts.launches - a.counts.launches || compareKey(a, b));
-    return { by, since: null, counted: null, series: null, rows };
+    return { by, since: null, counted: null, groups: null, series: null, rows };
   }
 
   private countedBreakdown(by: AnalysisTallyBy, head: AnalysisHead, filters: AnalysisUsageFilters, { bucket, history, points }: UsageChart) {
     const launches = this.collectedLaunches(this.datedLaunches);
-    if (!launches.length) return { by, since: null, counted: null, series: null, rows: [] };
+    if (!launches.length) return { by, since: null, counted: null, groups: null, series: null, rows: [] };
     const filtered = hasAnalysisUsageFilters(filters);
     const selected = filtered ? launches.filter(({ day, run }) =>
       (inDays(day, history) || inDays(day, head.period) || inDays(day, head.previous)) && matchesUsage(usageIdentity(run, this.models), filters)) : launches;
@@ -653,9 +657,27 @@ class ScopedAnalysis {
     const current = within(selected, head.period);
     const previous = head.previous && head.previous.from >= since ? within(selected, head.previous) : null;
     const indexed = points.length ? byBucket(selected, bucket) : null;
+    // Each bin's count by name, every name a group of the chart's whole days, the most counted first.
+    const groups = new Map<string, { key: string; label: string; total: number }>();
+    const binned = points.map(point => {
+      if (point.to < since) return null;
+      const items = within(indexed?.get(bucketStart(point.from, bucket))?.items ?? [], point);
+      const byName = new Map<string, number>();
+      for (const item of items) for (const { key, label } of this.usageKeys(item, by)) {
+        const value = this.calls(item.run, by, key);
+        if (!value) continue;
+        byName.set(key, (byName.get(key) ?? 0) + value);
+        const known = groups.get(key);
+        if (known) known.total += value; else groups.set(key, { key, label, total: value });
+      }
+      return { ...countedTotals(items, by), byName };
+    });
+    const order = [...groups.values()].sort((a, b) => b.total - a.total || compareKey(a, b));
+    const at = new Map(order.map((group, index) => [group.key, index]));
     return { by, since, counted: { value: countedTotals(current, by), previous: previous && countedTotals(previous, by) },
-      series: points.map(point => point.to < since ? null :
-        countedTotals(within(indexed?.get(bucketStart(point.from, bucket))?.items ?? [], point), by)),
+      groups: order,
+      series: binned.map(bin => bin && { calls: bin.calls, launches: bin.launches,
+        counts: [...bin.byName].map(([key, value]) => [at.get(key)!, value] as [number, number]).sort((a, b) => a[0] - b[0]) }),
       rows: this.usageGroups(current, by) };
   }
 
@@ -664,7 +686,7 @@ class ScopedAnalysis {
   private usageGroups(items: Iterable<DatedLaunch>, by: AnalysisUsageBy) {
     return [...group(items, item => this.usageKeys(item, by)).values()].map(({ items, ...dimension }) => ({
       ...dimension, counts: this.useCounts(items),
-      calls: by === 'tool' || by === 'mcp' ? items.reduce((sum, { run }) => sum + this.calls(run, by, dimension.key), 0) : null,
+      calls: isAnalysisTallyBy(by) ? items.reduce((sum, { run }) => sum + this.calls(run, by, dimension.key), 0) : null,
     })).sort((a, b) => (b.calls ?? b.counts.launches) - (a.calls ?? a.counts.launches) || compareKey(a, b));
   }
 
@@ -766,7 +788,7 @@ class ScopedAnalysis {
     const clues = new CluesSum();
     clues.add(unit, waitsOf(this.facts, unit, this.now));
     return { head: this.head({}), unit: { ...row(unit, null), requestedAt: unit.outcome.requestedAt, asked },
-      ...clues.clues(), submitsEstimated: unit.outcome.estimated,
+      ...clues.clues(),
       band, time, marks: unitMarks(unit.log, from, to), submits: unit.outcome.submits,
       rounds: roundsOf(unit, this.now).map(round => ({ from: iso(round.from), to: iso(round.to), ms: round.to - round.from, tokens: round.tokens })),
       questions: unit.questions, ...unit.outcome.instructions, answers: unit.answers, workers: unit.workers, children: unit.children,

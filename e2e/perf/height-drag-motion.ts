@@ -146,7 +146,7 @@ try {
           await openConversation(); await first();
           await run(`chat-height-drag-${round}`, 500, panel, async () => mouse(page, await center(page, far), PATH));
           await page.goto(`${runtime.origin}/?agent=1&task=T111`);
-          await page.locator('[data-reader-width]').first().waitFor();
+          await page.locator('[data-window-width]').first().waitFor();
           await openConversation(); await first();
           await run(`chat-height-drag-reader-${round}`, 500, panel, async () => mouse(page, await center(page, far), PATH));
           await fold();

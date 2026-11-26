@@ -2,21 +2,37 @@
  * What a unit shows about its three axes beyond its counts: where the user was while it waited for them, how the user
  * answered its questions, which questions an instruction replaced, and what the user's later instructions were.
  */
-import { FIX_KINDS, INSTRUCTION_KINDS } from '@alpacawork/raw';
+import { ASPECTS, CAUSES, TAKEN, type TakenReason } from '@alpacawork/raw';
 import type { AnalysisAcceptedTotals } from '@alpacawork/contract/analysis';
 import { finishedClock, type AnalysisFacts, type Unit } from './facts.js';
 import { addSplit, emptySplit, splitWaits, type Activity, type WaitSplit } from './presence.js';
 import { clocks } from './rules.js';
 
-type Clues = Pick<AnalysisAcceptedTotals, 'waits' | 'answerItems' | 'answersWithoutParts' | 'instructions' | 'questionsReplaced'>;
-/** Sums of clues over units, before the instruction kinds are written out as rows. */
+type Clues = Pick<AnalysisAcceptedTotals, 'waits' | 'answerItems' | 'decisions' | 'questionsReplaced'>;
+class Decisions {
+  private readonly taken = new Map<string, number>();
+  private readonly causes = new Map<string, number>();
+  private readonly aspects = new Map<string, number>();
+  add(decision: TakenReason) {
+    const add = (map: Map<string, number>, key: string) => map.set(key, (map.get(key) ?? 0) + 1);
+    add(this.taken, decision.code);
+    if (decision.cause) add(this.causes, decision.cause);
+    for (const aspect of decision.aspects) add(this.aspects, aspect);
+  }
+  counts() {
+    const rows = <K extends string>(codes: readonly K[], counts: Map<string, number>) => codes
+      .map(kind => ({ kind, count: counts.get(kind) ?? 0 })).filter(row => row.count > 0).sort((a, b) => b.count - a.count);
+    return { taken: rows(TAKEN, this.taken), causes: rows(CAUSES, this.causes), aspects: rows(ASPECTS, this.aspects) };
+  }
+}
+
+/** Counts based on recorded decisions, with unclassified instructions kept separately. */
 export class CluesSum {
   readonly waits = emptySplit();
   readonly answerItems = { total: 0, choice: 0, recommended: 0, recommendable: 0, other: 0, stop: 0, unmatched: 0 };
-  private answersWithoutParts = 0;
-  private readonly kinds = new Map<string, number>();
-  private readonly fixes = new Map<string, number>();
-  private total = 0; private labeled = 0;
+  private readonly decisions = new Decisions();
+  private readonly by = { user: new Decisions(), ai: new Decisions() };
+  private decisionCount = 0; private unclassifiedInstructions = 0;
   private questionsReplaced = 0;
 
   add(unit: Unit, waits: WaitSplit) {
@@ -24,7 +40,7 @@ export class CluesSum {
     for (const question of unit.asked) {
       if (question.replacedBy !== null) this.questionsReplaced++;
       if (!question.answered) continue;
-      if (!question.parts) { this.answersWithoutParts++; continue; }
+      if (!question.parts) continue;
       for (const item of question.parts.items) {
         const items = this.answerItems;
         items.total++;
@@ -33,21 +49,19 @@ export class CluesSum {
         if (question.recommends[item.n - 1]) items.recommendable++;
       }
     }
-    this.total += unit.instructions.count; this.labeled += unit.instructions.labels.length;
-    for (const label of unit.instructions.labels) {
-      this.kinds.set(label.kind, (this.kinds.get(label.kind) ?? 0) + 1);
-      for (const fix of label.fixes) this.fixes.set(fix, (this.fixes.get(fix) ?? 0) + 1);
+    this.decisionCount += unit.instructions.decisions.length;
+    this.unclassifiedInstructions += unit.instructions.unclassifiedInstructions;
+    for (const { by, taken } of unit.instructions.decisions) {
+      this.decisions.add(taken);
+      this.by[by].add(taken);
     }
   }
 
   clues(): Clues {
-    // Most first; a tie keeps the kinds' own order.
-    const rows = <K extends string>(kinds: readonly K[], counts: Map<string, number>) => kinds
-      .map(kind => ({ kind, count: counts.get(kind) ?? 0 })).filter(row => row.count > 0).sort((a, b) => b.count - a.count);
-    return { waits: { ...this.waits }, answerItems: { ...this.answerItems }, answersWithoutParts: this.answersWithoutParts,
+    return { waits: { ...this.waits }, answerItems: { ...this.answerItems },
       questionsReplaced: this.questionsReplaced,
-      instructions: { total: this.total, unlabeled: this.total - this.labeled,
-        kinds: rows(INSTRUCTION_KINDS, this.kinds), fixes: rows(FIX_KINDS, this.fixes) } };
+      decisions: { total: this.decisionCount, unclassifiedInstructions: this.unclassifiedInstructions, ...this.decisions.counts(),
+        by: { user: this.by.user.counts(), ai: this.by.ai.counts() } } };
   }
 }
 

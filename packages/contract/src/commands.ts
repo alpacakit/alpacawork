@@ -1,3 +1,4 @@
+import { runSummarySchema } from './run-summary.js';
 import { analysisSubjectSchema } from '@alpacawork/raw/analysis-subject';
 import { analysisTasksInput, analysisUsageInput, analysisUsageSeriesInput, analysisUsageSeriesViewSchema, analysisListInput, analysisTaskInput, analysisBreakdownInput, analysisBreakdownViewSchema,
   analysisTraceInput, analysisTraceViewSchema, analysisFindingsInput, analysisFindingsViewSchema, analysisAtInput, analysisAtViewSchema,
@@ -23,15 +24,16 @@ import { attachmentResultSchema, taskGetPlacementSchema, startOrderSchema, taskL
 import { serverSettingsSchema } from './server-settings.js';
 import { z } from 'zod';
 import { COORDINATOR_MEMO_LIMIT, coordinatorMemoSchema, coordinatorMemoSetInputSchema, coordinatorReplyGetInput } from './coordinator-contract.js';
-import { taskValuesAtSchema, fieldGetResultSchema, fieldListResultSchema, fieldSetResultSchema, fieldDeleteResultSchema, PROJECT_SCHEMA, PROJECT_SUMMARY } from './task-schema.js';
+import { taskValuesAtSchema, taskValuesChangeSchema, fieldGetResultSchema, fieldListResultSchema, fieldSetResultSchema,
+  fieldDeleteResultSchema, PROJECT_SCHEMA, PROJECT_SUMMARY, DEFAULT_DIRECTION_FIELDS, CONDITION_STATUS_RULE } from './task-schema.js';
 import { ESTIMATE_MINUTES, MAX_CONTROL_BODY, MAX_DETAIL_LENGTH, MAX_INSTRUCTION_BYTES } from '@alpacawork/raw/values';
-import { FIX_KIND_MEANINGS, INSTRUCTION_KINDS } from '@alpacawork/raw/task-log-schema';
+import { ASPECTS, CAUSES, PLACED_AS, TAKEN, TRIGGERS, REASON_MEANINGS, placedReasonSchema, takenReasonSchema, triggerReasonSchema } from '@alpacawork/raw/reasons';
 import { digestSchema, REPORT_TITLE_GUIDE_WIDTH, REPORT_TITLE_MAX_WIDTH, reportStateSchema, runIdSchema, taskIdSchema,
   taskKindSchema, taskStateSchema } from './fields.js';
 import {
   dependencySetInput, dependencyClearInput, taskReturnsInput, taskValuesInput, taskListInput, taskGetInput, taskCreateInput, taskUpdateInput, taskReportInput,
   taskRequestInput, taskCommentInput, taskMoveInput, taskLifecycleInput, agentAssignInput,
-  agentHandoverInput, agentReleaseInput, runGetInput, runListInput, runStepsInput, runConditionsInput, runStopInput,
+  agentHandoverInput, agentReleaseInput, runGetInput, runListInput, runStepsInput, singleRunInput, runStopInput,
   fieldSetInput, configSetShape, emptyInput, personSettingsSetShape, fieldGetInput, fieldDeleteInput, fieldUseInput,
   fieldUseRules, taskGetIncludes, type InputRule,
   ruleHelp, taskListRules, taskCreateRules, taskUpdateRules, taskReportRules, taskRequestRules, agentAssignRules,
@@ -151,6 +153,31 @@ const expectedTaskHash = text('expectedTaskHash', 'The Task\'s current hash: tas
   'one that has since changed (another write, or a Run starting or ending on the Task) is refused as conflict');
 const placementRevision = number('expectedPlacementRevision', 'The placement\'s current revision: agents[].revision in task get, ' +
   'or agent.placement.revision in the reply to the agent write that last changed it');
+const causeOptions = [
+  text('cause', `Main cause for fix, redo or dropped: ${CAUSES.join(', ')}`),
+  list('aspects', `Aspects affected by fix, redo or dropped: ${ASPECTS.join(', ')}`),
+  text('causeNote', 'One line for cause other'),
+];
+const takenOptions = [text('taken', `How you took the result: ${TAKEN.join(', ')}`), ...causeOptions];
+const placementOptions = [
+  text('placedAs', `Why this agent or launch selection: ${PLACED_AS.join(', ')}`),
+  text('placedNote', 'One line for a placement exception'),
+];
+const directionOptions = [
+  text('trigger', `What prompted the rewrite of a direction field: ${TRIGGERS.join(', ')}`),
+  text('triggerNote', 'Optional one line explaining the direction trigger'),
+];
+const meanings = (flag: string, choices: Readonly<Record<string, string>>) =>
+  Object.entries(choices).map(([choice, meaning]) => `--${flag} ${choice}: ${meaning}`);
+const causeMeanings = [...meanings('cause', REASON_MEANINGS.cause), ...meanings('aspects', REASON_MEANINGS.aspects)];
+const takenMeanings = [...meanings('taken', REASON_MEANINGS.taken), ...causeMeanings];
+const placementMeanings = meanings('placed-as', REASON_MEANINGS.placedAs);
+const directionGuide = [
+  `An AI changing an existing direction field supplies --trigger. Default fields: ${DEFAULT_DIRECTION_FIELDS.join(', ')}. Updating only a done condition's status needs no trigger.`,
+  CONDITION_STATUS_RULE,
+  ...meanings('trigger', REASON_MEANINGS.trigger),
+];
+const TAKEN_GUIDE = 'Did you use the result as it is? Yes → adopted (or addition / new_request when also asking for more work); no → fix, redo or dropped with --cause.';
 const quote = text('quote', 'Record the user’s words. The quote grants no permission.');
 const sourceRequest = text('sourceRequest', 'Screen message ID this write records; its own or a message delivered to the current Run');
 const fromUser = boolean('fromUser', 'Whether the user asked for this Task; only directly below a project, never a child Task');
@@ -170,6 +197,13 @@ const urgent = (what: string) => text('urgent', `Why the requester must read ${w
 const schemaTask = text('task', 'Task ID. Omit for the Run’s own Task, the resolved project or the default schema.',
   { cliDetail: 'See the cwd rule in alpacawork -h.' });
 
+const taskReasonViewSchema = z.strictObject({
+  log: z.string(), at: z.string(), by: z.enum(['human', 'main', 'placement']),
+  on: z.enum(['request', 'placement', 'values', 'stop', 'review']), request: z.string().optional(),
+  taken: z.object({ ...takenReasonSchema.shape,
+    of: z.strictObject({ request: z.string(), run: runIdSchema.nullable() }).nullable() }).strict().optional(),
+  placed: placedReasonSchema.optional(), trigger: triggerReasonSchema.optional(),
+});
 const taskGetResultSchema = z.looseObject({
   task: z.looseObject({
     id: taskIdSchema, kind: taskKindSchema, parentId: taskIdSchema.nullable(), projectId: taskIdSchema,
@@ -180,6 +214,7 @@ const taskGetResultSchema = z.looseObject({
   shelf: projectShelfInfoSchema,
   agents: z.array(taskGetPlacementSchema),
   runs: z.array(taskGetRunSchema).optional(),
+  reasons: z.array(taskReasonViewSchema).optional(),
   questions: z.array(z.looseObject({ id: z.string(), taskId: taskIdSchema, applicable: z.boolean() })),
   dependencies: startOrderSchema,
   errors: z.array(errorEntrySchema),
@@ -282,7 +317,7 @@ const definitions = {
     text('set', 'Task set (passed, reworked, stopped, doneUnaccepted: done by its owner without the user accepting, accepted, finished, unfinished: not ended as of now whatever the period, used)'),
     text('by', `Breakdown (used: ${analysisUsageGroups}. Other sets: ${analysisTaskGroups})`),
     text('key', 'Key from the selected row. Omit for skill, tool or MCP totals since collection began. Tool and MCP keys are JSON arrays [provider, name]'),
-    text('value', `Per-task value (used: ${analysisUsageValues.join(', ')}. Other sets: ${analysisTaskValues.join(', ')}). Tokens sum output, input and cache. Use calls to sum tool or MCP calls and launches to count each matching Run once`),
+    text('value', `Per-task value (used: ${analysisUsageValues.join(', ')}. Other sets: ${analysisTaskValues.join(', ')}). Tokens sum output, input and cache. Use calls to sum tool or MCP calls (a skill counts once for each Run that used it) and launches to count each matching Run once`),
     text('cursor', 'Cursor from the preceding page'), number('limit', 'Maximum rows per page (up to 100)'),
   ], { output: analysisUnitListSchema }),
   'analysis/task': command('read', 'Read the analysis values behind one task', analysisTaskInput, [
@@ -313,7 +348,7 @@ const definitions = {
   'analysis/findings': command('read', 'Find places in one task\'s timeline worth a look, each by a fixed rule with its threshold and the ' +
     'records it stands on, the longest first; always over the task and every task under it', analysisFindingsInput, [
     ...analysisTimelineScope, list('rules', `Rules to apply (${analysisFindingRules.join(', ')}; default: all)`),
-    list('threshold', 'Threshold as rule=value: minutes for a time, a count for a repeat (e.g. long-wait=60)'),
+    list('threshold', 'Threshold as rule=value: minutes for time, a count for repeats or characters for large-output (e.g. long-wait=60)'),
     number('limit', 'Most findings (up to 100, default 20)'),
   ], { output: analysisFindingsViewSchema, help: help(
     ...analysisFindingRules.map(rule => `${rule}: ${ANALYSIS_FINDING_RULE_MEANINGS[rule]}.`),
@@ -379,15 +414,16 @@ const definitions = {
     valuesFile('Changed field values', PROJECT_VALUES_GUIDE),
     text('cwd', 'A project\'s code location on this PC (absolute, or ~/…); empty turns it off; null inherits', { nullable: true }),
     text('color', 'Project color: six lowercase hex digits #rrggbb; omitted keeps the current color'),
-    fromUser, quote, sourceRequest, expectedTaskHash,
-  ], { rules: taskUpdateRules, output: taskWriteResultSchema, help: help(
+    ...directionOptions, fromUser, quote, sourceRequest, expectedTaskHash,
+  ], { rules: taskUpdateRules, output: taskWriteResultSchema.extend({ ignoredTrigger: z.literal(true).optional() }), help: help(
     '--quote records the user’s words; permission to carry out their decision is governed by the skill.',
-    'A Task awaiting review turns internal only after it is confirmed or sent back.') }),
+    ...directionGuide, 'A Task awaiting review turns internal only after it is confirmed or sent back.') }),
   'task/returns': command('read', 'Read returns and their full identities without acknowledging them',
     taskReturnsInput, [taskId, text('after', 'Previous return ID'), number('limit', 'Page size (1–200)')], { output: taskReturnsResultSchema }),
   'task/values': command('read', 'Read a Task\'s values as they were at a time: each write that replaced a value keeps the value it replaced',
-    taskValuesInput, [taskId, text('at', 'The time, as ISO 8601 with its offset (2026-11-26T09:30:00+09:00)')],
-    { output: taskValuesAtSchema, help: help(
+    taskValuesInput, [taskId, text('at', 'The time, as ISO 8601 with its offset (2026-11-26T09:30:00+09:00)'),
+      text('changeLog', 'The log ID of a values change: return exact before and after for each changed field')],
+    { output: z.union([taskValuesAtSchema, taskValuesChangeSchema]), help: help(
       'values is null before the Task existed (reason not-created) and before earlier values began to be kept (reason not-recorded); recordedSince says from when they are known.',
       'Who changed the values and when is in the log (body_updated and reports with values: task get --task <ID> --log <count>).') }),
   'task/request': command('write', 'Ask a Task\'s responsible to work: an instruction (to a member with --agent), ' +
@@ -405,10 +441,10 @@ const definitions = {
     json('aiStack', 'AI rows for this request, ahead of the placement and server rows, as JSON: [{"agent":"claude","values":{"model":"opus"}},"stop"]'),
     quote, sourceRequest, expectedTaskHash, placementRevision,
     text('expectedHeadRun', 'The target placement\'s conversation head: agents[].headRunId in task get'),
-    text('instructionKind', `What the instruction is, kept for analysis: ${INSTRUCTION_KINDS.join(', ')} (fix: change what was made or ` +
-      'shown; addition: more work in the same task; new_request: work of its own). An answer goes with --answers instead'),
-    list('fixes', `For a fix, what was wrong with the result (one or more): ${Object.entries(FIX_KIND_MEANINGS).map(([kind, meaning]) => `${kind} (${meaning})`).join(', ')}`),
+    ...takenOptions, ...placementOptions,
   ], { rules: taskRequestRules, output: taskRequestResultSchema, help: help(
+    TAKEN_GUIDE, ...takenMeanings, ...placementMeanings, 'For a review, use adopted when you take its advice; use fix when the review itself needs fixing.',
+    'AI actors provide --placed-as when using --selected or --ai-stack.',
     'A late answer becomes an ordinary instruction and names the original question in its outcome. Expired questions refuse answers.',
     'An ordinary instruction to the responsible closes the old question or review and resumes work. Member instructions leave the responsible’s work as it is.',
     'Changing the model or effort for the same agent can continue its conversation. Use --new-conversation to start fresh, ' +
@@ -431,7 +467,8 @@ const definitions = {
       text('nextConversation', 'After this Run succeeds, start the next conversation: new (from these values) or compact ' +
         '(the same conversation, compacted first)'),
       text('compactFocus', 'With --next-conversation compact: what the summary should keep in focus (Claude, Copilot and pi)'),
-      urgent('this done report'),
+      urgent('this done report'), ...directionOptions,
+      ...causeOptions,
       text('aboutRun', 'The Run whose review this done report confirms; omit for a Task snapshot review (task get)'),
       number('estimateMinutes', `Remaining work estimate in minutes (${ESTIMATE_MINUTES.min}–${ESTIMATE_MINUTES.max})`),
       quote, sourceRequest, expectedTaskHash, placementRevision,
@@ -442,7 +479,8 @@ const definitions = {
         'One question or review can be pending. Asking replaces it. An owner’s doing resumes work and closes it. Use task update to save values alone. Open questions to this Task block done. A successful done report closes its own question.',
         'Confirm a review with --state done and --expected-task-hash. For a Run review also supply --about-run and --expected-placement-revision. Confirming and unholding need neither title nor description.',
         'Managers return a hold with --state <current baseState>. This only lifts the hold. A held Task’s own progress and questions keep the hold; Runs, requests and children stay.',
-        'Stopped stops the Task, its subtree and their Runs.',
+        'Stopped stops the Task, its subtree and their Runs. When stopping a child and dropping its result, supply --cause and optionally --aspects. The stop records dropped.',
+        ...directionGuide, ...causeMeanings,
         'With --next-conversation compact the next conversation goes on compacted first, the agent summarizing it with its own model; --compact-focus names what the summary must keep. An instruction that arrives after the save cancels it, as for new.',
         COMPACTION_COST, COMPACTION_REFUSALS),
       cliHelp: help('A Git diff in the description is attached automatically.',
@@ -486,31 +524,39 @@ const definitions = {
     json('aiStack', 'AI rows to use for this placement before the server stack, as JSON, with an optional final "stop"'),
     expectedTaskHash, text('replace', 'Responsible placement to replace'),
     number('expectedPlacementRevision', 'Revision of the responsible placement it replaces'),
-    number('expectedResponsibleRevision', 'Current responsible revision'), quote, sourceRequest,
-  ], { rules: agentAssignRules, output: taskPlacementResultSchema }),
+    number('expectedResponsibleRevision', 'Current responsible revision'), ...placementOptions, quote, sourceRequest,
+  ], { rules: agentAssignRules, output: taskPlacementResultSchema, help: help(...placementMeanings) }),
   'agent/handover': command('write', 'Transfer responsibility to an active placement; it learns the Task\'s state and open work',
-    agentHandoverInput, [taskId, text('agent', 'Placement ID'), expectedTaskHash, placementRevision, quote, sourceRequest], { output: taskPlacementResultSchema }),
+    agentHandoverInput, [taskId, text('agent', 'Placement ID'), expectedTaskHash, placementRevision, ...placementOptions, quote, sourceRequest],
+    { output: taskPlacementResultSchema, help: help(...placementMeanings) }),
   'agent/release': command('write', 'End an idle placement without losing its history', agentReleaseInput, [
     taskId, text('agent', 'Placement ID'), expectedTaskHash, placementRevision,
-    number('expectedResponsibleRevision', 'Current responsible revision when releasing a member'), quote, sourceRequest,
-  ], { output: taskPlacementResultSchema, help: help('Releasing a member: --expected-responsible-revision required.',
+    number('expectedResponsibleRevision', 'Current responsible revision when releasing a member'), ...takenOptions, quote, sourceRequest,
+  ], { output: taskPlacementResultSchema, help: help(TAKEN_GUIDE, ...takenMeanings, 'Releasing a member: --expected-responsible-revision required.',
     'A responsible is released only from a Task without children or work under way; replace any other ' +
       'by agent handover or agent assign --replace.') }),
   'run/get': command('read', 'Read a bounded run prompt or result with explicit file status', runGetInput,
     [text('run', 'Run ID'), text('kind', 'result (default) or prompt, the delivered start text')], { output: controlRunFilesSchema }),
   'run/steps': command('read', 'Read a Run\'s steps (tool calls) in order: what each ran on one line, how it ended, when it started and ' +
     'ended and where those times came from (reported: the agent\'s output said it; observed: the time the line was read, within about a second; ' +
-    'transcript: read afterwards from the agent\'s own conversation record, for a Run from before times were kept), a ' +
+    'transcript: read afterwards from the agent\'s own conversation record), a ' +
     'fingerprint of what it ran (paths, IDs and numbers replaced) and the size of what came back', runStepsInput,
     [text('run', 'Run ID'), number('from', 'First step number (from 0); without it, the latest steps'),
       number('limit', 'Most steps to read (up to 200)'), number('step', 'One step\'s number: what it ran and got back, in full')],
     { output: z.union([runStepsPageSchema, runStepDetailSchema]), help: help(
-      'A Run from before step times were kept has null times unless they were imported from the agent\'s conversation record; an end not yet seen is null too.') }),
+      'A Run from before step times were kept has null times; an end not yet seen is null too.') }),
   'run/conditions': command('read', 'Read how a Run was launched (agent, model, effort) and what it ran under: alpacawork\'s version and ' +
     'release, the commit where the agent worked, each skill it could read and the person\'s own instruction files, each with a digest',
-    runConditionsInput, [text('run', 'Run ID')],
+    singleRunInput, [text('run', 'Run ID')],
     { output: runConditionsViewSchema, help: help('A Run from before conditions were kept has null conditions. Two Runs whose digests differ ran under a change.',
       'A project policy change is a body_updated record of the project (task get --task <project> --log <count>).') }),
+  'run/summary': command('read', 'Read a Run’s tools, skills, outputs, tests, produced records, basis and conversation changes',
+    singleRunInput, [text('run', 'Run ID')], { output: runSummarySchema, help: help(
+      'The produced field lists commits, pull requests and files found in the Run. Analysis trace matches those records to Task deliverables.',
+      'Tests and repeats come from retained output and the step journal. An observed revision comes from Git when the manager sees the shell step start.',
+      'dirSource is tool for a directory reported by the tool, command for an absolute path in the command, relative-command for a relative path in the command, or cwd for the Run’s launch directory. A missing diff digest cannot identify dirty content.',
+      'A pending summary has yet to be collected. Partial summaries cover only the records read. Older and unsupported Runs may have only conversation changes.',
+      'Output sizes are characters in tool results, including reported omissions.') }),
   'run/list': command('read', 'List the unfinished Runs (queued, running, needs_review), whatever state their Task is in',
     runListInput, [
       text('under', 'Only the Runs of this Task and the Tasks below it'),
@@ -541,7 +587,7 @@ const definitions = {
   'field/list': command('read', 'Read every field definition, with where each is used: the fields projects choose for their Tasks, and ' +
     `a project\'s own values (${PROJECT_SCHEMA.join(', ')}). maxChars and maxItems are the size to aim for; a write is refused past about 1.3 times it`, emptyInput, [],
     { output: fieldListResultSchema }),
-  'field/set': command('write', 'Add a field definition or change one; it changes for every project using it. A field that comes with the app changes only --required', fieldSetInput, [
+  'field/set': command('write', 'Add a field definition or change one; it changes for every project using it. A field that comes with the app changes only --required or --direction', fieldSetInput, [
     text('field', 'Field ID: lowercase letters, digits and _ starting with a letter'),
     text('title', 'Title shown to writers and on screen'), text('type', 'text or schema (an item of member fields)'),
     boolean('many', 'A list of values'),
@@ -551,6 +597,7 @@ const definitions = {
     list('members', 'A schema field\'s member field IDs in order; the first, a single text, names each item'),
     boolean('required', 'Require a value before reporting done. ' +
       'It applies where a project\'s fields list the field, not to a member inside another field'),
+    boolean('direction', 'Ask for a trigger when an existing value of this field changes'),
     boolean('create', 'Only add a new field: refused when the field ID already exists'),
     quote, sourceRequest,
   ], { output: fieldSetResultSchema, help: help('A key left out keeps its current value; a new field needs --title and --type. With --create an existing ID is refused instead of changed.',

@@ -5,7 +5,7 @@ import { AnalysisLayers } from "../src/features/analysis/AnalysisLayers";
 import { useState } from "react";
 import { ChartHead, PointerTip, Rule, RuleCard, Rules } from "../src/features/analysis/parts";
 import { BarChart, ChartGroup, changesByBin, Parts, Row } from "../src/features/analysis/rows";
-import { afterEach, beforeAll, expect, test, vi } from "vitest";
+import { afterEach, beforeAll, expect, onTestFinished, test, vi } from "vitest";
 import { i18n, startI18n } from "@alpacawork/i18n";
 import { TodayMarks } from "../src/features/analysis/FaceSwitch";
 import { FaceSkeleton } from "../src/features/analysis/FaceSkeleton";
@@ -329,7 +329,7 @@ test("a list's next page stands as rows while it is read, and one that could not
     return new Promise<Response>(resolve => { page = body => resolve(new Response(JSON.stringify(body ?? { error: { code: "unavailable", message: "x", retry: "later" } }), { status: body ? 200 : 503 })); });
   });
   const place = { ...analysisHome(), list: { set: "finished" as const, value: null, group: null, member: null } };
-  const view = render(<TestWorkspace data={screenData()}><AnalysisLayers place={place} project={null} days={null} beside={false} /></TestWorkspace>);
+  const view = render(<TestWorkspace data={screenData()}><AnalysisLayers place={place} project={null} days={null} mode="overlay" canDock={false} /></TestWorkspace>);
   await vi.waitFor(() => expect(view.container.querySelectorAll("[data-analysis-layer] li")).toHaveLength(100));
   await act(async () => view.getByRole("button", { name: /残り/ }).click());
   // Asked for: its rows' places stand where they will come, not nothing.
@@ -344,22 +344,39 @@ test("a list's next page stands as rows while it is read, and one that could not
   view.unmount();
 });
 
-test("the parts' number columns are measured again only when their words change, not on every drawing", () => {
+test("the parts' number columns are measured again as their words or the group's width change", () => {
   const bins = [{ from: "2026-11-01", to: "2026-11-01", complete: true }, { from: "2026-11-02", to: "2026-11-02", complete: true }];
   const rows = [{ name: "終わったタスク", total: (at: number) => `${at}` }];
   const read = vi.spyOn(Element.prototype, "getBoundingClientRect");
+  let observeWidth: ((width: number) => void) | undefined;
+  const Resize = globalThis.ResizeObserver;
+  onTestFinished(() => { globalThis.ResizeObserver = Resize; });
+  globalThis.ResizeObserver = class {
+    constructor(private changed: ResizeObserverCallback) {}
+    observe(target: Element) {
+      if (target.querySelector("[data-part-col]")) observeWidth = width =>
+        this.changed([{ target, contentRect: { width } } as ResizeObserverEntry], this as unknown as ResizeObserver);
+    }
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
   const measured = () => read.mock.contexts.filter(cell => (cell as HTMLElement).dataset?.partCol).length;
   const group = (value: string) => <ChartGroup bins={bins} span={{ from: "2026-11-01", to: "2026-11-02" }} today="2026-11-30" bucket="day" rows={rows} open={() => {}}>
     <Row row={0} left={<Parts items={[{ color: "", name: "手直しなし", value }]} />}>
       <BarChart row={0} height="h-16" scale={{ top: 4, label: "4" }} values={at => [["", at + 1]]} /></Row>
   </ChartGroup>;
   const view = render(group("3件"));
+  observeWidth!(400);
   const first = measured();
   expect(first).toBeGreaterThan(0);
   view.rerender(group("3件"));
+  observeWidth!(400);
   expect(measured()).toBe(first);
-  view.rerender(group("12件"));
+  observeWidth!(500);
   expect(measured()).toBeGreaterThan(first);
+  const resized = measured();
+  view.rerender(group("12件"));
+  expect(measured()).toBeGreaterThan(resized);
   read.mockRestore();
   view.unmount();
 });
@@ -379,8 +396,32 @@ test("the face's stand-in asks the server for nothing, so the face's own answer 
   vi.stubGlobal("fetch", async (input: RequestInfo | URL) => { asked.push(String(input)); return new Response("{}", { status: 200 }); });
   for (const look of ["tasks", "usage"] as const) {
     const view = render(<TestWorkspace data={screenData()}><FaceSkeleton look={look} span={{ period: "7d" }} bucket="day" /></TestWorkspace>);
+    await vi.waitFor(() => expect(view.container.querySelector("[data-face-skeleton]")).not.toBeNull());
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 50)); });
     view.unmount();
   }
   expect(asked.filter(url => url.includes("analysis/"))).toEqual([]);
+});
+
+test("the pointed day's band follows the pointer at once, even while the legend's day waits, and no chart's bars are drawn again for it", () => {
+  vi.useFakeTimers();
+  const bins = Array.from({ length: 10 }, (_, at) => ({ from: `2026-11-${String(at + 1).padStart(2, "0")}`, to: `2026-11-${String(at + 1).padStart(2, "0")}`, complete: true }));
+  const rows = [{ name: "トークン", total: (at: number) => `${at}` }];
+  let drawn = 0;
+  const view = render(<ChartGroup bins={bins} span={{ from: "2026-11-01", to: "2026-11-10" }} today="2026-11-30" bucket="day" rows={rows} open={() => {}}>
+    <Row row={0} left={<span>期間の数</span>}><BarChart row={0} height="h-16" scale={{ top: 40, label: "40" }} values={at => { drawn++; return [["", at + 1]]; }} /></Row>
+  </ChartGroup>);
+  const columns = view.container.querySelectorAll("[data-day-column]");
+  const lit = () => [...view.container.querySelectorAll<HTMLElement>("[data-bin][data-lit]")].map(bin => Number(bin.dataset.bin));
+  const legend = () => view.container.querySelector("[data-day-legend]")?.textContent ?? "";
+  const before = drawn;
+  fireEvent.mouseMove(columns[8]!, { clientX: 800, clientY: 10 });
+  expect(new Set(lit())).toEqual(new Set([8]));
+  // A quick move left: the legend still says the day before, the band already stands on the new day.
+  fireEvent.mouseMove(columns[7]!, { clientX: 700, clientY: 10 });
+  expect(new Set(lit())).toEqual(new Set([7]));
+  expect(legend()).toContain("11/9");
+  act(() => { vi.advanceTimersByTime(500); });
+  expect(legend()).toContain("11/8");
+  expect(drawn).toBe(before);
 });

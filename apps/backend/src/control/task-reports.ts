@@ -1,3 +1,4 @@
+import type { ActionReason } from '@alpacawork/raw';
 import { controlReadContext } from './read-context.js';
 import { TASK_POLICY, evaluate } from '@alpacawork/contract/task-policy';
 /**
@@ -92,12 +93,12 @@ export function reportState(tx: ControlTx, report: { actor: TaskActor; runId: Ru
   expectedTaskHash: string; state: TaskState; intent: string;
   title?: string; description?: string; estimateMinutes?: number; urgentReason?: string;
   /** The write's values as sent (what its fingerprint keeps) and the Task's values after it. */
-  values?: unknown; written?: TaskValues; nextConversation?: 'new' | 'compact'; compactFocus?: string; checkpoint?: ConversationCheckpoint }): void {
+  values?: unknown; written?: TaskValues; reason?: ActionReason; reasonInput?: unknown; nextConversation?: 'new' | 'compact'; compactFocus?: string; checkpoint?: ConversationCheckpoint }): void {
   const { task, previous } = operationTask(tx, report.taskId, report.opId);
   validateReportMedia(tx.store.root, task.path, report.description);
   if (operationIdUse(tx, report.opId).request)
     throw new Problem(PROBLEM_CODE.idempotencyConflict, 'Operation ID belongs to a Request', undefined, { reason: { kind: 'operation_id_belongs_request' } });
-  const { actor, checkpoint, intent, written, ...operation } = report, { runId } = report;
+  const { actor, checkpoint, intent, written, reason, ...operation } = report, { runId } = report;
   const fingerprint = operationFingerprint(operation);
   if (previous) {
     if (previous.operationFingerprint !== fingerprint || !sameActor(previous.actor, actor))
@@ -115,7 +116,7 @@ export function reportState(tx: ControlTx, report: { actor: TaskActor; runId: Ru
   // Taken after the start, so the report follows it in the log's time too.
   const base = { actor, taskId: task.id, at: now(), record: { id: report.opId, title: report.title ?? null,
     description: report.description ?? null, estimateMinutes: report.estimateMinutes, operationFingerprint: fingerprint,
-    values: written, checkpoint } };
+    values: written, checkpoint, reason } };
   switch (intent) {
     case 'hold': transition.apply(tx, { ...base, action: 'hold' }); return;
     case 'stop':

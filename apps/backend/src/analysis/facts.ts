@@ -1,6 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { ControlStore, type ChangeKey, type ChangeLog } from '@alpacawork/db';
-import { speaksForUser, type InstructionLabel, type TaskBaseState } from '@alpacawork/raw';
+import { speaksForUser, type TaskBaseState } from '@alpacawork/raw';
 import type { TaskLog } from '@alpacawork/raw/task-log-schema';
 import type { RunRecord } from '@alpacawork/contract/run';
 import { taskLogsOf } from '../control/task-history.js';
@@ -22,9 +22,9 @@ export type Unit = {
   firstOwner: ModelRun | null; launches: readonly FactLaunch[];
   /**
    * The user's instructions to the unit or any Task under it, after the request itself (answers and send-backs are not
-   * instructions), and the labels their senders gave them.
+   * instructions), and decisions recorded by the user or an agent.
    */
-  instructions: { count: number; labels: InstructionLabel[] };
+  instructions: ReturnType<typeof laterInstructions>;
 };
 export type FactLaunch = Launch & { tallyEligible: boolean };
 export type AnalysisFacts = {

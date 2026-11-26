@@ -667,27 +667,34 @@ test("the working row goes on with the Tasks below at work, children before gran
   await waitFor(() => expect(followed).toEqual(["T2"]));
 });
 
-test("opened, only the responsible person's steps are read and listed; everyone else's stay on their latest one's line", async () => {
+test("each working person's steps open from their own work line, read only then; the others stay on their latest one's line", async () => {
   await inEnglish();
   const steps = (who: string) => [1, 2].map(n => ({ id: `${who}${n}`, at, tool: "Bash", kind: "command" as const, text: `${who} step ${n}`,
     more: 0, about: null, state: n === 2 ? "running" as const : "done" as const, result: null }));
   const asked: string[] = [];
-  runSteps.of = async run => { asked.push(run); return listedSteps(steps("lead")); };
+  runSteps.of = async run => { asked.push(run); return listedSteps(steps(run === "R1" ? "lead" : "member")); };
   const data = screenData(tree({ placements: [workingPlacement("P1"), workingPlacement("P2")], runs: [
     run("R1", { state: "running", endedAt: null, activity: { ...note("lead words"), steps: steps("lead"), stepsStarted: 2 } }),
     run("R2", { placementId: "P2", state: "running", endedAt: null, activity: { ...note("member words"), steps: steps("member"), stepsStarted: 2 } })] }));
   render(<TestWorkspace data={data}><ReportFeed task={data.tasks[0]!} people={data.people} onFollow={() => {}} /></TestWorkspace>);
   const lead = document.querySelector('[data-working-person="P1"]')!;
   expect(lead.querySelector("[data-work-line]")?.textContent).toContain("lead step 2");
-  expect(asked).toEqual([]);
+  // Opening the row shows everyone working; no one's steps are read until their own work line is pressed.
   fireEvent.click(document.querySelector<HTMLElement>("[data-working-here]")!);
+  const member = document.querySelector('[data-working-person="P2"]')!;
+  expect(member.querySelector("[data-work-line]")?.textContent).toContain("member step 2");
+  expect(asked).toEqual([]);
+  fireEvent.click(lead.querySelector<HTMLElement>("[data-working-steps]")!);
   await waitFor(() => expect(lead.querySelector("[data-run-steps=open]")?.textContent).toContain("lead step 1"));
   expect(lead.querySelector("[data-work-line]")?.textContent).toContain("2 steps so far");
   expect(asked).toEqual(["R1"]);
-  const member = document.querySelector('[data-working-person="P2"]')!;
-  expect(member.querySelector("[data-run-steps]")).toBeNull();
-  expect(member.querySelector("[data-work-line]")?.textContent).toContain("member step 2");
+  expect(member.querySelector("[data-run-steps=open]")).toBeNull();
   expect(member.textContent).not.toContain("member step 1");
+  fireEvent.click(member.querySelector<HTMLElement>("[data-working-steps]")!);
+  await waitFor(() => expect(member.querySelector("[data-run-steps=open]")?.textContent).toContain("member step 1"));
+  expect(asked).toEqual(["R1", "R2"]);
+  // Each person's steps open on their own: the lead's stay open beside the member's.
+  expect(lead.querySelector("[data-run-steps=open]")?.textContent).toContain("lead step 1");
 });
 
 test("an opened list stays while the latest steps the activity carries are none, as long as the Run has taken steps", async () => {
@@ -699,7 +706,7 @@ test("an opened list stays while the latest steps the activity carries are none,
     run("R1", { state: "running", endedAt: null, activity: activity(steps) })] }));
   const first = data(1);
   const { rerender } = render(<TestWorkspace data={first}><ReportFeed task={first.tasks[0]!} people={first.people} onFollow={() => {}} /></TestWorkspace>);
-  fireEvent.click(document.querySelector<HTMLElement>("[data-working-here]")!);
+  fireEvent.click(document.querySelector<HTMLElement>("[data-working-steps]")!);
   await waitFor(() => expect(document.querySelector("[data-run-steps=open]")?.textContent).toContain("pnpm test"));
   // An unreadable line left the activity's latest steps empty; the Run's steps are still there to read.
   const after = data(0);
@@ -970,7 +977,7 @@ test("the title and its tabs stay on every pane: History, Context and Files, the
   expect(content.querySelectorAll("[data-task-row], [data-files-row]")).toHaveLength(0);
   const entries = await waitFor(() => {
     const found = [...content.querySelectorAll<HTMLElement>("[data-head-title] [data-reader-entries] button")];
-    expect(found.map(button => button.textContent)).toEqual(["History", "Context", "Files2"]);
+    expect(found.map(button => button.textContent)).toEqual(["History", "Context", "Files2", "Analysis"]);
     return found;
   });
   expect(entries[0]!.getAttribute("aria-current")).toBe("page");

@@ -74,6 +74,7 @@ import { ReadFailure, ReadNote } from "@/components/ui/loadable";
 import { useConnection } from "@/data/connection";
 import { scrollReport } from "./scroll-report";
 import { keepPressedRow } from "./reading-position";
+import { DisclosureBody } from "@/components/ui/disclosure";
 
 /** A report: its row opens as the one card open, the newest standing open until one is pressed. A member's words are worked on, not reported. */
 const isCard = (report: ReportEvent) => !!(report.mark || report.userQuestion) && report.author?.kind !== "member";
@@ -1022,12 +1023,12 @@ function WorkingPerson({ run, task, onFollow, open, lead, others }: { run: Contr
       {run.activity?.context && <span className="flex-none self-center"><ContextMeter context={run.activity.context} press conversations={task.conversations ?? undefined} /></span>}</span>
     {!words ? null : !lead ? <div data-working-note dir="auto" className={`${cell} ${NOTE} text-sm block text-ink`}><MarkdownBody text={words} task={task} onFollow={onFollow} report variant="note" /></div>
       : <LeadNote open={open} words={words} task={task} onFollow={onFollow} className={cell} />}
-    {worked ? <button type="button" data-working-steps aria-expanded={listed} onClick={() => setListed(!listed)}
+    {worked ? <button type="button" data-working-steps aria-expanded={listed} onClick={event => { keepPressedRow(event.currentTarget); setListed(!listed); }}
       className={`${cell} group/steps mt-1 flex cursor-pointer items-center gap-1.5 rounded-sm py-0.5 text-left text-xs outline-none focus-visible:outline-2 focus-visible:outline-ring narrow:min-h-11`}>
       <WorkLine step={latest} idle={idle} label={listed && count !== undefined ? say("now.step.count", { count }) : undefined} className="min-w-0 flex-1 group-hover/steps:text-ink" />
       <Icon name="down" className={`size-3.5 flex-none self-center text-muted transition-transform duration-(--motion-base) group-hover/steps:text-ink ${listed ? "rotate-180" : ""}`} /></button>
       : <WorkLine step={latest} idle={idle} className={`${cell} mt-1.5 text-xs`} />}
-    {reading && <StepList steps={full} className={`${cell} mt-1`} />}
+    {worked && <div className={cell}><StepList steps={full} open={reading} className="mt-1" /></div>}
     {/* As wide as a child line's → keeps past its end (press-end: 16px less a sixth), so every meter ends on one edge. */}
     <span data-working-chevron className="col-start-3 row-start-1 flex w-[calc(var(--spacing)*4*20/24)] items-center justify-end self-center">{lead && <DisclosureChevron open={open} />}</span>
   </div>;
@@ -1104,60 +1105,6 @@ function ChildWorkLine({ item, mark, onFollow }: { item: ChildWork; mark: boolea
 export function ContextPage({ task, onFollow }: { task: TaskDetail; onFollow: (id: string) => void }) {
   return <div className="text-ink"><TaskAbout task={task} onFollow={onFollow} />
     <BodyCopy text={() => reportCopy(taskCopy(task), task.values.context)} /></div>;
-}
-
-/**
- * One motion rule for every report disclosure: its height goes from where it is drawn to its body's height, or
- * back to nothing, over --motion-base in-out, and open it follows its body's height. The height itself moves, so what
- * it shows is always all of its height: a grid row's fr did not, and left a band with nothing in it under the words on
- * the way. It moves as a transition, so the reader keeps its place by its events (reading-position). With `least`,
- * folded it still shows that many pixels of its top, read and pressed as they are (the Working row's lines, LeadNote).
- */
-function DisclosureBody({ open, least, children }: { open: boolean; least?: number; children: ReactNode }) {
-  const [seen, setSeen] = useState(open);
-  // Latch before committing: the body's first opening must not cause a second commit just to remember it was seen.
-  if (open && !seen) setSeen(true);
-  const peeks = least !== undefined, hidden = !open && !peeks;
-  const body = useRef<HTMLDivElement>(null), shown = useRef(open);
-  useLayoutEffect(() => {
-    const box = body.current;
-    if (!box) return;
-    const folded = `${least ?? 0}px`;
-    const moving = shown.current !== open;
-    shown.current = open;
-    // Not turned: folded, it keeps to what it still shows, at once (first measured, or its words changed), as words in
-    // a row change; a fold under way goes on to it. Open, it follows its body.
-    if (!moving) {
-      if (open || box.style.height === folded) return;
-      // First drawn, it stands at its own height (auto), which nothing glides from: no reflow to hold the glide back.
-      // History draws a hundred of these at once, and a reflow for each laid the whole reader out that many times.
-      if (box.style.height === "") { box.style.height = folded; return; }
-      const folding = box.getAnimations().some(move => move.playState === "running");
-      if (!folding) box.style.transition = "none";
-      box.style.height = folded;
-      if (!folding) { void box.offsetHeight; box.style.transition = ""; }
-      return;
-    }
-    // From where it is drawn, a move turned back on the way included.
-    const from = box.getBoundingClientRect().height, to = open ? box.scrollHeight : least ?? 0;
-    if (reducedMotion() || Math.abs(to - from) < 1) { box.style.height = open ? "" : folded; return; }
-    box.style.height = `${from}px`;
-    void box.offsetHeight;
-    box.style.height = `${to}px`;
-  }, [open, least]);
-  // Arrived open (or stopped on the way while open), it follows its body again.
-  const arrived = (event: React.TransitionEvent<HTMLDivElement>) => {
-    const box = event.currentTarget;
-    if (event.target !== box || event.propertyName !== "height" || !shown.current) return;
-    // A move stopped because it was turned back is taken over by the move that turned it.
-    if (event.type === "transitioncancel" && box.getAnimations().some(move => move.playState === "running")) return;
-    box.style.height = "";
-  };
-  // The clip reaches 12px past the body's right edge (the reader's own room there), so a press ending on that edge is whole.
-  return <div ref={body} data-disclosure-body data-open={open} aria-hidden={hidden} inert={hidden} onTransitionEnd={arrived} onTransitionCancel={arrived}
-    className="-mr-3 overflow-hidden pr-3 transition-[height] duration-(--motion-base)">
-    {open || seen || peeks ? children : null}
-  </div>;
 }
 
 /**

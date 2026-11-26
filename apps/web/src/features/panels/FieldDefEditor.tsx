@@ -14,7 +14,7 @@ import { useSaveField, type FieldView } from "@/data/fields";
 import { shownField, shownSizeNote } from "@/domain/field-display";
 
 /** A new field's definition before it is named: one text of about 100 characters (as `field set` makes one). */
-const NEW_FIELD: FieldDef = { id: "", title: "", type: "text", many: false, maxChars: 100, maxItems: null, hint: "", members: [], required: false };
+const NEW_FIELD: FieldDef = { id: "", title: "", type: "text", many: false, maxChars: 100, maxItems: null, hint: "", members: [], required: false, direction: false };
 /** A list's size when one is made a list: 5 items (as `field set` gives one). */
 const LIST_ITEMS = 5;
 
@@ -33,7 +33,7 @@ export function FieldDefEditor({ view, onSaved, onCancel }: { view: FieldView | 
     if (!view) return NEW_FIELD;
     const shown = shownField(view);
     return { id: shown.id, title: shown.title, type: shown.type, many: shown.many, maxChars: shown.maxChars,
-      maxItems: shown.maxItems, hint: shown.hint, members: shown.members, required: shown.required };
+      maxItems: shown.maxItems, hint: shown.hint, members: shown.members, required: shown.required, direction: shown.direction };
   });
   const [problem, setProblem] = useState<string | null>(null);
   /** What is wrong with the ID being created: its letters, or another field already has it (said by the server). */

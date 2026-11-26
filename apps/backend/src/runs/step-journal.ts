@@ -13,6 +13,7 @@ import { RUN_FILES, RUN_STEP_TEXT_LIMIT, RUN_TOOL_ID_LIMIT, clipRunText, stepJou
   type StepFingerprint, type StepJournalEntry, type StepOutput, type StepTimeSource } from '@alpacawork/contract/run';
 import { hasCode } from '@alpacawork/core';
 import type { ActivityEvent } from './activity-events.js';
+import { checkoutAt, rawInputDigest, shellInput } from './shell-evidence.js';
 import { stepInputDocument } from '../agents/adapters/activity.js';
 
 const short = (text: string) => createHash('sha256').update(text).digest('hex').slice(0, 16);
@@ -36,6 +37,12 @@ export function stepFingerprint(input: string): StepFingerprint | null {
   if (!text) return null;
   const newline = text.indexOf('\n'), first = newline === -1 ? text : text.slice(0, newline);
   return { line: clipRunText(replaced(first), RUN_STEP_TEXT_LIMIT), bodyDigest: newline === -1 ? null : short(`${replaced(first)}\n${replaced(text.slice(newline + 1), true)}`) };
+}
+
+/** Use the complete script when available, or the retained tool input when the bridge cut it. */
+export function stepEventFingerprint(event: ActivityEvent, script: string | null | undefined): StepFingerprint | null {
+  const input = script || ((event.call ? stepInputDocument(event.call) : undefined) ?? event.input?.text ?? event.detail?.text ?? '');
+  return stepFingerprint(input);
 }
 
 /** What came back, as a size and a digest; `whole` false when the agent cut it, so the digest covers its start only. */
@@ -104,18 +111,15 @@ export class StepJournal {
   private readonly closed = new Map<string, number>();
   private held: Map<string, StepTime> | null = null;
   private failed = false;
-  /** Entries this journal appended (or, when it does not write, would have). */
-  added = 0;
 
-  /** `write` false: count what would be appended, writing nothing (a trial of an import). */
-  constructor(private readonly folder: string, private readonly write = true) {}
+  constructor(private readonly folder: string, private readonly cwd?: string) {}
 
   /**
    * One adapter event read from output line `line`. `timeOf` gives the time to write for the start or end of the step
    * (named by the line that started it and its ID); null follows the step without writing that time. Gives the line
    * that names the step, or null for no step.
    */
-  observe(event: ActivityEvent, line: number, timeOf: StepTimeOf): number | null {
+  observe(event: ActivityEvent, line: number, timeOf: StepTimeOf, live = true): number | null {
     if (this.failed) return null;
     const { kind, id } = event;
     // A turn's end or an error notice settles what is open, as the index of steps reads it: the same ID starts a new
@@ -138,11 +142,16 @@ export class StepJournal {
       // A step is one the index of steps lists: it has a tool name.
       if (typeof event.toolName !== 'string' || !event.toolName) return null;
       this.open.set(id, line);
-      const document = event.call ? stepInputDocument(event.call) : undefined;
       const at = timeOf('start', line, id);
-      if (at) this.append({ event: 'start', line, id, ...at,
-        fingerprint: stepFingerprint(document ?? event.input?.text ?? event.detail?.text ?? ''),
+      if (at && !this.heldNames().has(key('start', line, id))) {
+        const rawDigest = rawInputDigest(event, this.cwd);
+        const shell = shellInput(event.call, String(event.stepTool ?? event.toolName), event.input);
+        const head = this.cwd === undefined || !shell ? undefined : live && kind === 'tool_start' ? checkoutAt(this.cwd, shell) : null;
+        this.append({ event: 'start', line, id, ...at,
+        ...(rawDigest !== undefined && { rawDigest }), ...(head !== undefined && { head }),
+        fingerprint: stepEventFingerprint(event, shell?.script),
         parentId: typeof event.parent === 'string' && event.parent && event.parent.length <= RUN_TOOL_ID_LIMIT ? event.parent : null });
+      }
       if (kind === 'tool_start') return line;
     }
     const opened = this.open.get(id)!;
@@ -156,19 +165,6 @@ export class StepJournal {
 
   /** The journal could not be written: what was observed after that was not kept. */
   get broken(): boolean { return this.failed; }
-
-  /**
-   * Whether the journal holds a time the Run's manager kept as it happened (not one imported from a conversation
-   * record) for the start or end of the step that output line `line` started with call `id`.
-   */
-  keptLive(line: number, id: string): boolean {
-    return (['start', 'end'] as const).some(event => { const source = this.heldTime(event, line, id)?.source; return source !== undefined && source !== 'transcript'; });
-  }
-
-  /** The time the journal holds for the start or end of the step that output line `line` started with call `id`. */
-  heldTime(event: StepJournalEntry['event'], line: number, id: string): StepTime | undefined {
-    return this.heldNames().get(key(event, line, id));
-  }
 
   /**
    * The steps still without an end when the Run ended end with it (`state`), each at the time `timeOf` gives (not
@@ -196,7 +192,6 @@ export class StepJournal {
   private append(entry: StepJournalEntry): void {
     const held = this.heldNames(), name = key(entry.event, entry.line, entry.id);
     if (held.has(name)) return;
-    if (!this.write) { held.set(name, { at: entry.at, source: entry.source }); this.added++; return; }
     try {
       const fd = openSync(`${this.folder}/${RUN_FILES.steps}`, constants.O_RDWR | constants.O_CREAT | constants.O_APPEND, 0o600);
       try {
@@ -205,7 +200,7 @@ export class StepJournal {
         const torn = size > 0 && readSync(fd, last, 0, 1, size - 1) === 1 && last[0] !== 10;
         appendFileSync(fd, (torn ? '\n' : '') + JSON.stringify(entry) + '\n');
       } finally { closeSync(fd); }
-      held.set(name, { at: entry.at, source: entry.source }); this.added++;
+      held.set(name, { at: entry.at, source: entry.source });
     } catch (error) {
       // The journal is a record beside the Run, not part of it: a Run goes on without it, and says so once.
       this.failed = true;

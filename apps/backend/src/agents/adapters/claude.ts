@@ -30,7 +30,7 @@ class ClaudeCompaction {
       return;
     }
     if (!this.open) return;
-    if (row.type === 'system' && (row.subtype === 'compact_boundary' || row.subtype === 'status' && row.compact_result === 'success'))
+    if (row.type === 'system' && (row.subtype === 'compact_boundary' && object(row.compact_metadata).trigger !== 'auto' || row.subtype === 'status' && row.compact_result === 'success'))
       this.outcome = { state: 'compacted', message: null };
     else if (row.type === 'system' && row.subtype === 'status' && row.compact_result === 'failed')
       this.outcome = { state: 'failed', message: typeof row.compact_error === 'string' ? row.compact_error.slice(0, 2000) : null };
@@ -130,9 +130,16 @@ export function claudeContext(value: unknown): ContextUpdate | null {
     return windows.length ? { windowTokens: Math.max(...windows) } : null;
   }
   if (row.type === 'system' && row.subtype === 'compact_boundary') {
-    const { pre_tokens: before, post_tokens: after } = object(row.compact_metadata);
-    const from = callTokens(before);
-    return { usedTokens: callTokens(after), compacted: true, ...from === null ? {} : { compactedFrom: from } };
+    const meta = object(row.compact_metadata);
+    const from = callTokens(meta.pre_tokens), durationMs = callTokens(meta.duration_ms);
+    const cumulativeDroppedTokens = callTokens(meta.cumulative_dropped_tokens), messagesSummarized = callTokens(meta.messages_summarized);
+    return { usedTokens: callTokens(meta.post_tokens), compacted: true, ...from === null ? {} : { compactedFrom: from },
+      compactionDetails: {
+        ...(meta.trigger === 'auto' || meta.trigger === 'manual' ? { automatic: meta.trigger === 'auto' } : {}),
+        ...(durationMs === null ? {} : { durationMs }),
+        ...(cumulativeDroppedTokens === null ? {} : { cumulativeDroppedTokens }),
+        ...(messagesSummarized === null ? {} : { messagesSummarized }),
+      } };
   }
   return null;
 }

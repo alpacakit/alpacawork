@@ -6,11 +6,12 @@
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 import type { AnalysisEvidence, AnalysisFindingRule } from '@alpacawork/contract/analysis';
 import { analysisFindingRules } from '@alpacawork/contract/analysis';
+import { isRequestLog, needsCause, type TakenReason } from '@alpacawork/raw';
 import { questionsOf } from '@alpacawork/raw/questions';
 import { prLinks, questionKind, taskOutcome, userQuestions } from './rules.js';
 import { iso, segments, unionMs, type Interval, type TraceRecords, type TraceRun, type TraceStep } from './timeline.js';
 
-export type Threshold = { value: number; unit: 'minutes' | 'count' };
+export type Threshold = { value: number; unit: 'minutes' | 'count' | 'chars' };
 /** The default threshold of each rule; null for a rule that finds every case. */
 export const DEFAULT_THRESHOLDS: Readonly<Record<AnalysisFindingRule, Threshold | null>> = {
   'long-wait': { value: 30, unit: 'minutes' },
@@ -23,6 +24,8 @@ export const DEFAULT_THRESHOLDS: Readonly<Record<AnalysisFindingRule, Threshold 
   'queue-wait': { value: 5, unit: 'minutes' },
   'failed-run': null,
   rework: null,
+  'large-output': { value: 40_000, unit: 'chars' },
+  'same-test-same-commit': { value: 2, unit: 'count' },
   idle: { value: 15, unit: 'minutes' },
 };
 /** Rules that read step times: with no Run of the scope holding them, they cannot find anything and say so. */
@@ -35,7 +38,7 @@ const LONG_STEP_FACTOR = 3, LONG_STEP_FLOOR_MS = 30_000;
 const MINUTE = 60_000;
 
 export type Found = { rule: AnalysisFindingRule; anchor: string; at: number; durationMs: number; lane: string | null;
-  count: number | null; source: 'recorded' | 'inferred'; evidence: AnalysisEvidence[] };
+  count: number | null; source: 'recorded' | 'inferred'; evidence: AnalysisEvidence[]; taken?: TakenReason };
 
 const taskLane = (task: string) => `task:${task}`;
 const agentLane = (run: TraceRun) => `agent:${run.placement}`;
@@ -244,13 +247,61 @@ const rules: Record<AnalysisFindingRule, Rule> = {
    * and an instruction given in place of answering a question asking to take a result. Its time runs until the task the
    * record is on next puts a result to the user (waits for review, or asks to take it) or is done.
    */
+  'large-output': (records, _window, threshold) => records.runs.flatMap(run => {
+    if (run.started === null || !['complete', 'partial'].includes(run.summary.state)) return [];
+    const entries = run.steps?.map(step => ({ step: step.n, at: step.to ?? step.from, chars: step.outputChars ?? 0 })) ??
+      run.summary.outputs.largest.map(item => ({ ...item, at: null }));
+    return entries.filter(item => item.chars >= limitOf(threshold)).map(item => ({
+      rule: 'large-output', anchor: `${run.id}.${item.step}`, at: item.at ?? run.started!, durationMs: 0,
+      lane: agentLane(run), count: item.chars, source: item.at === null ? 'inferred' : 'recorded',
+      evidence: [{ run: run.id, step: item.step }],
+    }));
+  }),
+  'same-test-same-commit': (records, _window, threshold) => {
+    const groups = new Map<string, Map<string, { run: TraceRun; step: number; at: number; timed: boolean }>>();
+    for (const run of records.runs) {
+      if (run.started === null) continue;
+      for (const { test, at, digest } of run.summary.tests) {
+        const knownDirectory = test.dirSource === 'tool' || test.dirSource === 'command';
+        if (!knownDirectory || test.commitSource !== 'observed' || !test.commit || test.state === 'unknown' ||
+            test.dirty === null || (test.dirty && !test.diffDigest)) continue;
+        const key = JSON.stringify([digest, test.commit, test.diffDigest ?? null]);
+        const group = groups.get(key) ?? new Map();
+        if (!group.has(run.id)) group.set(run.id, { run, step: test.step, at: at ?? run.started, timed: at !== null });
+        groups.set(key, group);
+      }
+    }
+    return [...groups.values()].filter(group => group.size >= Math.max(2, limitOf(threshold))).map(group => {
+      const matches = [...group.values()].sort((a, b) => a.at - b.at), first = matches[0]!;
+      return { rule: 'same-test-same-commit', anchor: `${first.run.id}.${first.step}`, at: first.at, durationMs: 0,
+        lane: agentLane(first.run), count: group.size, source: first.timed ? 'recorded' : 'inferred',
+        evidence: matches.slice(0, EVIDENCE_STEPS).map(({ run, step }) => ({ run: run.id, step })) };
+    });
+  },
   rework: (records, window) => {
     const [root, ...below] = records.tasks, own = userQuestions(root!.log);
     const questions = [...own, ...below.flatMap(task => userQuestions(task.log))];
     const outcome = taskOutcome(root!.log, records.rootState, iso(root!.created), questions);
     const replaced = new Map(records.tasks.flatMap(task => userQuestions(task.log)
       .filter(question => question.accept && question.replacedBy !== null).map(question => [question.replacedBy!, { question: question.id, task: task.id }])));
-    return outcome.rework.flatMap(({ id }) => {
+    const explicit = new Map(records.tasks.flatMap(task => task.log.flatMap(entry => entry.reason?.taken
+      ? [[entry.id, { task, entry, taken: entry.reason.taken }] as const] : [])));
+    const runById = new Map(records.runs.map(run => [run.id, run]));
+    const runByRequest = new Map(records.runs.filter(run => !run.supersededBy && run.state !== 'joined').map(run => [run.request, run]));
+    const classified = [...explicit].flatMap(([id, { task, entry, taken }]): Found[] => {
+      if (!needsCause(taken.code)) return [];
+      const witness = taken.of === null ? null : records.requests.get(taken.of)?.resultRun;
+      const judged = witness ? runById.get(witness) : taken.of === null ? undefined : runByRequest.get(taken.of);
+      const followUp = isRequestLog(entry.kind) ? runByRequest.get(entry.id) : undefined;
+      const instruction = isRequestLog(entry.kind) ? records.requests.get(entry.id) : undefined;
+      const at = Date.parse(entry.at);
+      return [{ rule: 'rework', anchor: id, at, durationMs: followUp ? Math.max(0, (followUp.ended ?? window.to) - at) : 0,
+        lane: taskLane(task.id), count: null, source: 'recorded', taken,
+        evidence: [{ log: entry.id, task: task.id, firstLine: instruction?.firstLine ?? entry.title },
+          ...(judged ? [{ run: judged.id }] : [])] }];
+    });
+    return [...classified, ...outcome.rework.flatMap(({ id }) => {
+      if (explicit.has(id)) return [];
       const task = records.tasks.find(item => item.log.some(entry => entry.id === id));
       if (!task) return [];
       const index = task.log.findIndex(entry => entry.id === id), at = Date.parse(task.log[index]!.at), question = replaced.get(id);
@@ -261,7 +312,7 @@ const rules: Record<AnalysisFindingRule, Rule> = {
       return [{ rule: 'rework' as const, anchor: id, at, durationMs: Math.max(0, (next ? Date.parse(next.at) : window.to) - at),
         lane: taskLane(task.id), count: null, source: 'recorded' as const,
         evidence: [logEvidence(records, task.id, id), ...question ? [question] : []] }];
-    });
+    })];
   },
   /** A stretch at least the threshold long when nothing ran, nothing waited in the queue and no question or review was open. */
   idle: (records, window, threshold) => segments(records, window).filter(part => part.key === 'idle' && part.to - part.from >= limitOf(threshold))

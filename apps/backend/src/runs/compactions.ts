@@ -1,3 +1,4 @@
+import type { CompactionObservation } from '@alpacawork/contract/agent-context';
 /**
  * The one owner of compacting a conversation: one asked for before an instruction (task request --compact, task report
  * --next-conversation compact) — whether an agent can, the request its Run carries, what the Run's start sends, how it
@@ -110,12 +111,18 @@ export function latestCompactions(db: DatabaseSync, placementIds: readonly strin
 /**
  * Keep on `run` that its agent compacted its conversation at `at`, with the fill before and after it said, its model's
  * window now, and what set it off, so History can say it after the Run ends. An asked compaction goes before the Run's
- * instruction, so it is the Run's first; any later one is the agent's own. The latest RUN_COMPACTION_LIMIT are kept.
+ * instruction, and an automatic event cannot stand in for it. Keep the requested compaction within RUN_COMPACTION_LIMIT
+ * even after later observations fill that limit, so it remains identifiable.
  */
 export function recordCompaction(tx: RunTransaction, db: DatabaseSync, root: string, run: RuntimeRunRecord,
-  fill: Pick<RunCompaction, 'beforeTokens' | 'afterTokens'>, at: string): void {
-  const asked = !run.compactions?.length && !!db.prepare("SELECT 1 FROM compactions WHERE run_no=? AND state IN ('sent','compacted')")
+  fill: CompactionObservation, at: string): void {
+  const { automatic, ...reported } = fill;
+  const asked = automatic !== true && !run.compactions?.some(item => item.trigger === 'asked') && !!db.prepare("SELECT 1 FROM compactions WHERE run_no=? AND state IN ('sent','compacted')")
     .get(runNumber(run.id));
-  const compaction: RunCompaction = { at, ...fill, windowTokens: contextLimitsFor(root, run).windowTokens, trigger: asked ? 'asked' : 'agent' };
-  tx.update({ ...run, compactions: [...run.compactions ?? [], compaction].slice(-RUN_COMPACTION_LIMIT) });
+  const compaction: RunCompaction = { at, ...reported, windowTokens: contextLimitsFor(root, run).windowTokens, trigger: asked ? 'asked' : 'agent' };
+  const history = [...run.compactions ?? [], compaction];
+  const recent = history.slice(-RUN_COMPACTION_LIMIT);
+  const requested = history.find(item => item.trigger === 'asked');
+  if (requested && !recent.includes(requested)) recent.splice(0, 1, requested);
+  tx.update({ ...run, compactions: recent });
 }

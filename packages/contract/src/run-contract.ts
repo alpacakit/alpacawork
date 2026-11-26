@@ -1,5 +1,5 @@
 /** Browser-safe persisted run records and their state vocabulary. */
-import { agentContextSchema, contextViewSchema } from './agent-context.js';
+import { agentContextSchema, contextViewSchema, compactionMetrics } from './agent-context.js';
 import { z } from 'zod';
 import { conversationContextSchema } from '@alpacawork/raw/conversation-context';
 import { runIdSchema, taskIdSchema, type RunId } from './fields.js';
@@ -23,7 +23,7 @@ export type RunResultState = z.infer<typeof runResultStateSchema>;
 export const runActivityKindSchema = z.enum(['output', 'tool_start', 'tool_end', 'message', 'result', 'error']);
 export { workCommandSchema, runWorkSchema, type WorkCommand } from './work-contract.js';
 export { workNameSchema, workLabelSchema, type WorkName, type WorkLabel } from './work-contract.js';
-export { runStepSchema, runStepsSchema, runStepKindSchema, RUN_STEP_LIMIT, RUN_STEP_TEXT_LIMIT, RUN_TOOL_ID_LIMIT,
+export { rawDigestSchema, stepHeadSchema, type StepHead, runStepSchema, runStepsSchema, runStepKindSchema, RUN_STEP_LIMIT, RUN_STEP_TEXT_LIMIT, RUN_TOOL_ID_LIMIT,
   RUN_TOOL_NAME_LIMIT, RUN_NOTE_LIMIT, type RunStep, type RunStepKind, type RunStepLine } from './work-contract.js';
 export { runStepsPageSchema, runStepEntrySchema, runStepDetailSchema, runStepTextSchema, RUN_STEPS_PAGE_LIMIT,
   RUN_STEP_FULL_TEXT_LIMIT, type RunStepsPage, type RunStepEntry, type RunStepDetail, type RunStepText } from './work-contract.js';
@@ -199,6 +199,7 @@ export const runCompactionSchema = z.object({
   windowTokens: z.number().int().positive().safe().nullable(),
   /** Who set it off: the agent itself as its conversation grew (`agent`), or a request to compact before an instruction (`asked`). */
   trigger: z.enum(['agent', 'asked']).optional(),
+  ...compactionMetrics,
 }).strict();
 export type RunCompaction = z.infer<typeof runCompactionSchema>;
 /**

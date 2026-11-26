@@ -335,7 +335,8 @@ test('a seat\'s own continuation is called by its last owner Run: it adds no dep
   for (let round = 1; round <= 3; round++) {
     const work = await h.service.request({ taskId: h.task.id, targetPlacementId: worker.id, body: 'Investigate',
       requestId: `W${round}`, expectedTaskHash: await hashOf(h.root, h.task.id),
-      expectedPlacementRevision: worker.revision }, fromRun(h.placement.id, owner));
+      expectedPlacementRevision: worker.revision }, { ...fromRun(h.placement.id, owner),
+        ...(round > 1 && { reasons: { taken: 'addition' as const } }) });
     start(work.runId); end(work.runId); end(owner);
     const woke = await route(h);
     assert.equal(woke.acceptedRequestIds.length, 1, `round ${round}`);

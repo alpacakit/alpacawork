@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { setupIndexFixture as setup } from './helpers/index-fixture.ts';
 import {
   bodyHash, controlRunSchema, placementSchema, taskHistoryWindowSchema as taskHistorySchema,
-  taskTimelineLaneSchema, timelineNoteOf, type ControlTreeDTO,
+  taskTimelineLaneSchema, applyTimelinePatch, timelineNoteOf, type ControlTreeDTO,
 } from '@alpacawork/contract/control';
 import { canonicalValues, PARENT_VISIBLE_EVENTS, RESULT_HEAD_LENGTH, resultHead, type Ball, type TaskValues } from '@alpacawork/contract';
 import { readControlTree } from './helpers/control-tree.ts';
@@ -18,7 +18,7 @@ import { snapshotReads } from './helpers/snapshot-projection.ts';
 
 /** One row's strip over a range, as the time view reads it. */
 const stripOf = (feed: ReturnType<typeof snapshotReads>, lane: string, from: string, to: string) =>
-  taskTimelineLaneSchema.parse(feed.timeline({ lanes: lane, from, to }).lanes[0]);
+  taskTimelineLaneSchema.parse(applyTimelinePatch(null, feed.timeline({ lanes: lane, from, to }).lanes[0]!));
 
 type Task = ControlTreeDTO['tasks'][number];
 type Log = Task['log'][number];

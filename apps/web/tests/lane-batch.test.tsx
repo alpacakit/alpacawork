@@ -2,7 +2,7 @@ import { createElement, type ReactNode } from 'react';
 import { cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
 import { QueryClientProvider } from '@tanstack/react-query';
-import type { TaskTimelineLaneDTO, TaskTimelineLanesDTO } from '@alpacawork/contract/control';
+import type { TaskTimelineLanePatchDTO, TaskTimelineLanesDTO } from '@alpacawork/contract/control';
 import { LANE_READ_GAP, laneBatches } from '../src/data/lane-batch';
 import { ApiError, DeadlinePassed } from '../src/data/client';
 import { useConnection } from '../src/data/connection';
@@ -13,7 +13,7 @@ import { fixtureReceipt } from './read-fixtures';
 import { dto, indexOf, timelineLaneAnswer, tree } from './fixtures';
 
 const value = tree({ tasks: [dto({ id: 'T1' }), dto({ id: 'T2', path: 'tasks/T2' }), dto({ id: 'T3', path: 'tasks/T3' })] });
-const strip = (lane: string) => timelineLaneAnswer(value, lane) as unknown as TaskTimelineLaneDTO;
+const strip = (lane: string) => ({ ...timelineLaneAnswer(value, lane), base: null, drop: [] }) as unknown as TaskTimelineLanePatchDTO;
 const asked = (path: string) => new URL(path, 'http://fixture').searchParams.get('lanes')!.split(',');
 afterEach(() => { cleanup(); queryClient.clear(); vi.useRealTimers(); vi.restoreAllMocks(); useConnection.setState({ offline: false }); });
 
@@ -65,7 +65,7 @@ test('a read the server stayed silent on is asked again as the same one read', a
 
 test('offline, the rows in view are drawn from the last range this list read, not the moved clock\'s', () => {
   fixtureReceipt(['index'], indexOf(value));
-  fixtureReceipt(resources.timelineLane('/fixture', 'T1', 'earlier', 'then').queryKey, strip('T1'));
+  fixtureReceipt(resources.timelineLane('/fixture', 'T1', 'earlier', 'then').queryKey, timelineLaneAnswer(value, 'T1'));
   useConnection.setState({ offline: true });
   const wrapper = ({ children }: { children: ReactNode }) => createElement(QueryClientProvider, { client: queryClient }, children);
   const view = renderHook(() => useLaneReads('/fixture', ['T1'], { from: 'later', to: 'now' }, true, true), { wrapper });
@@ -116,4 +116,15 @@ test('rows waiting out their gaps go as one read, and a strip stamped ahead of t
   await vi.advanceTimersByTimeAsync(LANE_READ_GAP + 250);
   await Promise.all(reads);
   expect(request.mock.calls.map(([path]) => asked(path).sort())).toEqual([['T1', 'T2', 'T3']]);
+});
+
+test('a row read for a new range names the strip it holds, and what changed is laid on that strip', async () => {
+  fixtureReceipt(['index'], indexOf(value));
+  const held = timelineLaneAnswer(value, 'T1');
+  fixtureReceipt(resources.timelineLane('/fixture', 'T1', 'earlier', 'then').queryKey, held);
+  const note = { kind: 'note' as const, taskId: 'T1', event: { id: 'N1', kind: 'report' as const, taskId: 'T1', at: '2026-11-01T00:00:00.000Z', state: null, mark: null } };
+  const request = vi.spyOn(api, 'request').mockResolvedValue({ lanes: [{ ...held, events: [note], token: 'T1.1', base: held.token, drop: [] }], gone: [] });
+  const lane = await queryClient.fetchQuery(resources.timelineLane('/fixture', 'T1', 'later', 'now'));
+  expect(new URL(String(request.mock.calls[0]![0]), 'http://fixture').searchParams.get('bases')).toBe(`T1:${held.token}`);
+  expect([lane.token, lane.events]).toEqual(['T1.1', [...held.events, note]]);
 });

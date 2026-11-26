@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useViewStore } from "@/state/view-store";
 import { cn } from "@/lib/utils";
 import { spanLabel } from "./format";
-import { analysisFindingRules } from "@alpacawork/contract/analysis";
+import { analysisFindingRules, isAnalysisCause } from "@alpacawork/contract/analysis";
 import type { TasksView } from "./contract";
 
 type Work = TasksView["activeWork"][number];
@@ -46,5 +46,5 @@ function subjectWords(subject: Work["analysisSubject"], t: (key: string, options
   if (subject.kind === "task") return t("work.aboutTask", { task: subject.task });
   if (subject.kind === "period") return t("work.aboutDays", { days: spanLabel(subject.from, subject.to) });
   const rule = (analysisFindingRules as readonly string[]).includes(subject.key);
-  return t("work.aboutCause", { cause: t(rule ? `rule.${subject.key}` : `fix.${subject.key}`) });
+  return t("work.aboutCause", { cause: t(rule ? `rule.${subject.key}` : isAnalysisCause(subject.key) ? `cause.${subject.key}` : `aspect.${subject.key}`) });
 }

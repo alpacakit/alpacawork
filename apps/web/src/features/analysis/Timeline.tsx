@@ -111,7 +111,7 @@ function FindingSteps({ finding, findings, onAt }: { finding: Finding; findings:
   return <div data-finding-steps="" className="mt-5 flex scroll-mt-4 flex-wrap items-center gap-x-3 gap-y-2">
     <p className={cn("me-auto min-w-0 font-semibold", !onAt && "text-muted")}>
       <span className="me-2 text-xs font-normal text-soft">{at + 1}/{findings.length}</span>{t(`rule.${finding.rule}`)}
-      <span className="ms-2 font-normal text-muted">{finding.count !== null && `${format("times", finding.count)} `}{duration(finding.durationMs)}</span>
+      <span className="ms-2 font-normal text-muted">{finding.count !== null && (finding.rule === "large-output" ? t("rule.outputChars", { count: finding.count }) : format("times", finding.count))}{finding.durationMs > 0 && ` ${duration(finding.durationMs)}`}</span>
       {finding.line && <span dir="auto" className="block text-xs font-normal text-muted line-clamp-2">「{finding.line}」</span>}</p>
     <span className="flex gap-2">
       <Button variant="outline" disabled={at <= 0} onClick={() => go(findings[at - 1])}><Icon name="up" className="size-3.5" />{t("timeline.previousFinding")}</Button>
@@ -222,7 +222,7 @@ function Lanes({ trace, lanes, window, findings, at, zone, onDrag, onLetGo }: {
   const lit = at !== null && at >= window.from && at <= window.to;
   const ticks = axisTicks(window);
   const names = lanes.map(lane => <span key={lane.id} style={{ paddingInlineStart: `${depth(lane) * 0.5}rem` }}
-    className="flex h-9 items-center text-[0.6875rem] leading-tight text-muted" title={lane.label}><span className="line-clamp-2">{lane.label}</span></span>);
+    className="flex h-9 items-center text-xs text-muted" title={lane.label}><span className="line-clamp-2">{lane.label}</span></span>);
   return <div className="mt-3 flex gap-x-2 text-xs">
     {/* The lanes' names, beside their tracks, under the axis's height. */}
     <div className="w-36 flex-none pt-9 narrow:w-20">{names}</div>
@@ -240,7 +240,7 @@ function Lanes({ trace, lanes, window, findings, at, zone, onDrag, onLetGo }: {
         {findings.map((finding, n) => { const ms = Date.parse(finding.at); return ms >= window.from && ms <= window.to &&
           <button key={finding.id} type="button" style={{ left: `${left(ms)}%` }} onPointerDown={event => event.stopPropagation()}
             onClick={() => useViewStore.getState().setScene(sceneOf(finding))}
-            className="absolute top-0 grid size-5.5 -translate-x-1/2 place-items-center rounded-full bg-turn text-[0.6875rem] font-semibold text-bg"
+            className="absolute top-0 grid size-5.5 -translate-x-1/2 place-items-center rounded-full bg-turn text-xs font-semibold text-bg"
             {...tip(`${n + 1} ${t(`rule.${finding.rule}`)} ${duration(finding.durationMs)}`)}>{n + 1}</button>; })}
       </div>
       {lanes.map(lane => {
@@ -269,7 +269,7 @@ function spanWords(span: TraceSpan, t: Say, zone: string) {
   return `${what}${length}${t("sep")}${range}`;
 }
 function markWords(mark: TraceMark, t: Say, zone: string) {
-  const line = mark.kind === "instruction" ? mark.firstLine : mark.kind === "report" ? mark.title : null;
+  const line = mark.kind === "instruction" ? mark.firstLine : mark.kind === "report" ? mark.title : mark.kind === "test" ? mark.line : mark.kind === "produced" ? mark.ref : null;
   return `${t(`mark.${mark.kind}`)} ${instant(mark.at, zone)}${line ? `\n${line}` : ""}`;
 }
 
@@ -300,7 +300,7 @@ function Situation({ task, at, zone }: { task: string; at: string; zone: string 
         <p className="text-xs text-soft">{question.askedTo === "user" ? t("timeline.toUser") : question.askedTo}{t("sep")}{t("timeline.openSince", { at: instant(question.since, zone) })}</p>
       </li>)}</ul> : <p className="text-soft">{t("timeline.noQuestions")}</p>}
       <h5 className="mt-4 mb-1 text-xs text-soft">{t("timeline.history")}</h5>
-      <ul className="space-y-1">{view.history.filter(line => line.kind !== "request_labeled").map(line => <li key={line.log} className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-2 text-xs">
+      <ul className="space-y-1">{view.history.map(line => <li key={line.log} className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-2 text-xs">
         <span className="text-soft tabular-nums">{instant(line.at, zone)}</span><span dir="auto" className="line-clamp-2">
           <span className="me-1.5 text-soft">{historyWords(line.kind, t)}</span>{line.title}</span></li>)}</ul>
     </div>

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { createHash } from 'node:crypto';
 import { agentInvocationSchema } from './agent-launch.js';
 import { runAvailabilitySchema } from './run-failure.js';
+import { compactionObservationSchema } from './agent-context.js';
 import { CLI_CONTRACT } from './client-contract.js';
 
 export const PROTOCOL = 1;
@@ -79,8 +80,7 @@ const payloads = {
     failed: z.array(z.object({ pid: z.number().int().positive(), code: z.enum(['EPERM', 'ESRCH']) }).strict()) }).strict(),
   exited: z.object({ code: z.number().int().nullable(), signal: z.string().nullable() }).strict(),
   /** The agent compacted its conversation: how full it was before and after, when it said. */
-  compacted: z.object({ beforeTokens: z.number().int().nonnegative().safe().nullable(),
-    afterTokens: z.number().int().nonnegative().safe().nullable() }).strict(),
+  compacted: compactionObservationSchema.extend({ observedAt: z.iso.datetime({ offset: true }).optional() }),
   completed: observationSchema,
 };
 export const eventSchema = z.discriminatedUnion('type', Object.entries(payloads).map(([type, payload]) =>

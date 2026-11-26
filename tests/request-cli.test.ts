@@ -164,3 +164,19 @@ test('formal CLI retries a lost committed HTTP reply with identical bytes and on
   assert.equal(saved.purpose,'instruction');assert.equal(saved.about_run_id,null);assert.equal(saved.body,'Original UTF-8 instruction\n日本語');
  }finally{db.close();}
 });
+
+test('result choices require exactly one cause for rework and keep the notes with their own reasons', () => {
+  const base = { task: 'T1', instruction: 'Revise the result', expectedTaskHash: '0'.repeat(64), expectedPlacementRevision: 1 };
+  for (const [options, valid] of [
+    [{ taken: 'fix' }, false],
+    [{ taken: 'redo', cause: 'shortfall', aspects: ['behavior', 'scope'] }, true],
+    [{ taken: 'dropped', cause: 'other' }, false],
+    [{ taken: 'dropped', cause: 'other', causeNote: 'The work is no longer needed', placedAs: 'exception', placedNote: 'Use the model already in context' }, true],
+    [{ taken: 'fix', cause: ['misread', 'shortfall'] }, false],
+    [{ taken: 'adopted', cause: 'shortfall' }, false],
+    [{ taken: 'adopted', aspects: ['scope'] }, false],
+    [{ taken: 'addition', causeNote: 'An unrelated note' }, false],
+    [{ taken: 'new_request', placedAs: 'exception' }, false],
+    [{ taken: 'new_request', placedAs: 'policy', placedNote: 'An unrelated note' }, false],
+  ] as const) assert.equal(taskRequestInput.safeParse({ ...base, ...options }).success, valid, JSON.stringify(options));
+});

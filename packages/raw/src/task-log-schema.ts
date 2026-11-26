@@ -1,5 +1,6 @@
 /** Public Task events. Request events are assembled at the repository boundary, never stored as logs. */
 import { z } from 'zod';
+import { actionReasonSchema } from './reasons.js';
 import { conversationCheckpointSchema } from './conversation-context.js';
 import { LOG_KIND, TASK_STATE, TASK_BASE_STATES } from './task-enums.js';
 import { TASK_SEGMENT, MAX_TASK_ID_LENGTH } from './task-id.js';
@@ -17,31 +18,9 @@ export const TASK_LOG_KINDS = [
   'responsible_changed', 'placement_changed', 'review_approved', 'review_sent_back',
   'request_accepted', 'body_updated', 'run_stop_requested',
   'asked', 'answered', 'question_withdrawn', 'question_expired', 'user_request_changed', 'dependencies_changed',
-  'request_labeled',
 ] as const;
-/**
- * What an instruction is, said by whoever passes it on: a fix of what was made (`fix`, with what kind of fix), more work
- * in the same task (`addition`), or work of its own (`new_request`). An answer to a question is an answer record, not
- * one of these. The kinds of fix are fixed so they can be counted (FIX_KIND_MEANINGS).
- */
-export const INSTRUCTION_KINDS = ['fix', 'addition', 'new_request'] as const;
-/** What each kind of fix means: the one definition the command help and the skill procedure both say. */
-export const FIX_KIND_MEANINGS = {
-  look_feel: 'how it looks or feels to use',
-  behavior: 'it does something wrong',
-  review_flow: 'how the result was shown or asked about (a sample first, the order of what was shown)',
-  scope: 'work the original request did not ask for',
-  speed: 'it is slow',
-  wording: 'the words in it',
-  intent: 'the request was understood otherwise than meant',
-  other: 'none of these',
-} as const;
-export const FIX_KINDS = Object.keys(FIX_KIND_MEANINGS) as (keyof typeof FIX_KIND_MEANINGS)[];
-export const instructionLabelSchema = z.object({ request: nonempty(128), kind: z.enum(INSTRUCTION_KINDS),
-  fixes: z.array(z.enum(FIX_KINDS as [keyof typeof FIX_KIND_MEANINGS, ...(keyof typeof FIX_KIND_MEANINGS)[]])).max(FIX_KINDS.length) }).strict()
-  .refine(label => (label.kind === 'fix') === (label.fixes.length > 0), 'A fix names its kinds of fix, and only a fix does')
-  .refine(label => new Set(label.fixes).size === label.fixes.length, 'Each kind of fix once');
-export type InstructionLabel = z.infer<typeof instructionLabelSchema>;
+export const isRequestLog = (kind: TaskLog['kind']) => kind === 'request_accepted' || kind === 'review_sent_back';
+export const TASK_VALUE_WRITE_KINDS: readonly TaskLog['kind'][] = ['body_updated', 'reported', 'asked'];
 /** The IDs fixed by one execution-order change, independent of a reader's language. */
 export const dependencyChangeSchema = z.object({
   after: z.array(taskId), previous: z.array(taskId),
@@ -121,9 +100,9 @@ export const taskLogSchema = z.object({
   /** The question as it was asked: the asking Task's `decide` value, fixed here when it asked. */
   decide: z.array(z.record(z.string(), z.unknown())).min(1).optional(),
   /**
-   * What an instruction of this Task is (request_labeled), said by whoever sent it.
+   * What the actor decided when writing this entry.
    */
-  label: instructionLabelSchema.optional(),
+  reason: actionReasonSchema.optional(),
   /** An answer's items as read from its words when it came (contract readAnswerParts). */
   answerParts: answerPartsSchema.optional(),
   /** The 'asked' log an answer or a withdrawal closes. */
@@ -142,7 +121,16 @@ export const taskLogSchema = z.object({
   if (entry.kind === 'dependencies_changed' && (entry.fromState !== null || entry.toState !== null))
     issue('toState', 'A dependency change keeps the state');
   if (entry.changedFields && entry.kind !== 'body_updated') issue('changedFields', 'Only body_updated records changed fields');
-  if ((entry.kind === 'request_labeled') !== (entry.label !== undefined)) issue('label', 'Only an instruction label carries one, and it must');
+  const reason = entry.reason;
+  if (reason?.taken && !(isRequestLog(entry.kind) ||
+    (entry.kind === 'reported' && entry.stage?.action === 'stop' && reason.taken.code === 'dropped') ||
+    (entry.placementEffect === 'released')))
+    issue('reason', 'Taken belongs to a request, a release or a stop');
+  if (reason?.placed && !(isRequestLog(entry.kind) ||
+    (['placement_changed', 'responsible_changed'].includes(entry.kind) && entry.placementEffect !== 'released')))
+    issue('reason', 'A placement reason belongs to a placement or request');
+  if (reason?.trigger && !TASK_VALUE_WRITE_KINDS.includes(entry.kind))
+    issue('reason', 'A direction reason belongs to a values write');
   if (entry.answerParts && entry.kind !== 'answered') issue('answerParts', 'Only an answer carries its parts');
   if (entry.answers !== undefined && entry.kind !== 'request_accepted') issue('answers', 'Only an instruction answers a closed question');
   if (entry.checkpoint && (!['reported', 'asked'].includes(entry.kind) || !entry.runId || entry.actor.kind !== 'placement'))
@@ -195,5 +183,5 @@ export type TaskLog = z.infer<typeof taskLogSchema>;
 
 /** Ordinary stored records cannot carry a Request's header or its derived estimate classification. */
 export const storedTaskLogSchema = taskLogSchema.refine(entry =>
-  entry.kind !== 'request_accepted' && entry.kind !== 'review_sent_back' && entry.startsEstimateRound === undefined,
+  !isRequestLog(entry.kind) && entry.startsEstimateRound === undefined,
   'A Request is stored by reference, never as a log header');

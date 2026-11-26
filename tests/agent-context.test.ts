@@ -142,7 +142,7 @@ test('a compaction whose agent does not say the fill after it is kept with the n
 test('each agent that says how full its conversation was before a compaction is taken at its word', () => {
   // Claude and Copilot say both figures; pi says the one before, and the next fill read gives the one after.
   assert.deepEqual(adapters.claude.context({ type: 'system', subtype: 'compact_boundary', compact_metadata: { trigger: 'auto', pre_tokens: 610_000, post_tokens: 140_000 } }),
-    { usedTokens: 140_000, compacted: true, compactedFrom: 610_000 });
+    { usedTokens: 140_000, compacted: true, compactedFrom: 610_000, compactionDetails: { automatic: true } });
   assert.deepEqual(copilotContext('session.compaction_complete', { success: true, preCompactionTokens: 500_000, postCompactionTokens: 90_000 }),
     { usedTokens: 90_000, compacted: true, compactedFrom: 500_000 });
   assert.deepEqual(piContext({ type: 'compaction_end', result: { summary: 'Kept', tokensBefore: 120_000 }, aborted: false }),
@@ -158,5 +158,5 @@ test('the fill an agent says it had before a compaction stands over the last fil
     { type: 'system', subtype: 'compact_boundary', compact_metadata: { trigger: 'auto', pre_tokens: 610_000, post_tokens: 140_000 } }];
   for (const row of rows) appendFileSync(join(folder, 'stdout.log'), JSON.stringify(row) + '\n');
   activity.poll(folder);
-  assert.deepEqual(told, [{ beforeTokens: 610_000, afterTokens: 140_000 }]);
+  assert.deepEqual(told, [{ beforeTokens: 610_000, afterTokens: 140_000, automatic: true }]);
 });

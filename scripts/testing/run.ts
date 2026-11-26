@@ -133,16 +133,17 @@ export class ProcessTracker {
 }
 
 type Mode = 'all' | 'quick' | 'smoke' | 'build' | 'typecheck';
-type Options = { mode: Mode; node: string[]; e2e: string[]; area: string[]; kind: 'production' | 'diagnostic' };
+type Options = { mode: Mode; node: string[]; e2e: string[]; area: string[]; web: boolean; kind: 'production' | 'diagnostic' };
 function parseArgs(argv: string[]): Options {
-  const options: Options = { mode: 'all', node: [], e2e: [], area: [], kind: 'production' };
+  const options: Options = { mode: 'all', node: [], e2e: [], area: [], web: false, kind: 'production' };
   let positional = false;
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!;
     if (['-h', '--help'].includes(arg)) {
-      console.log('Usage: node scripts/testing/run.ts [all|quick|smoke|build|typecheck] [--node tests/NAME.test.ts] [--e2e e2e/NAME.check.ts] [--area AREA] [--kind production|diagnostic]\nFresh build, then staged checks. quick success is not all success.\nquick: type/pure Node/smoke; smoke: browser smoke only. --node, --e2e and --area are quick-only and repeatable. --kind is build-only.\nAll modes except typecheck build fresh. Logs and browser evidence: .local/test-runs/<unique run>/. Do not overlap builds/checks in this checkout.');
+      console.log('Usage: node scripts/testing/run.ts [all|quick|smoke|build|typecheck] [--node tests/NAME.test.ts] [--e2e e2e/NAME.check.ts] [--area AREA] [--web] [--kind production|diagnostic]\nFresh build, then staged checks. quick success is not all success.\nquick: type/pure Node/smoke; smoke: browser smoke only. --node, --e2e and --area are quick-only and repeatable. --web adds all web unit tests to quick. --kind is build-only.\nAll modes except typecheck build fresh. Logs and browser evidence: .local/test-runs/<unique run>/. Do not overlap builds/checks in this checkout.');
       process.exit(0);
     }
+    if (arg === '--web') { options.web = true; continue; }
     if (arg.startsWith('--')) {
       const [key, inline] = arg.slice(2).split(/=(.*)/s);
       if (!['node', 'e2e', 'area', 'kind'].includes(key!)) throw new Error(`unrecognized argument: ${arg}`);
@@ -158,7 +159,7 @@ function parseArgs(argv: string[]): Options {
     }
   }
   if (options.kind !== 'production' && options.mode !== 'build') throw new Error('--kind is build-only');
-  if (options.mode !== 'quick' && (options.node.length || options.e2e.length || options.area.length)) throw new Error('--node, --e2e and --area are quick-only');
+  if (options.mode !== 'quick' && (options.node.length || options.e2e.length || options.area.length || options.web)) throw new Error('--node, --e2e, --area and --web are quick-only');
   for (const [paths, folder, suffix] of [[options.node, 'tests', '.test.ts'], [options.e2e, 'e2e', '.check.ts']] as const) for (const value of paths) {
     if (value.split('/').includes('..') || dirname(normalize(value)) !== folder || !basename(value).endsWith(suffix) || !existsSync(value) || !statSync(value).isFile()) throw new Error(`expected an existing exact ${folder}/*${suffix} file: ${value}`);
   }
@@ -300,6 +301,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
                 ['i18n', [...queue, 'typecheck', '--', 'pnpm', 'i18n:check']], ['acceptance', ['pnpm', 'test:acceptance:run']],
                 ['e2e-fixtures', ['pnpm', 'test:e2e:fixtures']], ['e2e-offline', ['pnpm', 'test:e2e:offline']]);
               } else {
+                if (args.web) stages.push(['web', ['pnpm', 'test:web']]);
                 const pure = ['tests/platform-inputs.test.ts', 'tests/home-rows.test.ts', 'tests/working.test.ts', 'tests/task-policy.test.ts', 'tests/return-rules.test.ts', 'tests/problem-rules.test.ts', 'tests/embla-arrival.test.ts', 'tests/release-notes.test.ts'];
                 stages.push(['node', [...queue, 'node', '--', 'node', '--test', '--test-concurrency=8', ...unique([...pure, ...args.node])]]);
               }
@@ -328,7 +330,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   }
   if (artifacts && completed && cleanupSucceeded && !interrupted && status === (failed.length ? 1 : 0)) {
     writeFileSync(join(artifacts, 'result.json'), JSON.stringify({ sha: tested!.sha, tree: tested!.tree,
-      clean: tested!.clean && JSON.stringify(checkoutState()) === JSON.stringify(tested), mode, node: args.node, e2e: args.e2e, area: args.area,
+      clean: tested!.clean && JSON.stringify(checkoutState()) === JSON.stringify(tested), mode, node: args.node, e2e: args.e2e, area: args.area, web: args.web,
       passed: !failed.length, failed, seconds: Math.round((Date.now() - testedStarted) / 1000), finished: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z') }, null, 1) + '\n');
   }
   return status;

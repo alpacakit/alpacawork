@@ -158,11 +158,11 @@ export function timelineLaneAnswer(value: AxisFixture, lane: string) {
     const span = runSpan(run, null);
     if (span && span.to !== null && lanesAbove(value, [lane], run.taskId).length) belowRuns.push([run.id, span.from, span.to]);
   }
-  return { lane, row, anchor: null, events, belowRuns, placements: [], ...served0 };
+  return { lane, row, anchor: null, events, belowRuns, placements: [], token: `${lane}.0`, ...served0 };
 }
-/** The server's answer to GET /api/task/timeline for these rows. */
+/** The server's answer to GET /api/task/timeline for these rows, each whole. */
 export const timelineAnswer = (value: AxisFixture, lanes: string[]) => ({
-  lanes: lanes.filter(lane => value.tasks.some(task => task.id === lane)).map(lane => timelineLaneAnswer(value, lane)),
+  lanes: lanes.filter(lane => value.tasks.some(task => task.id === lane)).map(lane => ({ ...timelineLaneAnswer(value, lane), base: null, drop: [] })),
   gone: lanes.filter(lane => !value.tasks.some(task => task.id === lane)) });
 export function timelineAxisAnswer(value: AxisFixture, listed: string[]) {
   const ids = value.tasks.map(task => task.id).filter(id => listed.includes(id));

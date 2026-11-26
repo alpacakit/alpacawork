@@ -16,7 +16,7 @@ afterEach(() => { cleanup.splice(0).reverse().forEach(stop => stop()); vi.unstub
 const listed = indexOf(tree()), index = { ...listed, person: { ...listed.person, settings: 'stored-settings', notices: 'stored-notices' } };
 const finished = { passed: 3, reworked: 1, stopped: 0, doneUnaccepted: 0, accepted: 4, finished: 4, share: null };
 const accepted = { leadMedianMs: 60_000, submits: 5, questions: 1, prs: 2, time: { review: 1, answer: 2, ai: 3, other: 4 },
-  waits: { away: 0, otherTasks: 0, thisTask: 0 }, answerItems: { total: 0, choice: 0, recommended: 0, recommendable: 0, other: 0, stop: 0, unmatched: 0 }, answersWithoutParts: 0, instructions: { total: 0, unlabeled: 0, kinds: [], fixes: [] }, questionsReplaced: 0, noQuestions: 0, passedNoQuestions: 0, submitsEstimated: 0,
+  waits: { away: 0, otherTasks: 0, thisTask: 0 }, answerItems: { total: 0, choice: 0, recommended: 0, recommendable: 0, other: 0, stop: 0, unmatched: 0 }, decisions: { total: 0, unclassifiedInstructions: 0, taken: [], causes: [], aspects: [], by: { user: { taken: [], causes: [], aspects: [] }, ai: { taken: [], causes: [], aspects: [] } } }, questionsReplaced: 0, noQuestions: 0, passedNoQuestions: 0,
   rounds: { first: { ms: 0, tokens: 0 }, later: { ms: 0, tokens: 0 } } };
 const view: AnalysisTasksView = {
   head: { timeZone: 'UTC', today: '2026-11-25', firstDay: '2026-11-25', project: null, period: { from: '2026-11-25', to: '2026-11-25' }, previous: null },
@@ -33,7 +33,7 @@ const row = { id: 'T2', title: 'Fictional task', project: 'P1', outcome: 'passed
 const listed_ = { head, total: 1, rows: [row], cursor: null };
 const unit = { head, unit: { ...row, requestedAt: '2026-11-25T00:00:00.000Z', asked: 'T2' }, band: [], marks: [], time: accepted.time,
   submits: 1, questions: 0, sendBacks: 0, instructionsAtReview: 0, instructionsAfterAccept: 0, instructionsDuringWork: 0, answers: 0,
-  waits: accepted.waits, answerItems: accepted.answerItems, answersWithoutParts: 0, instructions: accepted.instructions, questionsReplaced: 0, submitsEstimated: false,
+  waits: accepted.waits, answerItems: accepted.answerItems, decisions: accepted.decisions, questionsReplaced: 0,
   workers: 0, children: 0, usage: counts, rounds: [], models: [], prs: [], skills: [], tools: [], tallied: { runs: 0, of: 0, since: '2026-11-25' } };
 const listOptions = () => resources.analysisList(index.root, { project: null, period: 'today', set: 'finished', limit: '100' });
 const options = () => resources.analysisView(index.root, 'tasks', { project: null, period: 'today', bucket: 'day', by: null }, analysisTasksViewSchema);

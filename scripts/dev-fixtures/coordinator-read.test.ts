@@ -67,9 +67,8 @@ for (const width of [1440, 390]) test(`older coordinator turns load by page and 
         await expect(rows).toHaveCount(1);
         assert.deepEqual(pages, []);
         await panel.locator('[data-earlier] button').click();
-        await expect(rows).toHaveCount(20);
         for (const total of [70, 120, 133]) {
-          await older.click();
+          if (total > 70) await older.click();
           await expect(rows).toHaveCount(total);
           const drawn = await rows.evaluateAll(elements => elements.map(element => element.getAttribute('data-coordinator-message')));
           assert.deepEqual(drawn, ids.slice(-total));

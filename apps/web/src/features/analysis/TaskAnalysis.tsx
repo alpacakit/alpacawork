@@ -75,7 +75,7 @@ function Axes({ values, task }: { values: UnitValues; task: string }) {
   </section>;
 }
 const Axis = ({ name, value, note }: { name: string; value: string; note?: string | null }) =>
-  <div className="min-w-0"><dt className="text-xs text-muted">{name}</dt><dd className="text-[1.375rem] leading-tight font-semibold tabular-nums">{value}</dd>
+  <div className="min-w-0"><dt className="text-xs text-muted">{name}</dt><dd className="text-xl font-semibold tabular-nums">{value}</dd>
     {note && <dd className="text-xs text-muted">{note}</dd>}</div>;
 
 /** Each review round's time and tokens as two rows of small bars, so the round that cost the most stands out. */
@@ -88,7 +88,7 @@ function Rounds({ values }: { values: UnitValues }) {
     <div className="flex h-16 items-end gap-1">{rounds.map((round, at) =>
       <div key={at} className="flex h-full min-w-0 flex-1 flex-col justify-end" data-tip-tap=""
         {...tip(`${t("task.round", { n: at + 1 })}${t("sep")}${write(round[key])}${t("sep")}${t("range", { from: instant(round.from, values.head.timeZone), to: instant(round.to, values.head.timeZone) })}`)}>
-        <span className="mb-0.5 truncate text-center text-[0.6875rem] text-soft tabular-nums">{write(round[key])}</span>
+        <span className="mb-0.5 truncate text-center text-xs text-soft tabular-nums">{write(round[key])}</span>
         <i style={{ height: `${Math.max(2, round[key] / most[key] * 100)}%` }} className={cn("block max-h-[calc(100%-1rem)] rounded-t-xs", color)} />
       </div>)}</div>;
   return <section className="mt-8">
@@ -97,7 +97,7 @@ function Rounds({ values }: { values: UnitValues }) {
     {bars("ms", "bg-turn", duration)}
     <p className="mt-3 mb-1 text-xs text-muted">{t("task.tokens")}</p>
     {bars("tokens", "bg-working", value => format("tokens", value))}
-    <div className="mt-1 flex gap-1">{rounds.map((_, at) => <span key={at} className="flex-1 text-center text-[0.6875rem] text-soft">{at + 1}</span>)}</div>
+    <div className="mt-1 flex gap-1">{rounds.map((_, at) => <span key={at} className="flex-1 text-center text-xs text-soft">{at + 1}</span>)}</div>
     <p className="mt-2 text-xs text-soft">{t("task.roundsNote")}</p>
   </section>;
 }
@@ -143,15 +143,18 @@ function evidenceWords(finding: Finding, t: (key: string, options?: Record<strin
 function Fixes({ marks, zone }: { marks: TraceMark[]; zone: string }) {
   const { t } = useTranslation("analysis");
   // The user's own (theirs, or the coordinator's for them), not an owner's to its members.
-  const fixes = marks.filter((mark): mark is Extract<TraceMark, { kind: "instruction" }> => mark.kind === "instruction" && mark.by === "user" && mark.label?.kind === "fix");
+  const fixes = marks.filter((mark): mark is Extract<TraceMark, { kind: "instruction" }> => mark.kind === "instruction" && mark.by === "user" && (mark.taken?.code === "fix" || mark.taken?.code === "redo"));
   if (!fixes.length) return null;
-  const kinds = new Map<string, typeof fixes>();
-  for (const mark of fixes) for (const kind of mark.label!.fixes) kinds.set(kind, [...kinds.get(kind) ?? [], mark]);
+  const kinds = new Map<NonNullable<NonNullable<(typeof fixes)[number]["taken"]>["cause"]>, typeof fixes>();
+  for (const mark of fixes) {
+    const cause = mark.taken?.cause;
+    if (cause) kinds.set(cause, [...kinds.get(cause) ?? [], mark]);
+  }
   const order = [...kinds].sort((a, b) => b[1].length - a[1].length);
   return <div className="mt-6">
     <h4 className="mb-2 text-xs font-normal text-soft">{t("task.fixes", { count: fixes.length })}</h4>
     {order.map(([kind, items]) => <div key={kind} className="mb-3">
-      <p className="flex items-center font-semibold"><Square className="bg-reworked" />{t(`fix.${kind}`)}<span className="ms-1.5 font-normal text-muted">×{items.length}</span></p>
+      <p className="flex items-center font-semibold"><Square className="bg-reworked" />{t(`cause.${kind}`)}<span className="ms-1.5 font-normal text-muted">×{items.length}</span></p>
       <ul className="mt-1 divide-y divide-rule border-t border-rule ps-4">{items.map(mark =>
         <li key={mark.id} className="flex items-baseline gap-3 py-1.5 text-base">
           <span dir="auto" className="line-clamp-3 min-w-0 flex-1">{mark.firstLine ? `「${mark.firstLine}」` : t("task.noWords")}</span>

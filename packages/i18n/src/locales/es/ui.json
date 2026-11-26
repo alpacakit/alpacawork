@@ -227,7 +227,7 @@
       "title": "Conclusión"
     },
     "conditions": {
-      "hint": "Una por condición: `<condición> — cumplida|no cumplida|sin comprobar (dónde está la evidencia)`. Los detalles de la evidencia y el número de pruebas van en el archivo enlazado.",
+      "hint": "Una por condición: `<condición> — cumplida|no cumplida|sin comprobar (dónde está la evidencia)`. El texto anterior al último ` — ` define la condición. Los cambios después del separador solo actualizan el estado. Los detalles de la evidencia y el número de pruebas van en el archivo enlazado.",
       "title": "Condiciones de finalización"
     },
     "decide": {

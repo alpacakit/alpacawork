@@ -127,6 +127,8 @@
       "count_one": "{{count}} step so far",
       "count_other": "{{count}} steps so far",
       "detailsDropped": "Its contents were too large, so the details could not be recorded",
+      "moreLines_one": "+{{count}} line",
+      "moreLines_other": "+{{count}} lines",
       "none": "No steps were recorded",
       "older_one": "Show {{count}} earlier ({{rest}} left)",
       "older_other": "Show {{count}} earlier ({{rest}} left)",
@@ -134,7 +136,6 @@
       "omitted_other": "{{count}} more characters left out as too long",
       "omittedFiles_one": "and {{count}} more file",
       "omittedFiles_other": "and {{count}} more files",
-      "reading": "Reading…",
       "state": {
         "done": "Done",
         "failed": "Failed",

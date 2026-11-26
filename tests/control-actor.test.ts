@@ -393,7 +393,7 @@ test('the services write as the actor authorize decided: who may act is decided 
   const project = (await new ControlTaskCommands(f.root, asS).create({ kind: 'project', color: '#39659b', parentId: f.project,
     userRequested: null, tasks: [{ title: 'By a Run' }] })).tasks[0];
   assert.deepEqual([project.kind, currentTaskLog(f.root, project.id)[0]!.actor], ['project', asS]);
-  const placed = await new PlacementCommands(f.root).placeNewResponsible({ taskId: C.id, profileKey: 'fake',
+  const placed = await new PlacementCommands(f.root).placeNewResponsible({ placedAs: 'policy', taskId: C.id, profileKey: 'fake',
     expectedTaskHash: (await f.get(C.id)).hash, replacePlacementId: C.placementId, expectedPlacementRevision: 1 }, asS);
   assert.equal(placed.previousPlacement?.id, C.placementId);
   await new TaskReportService(f.root).report({ task: C.id, state: 'stopped', title: 'Stopped', opId: randomUUID(),

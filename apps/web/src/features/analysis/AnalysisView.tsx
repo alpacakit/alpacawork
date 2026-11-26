@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
-import { Icon } from "@/components/ui/icon";
+import { Icon, shareIcon } from "@/components/ui/icon";
 import { BarRoom } from "@/features/chrome/Bar";
-import { UNDER_BAR } from "@/state/bar";
+import { ListScroll } from "@/features/shell/ListScroll";
 import { useViewStore } from "@/state/view-store";
 import { cn } from "@/lib/utils";
 import { useAnalysisFreshness, useLaunchReads, useTasksView, useUsageView } from "./data";
@@ -11,6 +11,7 @@ import { daysBetween, spanLabel } from "./format";
 import { PointerTip, ReadPart, Seg, useChoices, useReadSet } from "./parts";
 import { cardSpanOf, listOnAnswer, PERIOD_BACK, stepChosen, type AnalysisPlace, type ListPlace } from "./place";
 import { AnalysisLayers } from "./AnalysisLayers";
+import type { ReaderMode } from "@/features/reader/Reader";
 import { TasksLook } from "./TasksLook";
 import { FaceSkeleton } from "./FaceSkeleton";
 import { UsageLook } from "./UsageLook";
@@ -32,7 +33,7 @@ function zoneName(zone: string) {
  * the look (tasks, or the AI's use) and the span of days at the top, then the look. Every number opens the tasks
  * behind it in a window beside the page, or over it where there is no room (`AnalysisLayers`).
  */
-export function AnalysisView({ place, beside }: { place: AnalysisPlace; beside: boolean }) {
+export function AnalysisView({ place, mode, canDock }: { place: AnalysisPlace; mode: ReaderMode; canDock: boolean }) {
   const { t } = useTranslation("analysis");
   useAnalysisFreshness();
   const project = useViewStore(state => state.project);
@@ -68,14 +69,13 @@ export function AnalysisView({ place, beside }: { place: AnalysisPlace; beside: 
   const step = (direction: -1 | 1) => { const to = direction < 0 ? earlier : later; if (to) show({ span: to, list: null, card: null }); };
   const canEarlier = !!earlier, canLater = !!later;
 
-  // The page scrolls as the list does, under the bar and clear of what stands at the screen's foot (--list-foot). It
-  // scrolls down only: everything on it fits its width (the calendar scrolls sideways on its own), and what reaches a
-  // little past its edges unseen (the tabs' wider press area at its right) must not let it slide sideways.
-  return <><div ref={setRoot} data-list-scroll {...UNDER_BAR}
-    className="relative min-h-75 flex-1 basis-0 overflow-x-hidden overflow-y-auto overscroll-contain scroll-pb-(--list-foot) pb-(--list-foot) narrow:min-h-67.5">
+  // The page scrolls as the list does (ListScroll), its scrollbar beside the charts, not over them. It scrolls down
+  // only: everything on it fits its width (the calendar scrolls sideways on its own), and what reaches a little past its
+  // edges unseen (the tabs' wider press area at its right) must not let it slide sideways.
+  return <><ListScroll ref={setRoot} room className="overflow-x-hidden overflow-y-auto">
     <div className="pb-12"><BarRoom />
     <div className="flex flex-wrap items-center gap-x-6 gap-y-2 pt-1 pb-8">
-      <Seg label={t("look.label")} value={place.look} onChange={look => { useChoices.getState().choose({ all: false, grow: useChoices.getState().grow + 1 }); show({ look }); }}
+      <Seg label={t("look.label")} value={place.look} onChange={look => { useChoices.getState().choose({ all: false }); show({ look }); }}
         items={[["tasks", t("look.tasks")], ["usage", t("look.usage")]]} />
       {/* The card's way in stands at the row's end: beside the span on a computer, beside the looks on a phone, where
           the span takes a line of its own. */}
@@ -104,15 +104,15 @@ export function AnalysisView({ place, beside }: { place: AnalysisPlace; beside: 
           : <UsageLook view={first as UsageView} span={place.span} root={root} tasks={finished as TasksView} days={days} open={open} zone={zoneName(head.timeZone)}
             series={series} />}
     </ReadPart>
-    </div></div>
-    <AnalysisLayers place={place} project={project} days={days} beside={beside} />
+    </div></ListScroll>
+    <AnalysisLayers place={place} project={project} days={days} mode={mode} canDock={canDock} />
     <PointerTip root={root} />
   </>;
 }
 
-/** The analysis's way to the card: over the page, for the span and the project in view. */
+/** The analysis's way to share it: the card over the page, for the span and the project in view, drawn as this device draws sharing. */
 function ShareCardButton({ place }: { place: AnalysisPlace }) {
   const { t } = useTranslation("analysis");
-  return <Button variant="outline" className="flex-none" onClick={() => useViewStore.getState().showAnalysis({ ...place, list: null, card: cardSpanOf(place.span) })}>
-    <Icon name="image" className="size-3.5" />{t("card.make")}</Button>;
+  return <Button variant="outline" className="flex-none gap-1.5 rounded-full px-3.5 font-semibold" onClick={() => useViewStore.getState().showAnalysis({ ...place, list: null, card: cardSpanOf(place.span) })}>
+    <Icon name={shareIcon()} className="size-3.5" />{t("card.make")}</Button>;
 }

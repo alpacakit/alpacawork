@@ -40,7 +40,7 @@ import { saysRuns } from "@/domain/row-status";
 import { advanceNow, useNow } from "@/state/clock";
 import { useTimeView } from "@/state/time-view";
 import { useNarrow, useViewStore } from "@/state/view-store";
-import { UNDER_BAR } from "@/state/bar";
+import { ListScroll } from "@/features/shell/ListScroll";
 import { BarRoom } from "@/features/chrome/Bar";
 import { cn } from "@/lib/utils";
 import { titleColumnWidth } from "@/state/screen-settings";
@@ -421,8 +421,8 @@ export function TimeTree({ entering = false }: { entering?: boolean }) {
 
   // The frozen top and columns layer inside this isolated sheet.
   return (
-    <div ref={box} data-time-tree data-list-scroll {...UNDER_BAR} style={{ scrollPaddingTop: `calc(var(--bar-in) + ${head}px)`, ...narrow && { overscrollBehaviorY: "none" } }} tabIndex={0} onKeyDown={strips ? keys : undefined} aria-description={strips ? t("timeView.help") : undefined}
-      className="relative isolate min-h-75 flex-1 basis-0 overflow-auto overscroll-contain scroll-pb-(--list-foot) pb-(--list-foot) outline-none focus-visible:ring-1 focus-visible:ring-line narrow:min-h-67.5">
+    <ListScroll ref={box} data-time-tree style={{ scrollPaddingTop: `calc(var(--bar-in) + ${head}px)`, ...narrow && { overscrollBehaviorY: "none" } }} tabIndex={0} onKeyDown={strips ? keys : undefined} aria-description={strips ? t("timeView.help") : undefined}
+      className="isolate outline-none focus-visible:ring-1 focus-visible:ring-line">
       <div className="sticky left-0 w-0"><BarRoom /></div>
       <div ref={sheetRef} style={{ width: lead + strip.width, "--head": `${head}px` } as CSSProperties} className="relative min-w-full">
         {strips && axisReady && !narrow && !empty && <Ground pieces={pieces} width={strip.width} now={now} lead={lead} seen={seen} />}
@@ -473,7 +473,7 @@ export function TimeTree({ entering = false }: { entering?: boolean }) {
         {/* In the sheet a pull moves; as wide as the list's box, whatever the strip's width. */}
         {welcome && <div style={{ width: sheet }} className="sticky left-0"><Welcome /></div>}
       </div>
-    </div>
+    </ListScroll>
   );
 }
 

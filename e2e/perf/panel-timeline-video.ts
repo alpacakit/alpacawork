@@ -40,7 +40,7 @@ try {
     marks.clear();
     marks.caption('② 詳細を連続リサイズし、途中で反転する');
     if (width>900) {
-      const edge=await page.locator('[data-reader-width]').boundingBox();
+      const edge=await page.locator('[data-window-width]').boundingBox();
       const y=edge!.y+edge!.height/2;
       marks.box({x:edge!.x,y:150,width:80,height:500},'詳細の端',{seconds:6});
       await page.waitForTimeout(1500);

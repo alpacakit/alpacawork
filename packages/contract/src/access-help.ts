@@ -24,7 +24,7 @@ const failure = { state: 'error', baseState: 'error', userRequested: true } as c
 const accessExamples: Readonly<Record<string, readonly Example[]>> = {
   deploy: [{label:'Local deployment (Run acts on its own Task)',action:{name:'release'}}],
   'project.shelf': [{ label: 'Project catalog', action: { name: 'screen' } }],
-  'task.get': readUp, 'task.returns': readUp, 'task.values': readUp, 'run.get': readUp, 'run.steps': readUp, 'run.conditions': readUp, 'field.get': readUp,
+  'task.get': readUp, 'task.returns': readUp, 'task.values': readUp, 'run.get': readUp, 'run.steps': readUp, 'run.conditions': readUp, 'run.summary': readUp, 'field.get': readUp,
   'field.list': [{ label: 'Read field definitions', action: { name: 'field.list' } }],
   'field.set': [{ label: 'Add or change a field definition', action: { name: 'field.set' } }],
   'field.delete': [{ label: 'Delete a field definition', action: { name: 'field.delete' } }],

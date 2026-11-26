@@ -2,9 +2,10 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { TaskLog } from '@alpacawork/raw/task-log-schema';
 import type { RunConditions } from '@alpacawork/contract/run';
-import { breakdown, changeMarks, segments, situationAt, thinkingIntervals, timedSteps, waited, type TraceRecords, type TraceRun,
+import { breakdown, changeMarks, segments, situationAt, spans, thinkingIntervals, timedSteps, waited, type TraceRecords, type TraceRequest, type TraceRun,
   type TraceStep, type TraceTask } from '@alpacawork/backend/test-dist/analysis/timeline.js';
 import { lastEndedAt, taskOutcome, userQuestions } from '@alpacawork/backend/test-dist/analysis/rules.js';
+import { evidenceDigest, shellDirectory } from '@alpacawork/backend/test-dist/runs/shell-evidence.js';
 import { DEFAULT_THRESHOLDS, findFindings, thresholdsOf } from '@alpacawork/backend/test-dist/analysis/findings.js';
 import { changeEvents, scopeChangeEvents } from '@alpacawork/backend/test-dist/analysis/changes.js';
 
@@ -27,6 +28,7 @@ function task(id: string, log: TaskLog[], parent: string | null = null): TraceTa
 function run(id: string, fields: Partial<TraceRun> & { task?: string }): TraceRun {
   return { id, task: 'T1', placement: 'owner-seat', role: 'owner', agent: 'claude', model: 'opus', effort: 'medium', state: 'succeeded',
     reason: null, request: `request-${id}`, supersededBy: null, created: at(0), started: at(0), ended: at(10), compactions: [],
+    summary: { state: 'unsupported', tests: [], basis: [], outputs: { chars: 0, largest: [] }, produced: { commits: [], prs: [], files: [] } },
     steps: [], stepsMissing: null, conditions: null, stopped: [], ...fields };
 }
 function step(n: number, from: number, to: number | null, fields: Partial<TraceStep> = {}): TraceStep {
@@ -35,7 +37,7 @@ function step(n: number, from: number, to: number | null, fields: Partial<TraceS
 }
 function records(tasks: TraceTask[], runs: TraceRun[], now = at(200)): TraceRecords {
   return { root: tasks[0]!.id, project: 'P1', scope: tasks.length > 1 ? 'subtree' : 'self', tasks, runs, requests: new Map(),
-    labels: new Map(), rootState: 'doing', activity: [], version: 'test', now };
+    valueChanges: new Map(), deliverables: [], deliveredFiles: new Map(), rootState: 'doing', activity: [], version: 'test', now };
 }
 const window = (from: number, to: number) => ({ from: at(from), to: at(to) });
 const find = (data: TraceRecords, rule: Parameters<typeof findFindings>[2][number], to = 200, thresholds = DEFAULT_THRESHOLDS) =>
@@ -243,7 +245,7 @@ test('at an instant: states, the Run running with its steps around that time, th
   const [running] = situation.runs;
   assert.deepEqual([running!.run, running!.current.map(item => item.step), running!.before?.step, running!.after?.step], ['R1', [1, 2], 0, 3]);
   assert.deepEqual(situation.queued.map(item => item.run), ['R2']);
-  assert.deepEqual(situation.questions.map(item => [item.question, item.askedTo, item.accept, item.estimated]), [['q1', 'user', false, true]]);
+  assert.deepEqual(situation.questions.map(item => [item.question, item.askedTo, item.accept]), [['q1', 'user', false]]);
   // Steps run in parallel: the one before is the one that ended last, not the one that started last.
   const parallel = records([root], [run('R1', { started: at(0), ended: at(30), steps: [step(0, 1, 6), step(1, 2, 5)] })]);
   assert.equal(situationAt(parallel, at(7)).runs[0]!.before?.step, 0);
@@ -308,4 +310,61 @@ test('an item added to a recorded set is a change, as a removal is; the first co
     ['R4', [['instruction-file', null, 'aaaaaaaaaaaaaaaa']]]]);
   assert.deepEqual(changeEvents([run('R1', { started: at(0) }), run('R2', { started: at(10), conditions: conditions(['/home/AGENTS.md']) })],
     item => item.placement), []);
+});
+
+
+test('repeated tests require different Runs with the same observed checkout and tracked diff', () => {
+  type TestDetails = TraceRun['summary']['tests'][number]['test'];
+  const observed = (fields: Partial<TestDetails> = {}): TestDetails => ({
+    step: 0, line: 'pnpm test', state: 'done', commit: 'a'.repeat(40), commitSource: 'observed', dirty: true,
+    diffDigest: 'b'.repeat(64), dirSource: 'tool', ...fields,
+  });
+  const checked = (id: string, ...tests: TestDetails[]) => run(id, { summary: {
+    state: 'complete', basis: [], outputs: { chars: 0, largest: [] }, produced: { commits: [], prs: [], files: [] },
+    tests: tests.map(test => ({ test, at: at(2), digest: evidenceDigest(test.line) })),
+  } });
+  const claudeTest = 'cd /abs/repo && pnpm test';
+  const checkout = (line: string) => observed({ line, ...shellDirectory('/work', { script: line, cwd: null }) });
+  const data = records([task('T1', [])], [
+    checked('R1', observed(), observed({ step: 1 })),
+    checked('R2', observed()),
+    checked('R3', observed({ diffDigest: 'c'.repeat(64) })),
+    checked('R4', observed({ commitSource: 'inferred' })),
+    checked('R5', observed({ dirSource: 'cwd' })),
+    checked('R6', checkout(claudeTest)),
+    checked('R7', checkout(claudeTest)),
+  ]);
+  const repeated = find(data, 'same-test-same-commit').map(item => [item.count, item.evidence]);
+  assert.deepEqual(repeated, [
+    [2, [{ run: 'R1', step: 0 }, { run: 'R2', step: 0 }]],
+    [2, [{ run: 'R6', step: 0 }, { run: 'R7', step: 0 }]],
+  ]);
+  for (const [command, source] of [
+    ['pnpm -C /abs/repo test', 'command'],
+    ['pnpm --dir /abs/repo test', 'command'],
+    ['pnpm --dir repo test', 'relative-command'],
+    ['cd repo && pnpm test', 'relative-command'],
+  ] as const) assert.equal(checkout(command).dirSource, source);
+});
+
+test('large output counts each tool result at or above the character threshold', () => {
+  const data = records([task('T1', [])], [run('R1', {
+    summary: { state: 'complete', basis: [], tests: [], outputs: { chars: 79_999, largest: [] },
+      produced: { commits: [], prs: [], files: [] } },
+    steps: [step(0, 0, 1, { outputChars: 39_999 }), step(1, 1, 2, { outputChars: 40_000 })],
+  })]);
+  assert.deepEqual(find(data, 'large-output').map(item => [item.count, item.evidence]), [[40_000, [{ run: 'R1', step: 1 }]]]);
+});
+
+test('an unrecorded decision stays undetermined after the requester moves on', () => {
+  const owner = task('T1', [state('done', 20, 'done')]);
+  const pending = task('T2', [], 'T1');
+  const target = task('T3', [], 'T1');
+  const first = run('R1', { task: target.id }), second = run('R2', { task: target.id });
+  const data = records([owner, pending, target], [first, second]);
+  for (const [each, requester] of [[first, owner], [second, pending]] as const)
+    (data.requests as Map<string, TraceRequest>).set(each.request,
+      { id: each.request, task: target.id, authorTask: requester.id, at: at(0), by: 'parent', purpose: 'instruction', firstLine: 'Do the work', answers: null });
+  assert.deepEqual(spans(data).flatMap(span => span.kind === 'run' && span.taken ? [[span.taken.code, span.taken.source]] : []),
+    [['undetermined', 'inferred'], ['undetermined', 'pending']]);
 });

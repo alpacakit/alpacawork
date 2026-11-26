@@ -398,7 +398,7 @@ test("entries show both directions, count every prerequisite after first start t
   openRelations(true);
   const entries = document.querySelector("[data-reader-entries]")!;
   expect([...entries.querySelectorAll("button")].map(button => button.getAttribute("aria-label") ?? button.textContent)).toEqual([
-    "History", "Context", "Task tree 2 tasks", "Dependencies 4 tasks",
+    "History", "Context", "Analysis", "Task tree 2 tasks", "Dependencies 4 tasks",
   ]);
   expect(document.querySelector("[data-reader-order]")).toBeNull();
   expect(document.querySelector("[data-order-task]")).toBeNull();

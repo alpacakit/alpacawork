@@ -96,7 +96,7 @@ test('a Request to a Task outlives a handover of its responsible and closes at t
     h.start(worker.runId);
     h.end(old.runId);
     // T's responsible replaces its child's, as authorize lets only the parent's responsible.
-    const replacement = (await new PlacementCommands(h.root).placeNewResponsible({ taskId: h.C.id, profileKey: 'fake',
+    const replacement = (await new PlacementCommands(h.root).placeNewResponsible({ placedAs: 'policy', taskId: h.C.id, profileKey: 'fake',
         expectedTaskHash: (await h.current(h.C.id)).hash, replacePlacementId: h.OC.id,
         expectedPlacementRevision: h.OC.revision }, { kind: 'placement', placementId: h.OT.id })).placement;
     h.end(worker.runId);
@@ -122,7 +122,7 @@ test('a failed worker promoted to child responsible does not answer the parent r
     h.start(worker.runId);
     h.end(child.runId);
     h.end(worker.runId, 'failed', 'output');
-    (await new PlacementCommands(h.root).setResponsible({ taskId: h.C.id, placementId: h.WC.id,
+    (await new PlacementCommands(h.root).setResponsible({ placedAs: 'policy', taskId: h.C.id, placementId: h.WC.id,
         expectedTaskHash: (await h.current(h.C.id)).hash, expectedPlacementRevision: h.WC.revision },
     { kind: 'placement', placementId: h.OT.id }));
     const wake = (await pass(h.root));
