@@ -106,7 +106,7 @@ test('a worker uses a named model just for its request and retains the prior con
   finally { placements.close(); }
   const service = new TaskRequestService(h.root);
   const ask = async (body: string, aiStack?: AiStackPrefix, newConversation?: boolean) => {
-    const request = await service.request({ task: h.taskId, agent: placement.id, opId: randomUUID(), body, aiStack, newConversation,
+    const request = await service.request({ task: h.taskId, agent: placement.id, opId: randomUUID(), body, aiStack, newConversation, taken: 'addition',
       ...(aiStack && { placedAs: 'policy' as const }),
       expectedTaskHash: currentTaskHash(h.root, h.taskId), expectedPlacementRevision: placement.revision },
     { kind: 'placement', placementId: h.ownerPlacementId },
