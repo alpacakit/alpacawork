@@ -13,6 +13,7 @@ export const INDEX_HEARTBEAT_MS = 15_000;
 
 /** The control wire contract. Storage records and browser projections have different lifecycles. */
 import { z } from 'zod';
+import { analysisSubjectSchema } from '@alpacawork/raw/analysis-subject';
 import { taskBaseStateSchema } from './fields.js';
 import { reportMark } from './report-mark.js';
 import { TASK_LIFECYCLES, TASK_STATE } from '@alpacawork/raw/task-enums';
@@ -77,6 +78,7 @@ const controlTaskHeadFields = {
   userRequested: z.boolean(),
   ...taskStateFields,
   /** The Task's values by field ID (task-schema); a field without a value has no key. */
+  analysisSubject: analysisSubjectSchema.optional(),
   values: z.record(fieldIdSchema, z.unknown()), settings: projectSettingsSchema.optional(),
   folder: z.string().min(1).optional(),
   files: z.array(z.object({ name: z.string(), size: z.number().int().nonnegative(),

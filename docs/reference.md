@@ -76,12 +76,27 @@ Run these in a terminal (on Windows, inside Ubuntu). The other commands are for 
 
 ### Analysis
 
+Set an analysis or improvement Task's subject on `task new` or `task update` with `--analysis-subject '<JSON>'`.
+Choose one of these values.
+
+- `{"kind":"cause","key":"long-wait"}` for a finding rule (`analysis findings -h`) or a fix category such as `look_feel` (`task report -h`).
+- `{"kind":"task","task":"T12"}` for a Task the caller can read.
+- `{"kind":"period","from":"2026-11-01","to":"2026-11-07"}` for an inclusive date range.
+
+Use the same object in the `analysisSubject` field of a REST command body or a sibling plan item.
+On update, omit the field to keep it or use `--analysis-subject null` (`"analysisSubject": null` in REST) to clear it.
+`task get` shows the saved subject.
+
+`analysis tasks` returns `activeWork` independently of the selected dates. Each row has `id`, `title`, `state`,
+`analysisSubject` and `userTurn` (a pending review or an open question to the person). Open Tasks with a subject
+are listed first by whether they need a reply, then from newest to oldest by Task number.
+
 The screen and these read commands use the same counts. A person or the coordinator can read all projects, or use
 `--project` to include a project and its nested projects. A Task Run reads only its own project. Nested projects are excluded from that Run's scope.
 
 | Command | What it reads |
 | --- | --- |
-| `alpacawork analysis tasks --period 7d --bucket day` | Finished Tasks, time to acceptance, trends and daily finished counts, and the waits of unfinished Tasks as of now |
+| `alpacawork analysis tasks --period 7d --bucket day` | Finished Tasks, time to acceptance, trends and daily finished counts, the waits of unfinished Tasks, and active analysis or improvement work |
 | `alpacawork analysis usage --period 28d --bucket week --by model` | Task Run launches, elapsed running time, new conversations and measured tokens |
 | `alpacawork analysis breakdown --period 7d --bucket day --look usage --by model` | One breakdown alone, the rows `analysis tasks` or `analysis usage` gives with `--by`, without their totals and trends |
 | `alpacawork analysis list --period today --set finished` | The Tasks behind a number, including today's finished marks |

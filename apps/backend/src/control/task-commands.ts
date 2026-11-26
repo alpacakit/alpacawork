@@ -10,7 +10,7 @@ import { controlTaskHead } from './task-dto.js';
  */
 import { randomUUID } from 'node:crypto';
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
-import { initialControlDocument, now, validateTaskSettings, type ControlTask, type TaskActor, type TaskKind,
+import { initialControlDocument, now, validateTaskSettings, type AnalysisSubject, type ControlTask, type TaskActor, type TaskKind,
   type TaskLog } from '@alpacawork/raw';
 import { awaitsReview } from '@alpacawork/contract';
 import { taskAtWork, PlacementStore } from './placements.js';
@@ -20,7 +20,7 @@ import { TaskTransition, returnsAt, withControlWrite, type ControlTx } from './t
 
 const TASK_PARENT = 'A task needs a parent: its project or a task of that project';
 /** One Task to create: its title and the values it starts with (a write's values, checked against its schema). */
-type TaskDraft = { title: string; values?: unknown };
+type TaskDraft = { title: string; values?: unknown; analysisSubject?: AnalysisSubject };
 /** What each lifecycle action makes the Task, and the record it writes. */
 const LIFECYCLE = {
   archive: { lifecycle: 'archived', record: 'archived' },
@@ -114,7 +114,7 @@ export class ControlTaskCommands {
       const fields = readTaskFields(tx.store.connection);
       const schema = kind === 'project' ? PROJECT_VALUES : schemaAlong(parent ? writer.ancestry(parent.id) : [], fields.schemas);
       const ids = input.tasks.map(draft => writer.create(kind, id => {
-        const meta = initialControlDocument(id, parent?.id ?? null, draft.title, { kind, userRequested, actor: this.actor });
+        const meta = initialControlDocument(id, parent?.id ?? null, draft.title, { kind, userRequested, actor: this.actor, analysisSubject: draft.analysisSubject });
         const values = draft.values === undefined ? {} : patchedValues(id, {}, draft.values, schema, fields.catalog);
         return { meta, values, ...(settings === null ? {} : { settings }) };
       }));
@@ -211,7 +211,7 @@ export class ControlTaskCommands {
    * nothing. An update that changes none of these (a project's code location alone, kept outside the database) writes
    * nothing.
    */
-  update(input: { id: string; title?: string; values?: unknown; color?: string; userRequested?: boolean;
+  update(input: { id: string; title?: string; values?: unknown; color?: string; userRequested?: boolean; analysisSubject?: AnalysisSubject | null;
     expectedTaskHash: string }) {
     return this.change(input.id, (_, tx, snapshot) => {
       const task = find(snapshot, input.id, input.expectedTaskHash); assertActive(task);
@@ -222,18 +222,19 @@ export class ControlTaskCommands {
       const mark = input.userRequested === task.meta.userRequested ? undefined : input.userRequested;
       if (input.userRequested === true) markFits(find(snapshot, task.meta.parentId!).meta.kind, true);
       if (mark === false) mayRemoveMark(task);
-      const { title } = input;
+      const { title, analysisSubject } = input;
       const tree = new TaskTree(snapshot.tasks);
       const values = input.values === undefined ? undefined
         : patchedValues(task.id, task.values, input.values, schemaFor(tree, snapshot.fields.schemas, task.id), snapshot.fields.catalog);
       const settings = input.color === undefined ? undefined : { ...task.settings!, color: input.color };
       const records: TaskLog[] = [];
       if (title !== undefined) records.push(this.record('retitled'));
-      if (values !== undefined || settings !== undefined) records.push({ ...this.record('body_updated'),
+      if (values !== undefined || settings !== undefined || analysisSubject !== undefined) records.push({ ...this.record('body_updated'),
         changedFields: [...(values === undefined ? [] : ['values' as const]),
-          ...(settings === undefined ? [] : ['color' as const])] });
+          ...(settings === undefined ? [] : ['color' as const]),
+          ...(analysisSubject === undefined ? [] : ['analysisSubject' as const])] });
       if (mark !== undefined) records.push(this.record('user_request_changed', { userRequested: mark }));
-      if (records.length) this.transition.appendRecords(tx, task.id, records, undefined, { title, values, settings });
+      if (records.length) this.transition.appendRecords(tx, task.id, records, undefined, { title, values, settings, analysisSubject });
     });
   }
   /**

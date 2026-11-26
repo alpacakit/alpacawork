@@ -1,6 +1,7 @@
 import { z } from 'zod';
-import { projectIdSchema, taskIdSchema } from './fields.js';
+import { projectIdSchema, taskIdSchema, taskStateSchema } from './fields.js';
 import { validTimeZone } from './personal-settings.js';
+import { analysisFindingRules, analysisSubjectSchema } from '@alpacawork/raw/analysis-subject';
 import { FIX_KINDS, INSTRUCTION_KINDS } from '@alpacawork/raw/task-log-schema';
 
 export const analysisDaySchema = z.iso.date();
@@ -161,11 +162,19 @@ const tasksBreakdown = z.strictObject({
   rows: z.array(z.strictObject({ ...breakdownRow, noOwnerRun: z.literal(true).optional(), finished: count, accepted: count, passed: count, share,
     leadMedianMs: measurement.nullable(), submitsPerAccepted: measurement.nullable() })),
 });
+const analysisWorkSchema = z.strictObject({
+  id: taskIdSchema, title: z.string(), state: taskStateSchema,
+  analysisSubject: analysisSubjectSchema, userTurn: z.boolean(),
+});
+export type AnalysisWork = z.infer<typeof analysisWorkSchema>;
+
 export const analysisTasksViewSchema = z.strictObject({
   head: analysisHeadSchema, counts: pair(analysisTaskCountsSchema), accepted: pair(analysisAcceptedTotalsSchema),
   ever: z.strictObject(taskTotals).nullable(),
   series: series(point.extend(taskTotals)), grass: z.strictObject({ from: analysisDaySchema, finished: z.array(count) }),
   breakdown: tasksBreakdown.nullable(),
+  /** Analysis and improvement work open now in the project scope, regardless of the selected dates. */
+  activeWork: z.array(analysisWorkSchema),
   /**
    * As of the read, whatever the period: the requested tasks open now (with no acceptance, stop or owner's done yet, or
    * reopened after one, counted from that end), and the time they have waited for the user
@@ -276,8 +285,7 @@ export const analysisMarkKinds = ['instruction', 'answer', 'question-withdrawn',
 /** Non-overlapping parts of the wall time, in the order an instant is given to the first that holds (they sum to `wall`). */
 export const analysisBreakdownKeys = ['owner-working', 'member-working', 'child-working', 'held', 'waiting-answer', 'waiting-review',
   'queued', 'idle'] as const;
-export const analysisFindingRules = ['long-wait', 'repeated-question', 'long-step', 'limit-hit', 'repeated-failure', 'same-result',
-  'fan-out', 'queue-wait', 'failed-run', 'rework', 'idle'] as const;
+export { analysisFindingRules };
 export type AnalysisFindingRule = typeof analysisFindingRules[number];
 /**
  * What each rule finds, and what its finding's `at`, `durationMs` and `count` are: the one wording the command help and

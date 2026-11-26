@@ -74,6 +74,8 @@ const cases: { act: Act; action: Action; task: TaskFacts | null; allow: readonly
   { act: 'task.update.values', action: { name: 'task.update', fields: ['values'] }, task: held, allow: ['parent', ...proxies] },
   { act: 'task.update.values', action: { name: 'task.update', fields: ['values'] }, task: project, allow: proxies,
     note: 'a project\'s values are its policy' },
+  { act: 'task.update.analysisSubject', action: { name: 'task.update', fields: ['analysisSubject'] },
+    task: child(), allow: ['own', 'parent', ...proxies] },
   { act: 'task.update.cwd', action: { name: 'task.update', fields: ['cwd'] }, task: project, allow: proxies },
   { act: 'task.update.color', action: { name: 'task.update', fields: ['color'] }, task: project, allow: proxies },
   { act: 'task.update.userRequested', action: { name: 'task.update', fields: ['userRequested'] }, task: child(),

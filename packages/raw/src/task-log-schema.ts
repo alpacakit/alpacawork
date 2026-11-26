@@ -96,7 +96,7 @@ export const taskLogSchema = z.object({
     z.number().int().min(ESTIMATE_MINUTES.min).max(ESTIMATE_MINUTES.max)).optional(),
   operationFingerprint: digest.optional(),
   /** Fields supplied by this body/settings update; null extracts removes only that key. */
-  changedFields: z.array(z.enum(['body', 'values', 'color', 'extracts', 'schema'])).min(1).optional(),
+  changedFields: z.array(z.enum(['body', 'values', 'color', 'extracts', 'schema', 'analysisSubject'])).min(1).optional(),
   /** Derived solely from the Request and its admitted Run role. */
   startsEstimateRound: z.boolean().optional(),
   /** Canonical Request's closed question, projected on its history reference. */
