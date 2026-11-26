@@ -1,12 +1,12 @@
 /**
- * Live output speed on the In progress rows: each row's number and last minute's bars inside its time strip, held at the
- * strip's visible left edge; the heading's total agents and speed; on a phone, the speed in the row's end words.
+ * Live output speed on the In progress rows: each row's number and last minute's bars in a column at the title column's
+ * end, before the time; the heading's total agents and speed; on a phone, the speed in the row's end words.
  *
  * The numbers come from each running Run's output ledger (`activity.output`), summed by runOutputSpeed. Only the speed
  * cells follow the clock: each reads the workspace once a second and re-renders only when what it shows has changed,
  * so a tick neither re-renders the rows nor changes any layout (every number sits in a fixed-width slot).
  */
-import { useLayoutEffect, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
+import { useLayoutEffect, useSyncExternalStore, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { runOutputSpeed, type RunOutputSpeed } from "@alpacawork/contract/run";
 import { Icon } from "@/components/ui/icon";
@@ -81,31 +81,43 @@ function useSpeedKey(read: (data: WorkspaceData, now: number) => string) {
   return useSyncExternalStore(subscribeSecond, () => read(store.getState(), timer ? second : Math.floor(Date.now() / 1000)));
 }
 
-type RowShown = { rate: number; bars: number[]; scale: number; idle: number };
+/** `live`: output counted in the 5 seconds ending now; otherwise the rate is the latest one held between model calls. */
+type RowShown = { rate: number; live: boolean; bars: number[]; scale: number; idle: number };
 /** `idle` is kept only as shown (whole minutes, from one minute up), so a silent row does not re-render every second. */
 const rowKey = (task: Task) => (data: WorkspaceData, now: number) => {
   const speed = rowSpeed(task, data, now);
   if (!speed) return "";
   const idle = speed.idleSeconds >= IDLE_SECONDS ? Math.floor(speed.idleSeconds / 60) * 60 : 0;
-  return JSON.stringify({ rate: shown(speed.rate), bars: speed.bars.map(shown), scale: sharedScale(data, now), idle } satisfies RowShown);
+  const bars = speed.bars.map(shown);
+  return JSON.stringify({ rate: shown(speed.rate), live: bars.at(-1)! > 0, bars, scale: sharedScale(data, now), idle } satisfies RowShown);
 };
 
-/** A number in a fixed slot, right-aligned: quiet like the square's count, fainter at 0. */
-function RateNumber({ rate, className }: { rate: number; className?: string }) {
-  return <span className={cn("inline-block min-w-[4ch] text-right tabular-nums", rate ? "text-muted" : "text-muted/50", className)}>{formatRate(rate)}</span>;
+/**
+ * A number in its fixed slot, right-aligned: in ink while output is counted now, the same ink faded while the latest
+ * rate is held between model calls, and quiet at 0.
+ */
+function RateNumber({ rate, live, className }: { rate: number; live: boolean; className?: string }) {
+  return <span className={cn("inline-block w-8 flex-none text-right tabular-nums", !rate ? "text-muted/50" : live ? "text-ink" : "text-ink/55", className)}>{formatRate(rate)}</span>;
 }
 
-const BARS_WIDTH = 47, BARS_HEIGHT = 12;
-/** The last minute as 12 five-second bars: older ones faint, the latest full, a silent stretch a 1px grey floor. */
+/** The bars' slot, also the heading's unit's: 12 bars of 3px with 1px between. */
+const BARS_WIDTH = 48, BARS_HEIGHT = 14;
+/**
+ * The last minute as 12 five-second bars in the working colour (the row's time's): older ones faint, the latest full,
+ * standing on one faint baseline that is all a silent stretch shows. Its foot sits on the text's baseline.
+ */
 function MinuteBars({ bars, scale }: { bars: number[]; scale: number }) {
   return <svg width={BARS_WIDTH} height={BARS_HEIGHT} viewBox={`0 0 ${BARS_WIDTH} ${BARS_HEIGHT}`} aria-hidden="true" className="flex-none">
+    <rect x={0} y={BARS_HEIGHT - 1} width={BARS_WIDTH - 1} height={1} className="fill-working" fillOpacity={0.25} />
     {bars.map((value, i) => {
-      const top = value ? Math.max(2, Math.round((value / scale) * BARS_HEIGHT)) : 1;
-      return <rect key={i} x={i * 4} y={BARS_HEIGHT - top} width={3} height={top}
-        className={value ? "fill-working" : "fill-muted"} fillOpacity={value ? (i === bars.length - 1 ? 1 : 0.45) : 0.5} />;
+      if (!value) return null;
+      const top = Math.max(2, Math.round((value / scale) * BARS_HEIGHT));
+      return <rect key={i} x={i * 4} y={BARS_HEIGHT - top} width={3} height={top} className="fill-working" fillOpacity={i === bars.length - 1 ? 1 : 0.45} />;
     })}
   </svg>;
 }
+/** Beside a narrow list the bars' slot holds only the heading's unit, as wide on every row so the numbers line up. */
+const UNIT_WIDTH = 24;
 
 function useIdleWords() {
   const { t } = useTranslation("tree");
@@ -122,26 +134,31 @@ function rowTip(t: (key: string, options?: Record<string, unknown>) => string, r
   return t("speed.rowTip", { rate: formatRate(row.rate), mean: formatRate(mean), peak: formatRate(peak) });
 }
 
-/** Where the plate starts past the title column: beyond the time strip's break line, so that line runs whole. */
-const PLATE_OFFSET = 32;
-function StripPlate({ lead, title, className, style, children }: { lead: number; title: string; className?: string; style?: CSSProperties; children: ReactNode }) {
-  return <div className="sticky z-1 w-0 flex-none self-stretch" style={{ left: lead + PLATE_OFFSET }}>
-    <div data-token-speed title={title} style={style}
-      className={cn("absolute top-0 left-0 flex h-full whitespace-nowrap bg-[var(--row-ground,var(--bg))] pr-2 pl-1.5", className)}>{children}</div>
-  </div>;
+/** The speed column at the title column's end, before the time: a number and the minute's bars, or the number alone beside a narrow list. */
+export const SPEED_LANE = 112;
+const COMPACT_LANE = 72;
+/** A list narrower than this (the detail open beside it) keeps its time strip's room with the number alone; under 600px there is no column. */
+const FULL_LANE_SHEET = 900;
+export const speedLane = (sheet: number) => sheet < FULL_LANE_SHEET ? COMPACT_LANE : SPEED_LANE;
+
+/** One cell of the speed column, in every row and heading alike, so the numbers stand in one column. */
+export function SpeedLane({ width, className, children }: { width: number; className?: string; children?: ReactNode }) {
+  return <div data-speed-lane style={{ width }} className={cn("flex flex-none justify-end pr-3 text-xs", className)}>{children}</div>;
 }
 
-/** A wide row's speed inside its time strip; after a minute of silence, how long it has been silent in place of the bars. */
-export function StripTokenSpeed({ task, lead, height }: { task: Task; lead: number; height: number }) {
+/** A wide row's speed in the column; after a minute of silence, how long it has been silent in place of the bars. */
+export function RowTokenSpeed({ task, compact }: { task: Task; compact: boolean }) {
   const { t } = useTranslation("tree");
   const idleWords = useIdleWords();
   const key = useSpeedKey(rowKey(task));
   if (!key) return null;
   const row = JSON.parse(key) as RowShown;
-  return <StripPlate lead={lead} title={rowTip(t, row)} className="items-center gap-2 text-xs" style={{ height }}>
-    <RateNumber rate={row.rate} />
-    {row.idle >= IDLE_SECONDS ? <span className="text-muted/70">{idleWords(row.idle)}</span> : <MinuteBars bars={row.bars} scale={row.scale} />}
-  </StripPlate>;
+  const idle = row.idle >= IDLE_SECONDS;
+  // While silent the bars keep their baseline and the words take the number's place, so the column does not jump.
+  return <span data-token-speed title={idle && compact ? idleWords(row.idle) : rowTip(t, row)} className={cn("flex items-baseline whitespace-nowrap", compact ? "gap-1" : "gap-2")}>
+    {idle ? <span className="text-muted">{compact ? t("speed.idleShort") : idleWords(row.idle)}</span> : <RateNumber rate={row.rate} live={row.live} />}
+    {compact ? <span aria-hidden="true" style={{ width: UNIT_WIDTH }} className="flex-none" /> : <MinuteBars bars={idle ? [] : row.bars} scale={row.scale} />}
+  </span>;
 }
 
 /** The section's total: the sum of the numbers its rows show, so the two always add up. */
@@ -154,16 +171,19 @@ const totalKey = (tops: readonly Task[]) => (data: WorkspaceData, now: number) =
   return measured ? String(total) : "";
 };
 
-/** The In progress heading's total speed in its time part, with the unit that names the column below. */
-export function HeadingTokenSpeed({ tops, lead, className }: { tops: readonly Task[]; lead: number; className?: string }) {
+/**
+ * The In progress heading's total in the speed column, with the unit that names the column below; its number stands
+ * over the rows' numbers and the unit where their bars do (beside a narrow list, in the slot the rows keep empty).
+ */
+export function HeadingTokenSpeed({ tops, compact }: { tops: readonly Task[]; compact: boolean }) {
   const { t } = useTranslation("tree");
   useLayoutEffect(() => { scaleTasks = tops; }, [tops]);
   const key = useSpeedKey(totalKey(tops));
   if (!key) return null;
-  return <StripPlate lead={lead} title={t("speed.totalTip", { count: tops.length })} className={cn("gap-1 text-xs font-normal", className)}>
-    <RateNumber rate={Number(key)} className="font-medium text-ink" />
-    <span className="text-[0.85em] text-muted">{t("speed.unit")}</span>
-  </StripPlate>;
+  return <span data-token-speed title={t("speed.totalTip", { count: tops.length })} className={cn("flex items-baseline whitespace-nowrap font-normal", compact ? "gap-1" : "gap-2")}>
+    <RateNumber rate={Number(key)} live className="font-medium" />
+    <span style={{ width: compact ? UNIT_WIDTH : BARS_WIDTH }} className={cn("flex-none text-muted", compact ? "text-[10px]" : "text-[11px]")}>{t("speed.unit")}</span>
+  </span>;
 }
 
 /** The agents' slot at a row's end: the square and its count, right-aligned in a fixed width so the squares line up. */
