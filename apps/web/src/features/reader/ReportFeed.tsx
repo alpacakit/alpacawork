@@ -1,4 +1,5 @@
 import { useLineClip, wholeLinesHeight } from "@/lib/use-line-clip";
+import { AgentMark } from "@/components/ui/agent-mark";
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { orderRecordWords } from './StartOrder';
 import { readQuery } from '@/data/read-model';
@@ -809,7 +810,7 @@ function PartyTag({ end, whole, onOpen }: { end: NameEnd; whole?: boolean; onOpe
   const parts = [
     word && <span key="party" data-row-party className={`flex-none ${end.party === "self" ? "" : "font-semibold"}`}>{word}</span>,
     task && end.taskId && (whole || !kin) && <span key="task" data-row-task className="flex-none font-semibold tabular-nums">{end.taskId}</span>,
-    agent && (whole ? <span key="agent" data-row-agent title={agent.full} className="whitespace-nowrap">{agent.full}</span>
+    agent && (whole ? <span key="agent" data-row-agent title={agent.full} className="whitespace-nowrap"><AgentMark model={agent.name} className="me-1 inline-block align-[-0.2em]" />{agent.full}</span>
       : <AgentLabel key="agent" data-row-agent label={agent} />),
   ].filter(Boolean);
   // The mark stands on the words' baseline, so whole it centres on their first line, even when they wrap below it; the

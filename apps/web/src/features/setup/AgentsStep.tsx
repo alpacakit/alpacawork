@@ -7,6 +7,8 @@ import { ReadFailure } from "@/components/ui/loadable";
 import { Message } from "@/components/ui/message";
 import { Switch } from "@/components/ui/switch";
 import { textClip } from "@/lib/clipboard";
+import { AGENT_LOGOS } from "@/components/ui/agent-logos";
+import { AgentMark } from "@/components/ui/agent-mark";
 import { KIND_LETTERS } from "@/domain/agent-mark";
 import { cn } from "@/lib/utils";
 import { recordFailure } from "@/lib/notify";
@@ -154,7 +156,8 @@ function AgentRow({ row, on, name, onChange, onRecheck, checking }: {
   const ready = canWork(row);
   const mark = KIND_LETTERS[row.adapter as keyof typeof KIND_LETTERS] ?? (name.slice(0, 1).toUpperCase() + name.slice(1, 2));
   return <li data-setup-agent={row.name} data-setup-agent-status={row.status} className="grid grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-3 py-3">
-    <span aria-hidden className="grid size-10 place-items-center rounded-md bg-hover text-sm font-semibold">{mark}</span>
+    <span aria-hidden className="grid size-10 place-items-center rounded-md bg-hover text-sm font-semibold">
+      {row.adapter && AGENT_LOGOS[row.adapter as keyof typeof AGENT_LOGOS] ? <AgentMark name={row.name} kind={row.adapter} className="text-xl" /> : mark}</span>
     <span className="min-w-0">
       <span className="block font-semibold">{name}</span>
       <span className={cn("flex items-baseline gap-1.5 text-sm text-muted", row.status === "ready" && "text-done", row.status === "missing" && "text-soft")}>

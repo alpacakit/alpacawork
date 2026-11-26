@@ -279,7 +279,7 @@ function Breakdown({ span, root, group, days, open, choose }: {
       : counted ? [cell("times", row.calls ?? 0, () => open({ set: "used", value: "calls", ...member(row.key) })), launches, tasks]
         : [...tokenKeys.map(tokenCell), ...(["launches", "runMs", "newConversations"] as const).map(key =>
           cell(VALUES[key].kind, VALUES[key].read(c), () => open({ set: "used", value: key, ...member(row.key) }))), tasks];
-    return { key: row.key, name: rowName(row, t("tasks.noAgent")), bar: counted ? row.calls ?? 0 : tokens(c), cells };
+    return { key: row.key, name: rowName(row, t("tasks.noAgent"), by === "agent"), bar: counted ? row.calls ?? 0 : tokens(c), cells };
   });
   return <div ref={near}><Section title={t("breakdown.title")} aside={<Seg label={t("breakdown.title")} value={group} onChange={next => choose(next as UsageGroup)}
     items={(["model", "agent", "skill", "tool", "mcp"] as const).map(key => [key, t(`usage.by.${key}`)] as const)} />}>

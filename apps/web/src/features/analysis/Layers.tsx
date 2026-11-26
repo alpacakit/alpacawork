@@ -29,7 +29,7 @@ export function ListPane({ place, project, days }: { place: AnalysisPlace; proje
   const zone = first?.head.timeZone ?? "UTC";
   // A row is named as its breakdown names it (its key is not its name); a whole of skills, tools or MCP by the breakdown.
   // An effort none was recorded for is named in the reader's language, as the chart names it.
-  const member = row ? list.group === "effort" && "effort" in row && row.effort === null ? t("usage.effortNone") : rowName(row, t("tasks.noAgent"))
+  const member = row ? list.group === "effort" && "effort" in row && row.effort === null ? t("usage.effortNone") : rowName(row, t("tasks.noAgent"), list.group === "agent")
     : list.member === null ? list.group && t(`usage.by.${list.group}`) : null;
   // The model and effort the launches were filtered to, so a list opened again from its address says what it holds.
   const filter = [list.filter?.model, list.filter?.effort && (list.filter.effort === EFFORT_NONE ? `${t("usage.launchEffort")} ${t("usage.effortNone")}` : `${t("usage.launchEffort")} ${list.filter.effort}`)]

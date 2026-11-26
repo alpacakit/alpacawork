@@ -249,7 +249,7 @@ function TasksBreakdown({ span, root, open }: { span: Span; root: HTMLElement | 
         columns={[head(t("tasks.cols.finished"), "tasks"), head(t("tasks.cols.accepted"), "tasks"), head(t("tasks.cols.passed"), "tasks"), t("chart.share"),
           head(t("tasks.cols.lead"), "hours"), t("tasks.cols.submits")]}
         rows={breakdownRows.map(row => ({ key: row.key,
-          name: rowName(row, t("tasks.noAgent")), bar: row.finished, cells: [
+          name: rowName(row, t("tasks.noAgent"), taskGroup === "agent"), bar: row.finished, cells: [
           cell("tasks", row.finished, () => open({ set: "finished", value: null, ...groupOf(row.key) })),
           cell("tasks", row.accepted, () => open({ set: "accepted", value: null, ...groupOf(row.key) })),
           cell("tasks", row.passed, () => open({ set: "passed", value: "lead", ...groupOf(row.key) })),

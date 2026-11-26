@@ -1,8 +1,8 @@
-import { BUILTIN_ADAPTER_IDS, type BuiltinAdapterId } from "@alpacawork/contract/agent-adapters";
+import { AGENT_ADAPTERS, BUILTIN_ADAPTER_IDS, type BuiltinAdapterId } from "@alpacawork/contract/agent-adapters";
 
 /**
- * An agent's mark: a round badge with two letters from the agent's name, in its kind's colour. The kinds' own logos are
- * not drawn: their makers' brand terms ask for approval first. The round shape keeps it apart from a project's square.
+ * An agent's mark where its kind has no logo (components/ui/agent-logos): a round badge with two letters from the agent's
+ * name, in a colour of its kind or its name. The round shape keeps it apart from a project's square.
  */
 
 /** Each kind's colour: agents of one kind (claude and claude-chrome) share it, and their letters tell them apart. */
@@ -39,4 +39,25 @@ export function agentLetters(name: string): string {
   if (words.length > 1) return (words[0]![0]! + words[1]![0]!).toUpperCase();
   const word = words[0] ?? "?";
   return word[0]!.toUpperCase() + (word[1] ?? "");
+}
+
+type Agents = Readonly<Record<string, { adapter?: string; params?: Readonly<Record<string, readonly string[]>> }>>;
+/** The model families each kind's models are named after, for a model no setting lists. */
+const MODEL_FAMILIES: readonly [RegExp, BuiltinAdapterId][] = [
+  [/^(claude|opus|sonnet|haiku|fable)\b/i, "claude"], [/^(gpt|o\d|codex)\b/i, "codex"], [/^grok\b/i, "grok"],
+];
+
+/**
+ * Who a model name says ran, for a place that knows only the model (History's tags, the analysis by model): the agent
+ * whose setting offers that model, else the kind whose models it is among or is named after; null when nothing says.
+ */
+export function modelAgent(model: string, agents: Agents | undefined): { name: string; kind: BuiltinAdapterId | null } | null {
+  const bare = model.replace(/\(.*\)$/, "").replace(/^[^/]+\//, "");
+  for (const [name, setting] of Object.entries(agents ?? {}))
+    if (setting.params?.model?.includes(bare)) return { name, kind: agentKind(name, setting.adapter) };
+  for (const kind of BUILTIN_ADAPTER_IDS)
+    if (AGENT_ADAPTERS[kind].defaultParams.model?.includes(bare) || Object.hasOwn(AGENT_ADAPTERS[kind].contextDefaults, bare))
+      return { name: kind, kind };
+  const family = MODEL_FAMILIES.find(([pattern]) => pattern.test(bare))?.[1];
+  return family ? { name: family, kind: family } : null;
 }

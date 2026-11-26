@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { AgentMark } from "@/components/ui/agent-mark";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import type { AgentLimits, AgentLimitsResponse, LimitWindow } from "@alpacawork/contract/agent-limits";
@@ -66,7 +67,7 @@ function AgentBlock({ agent, stack, now, shown }: { agent: AgentLimits; stack: A
     : agent.windows.length === 0 ? t("limits.none") : null;
   return <section data-limit-agent={agent.adapter} aria-label={name} className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 not-first:border-t not-first:border-line">
     <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-      <h3 className="m-0 text-sm font-semibold">{name}</h3>
+      <h3 className="m-0 flex items-center gap-1.5 text-sm font-semibold"><AgentMark name={agent.adapter} kind={agent.adapter} />{name}</h3>
       <span data-limit-place className="text-xs text-muted">{placeWords(agent, stack, t)}</span>
       {/* Whose limits these are: the account the agent is signed in as, cut to the menu's width (whole in the tooltip). */}
       {agent.account && <span data-limit-account className="min-w-0 max-w-full truncate text-xs text-muted" title={agent.account}>{agent.account}</span>}
@@ -122,7 +123,7 @@ export function LimitsMenu({ folded = false }: { folded?: boolean }) {
       {/* An agent nothing holds has the ring of no limit (four arcs), and no window or figure. */}
       <UsageRing percent={percent} tone={tone} open={shown.kind === "unlimited"} />
       {/* Stopped in a folded bar, it says only until when: the name, its order and the time are in the menu. */}
-      {!(folded && shown.kind === "stopped") && <span className="min-w-0 truncate text-sm">{name}</span>}
+      {!(folded && shown.kind === "stopped") && <><AgentMark name={shown.agent.adapter} kind={shown.agent.adapter} /><span className="min-w-0 truncate text-sm">{name}</span></>}
       {shown.kind === "stopped" ? <>
         <span className="hidden text-sm whitespace-nowrap text-error @min-[60rem]:inline">{stoppedWords(shown.window, now, i18n.language, t)}</span>
         <span className="text-sm whitespace-nowrap text-error @min-[60rem]:hidden">{stoppedWords(shown.window, now, i18n.language, t, true)}</span>
