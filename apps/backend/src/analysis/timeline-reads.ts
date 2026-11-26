@@ -13,7 +13,7 @@ import { analysisStepsMissingSchema } from '@alpacawork/contract/analysis';
 import type { AnalysisAtInput, AnalysisAtView, AnalysisChangesInput, AnalysisChangesView, AnalysisHead, AnalysisFindingsInput, AnalysisFindingsView, AnalysisTraceInput,
   AnalysisTraceScope, AnalysisTraceView } from '@alpacawork/contract/analysis';
 import type { TaskLog } from '@alpacawork/raw/task-log-schema';
-import type { TaskBaseState } from '@alpacawork/raw';
+import type { InstructionLabel, TaskBaseState } from '@alpacawork/raw';
 import { taskLogsOf } from '../control/task-history.js';
 import { readConditions } from '../runs/conditions.js';
 import { readRunStepIndex } from '../runs/run-steps.js';
@@ -157,8 +157,9 @@ export async function readTimelineRecords(root: string, task: string, scope: Ana
   } finally { store.close(); }
   const tasks: TraceTask[] = family.map(row => ({ id: row.id, parent: row.parent, title: row.title, created: Date.parse(row.created),
     log: logs.get(row.internal) ?? [] }));
-  const labels = new Map<string, string>();
-  for (const item of tasks) for (const entry of item.log) if (entry.kind === 'request_labeled' && entry.label) labels.set(entry.label.request, entry.label.kind);
+  const labels = new Map<string, { kind: InstructionLabel['kind']; fixes: InstructionLabel['fixes'] }>();
+  for (const item of tasks) for (const entry of item.log)
+    if (entry.kind === 'request_labeled' && entry.label) labels.set(entry.label.request, { kind: entry.label.kind, fixes: [...entry.label.fixes] });
   const traced: TraceRun[] = [];
   for (const record of runs) traced.push(await traceRun(root, record));
   return { root: task, project: family[0]!.project, scope, tasks, runs: traced, requests, labels, rootState: family[0]!.state,

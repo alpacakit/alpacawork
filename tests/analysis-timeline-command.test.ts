@@ -93,7 +93,7 @@ test('analysis trace, findings and at answer one task\'s timeline over HTTP in t
       const step = trace.spans.find(span => span.kind === 'step');
       assert.deepEqual(step && [step.run, step.step, step.from, step.to], [run, 0, instant(10), instant(40)]);
       assert.equal(trace.breakdown.categories.reduce((sum, part) => sum + part.ms, 0), trace.breakdown.wall);
-      assert.equal(trace.url, `/?task=${task}&tab=timeline`);
+      assert.equal(trace.url, `/?task=${task}&tab=analysis`);
       // Pages follow one another in time order and together hold every span and mark once.
       const ids: string[] = [];
       let cursor: string | null = null, pages = 0;

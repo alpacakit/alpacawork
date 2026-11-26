@@ -10,7 +10,7 @@ import { clocks, iso, questionKind, taskOutcome, userQuestions, type Interval } 
 import { changeEvents } from './changes.js';
 import { splitWaits, type Activity } from './presence.js';
 import type { RunConditions } from '@alpacawork/contract/run';
-import { speaksForUser, type TaskBaseState } from '@alpacawork/raw';
+import { speaksForUser, type InstructionLabel, type TaskBaseState } from '@alpacawork/raw';
 import type { TaskLog } from '@alpacawork/raw/task-log-schema';
 import { questionsOf, type Question } from '@alpacawork/raw/questions';
 
@@ -45,8 +45,8 @@ export type TraceRecords = {
   root: string; project: string; scope: AnalysisTraceScope;
   /** The root first, then every task under it: the breakdown, the waits and the findings read them all whatever the scope. */
   tasks: readonly TraceTask[]; runs: readonly TraceRun[]; requests: ReadonlyMap<string, TraceRequest>;
-  /** Instruction labels by request (request_labeled): fix, addition or new_request. */
-  labels: ReadonlyMap<string, string>;
+  /** Instruction labels by request (request_labeled): fix (with its kinds of fix), addition or new_request. */
+  labels: ReadonlyMap<string, { kind: InstructionLabel['kind']; fixes: InstructionLabel['fixes'] }>;
   rootState: TaskBaseState;
   /** The user's actions on every task, in time order (AnalysisFacts.activity), to split the waits by where the user was. */
   activity: readonly Activity[];
@@ -368,7 +368,7 @@ export function marks(records: TraceRecords): AnalysisMark[] {
 
 /** The screen's address of a scene: the task's timeline, at an instant or on a finding. */
 export function sceneUrl(task: string, scope: AnalysisTraceScope, scene: { at?: number | string; finding?: string } = {}) {
-  const params = new URLSearchParams({ task, tab: 'timeline' });
+  const params = new URLSearchParams({ task, tab: 'analysis' });
   if (scope === 'subtree') params.set('scope', 'subtree');
   if (scene.at !== undefined) params.set('at', typeof scene.at === 'number' ? iso(scene.at) : scene.at);
   if (scene.finding) params.set('finding', scene.finding);

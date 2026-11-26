@@ -173,6 +173,21 @@ export const resources = {
     queryFn: ({ client, queryKey, signal }) => readResource(client, queryKey,
       () => api.request(`${commandRoute('analysis/task')}?task=${encodeURIComponent(unit)}`, analysisUnitValuesSchema, signal)),
   }),
+  /**
+   * One task's timeline reads (`analysis trace`, `findings`, `at`), each for what it is asked, kept as the face's are. A
+   * trace is read a page at a time, all its pages in turn (one window of it has a few hundred spans at most).
+   */
+  analysisTimeline: <T,>(root: string, name: 'trace' | 'findings' | 'at', input: Record<string, string | readonly string[] | null>, schema: z.ZodType<T>) => {
+    const query = new URLSearchParams();
+    for (const [key, value] of Object.entries(input))
+      for (const each of typeof value === 'string' ? [value] : value ?? []) if (each !== '') query.append(key, each);
+    return queryOptions({
+      queryKey: ['analysis-view', root, name, query.toString()] as const,
+      queryFn: ({ client, queryKey, signal }) => readResource(client, queryKey,
+        () => api.request(`${commandRoute(`analysis/${name}`)}?${queryKey[3]}`, schema, signal)),
+      placeholderData: keepPreviousData,
+    });
+  },
   personalSettings: (root: string) => queryOptions({
     queryKey: ["person-settings", root] as const,
     queryFn: ({ client, queryKey, signal }) => readResource(client, queryKey, () => api.request(commandRoute("settings/get"), personalSettingsResponseSchema, signal)),

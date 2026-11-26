@@ -294,7 +294,7 @@ export function ChartGroup({ bins, span, today, bucket, rows, open, children }: 
     opener.current = { at, row, part: ours && part !== undefined ? Number(part) : ours && list ? "list" : null, box: shown?.box ?? null };
     if (!narrow) chartOf(row)?.focus({ preventScroll: true });
   };
-  const layerOpen = useViewStore(state => !!(state.analysis?.list || state.analysis?.unit));
+  const layerOpen = useViewStore(state => !!state.analysis?.list);
   useLayoutEffect(() => {
     const back = opener.current;
     if (layerOpen || !back) return;

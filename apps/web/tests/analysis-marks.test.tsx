@@ -214,14 +214,14 @@ test("the last thing done says the day: a day the pointer left waiting gives way
   const surface = document.createElement("button");
   let chain: Element[] = [];
   const open = () => {
-    useViewStore.setState({ analysis: { look: "usage", span: { period: "7d" }, list, unit: null, card: null } });
+    useViewStore.setState({ analysis: { look: "usage", span: { period: "7d" }, list, card: null } });
     chain = openerChain(document.activeElement);
     document.body.append(surface); surface.focus();
   };
   const closeList = () => {
     const inside = document.activeElement === surface;
     surface.remove();
-    act(() => { useViewStore.setState({ analysis: { look: "usage", span: { period: "7d" }, list: null, unit: null, card: null } }); });
+    act(() => { useViewStore.setState({ analysis: { look: "usage", span: { period: "7d" }, list: null, card: null } }); });
     if (inside) giveFocusBack(chain);
     act(() => { dispatchEvent(new PopStateEvent("popstate")); vi.advanceTimersByTime(50); });
   };
@@ -317,24 +317,6 @@ test("how the numbers are counted is always open under the breakdown, and the wa
   expect(page.container.querySelector("[aria-expanded]")).toBeNull();
   fireEvent.click(page.getByRole("link", { name: "数え方" }));
   expect(document.activeElement).toBe(page.getByRole("heading", { name: "数え方" }));
-});
-
-test("back from one task to its list, the focus is on that task's row again", async () => {
-  vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
-    const url = String(input);
-    if (url.includes("analysis/list")) return new Response(JSON.stringify(today(3)), { status: 200 });
-    // One task's values never come: the list and the row are what this is about.
-    if (url.includes("analysis/task")) return new Promise<Response>(() => {});
-    return new Response("{}", { status: 200 });
-  });
-  const list: AnalysisPlace = { ...analysisHome("tasks", { period: "today" }), list: { set: "finished", value: null, group: null, member: null, days: null } };
-  const days = { from: "2026-11-24", to: "2026-11-24" };
-  const view = render(<TestWorkspace data={screenData()}><AnalysisLayers place={list} project={null} days={days} /></TestWorkspace>);
-  await vi.waitFor(() => expect(view.container.ownerDocument.querySelector('[data-unit-row="T2"]')).not.toBeNull());
-  view.rerender(<TestWorkspace data={screenData()}><AnalysisLayers place={{ ...list, unit: "T2" }} project={null} days={days} /></TestWorkspace>);
-  view.rerender(<TestWorkspace data={screenData()}><AnalysisLayers place={list} project={null} days={days} /></TestWorkspace>);
-  await vi.waitFor(() => expect(document.activeElement?.getAttribute("data-unit-row")).toBe("T2"));
-  view.unmount();
 });
 
 test("a list's next page stands as rows while it is read, and one that could not be read says so and is asked again", async () => {

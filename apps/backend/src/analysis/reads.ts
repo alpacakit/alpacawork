@@ -12,9 +12,9 @@ import { authorize, type Caller } from '../control/authorize.js';
 import { ControlStore } from '@alpacawork/db';
 import { Kept, Slices } from './slices.js';
 import type { Tally } from '../agents/adapters/tally.js';
-import { FactsCache, finishedClock, type AnalysisFacts, type FactLaunch, type Unit } from './facts.js';
+import { FactsCache, finishedClock, roundsOf, type AnalysisFacts, type FactLaunch, type Unit } from './facts.js';
 import { addDays, bucketStart, buckets, calendar, inDays, makeHead, monday, serverZone } from './calendar.js';
-import { clocks, emptyClock, lastEndedAt, shareOf, unitMarks, type ModelRun } from './rules.js';
+import { clocks, emptyClock, iso, lastEndedAt, shareOf, unitMarks, type ModelRun } from './rules.js';
 import { CluesSum, waitsOf } from './clues.js';
 import { addSplit, emptySplit, splitWaits, type WaitSplit } from './presence.js';
 import { readChanges } from './timeline-reads.js';
@@ -88,6 +88,7 @@ type Waits = (unit: Unit) => WaitSplit;
 function acceptedTotals(units: readonly CountedUnit[], waits: Waits): AnalysisAcceptedTotals {
   let submits = 0, questions = 0, prs = 0, noQuestions = 0, passedNoQuestions = 0, submitsEstimated = 0;
   const leads: number[] = [], time = emptyClock(), clues = new CluesSum();
+  const rounds = { first: { ms: 0, tokens: 0 }, later: { ms: 0, tokens: 0 } };
   for (const { unit, prCount } of units) {
     if (!unit.outcome.acceptedAt) continue;
     leads.push(unit.outcome.leadMs!);
@@ -101,8 +102,12 @@ function acceptedTotals(units: readonly CountedUnit[], waits: Waits): AnalysisAc
     const clock = finishedClock(unit)!.time;
     time.review += clock.review; time.answer += clock.answer; time.ai += clock.ai; time.other += clock.other;
     clues.add(unit, waits(unit));
+    roundsOf(unit, 0).forEach((round, index) => {
+      const sum = index ? rounds.later : rounds.first;
+      sum.ms += round.to - round.from; sum.tokens += round.tokens;
+    });
   }
-  return { leadMedianMs: median(leads), submits, questions, prs, time, ...clues.clues(), noQuestions, passedNoQuestions, submitsEstimated };
+  return { leadMedianMs: median(leads), submits, questions, prs, time, ...clues.clues(), noQuestions, passedNoQuestions, submitsEstimated, rounds };
 }
 
 /** Counts distinct units (by slot) again and again, each count in one pass, without a set per count. */
@@ -763,6 +768,7 @@ class ScopedAnalysis {
     return { head: this.head({}), unit: { ...row(unit, null), requestedAt: unit.outcome.requestedAt, asked },
       ...clues.clues(), submitsEstimated: unit.outcome.estimated,
       band, time, marks: unitMarks(unit.log, from, to), submits: unit.outcome.submits,
+      rounds: roundsOf(unit, this.now).map(round => ({ from: iso(round.from), to: iso(round.to), ms: round.to - round.from, tokens: round.tokens })),
       questions: unit.questions, ...unit.outcome.instructions, answers: unit.answers, workers: unit.workers, children: unit.children,
       usage: this.useCounts(items), models, prs: [...unit.prs].sort(),
       skills: this.usageGroups(collected, 'skill').map(group => group.key).sort(),

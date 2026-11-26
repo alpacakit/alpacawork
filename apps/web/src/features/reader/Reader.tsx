@@ -1,4 +1,5 @@
 import { UrlViewer } from "./viewer/Viewer";
+import { TaskAnalysisPane } from "@/features/analysis/TaskAnalysis";
 import { endTime } from '@/features/telemetry/count';
 import { markRead, useReadReady } from "@/state/read-store";
 import { useAnswerCueLifetime } from "./answer-cue";
@@ -247,6 +248,7 @@ export function Reader({ mode, overlapping = false, canDock = mode === "docked" 
         {pane === "files" ? <FilesTab task={ready}
           path={filePath?.taskId === task.id ? filePath.path : ""} />
           : pane === "about" ? <ContextPage task={ready} onFollow={follow} />
+          : pane === "analysis" ? <TaskAnalysisPane task={ready.id} />
             : <ReportFeed key={task.id} task={ready} people={people} onFollow={follow} waitFrom={waitFrom} />}
         </>}</Loadable>}
         </div>

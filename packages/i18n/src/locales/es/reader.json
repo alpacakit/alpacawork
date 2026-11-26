@@ -74,9 +74,10 @@
   },
   "entries": {
     "after": "Espera a",
+    "analysis": "Análisis",
     "context": "Contexto",
-    "count_one": "{{count}}",
     "count_many": "{{count}}",
+    "count_one": "{{count}}",
     "count_other": "{{count}}",
     "dependencies": "Dependencias",
     "files": "Archivos",

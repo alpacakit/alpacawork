@@ -74,9 +74,10 @@
   },
   "entries": {
     "after": "Aguarda",
+    "analysis": "Análise",
     "context": "Contexto",
-    "count_one": "{{count}}",
     "count_many": "{{count}}",
+    "count_one": "{{count}}",
     "count_other": "{{count}}",
     "dependencies": "Dependências",
     "files": "Arquivos",

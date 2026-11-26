@@ -273,3 +273,41 @@ export function clocks(log: readonly TaskLog[], own: readonly UserQuestion[], de
   }
   return { time, band, waits };
 }
+
+/**
+ * A unit's review rounds as time and tokens (`analysis task` rounds, and the accepted tasks' first and later rounds): a
+ * round is the work up to one review (a submit for review or a question asking to take a result, as `submits` counts
+ * them) and the wait until the user answered it, withdrew it or sent it back. The first round starts at the request,
+ * each next one where the one before closed, and the last runs until the unit finished (or `now`). A launch counts
+ * toward the round it started in, with all its tokens.
+ */
+export type Round = { from: number; to: number; tokens: number };
+export function reviewRounds(log: readonly TaskLog[], questions: readonly UserQuestion[], launches: readonly Launch[],
+  from: number, to: number): Round[] {
+  const closes: number[] = [];
+  log.forEach((entry, index) => {
+    const at = Date.parse(entry.at);
+    if (!isReviewMark(entry) || at < from || at > to) return;
+    const leaving = log.slice(index + 1).find(later => later.toState !== null && later.toState !== 'waiting');
+    closes.push(leaving ? Date.parse(leaving.at) : to);
+  });
+  for (const question of questions)
+    if (question.accept && question.from >= from && question.from <= to) closes.push(question.replacedAt ?? question.to ?? to);
+  // The last round runs on to the end: what follows the last review's answer (the acceptance) is part of it.
+  const ends = [...new Set(closes.map(at => Math.min(to, Math.max(from, at))))].sort((a, b) => a - b);
+  if (ends.length) ends[ends.length - 1] = to; else ends.push(to);
+  const rounds: Round[] = [];
+  let start = from;
+  for (const end of ends) {
+    if (end <= start && rounds.length) continue;
+    rounds.push({ from: start, to: end, tokens: 0 });
+    start = end;
+  }
+  for (const run of launches) {
+    if (!run.tokens) continue;
+    let round = rounds[0]!;
+    for (const each of rounds) if (run.started >= each.from) round = each;
+    round.tokens += run.tokens.input + run.tokens.cacheRead + run.tokens.cacheWrite + run.tokens.output;
+  }
+  return rounds;
+}

@@ -23,9 +23,9 @@ export const gathering = (state: { query: string }) => !!state.query;
 /** The search row stands while asked for and always while a search is set; pressing its button closes what stands. */
 export const isSearchShown = (state: { searchOpen: boolean; query: string }) => state.searchOpen || gathering(state);
 /**
- * The reader's report column or file sheet.
+ * The reader's report column, file sheet, context page, or the task's analysis (its causes and timeline).
  */
-export type ReaderPane = "task" | "files" | "about";
+export type ReaderPane = "task" | "files" | "about" | "analysis";
 
 /**
  * What the URL shows. A task it names that is still being looked up is kept as the URL names it
@@ -34,8 +34,12 @@ export type ReaderPane = "task" | "files" | "about";
 export type Navigation = { project: string | null; task: string | null; taskAddress: string | null; full: boolean; pane: ReaderPane; path: string | null; query: string; image: string | null;
   /** A file read over the reader in the viewer (viewer-target.ts: a Task's file, or one of its code locations): a surface as `image` is. */
   view: string | null; event: string | null; turnSequence?: boolean;
-  /** The analysis face and what is open on it; null on the list of tasks. While it is shown no task is open. */
+  /** On the Analysis tab, the scene of its timeline the URL names (`at`, `finding`): the same address an AI reads. */
+  scene?: Scene | null;
+  /** The analysis face and what is open on it; null on the list of tasks. A task open over it is the reader, as on the list. */
   analysis: AnalysisPlace | null };
+/** A scene of a task's timeline: a finding it was entered from, and the instant shown (either may be missing). */
+export type Scene = { at: string | null; finding: string | null };
 /** The task the navigation's reader shows, known or waited for. */
 export const readerOn = (navigation: Navigation) => navigation.task ?? navigation.taskAddress;
 /** A place in the reader: a task and what of it is shown (Reports, About, Files and the folder or file open there). */
@@ -82,6 +86,9 @@ type ViewState = {
   /** The report row open in the task's column, as the URL's `event` names it: a time mark, a link or the row itself. */
   event: string | null;
   setEvent: (event: string | null) => void;
+  /** The scene of the Analysis tab's timeline (`Navigation.scene`). */
+  scene: Scene | null;
+  setScene: (scene: Scene | null) => void;
   /** The full text: whether it is shown and its pane. */
   reader: { open: boolean; pane: ReaderPane;
     returnTo: { element: HTMLElement; selected: string | null } | null; turnSequence?: boolean;
@@ -127,8 +134,6 @@ type ViewState = {
   analysis: AnalysisPlace | null;
   /** Shows the analysis at a place, closing the task open; null goes back to the list of tasks. */
   showAnalysis: (place: AnalysisPlace | null) => void;
-  /** A task opened from the analysis: the list of tasks, with that task open. */
-  openFromAnalysis: (id: string) => void;
   /** Apply a validated URL as one transition, without the side effects of the individual navigation actions. */
   applyNavigation: (navigation: Navigation) => void;
 };
@@ -226,6 +231,8 @@ export const useViewStore = create<ViewState>((set, get) => ({
   setView: intent((view) => set({ view }), true),
   event: null,
   setEvent: intent((event) => set({ event }), true),
+  scene: null,
+  setScene: intent((scene) => set({ scene }), true),
   reader: { open: false, pane: "task", returnTo: null },
   filePath: null,
   searchOpen: false,
@@ -257,7 +264,7 @@ export const useViewStore = create<ViewState>((set, get) => ({
       const here = reader && state.reader.open && state.selected === id && state.reader.pane === pane;
       return {
         selected: id,
-        ...NO_SURFACE, event: event !== undefined ? event : here ? state.event : null,
+        ...NO_SURFACE, event: event !== undefined ? event : here ? state.event : null, scene: here ? state.scene : null,
         reader: reader ? { ...state.reader, open: true, pane, turnSequence: here ? state.reader.turnSequence : turnSequence, opening: (state.reader.opening ?? 0) + (turnSequence ? 0 : 1),
           whole: whole ?? (state.reader.open && state.reader.whole),
           returnTo: returnTo ? { element: returnTo, selected: state.selected } : null }
@@ -285,7 +292,7 @@ export const useViewStore = create<ViewState>((set, get) => ({
     set((state) => ({ ...NO_SURFACE, event: null, reader: closedReader(state.reader), selected: reader.returnTo ? reader.returnTo.selected : state.selected }));
     focus();
   }, true),
-  setReaderPane: intent((pane) => set((state) => ({ ...NO_SURFACE, event: null, reader: { ...state.reader, pane }, filePath: null })), true),
+  setReaderPane: intent((pane) => set((state) => ({ ...NO_SURFACE, event: null, scene: null, reader: { ...state.reader, pane }, filePath: null })), true),
   setReaderWhole: (whole) => set((state) => ({ reader: { ...state.reader, whole } })),
   openTaskFile: intent((taskId, path) => {
     const opening = fileOpening(taskId, path);
@@ -301,10 +308,9 @@ export const useViewStore = create<ViewState>((set, get) => ({
   showAnalysis: intent((analysis) => set((state) => !analysis ? { analysis }
     : { analysis, searchOpen: false, query: "", ...state.query ? queryEdit(state) : {},
       ...state.reader.open ? { selected: null, ...NO_SURFACE, event: null, reader: closedReader(state.reader) } : {} })),
-  openFromAnalysis: intent((id) => { set({ analysis: null }); get().openTask(id, { reader: true, pane: "task" }); }),
   /** The URL shown into the store (state/bootstrap.ts): the only other writer of what the URL holds. */
   applyNavigation: (navigation) => {
-    const { project, task, taskAddress, full, pane, path, query, image, view, event, turnSequence, analysis } = navigation;
+    const { project, task, taskAddress, full, pane, path, query, image, view, event, turnSequence, analysis, scene } = navigation;
     endReaderInput(task); openedByPress = false;
     if (task) markRead(task);
     // The reader shows the task the URL names, or waits for it while it is looked up (`awaitedTask`).
@@ -317,7 +323,7 @@ export const useViewStore = create<ViewState>((set, get) => ({
         // A URL with no task says nothing of the reader's width (full belongs to the task): going back to the list from
         // a task opened full keeps it for the next one, as closing it does.
         project, query, analysis, readerFull: shown ? full : state.readerFull, navigationReady: true, queryEditedBeforeNavigation: false,
-        selected: task, image, view, event,
+        selected: task, image, view, event, scene,
         reader: { ...state.reader, open: !!shown, address: task ? null : taskAddress, pane, returnTo: shown === state.selected ? state.reader.returnTo : null, turnSequence,
           whole: !!shown && state.reader.open && state.reader.whole },
         filePath: shown && path !== null ? { taskId: shown, path } : null,
@@ -335,6 +341,7 @@ export function screenNavigation(): Navigation {
   const shown = task ?? taskAddress;
   return { project: view.project, task, taskAddress, full: view.readerFull, pane: view.reader.pane, image: shown ? view.image : null, view: shown ? view.view : null, turnSequence: view.reader.turnSequence,
     event: shown && view.reader.pane === "task" ? view.event : null,
+    scene: shown && view.reader.pane === "analysis" ? view.scene : null,
     path: shown && view.filePath?.taskId === shown && view.reader.pane === "files" ? view.filePath.path || null : null,
     query: view.query, analysis: view.analysis };
 }
