@@ -280,23 +280,28 @@ test("a new usage figure redraws the ring alone, not the rows of the conversatio
 });
 
 test("history held open and read again when the screen comes back reads only the pages whose files can have been cleaned", async () => {
-  const plain = Array.from({ length: 3 }, (_, n) => answered(`p${n}`, n));
-  const withFiles = { ...answered("f", 4), attachments: ["shot.png"] };
+  // Two pages held: the older one has no files, the newer one has a turn whose files are still there.
+  const older = [answered("o1", 1), answered("o2", 2)], newer = [answered("n1", 3), { ...answered("n2", 4), attachments: ["shot.png"] }];
+  const pages: Record<string, { turns: CoordinatorTurn[]; more: string | null }> = { a: { turns: newer, more: "n1" }, n1: { turns: older, more: null } };
   const conversation = { ...empty, earlier: { count: 4, before: "a" }, turns: [answered("a", 10)] };
-  const fetcher = vi.fn(async (url: string) => url.startsWith("/api/coordinator/turns?")
-    ? new Response(JSON.stringify({ turns: [...plain, withFiles], resets: [], more: null }), { status: 200 }) : json(conversation));
+  const fetcher = vi.fn(async (url: string) => {
+    const page = /before=(.+)$/.exec(url);
+    return url.startsWith("/api/coordinator/turns?") ? new Response(JSON.stringify({ ...pages[page![1]!] ?? { turns: [], more: null }, resets: [] }), { status: 200 }) : json(conversation);
+  });
   vi.stubGlobal("fetch", fetcher);
   setConversationState({ open: true, expanded: true, read: true, conversation });
   card();
   fireEvent.click(thread().querySelector("[data-earlier] button")!);
-  await waitFor(() => expect(order()).toEqual(["p0", "p1", "p2", "f", "a"]));
-  const pages = () => fetcher.mock.calls.filter(([url]) => String(url).startsWith("/api/coordinator/turns?")).length;
-  expect(pages()).toBe(1);
+  await waitFor(() => expect(order()).toEqual(["more", "n1", "n2", "a"]));
+  fireEvent.click(thread().querySelector("[data-earlier-more] button")!);
+  await waitFor(() => expect(order()).toEqual(["o1", "o2", "n1", "n2", "a"]));
+  const pagesRead = () => fetcher.mock.calls.filter(([url]) => String(url).startsWith("/api/coordinator/turns?")).length;
+  expect(pagesRead()).toBe(2);
   vi.spyOn(Date, "now").mockReturnValue(Date.now() + 61_000);
   focusManager.setFocused(false); focusManager.setFocused(true);
-  // One page: the one ending after the turn whose files are still there.
-  await waitFor(() => expect(pages()).toBe(2));
+  // One page: the one ending after the turn whose files are still there; the older page is not read again.
+  await waitFor(() => expect(pagesRead()).toBe(3));
   await new Promise(resolve => setTimeout(resolve, 50));
-  expect(pages()).toBe(2);
+  expect(pagesRead()).toBe(3);
   focusManager.setFocused(undefined); vi.restoreAllMocks();
 });
