@@ -127,4 +127,8 @@ test('display sums Runs, ages out seconds on the clock, and distinguishes unknow
   assert.deepEqual(runOutputSpeed([{ buckets: [[100, 5]], lastActivityAt: 100 }], 160), {
     rate: 0, bars: Array(12).fill(0), idleSeconds: 60,
   });
+  // A reader whose clock is behind the server's still counts the newest seconds.
+  assert.deepEqual(runOutputSpeed([{ buckets: [[105, 10]], lastActivityAt: 105 }], 100), {
+    rate: 2, bars: [...Array(11).fill(0), 2], idleSeconds: 0,
+  });
 });

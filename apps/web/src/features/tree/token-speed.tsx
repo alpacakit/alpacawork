@@ -21,6 +21,7 @@ const listeners = new Set<() => void>();
 let timer: ReturnType<typeof setInterval> | null = null;
 function subscribeSecond(listener: () => void) {
   listeners.add(listener);
+  if (!timer) second = Math.floor(Date.now() / 1000);
   timer ??= setInterval(() => {
     second = Math.floor(Date.now() / 1000);
     for (const each of listeners) each();
@@ -31,13 +32,11 @@ function subscribeSecond(listener: () => void) {
   };
 }
 
-/** The Runs a row's speed sums: its own running Runs and those under it. */
+/** The Runs a row's speed sums: its own running Runs and those under it; none on a row that says no agents run. */
 function rowRunIds(task: Task, data: WorkspaceData): string[] {
+  if (!runningRunsSaid(task)) return [];
   const own = (data.people.runsByTask.get(task.id) ?? []).filter((run) => run.state === "running").map((run) => run.id);
   return [...new Set([...own, ...(task.runsBelow ?? []).map(([id]) => id)])];
-}
-function speedOf(ids: readonly string[], data: WorkspaceData, now: number): RunOutputSpeed | null {
-  return runOutputSpeed(ids.map((id) => data.people.runs.get(id)?.activity?.output), now);
 }
 
 /**
@@ -45,10 +44,29 @@ function speedOf(ids: readonly string[], data: WorkspaceData, now: number): RunO
  * row drawn before the heading has set it reads the scale at the next second.
  */
 let scaleTasks: readonly Task[] = [];
+/** Each row's speed and the shared scale, worked out once per workspace state and second for every cell to read. */
+let computed: { data: WorkspaceData; now: number; tasks: readonly Task[]; speeds: Map<string, RunOutputSpeed | null>; scale: number | null } | null = null;
+function moment(data: WorkspaceData, now: number) {
+  if (computed?.data !== data || computed.now !== now || computed.tasks !== scaleTasks)
+    computed = { data, now, tasks: scaleTasks, speeds: new Map(), scale: null };
+  return computed;
+}
+function rowSpeed(task: Task, data: WorkspaceData, now: number): RunOutputSpeed | null {
+  const at = moment(data, now);
+  if (!at.speeds.has(task.id)) {
+    const ids = rowRunIds(task, data);
+    at.speeds.set(task.id, ids.length ? runOutputSpeed(ids.map((id) => data.people.runs.get(id)?.activity?.output), now) : null);
+  }
+  return at.speeds.get(task.id)!;
+}
 function sharedScale(data: WorkspaceData, now: number) {
-  let peak = 50;
-  for (const task of scaleTasks) for (const bar of speedOf(rowRunIds(task, data), data, now)?.bars ?? []) peak = Math.max(peak, bar);
-  return peak;
+  const at = moment(data, now);
+  if (at.scale === null) {
+    let peak = 50;
+    for (const task of scaleTasks) for (const bar of rowSpeed(task, data, now)?.bars ?? []) peak = Math.max(peak, bar);
+    at.scale = Math.round(peak);
+  }
+  return at.scale;
 }
 
 const shown = (rate: number) => rate >= 100 ? Math.round(rate / 5) * 5 : Math.round(rate);
@@ -59,15 +77,17 @@ const IDLE_SECONDS = 60;
 /** What a cell shows, as one string: equal strings skip the re-render. Empty when none of its Runs is measured. */
 function useSpeedKey(read: (data: WorkspaceData, now: number) => string) {
   const store = useWorkspaceStore();
-  return useSyncExternalStore(subscribeSecond, () => read(store.getState(), second));
+  // Before the clock runs (a section just opened), read the time now rather than when it last stopped.
+  return useSyncExternalStore(subscribeSecond, () => read(store.getState(), timer ? second : Math.floor(Date.now() / 1000)));
 }
 
 type RowShown = { rate: number; bars: number[]; scale: number; idle: number };
+/** `idle` is kept only as shown (whole minutes, from one minute up), so a silent row does not re-render every second. */
 const rowKey = (task: Task) => (data: WorkspaceData, now: number) => {
-  const speed = speedOf(rowRunIds(task, data), data, now);
+  const speed = rowSpeed(task, data, now);
   if (!speed) return "";
-  const bars = speed.bars.map(shown);
-  return JSON.stringify({ rate: shown(speed.rate), bars, scale: Math.round(sharedScale(data, now)), idle: speed.idleSeconds } satisfies RowShown);
+  const idle = speed.idleSeconds >= IDLE_SECONDS ? Math.floor(speed.idleSeconds / 60) * 60 : 0;
+  return JSON.stringify({ rate: shown(speed.rate), bars: speed.bars.map(shown), scale: sharedScale(data, now), idle } satisfies RowShown);
 };
 
 /** A number in a fixed slot, right-aligned: quiet like the square's count, fainter at 0. */
@@ -128,7 +148,7 @@ export function StripTokenSpeed({ task, lead, height }: { task: Task; lead: numb
 const totalKey = (tops: readonly Task[]) => (data: WorkspaceData, now: number) => {
   let total = 0, measured = false;
   for (const task of tops) {
-    const speed = speedOf(rowRunIds(task, data), data, now);
+    const speed = rowSpeed(task, data, now);
     if (speed) { measured = true; total += shown(speed.rate); }
   }
   return measured ? String(total) : "";
