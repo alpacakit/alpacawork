@@ -51,7 +51,7 @@ export default defineConfig({
       "automations:schedule.*", "automations:weekday.*", "automations:event.*", "automations:next.*",
       "automations:reason.*", "automations:runs.reason.*", "automations:duration.*", "automations:pressure.*",
       "automations:trigger.*", "automations:runs.state.*",
-      "automations:attention.*", "automations:phase.*", "automations:group.*", "automations:mark.*", "automations:dot.*", "automations:pane.*", "automations:effect.*",
+      "automations:attention.*", "automations:phase.*", "automations:group.*", "automations:mark.*", "automations:dot.*", "automations:pane.*", "automations:effect.*", "automations:field.*",
       "panels:update.card.failedBody.*", // A failed update said by its category (features/update/UpdateView.tsx).
       "panels:telemetry.outcome.*", // What became of a request sent, by its outcome (features/telemetry/Telemetry.tsx).
       "panels:telemetry.fields.*", // A kind of information sent, by its field's name (features/telemetry/field-text.ts).

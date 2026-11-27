@@ -30,7 +30,7 @@ export function AutomationsFace({ place }: { place: AutomationsPlace }) {
   const { t } = useTranslation("automations");
   const { list } = useAutomationsInView();
   const writeDisabled = useWriteDisabled();
-  return <section data-automations aria-label={t("list.title")} className="@container pane-scroll flex min-h-0 flex-1 flex-col overflow-auto px-6 pt-5 pb-(--list-foot) narrow:px-3 narrow:pt-3">
+  return <section data-automations data-list-scroll aria-label={t("list.title")} className="@container scroll-pb-(--list-foot) pane-scroll flex min-h-0 flex-1 flex-col overflow-auto px-6 pt-5 pb-(--list-foot) narrow:px-3 narrow:pt-3">
     <div className="max-w-[1180px]">
       {/* One line: the title, the table or the runs, today's counts, and asking for a new one (a phone puts the counts below). */}
       <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -135,17 +135,21 @@ function StateDot({ automation, failed }: { automation: Automation; failed: bool
  * The last run: its time and outcome ("09:33 failed · why", the outcome alone in red), or, for one by the clock that is
  * on, when it runs next. On a phone, why it failed is a line of its own under the name.
  */
-function LastRun({ automation, failure, narrow }: { automation: Automation; failure: Automation["attention"][number] | null; narrow: boolean }) {
+function LastRun({ automation, failure: failed, narrow }: { automation: Automation; failure: Automation["attention"][number] | null; narrow: boolean }) {
   const { t, i18n } = useTranslation("automations");
   const now = new Date(useNow());
   const last = automation.lastRun;
+  let failure = failed;
   const upcoming = useUpcoming(automation, automation.enabled);
   // A failure asking for a look is said by the run that failed, whatever runs came after it.
+  // A run going on now is said as that, not by the failure before it.
+  const going = !!last && (last.state === "running" || last.state === "waiting");
+  if (going) failure = null;
   const why = failure && (failure.kind === "disabled" && automation.disabledReason && knownWords(t, `reason.${automation.disabledReason}`) || reasonText(t, failure));
   if (!last && !upcoming && !failure) return <span role="cell" className="text-sm text-muted">—</span>;
   const head = failure ? <><span className="tabular-nums">{formatLogTime(failure.at, i18n.language)}</span>{" "}
       <span className="font-semibold text-error">{t("runs.state.failed")}</span></>
-    : automation.enabled && upcoming ? <span className="text-ink">{nextText(t, upcoming, now, i18n.language)}</span>
+    : automation.enabled && upcoming && !going ? <span className="text-ink">{nextText(t, upcoming, now, i18n.language)}</span>
     : last && <><span className="tabular-nums">{formatLogTime(last.at, i18n.language)}</span>{" "}
       <span className="text-ink">{outcomeWord(t, last)}</span></>;
   return <>

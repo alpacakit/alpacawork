@@ -54,10 +54,10 @@ export function toVersion(version: AutomationVersion): Version {
 }
 
 function toOperation(operation: { name: string; target: unknown; input: unknown; replaced: boolean; result: unknown; code: string | null;
-  usage: { model: string | null; costUsd: number | null } | null; durationMs?: number | null }): Operation {
+  usage: { model: string | null; costUsd: number | null } | null; durationMs?: number | null; outcome?: string }): Operation {
   const result = operation.durationMs != null && record(operation.result) === operation.result ? { ...record(operation.result), durationMs: operation.durationMs } : operation.result;
   return { name: operation.name, target: operation.target === null ? null : plain(operation.target), input: operation.input, replaced: operation.replaced,
-    result: result ?? null, code: operation.code, usage: operation.usage ? { model: operation.usage.model ?? "", costUsd: operation.usage.costUsd } : null };
+    result: result ?? null, code: operation.code, failed: operation.outcome === "failed" || operation.code !== null, usage: operation.usage ? { model: operation.usage.model ?? "", costUsd: operation.usage.costUsd } : null };
 }
 
 /** An event's line and what arrived with it, by its kind: a task's title, a signal's newest data, the pressure's kinds. */

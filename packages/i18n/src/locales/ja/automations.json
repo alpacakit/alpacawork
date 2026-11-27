@@ -43,6 +43,8 @@
     "back": "やめる",
     "beforeNewTitle": "新しい版をオンにする前に",
     "beforeTitle": "オンにする前に",
+    "destinations": "送り先",
+    "destinationsMissing": "送り先を入れるまでオンにできません",
     "diff": "違いを中身で見る",
     "direct": "alpacawork を通らない操作",
     "directNote": "プログラムが直接する物なので、止められません",
@@ -75,7 +77,7 @@
     "latest": "版",
     "live": "動いている版",
     "new": "新しい版",
-    "review": "AI の見直し：{{text}}",
+    "reviewLabel": "AI の見直し：",
     "showLive": "動いている版",
     "showNew": "新しい版",
     "timeout": "時間の上限",
@@ -97,6 +99,21 @@
     "final": "消した自動実行は元に戻せません。",
     "keeps": "作ったタスクは残ります。",
     "title": "{{id}}「{{name}}」を消しますか"
+  },
+  "destination": {
+    "cancel": "やめる",
+    "enter": "入れる",
+    "header": "認証のヘッダー（任意）",
+    "headerPlaceholder": "認証のヘッダー（任意。Authorization: Bearer …）",
+    "hidden": "{{host}}/…（伏せています）",
+    "missing": "まだ入っていません",
+    "note": "貼った値は保存した後は見えなくなり、ホスト名だけを出します。同じプロジェクトの自動実行で共有されます。",
+    "reenter": "入れ直す",
+    "save": "保存",
+    "url": "{{name}} の送り先の URL",
+    "urlPlaceholder": "送り先の URL を貼る（https://…）",
+    "usedBy": "ほかに使っている自動実行：{{list}}",
+    "viaCoordinator": "会話でコーディネーターに渡しても入れられます（会話の履歴に残ります）。"
   },
   "dot": {
     "awaiting": "新しい版がオン待ち",
@@ -123,6 +140,20 @@
     "stopped": "中止",
     "todo": "未着手",
     "waiting": "確認待ち"
+  },
+  "field": {
+    "by": "誰から",
+    "by_ai": "AI",
+    "by_human": "私",
+    "from": "前",
+    "kinds": "逼迫した物",
+    "phase": "段",
+    "phase_continuing": "続いている",
+    "phase_entered": "逼迫した",
+    "scheduledAt": "予定の時刻",
+    "task": "タスク",
+    "to": "後",
+    "type": "種類"
   },
   "group": {
     "attention": "対応待ち",
@@ -169,6 +200,7 @@
     "todayOutside_other": "外へ {{count}}回",
     "views": "見る物"
   },
+  "listJoin": "、",
   "mark": {
     "ai": "AI を使う",
     "awaiting": "新しい版がオン待ち",
@@ -189,8 +221,11 @@
     "comment": "{{task}} に記録を書いた",
     "create": "タスク {{task}} を作った",
     "createAsk": "タスク {{task}} を作り、{{ai}} に頼んだ",
+    "createFailed": "タスク「{{title}}」を作れなかった",
     "disable": "この自動実行をオフにした",
     "other": "{{name}}",
+    "otherFailed": "{{name}} が通らなかった",
+    "sendFailed": "{{host}} へ送れなかった",
     "sent": "{{host}} へ送った",
     "wouldComment": "{{task}} に記録を書く",
     "wouldCreate": "タスク「{{title}}」を作る",
@@ -208,6 +243,7 @@
     "trialTip": "自動実行 {{id}}「{{name}}」を試して作成"
   },
   "outside": {
+    "direct": "プログラムが直接する通信あり",
     "none": "外へは出ない",
     "noTasks": "タスクは作らない",
     "notEntered": "{{name}}（送り先はまだ）",
@@ -240,10 +276,14 @@
     "runs": "回の記録"
   },
   "review": {
+    "close": "閉じる",
     "found_other": "指摘 {{count}}件",
+    "head_other": "指摘 {{count}}件",
+    "headMust_other": "直す所 {{count}}件",
     "must": "直す：{{text}}",
     "note": "指摘：{{text}}",
     "ok": "指摘なし",
+    "open": "詳しく",
     "running": "見直しています",
     "unavailable": "見直せませんでした（AI が動かなかった）"
   },
@@ -424,7 +464,10 @@
     "showIntent": "するつもりを見る",
     "summary": "報告：{{text}}",
     "title": "{{id}} を試す",
+    "triggerAi": "出来事を選ぶと trigger が動き、AI を1回使います",
+    "triggerCost": "出来事を選ぶと trigger が動き、AI を1回使います（約 ${{usd}}）",
     "triggerFailed": "trigger が失敗しました：{{message}}",
+    "triggerMayAi": "出来事を選ぶと trigger が動きます。AI を使うことがあります",
     "which": "どの出来事で試すか（{{when}}）",
     "write": "中身を書いて試す",
     "writeLabel": "届く中身（JSON）",
@@ -442,7 +485,9 @@
   "window": {
     "failed": "{{id}} を読めませんでした",
     "label": "自動実行 {{id}}",
+    "next": "次の自動実行",
     "panes": "見る物",
+    "previous": "前の自動実行",
     "resize": "窓の幅を変える"
   }
 }

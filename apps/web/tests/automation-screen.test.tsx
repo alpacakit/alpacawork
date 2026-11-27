@@ -64,6 +64,9 @@ test("a draft whose AI review found something is turned on from its band, saying
   opened("A9");
   windowOn(data, "A9");
   expect(text("[data-automation-summary]")).toBe("Counts the waiting tasks and asks for one summary task");
+  // The review in one line; opened, each finding.
+  expect(text('[data-automation-band="before-on"] [data-automation-review]')).toMatch(/^1 finding/);
+  fireEvent.click(document.querySelector("[data-automation-review-open]")!);
   expect(text('[data-automation-band="before-on"]')).toContain("Note: Cut long text");
   // No switch on a draft: it is turned on from the band.
   expect(document.querySelector("[data-automation-switch]")).toBeNull();
@@ -141,6 +144,8 @@ test("a new version whose review is unread is turned on only after its findings 
   fireEvent.click(document.querySelector('[data-automation-band="awaiting"] [data-automation-band-act]')!);
   expect(document.querySelector('[data-automation-band="before-on"] h3 + [data-automation-band-back]')).not.toBeNull();
   expect(sent.some(call => call.path.includes("automation/enable"))).toBe(false);
+  expect(text('[data-automation-band="before-on"] [data-automation-review]')).toMatch(/^1 to fix/);
+  fireEvent.click(document.querySelector("[data-automation-review-open]")!);
   expect(text('[data-automation-band="before-on"]')).toContain("Fix: Counts done tasks too");
   // Having read them, the person may go back to the band they came from (to drop the new version instead).
   fireEvent.click(document.querySelector("[data-automation-band-back]")!);
@@ -173,4 +178,26 @@ test("while another event's showing is on its way, the last one's answer is not 
   fireEvent.click(document.querySelector("[data-automation-try-write] input")!);
   await waitFor(() => expect(document.querySelector("[data-automation-try-result]")).toBeNull());
   expect(document.querySelector<HTMLButtonElement>("[data-automation-try-do]")!.disabled).toBe(true);
+});
+
+test("a draft that sends to a destination not entered yet says so and is turned on only once it is entered here", async () => {
+  const sending = automation({ id: "A8", name: "To chat", enabled: false, everEnabled: false, live: null,
+    latest: version({ facts: { ...version().facts, outside: [{ name: "chat", host: null, ready: false }] } }) });
+  const data = screenData();
+  seedAutomations(data, listOf([sending]));
+  const sent: { path: string; body?: unknown }[] = [];
+  vi.spyOn(api, "request").mockImplementation(async (path: string, _schema: unknown, _signal: unknown, body?: unknown) => {
+    sent.push({ path, body });
+    if (path.includes("automation/destination-list")) return { destinations: [] };
+    return new Promise(() => {});
+  });
+  opened("A8");
+  windowOn(data, "A8");
+  const band = '[data-automation-band="before-on"]';
+  expect(text(`${band} [data-automation-destination="chat"]`)).toContain("Not entered yet");
+  expect(document.querySelector<HTMLButtonElement>(`${band} [data-automation-band-act]`)!.disabled).toBe(true);
+  fireEvent.click(document.querySelector(`${band} [data-automation-destination-edit]`)!);
+  fireEvent.change(document.querySelector(`${band} [data-automation-destination-url]`)!, { target: { value: "https://hooks.example.com/x" } });
+  fireEvent.click(document.querySelector(`${band} [data-automation-destination-save]`)!);
+  await waitFor(() => expect(sent.find(call => call.path.includes("automation/destination-set"))?.body).toEqual({ under: "P1", name: "chat", url: "https://hooks.example.com/x" }));
 });

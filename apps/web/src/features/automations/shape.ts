@@ -47,6 +47,8 @@ export type Review = z.infer<typeof reviewSchema>;
 /** One operation the program asked of alpacawork through its SDK (made a task, asked an AI, sent…). */
 export const operationSchema = z.object({
   name: z.string(), target: z.string().nullable(), input: json, replaced: z.boolean(), result: json.nullable(), code: z.string().nullable(),
+  /** It was asked and did not go through (refused, or failed on the way). */
+  failed: z.boolean().optional(),
   usage: z.object({ model: z.string(), costUsd: z.number().nullable() }).nullable(),
 });
 export type Operation = z.infer<typeof operationSchema>;

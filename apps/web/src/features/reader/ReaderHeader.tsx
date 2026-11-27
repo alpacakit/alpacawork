@@ -214,7 +214,7 @@ function useGrow(canDock: boolean) {
   return null;
 }
 
-function FrameButton({ icon, label, title = label, pressed, disabled, onPress, ...data }: { icon: IconName; label: string; title?: string; pressed?: boolean; disabled?: boolean; onPress: () => void; [data: `data-${string}`]: unknown }) {
+export function FrameButton({ icon, label, title = label, pressed, disabled, onPress, ...data }: { icon: IconName; label: string; title?: string; pressed?: boolean; disabled?: boolean; onPress: () => void; [data: `data-${string}`]: unknown }) {
   // Every one is the head's 32px circle (HEAD_MARK). The last, ×, ends its circle on the title's right edge, clear of
   // the window's round corner, as a related list's × ends on its rows' edge.
   return <Button variant="ghost" size="icon" {...data} disabled={disabled} aria-pressed={pressed} aria-label={label} title={title} onClick={onPress}

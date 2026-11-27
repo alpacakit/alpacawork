@@ -20,11 +20,16 @@ import { readerOpenedByPress, useViewStore } from "@/state/view-store";
 import { openSettings } from "@/state/dialog-store";
 import { WindowWidthHandle } from "@/features/shell/docked-window";
 import { readerBox, type ReaderMode } from "@/features/reader/Reader";
-import { FrameButtons, HEAD_ROW, ListPager, readerHeadBox } from "@/features/reader/ReaderHeader";
+import { FrameButton, FrameButtons, HEAD_ROW, readerHeadBox } from "@/features/reader/ReaderHeader";
+import { HEAD_MARK_GAP as PAGER_GAP } from "@/components/ui/button";
+import { groupOf } from "@/domain/automations";
 import { keepFocusInside, StandingGrip, useSheetControl } from "@/features/reader/TaskSheet";
 import { COLUMN } from "@/features/reader/reading-column";
 import { MarkdownBody } from "@/features/reader/MarkdownBody";
-import { attentionOf, useAutomationAct, useAutomationRuns, useShownAutomation, useVersionFiles } from "./data";
+import { attentionOf, useAutomationAct, useAutomationRuns, useAutomationsInView, useShownAutomation, useVersionFiles } from "./data";
+import { DestinationRows } from "./Destinations";
+import { ReviewSummary } from "./ReviewSummary";
+import { openAutomation } from "./open";
 import { pointInputAt } from "./input-badge";
 import { DeleteAutomationDialog } from "./DeleteAutomationDialog";
 import { Sender } from "./SignalSender";
@@ -61,11 +66,11 @@ export function AutomationWindow({ id, mode, canDock }: { id: string; mode: Read
     <header {...sheet?.grip} className={`${readerHeadBox(mode)} @container/reader border-transparent`}>
       <div className={`-mr-3 flex min-w-0 items-center overflow-x-clip pr-3 text-xs text-muted ${HEAD_MARK_GAP}`}>
         <span data-automation-id className={`flex min-w-0 flex-1 items-center font-medium text-ink tabular-nums ${HEAD_ROW}`}>{id}</span>
-        <span className={`flex flex-none items-center ${HEAD_ROW}`}><ListPager id={id} /></span>
+        <span className={`flex flex-none items-center ${HEAD_ROW}`}><AutomationPager id={id} /></span>
         <FrameButtons canDock={canDock} />
       </div>
     </header>
-    <div data-automation-content className="min-h-0 flex-1 overflow-auto px-4 pt-1 pb-(--list-foot) [overflow-wrap:anywhere] narrow:px-3">
+    <div data-automation-content data-reader-content className="min-h-0 flex-1 overflow-auto px-4 pt-1 pb-(--foot-gap) [overflow-wrap:anywhere] narrow:px-3">
       <div className={COLUMN.body}>
         {automation ? <Opened automation={automation} pane={pane} />
           : read.error ? <ReadFailure what={t("window.failed", { id })} error={read.error} retry={() => read.refetch()} />
@@ -118,6 +123,10 @@ function PaneTabs({ pane }: { pane: AutomationPane }) {
 
 /** Whether a version's AI's look found something the person has not said they read. */
 const reviewToRead = (version: Version) => version.review.state !== "ok" && !version.review.acknowledged;
+/** A destination it sends to that is not entered yet: it cannot be turned on until it is. */
+const missingDestination = (version: Version) => version.facts.outside.some(destination => !destination.ready);
+/** Whether turning a version on waits for what the before-on band shows: an unread review, a missing destination. */
+const needsBefore = (version: Version) => reviewToRead(version) || missingDestination(version);
 
 /**
  * On and off, beside its word. A draft (never on) has no switch: it is turned on from the band that says what to read
@@ -131,7 +140,7 @@ function OnSwitch({ automation, onRead }: { automation: Automation; onRead: () =
   return <label className="flex items-center gap-1.5 text-sm text-muted">
     <Switch data-automation-switch checked={automation.enabled} disabled={writeDisabled || act.isPending} aria-label={t("toggle", { name: automation.name })}
       onCheckedChange={on => {
-        if (on && reviewToRead(automation.latest)) { onRead(); return; }
+        if (on && needsBefore(automation.latest)) { onRead(); return; }
         act.mutate({ act: on ? "enable" : "disable", automation });
       }} />
     {t(automation.enabled ? "on" : "off")}
@@ -172,7 +181,7 @@ function MoreMenu({ automation }: { automation: Automation }) {
 function Band({ automation, reading, onRead, onBack }: { automation: Automation; reading: boolean; onRead: () => void; onBack: () => void }) {
   const attention = attentionOf(automation);
   // Asked to turn on a version whose review is unread: what it said comes first, wherever the asking came from.
-  if (reading && reviewToRead(automation.latest)) return <BeforeOnBand automation={automation} onBack={onBack} />;
+  if (reading && needsBefore(automation.latest)) return <BeforeOnBand automation={automation} onBack={onBack} />;
   if (attention && (attention.kind === "failed" || attention.kind === "disabled")) return <FailedBand automation={automation} failure={attention} onRead={onRead} />;
   if (automation.awaitingEnable) return <AwaitingBand automation={automation} onRead={onRead} />;
   if (!automation.enabled && !automation.everEnabled) return <BeforeOnBand automation={automation} />;
@@ -204,7 +213,7 @@ function FailedBand({ automation, failure, onRead }: { automation: Automation; f
   const off = !automation.enabled;
   const why = off && automation.disabledReason && knownWords(t, `reason.${automation.disabledReason}`) || reasonText(t, failure);
   const action = off ? <Button data-automation-band-act className={BAND_BUTTON} disabled={writeDisabled || act.isPending}
-      onClick={() => reviewToRead(automation.latest) ? onRead() : act.mutate({ act: "enable", automation })}>{t("band.turnOn")}</Button>
+      onClick={() => needsBefore(automation.latest) ? onRead() : act.mutate({ act: "enable", automation })}>{t("band.turnOn")}</Button>
     : failure.reasonKind === "ai_unavailable" || failure.reasonKind === "unavailable" ? <Button variant="outline" data-automation-band-act className={BAND_BUTTON} onClick={() => openSettings("ai")}>{t("band.openAi")}</Button>
     : <Button variant="outline" data-automation-band-act className={BAND_BUTTON} onClick={() => setPane("log")}>{t("band.readRuns")}</Button>;
   return <BandFrame data-automation-band="failed" failed title={t(off ? "band.offTitle" : "band.failedTitle", { time: formatLogTime(failure.at, i18n.language) })} action={action}>
@@ -224,7 +233,7 @@ function AwaitingBand({ automation, onRead }: { automation: Automation; onRead: 
   const setPane = useViewStore(state => state.setAutomationPane);
   const latest = automation.latest, live = automation.live!;
   const [before, after] = differing(live.docs.run.summary, latest.docs.run.summary);
-  const enable = () => reviewToRead(latest) ? onRead() : act.mutate({ act: "enable", automation });
+  const enable = () => needsBefore(latest) ? onRead() : act.mutate({ act: "enable", automation });
   return <BandFrame data-automation-band="awaiting" title={t("band.awaitingTitle")}
     action={<Button data-automation-band-act className={BAND_BUTTON} disabled={writeDisabled || act.isPending} onClick={enable}>{t("band.awaitingOn")}</Button>}>
     <p className="m-0 line-clamp-3 text-sm text-muted">{madeBy(t, latest, i18n.language)}{t("sentence")}</p>
@@ -292,18 +301,18 @@ function BeforeOnBand({ automation, onBack }: { automation: Automation; onBack?:
   const act = useAutomationAct();
   const writeDisabled = useWriteDisabled();
   const latest = automation.latest, review = latest.review;
-  const toRead = reviewToRead(latest);
+  const toRead = reviewToRead(latest), missing = missingDestination(latest);
   const intents = latest.preview?.operations.filter(operation => operation.replaced) ?? [];
+  const held = writeDisabled || act.isPending || review.state === "running" || missing;
   return <div ref={box}><BandFrame data-automation-band="before-on" title={t(automation.awaitingEnable ? "band.beforeNewTitle" : "band.beforeTitle")}
-    action={onBack ? <Button variant="outline" data-automation-band-back className={BAND_BUTTON} onClick={onBack}>{t("band.back")}</Button> : <Button data-automation-band-act className={BAND_BUTTON} disabled={writeDisabled || act.isPending || review.state === "running"}
+    action={onBack ? <Button variant="outline" data-automation-band-back className={BAND_BUTTON} onClick={onBack}>{t("band.back")}</Button> : <Button data-automation-band-act className={BAND_BUTTON} disabled={held}
       onClick={() => act.mutate({ act: "enable", automation, acknowledge: toRead })}>{t(toRead ? "band.acknowledgeOn" : "band.turnOn")}</Button>}>
     <dl className="m-0 grid grid-cols-[8rem_minmax(0,1fr)] gap-x-4 gap-y-2.5 text-sm narrow:grid-cols-1 narrow:gap-y-0.5">
-      <Fact name={t("band.review")}>
-        {review.state === "running" ? t("review.running") : review.state === "unavailable" ? t("review.unavailable")
-          : review.findings.length ? review.findings.map((finding, at) => <p key={at} className="m-0">{t(finding.level === "must" ? "review.must" : "review.note", { text: finding.text })}</p>)
-          : t("review.ok")}
-        {review.model && review.at && <span className="block text-xs text-muted">{review.model}{t("join")}{formatLogTime(review.at, i18n.language)}</span>}
-      </Fact>
+      {latest.facts.outside.length > 0 && <Fact name={t("band.destinations")}>
+        <DestinationRows automation={automation} names={latest.facts.outside} />
+        {missing && <span className="mt-1 block text-xs text-error">{t("band.destinationsMissing")}</span>}
+      </Fact>}
+      <Fact name={t("band.review")}><ReviewSummary review={review} /></Fact>
       {latest.direct && <Fact name={t("band.direct")}>
         {/* None found is only none when the review looked: without it, only the parts the program uses were read. */}
         {latest.direct.length ? latest.direct.map((effect, at) => <p key={at} className="m-0">{t(`effect.${effect.kind}`)}{t("colon")}{effect.text}</p>) : review.state === "ok" || review.state === "fix" ? t("band.directNotFound") : t("band.directUnknown")}
@@ -315,7 +324,7 @@ function BeforeOnBand({ automation, onBack }: { automation: Automation; onBack?:
         {latest.preview?.ran && <span className="block text-xs text-muted">{t("band.intentFrom", { time: formatLogTime(latest.preview.at, i18n.language) })}</span>}
       </Fact>
     </dl>
-    {onBack && <div className="mt-3 flex"><Button data-automation-band-act className={BAND_BUTTON} disabled={writeDisabled || act.isPending || review.state === "running"}
+    {onBack && <div className="mt-3 flex"><Button data-automation-band-act className={BAND_BUTTON} disabled={held}
       onClick={() => act.mutate({ act: "enable", automation, acknowledge: toRead })}>{t(toRead ? "band.acknowledgeOn" : "band.turnOn")}</Button></div>}
   </BandFrame></div>;
 }
@@ -351,7 +360,10 @@ function AboutPane({ automation }: { automation: Automation }) {
         <p className="m-0">{aiText(t, facts)}</p>
         {aiCostText(t, facts) && <p className="m-0 text-xs text-muted">{aiCostText(t, facts)}</p>}
       </Row>
-      <Row name={t("about.outside")}><p className="m-0">{outsideText(t, facts)}</p></Row>
+      <Row name={t("about.outside")}>
+        <p className="m-0">{outsideText(t, facts, version.direct)}</p>
+        {facts.outside.length > 0 && <div className="mt-1.5"><DestinationRows automation={automation} names={facts.outside} /></div>}
+      </Row>
     </Section>
     <Section title={t("about.program")}>
       {version.docs.trigger && <DocRow name={t("about.trigger")} fn="trigger" doc={version.docs.trigger} />}
@@ -442,7 +454,7 @@ function CodePane({ automation }: { automation: Automation }) {
   const text = files.data?.find(each => each.path === file)?.text ?? files.data?.[0]?.text;
   const versionLine = (each: Version) => <>
     <p className="m-0"><span className="font-mono text-xs">{short(each.digest)}</span>{t("join")}{formatLogTime(each.savedAt, i18n.language)}</p>
-    <p className="m-0 text-xs text-muted">{t("code.review", { text: reviewLine(t, each) })}</p></>;
+    <p className="m-0 text-xs text-muted">{t("code.reviewLabel")}<ReviewSummary review={each.review} /></p></>;
   return <div data-automation-code>
     <Section title={t("code.versions")}>
       {live && <Row name={t("code.live")}>{versionLine(live)}</Row>}
@@ -462,4 +474,17 @@ function CodePane({ automation }: { automation: Automation }) {
         : <pre data-automation-source className="m-0 mt-2 max-h-[60vh] overflow-auto rounded-md bg-hover p-3 font-mono text-xs whitespace-pre-wrap">{text}</pre>}
     </Section>
   </div>;
+}
+
+/** ‹ › along the automations in the table's order (those asking for a look, those on, the rest), wherever it was opened. */
+function AutomationPager({ id }: { id: string }) {
+  const { t } = useTranslation("automations");
+  const { automations } = useAutomationsInView();
+  const order = { attention: 0, on: 1, rest: 2 } as const;
+  const ids = [...automations ?? []].sort((a, b) => order[groupOf(a)] - order[groupOf(b)]).map(automation => automation.id);
+  const at = ids.indexOf(id), previous = at > 0 ? ids[at - 1] : undefined, next = at >= 0 ? ids[at + 1] : undefined;
+  return <span data-automation-pager className={`flex flex-none items-center ${PAGER_GAP}`}>
+    <FrameButton data-list-previous icon="left" label={t("window.previous")} disabled={!previous} onPress={() => { if (previous) openAutomation(previous); }} />
+    <FrameButton data-list-next icon="right" label={t("window.next")} disabled={!next} onPress={() => { if (next) openAutomation(next); }} />
+  </span>;
 }

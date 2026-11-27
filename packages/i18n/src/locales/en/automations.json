@@ -46,6 +46,8 @@
     "back": "Cancel",
     "beforeNewTitle": "Before you turn on the new version",
     "beforeTitle": "Before you turn it on",
+    "destinations": "Destinations",
+    "destinationsMissing": "It can't be turned on until its destinations are entered",
     "diff": "Compare the files",
     "direct": "Not through alpacawork",
     "directNote": "The program does these itself, so they cannot be stopped",
@@ -78,7 +80,7 @@
     "latest": "Version",
     "live": "Running",
     "new": "New version",
-    "review": "AI review: {{text}}",
+    "reviewLabel": "AI review: ",
     "showLive": "Running version",
     "showNew": "New version",
     "timeout": "Time limit",
@@ -101,6 +103,21 @@
     "final": "A deleted automation can’t be brought back.",
     "keeps": "The tasks it created stay.",
     "title": "Delete {{id}} “{{name}}”?"
+  },
+  "destination": {
+    "cancel": "Cancel",
+    "enter": "Enter",
+    "header": "Authentication header (optional)",
+    "headerPlaceholder": "Authentication header (optional, Authorization: Bearer …)",
+    "hidden": "{{host}}/… (hidden)",
+    "missing": "Not entered yet",
+    "note": "What you paste is hidden once saved; only the host shows. Automations in the same project share it.",
+    "reenter": "Enter again",
+    "save": "Save",
+    "url": "URL of {{name}}",
+    "urlPlaceholder": "Paste the destination URL (https://…)",
+    "usedBy": "Also used by: {{list}}",
+    "viaCoordinator": "You can also give it to the coordinator in a conversation (it stays in the history)."
   },
   "dot": {
     "awaiting": "New version to turn on",
@@ -129,6 +146,20 @@
     "stopped": "Stopped",
     "todo": "Not started",
     "waiting": "awaiting review"
+  },
+  "field": {
+    "by": "By",
+    "by_ai": "AI",
+    "by_human": "me",
+    "from": "From",
+    "kinds": "Under pressure",
+    "phase": "Phase",
+    "phase_continuing": "continuing",
+    "phase_entered": "began",
+    "scheduledAt": "Scheduled",
+    "task": "Task",
+    "to": "To",
+    "type": "Kind"
   },
   "group": {
     "attention": "Needs a look",
@@ -178,6 +209,7 @@
     "todayOutside_other": "out {{count}}",
     "views": "Show"
   },
+  "listJoin": ", ",
   "mark": {
     "ai": "Uses AI",
     "awaiting": "New version waiting",
@@ -198,8 +230,11 @@
     "comment": "Wrote a note on {{task}}",
     "create": "Made task {{task}}",
     "createAsk": "Made task {{task}} and asked {{ai}}",
+    "createFailed": "Could not make task “{{title}}”",
     "disable": "Turned this automation off",
     "other": "{{name}}",
+    "otherFailed": "{{name}} did not go through",
+    "sendFailed": "Could not send to {{host}}",
     "sent": "Sent to {{host}}",
     "wouldComment": "Write a note on {{task}}",
     "wouldCreate": "Make task “{{title}}”",
@@ -217,6 +252,7 @@
     "trialTip": "Created by trying automation {{id}} “{{name}}”"
   },
   "outside": {
+    "direct": "the program reaches the network itself",
     "none": "Nothing leaves this PC",
     "noTasks": "makes no tasks",
     "notEntered": "{{name}} (no destination yet)",
@@ -250,11 +286,17 @@
     "runs": "Runs"
   },
   "review": {
+    "close": "Close",
     "found_one": "{{count}} finding",
     "found_other": "{{count}} findings",
+    "head_one": "{{count}} finding",
+    "head_other": "{{count}} findings",
+    "headMust_one": "{{count}} to fix",
+    "headMust_other": "{{count}} to fix",
     "must": "Fix: {{text}}",
     "note": "Note: {{text}}",
     "ok": "No findings",
+    "open": "Details",
     "running": "Reviewing",
     "unavailable": "Couldn't review (the AI did not run)"
   },
@@ -443,7 +485,10 @@
     "showIntent": "See what it would do",
     "summary": "Report: {{text}}",
     "title": "Try {{id}}",
+    "triggerAi": "Choosing an event runs trigger, which uses an AI once",
+    "triggerCost": "Choosing an event runs trigger, which uses an AI once (about ${{usd}})",
     "triggerFailed": "trigger failed: {{message}}",
+    "triggerMayAi": "Choosing an event runs trigger. It may use an AI",
     "which": "Which event to try it at ({{when}})",
     "write": "Write what arrives",
     "writeLabel": "What arrives (JSON)",
@@ -461,7 +506,9 @@
   "window": {
     "failed": "Couldn't read {{id}}",
     "label": "Automation {{id}}",
+    "next": "Next automation",
     "panes": "Show",
+    "previous": "Previous automation",
     "resize": "Resize the window"
   }
 }

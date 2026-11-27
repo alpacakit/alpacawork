@@ -49,6 +49,8 @@
     "back": "Cancelar",
     "beforeNewTitle": "Antes de ligar a versão nova",
     "beforeTitle": "Antes de ligar",
+    "destinations": "Destinos",
+    "destinationsMissing": "Não dá para ligar até os destinos serem informados",
     "diff": "Comparar os arquivos",
     "direct": "Fora do alpacawork",
     "directNote": "O próprio programa faz isso, então não dá para parar",
@@ -81,7 +83,7 @@
     "latest": "Versão",
     "live": "Rodando",
     "new": "Versão nova",
-    "review": "Revisão da IA: {{text}}",
+    "reviewLabel": "Revisão da IA: ",
     "showLive": "Versão rodando",
     "showNew": "Versão nova",
     "timeout": "Tempo limite",
@@ -105,6 +107,21 @@
     "final": "Uma automação excluída não pode ser recuperada.",
     "keeps": "As tarefas que ela criou continuam.",
     "title": "Excluir {{id}} “{{name}}”?"
+  },
+  "destination": {
+    "cancel": "Cancelar",
+    "enter": "Informar",
+    "header": "Cabeçalho de autenticação (opcional)",
+    "headerPlaceholder": "Cabeçalho de autenticação (opcional, Authorization: Bearer …)",
+    "hidden": "{{host}}/… (oculto)",
+    "missing": "Ainda não informado",
+    "note": "O que você colar fica oculto ao salvar; só o host aparece. As automações do mesmo projeto o compartilham.",
+    "reenter": "Informar de novo",
+    "save": "Salvar",
+    "url": "URL de {{name}}",
+    "urlPlaceholder": "Cole a URL do destino (https://…)",
+    "usedBy": "Também usado por: {{list}}",
+    "viaCoordinator": "Você também pode passá-lo ao coordenador numa conversa (fica no histórico)."
   },
   "dot": {
     "awaiting": "Versão nova para ligar",
@@ -135,6 +152,20 @@
     "stopped": "Parada",
     "todo": "Não iniciada",
     "waiting": "em revisão"
+  },
+  "field": {
+    "by": "De quem",
+    "by_ai": "IA",
+    "by_human": "eu",
+    "from": "De",
+    "kinds": "Sob pressão",
+    "phase": "Fase",
+    "phase_continuing": "continua",
+    "phase_entered": "começou",
+    "scheduledAt": "Agendado",
+    "task": "Tarefa",
+    "to": "Para",
+    "type": "Tipo"
   },
   "group": {
     "attention": "Precisa de atenção",
@@ -187,6 +218,7 @@
     "todayOutside_other": "fora {{count}}",
     "views": "Mostrar"
   },
+  "listJoin": ", ",
   "mark": {
     "ai": "Usa IA",
     "awaiting": "Versão nova esperando",
@@ -207,8 +239,11 @@
     "comment": "Escreveu uma nota em {{task}}",
     "create": "Criou a tarefa {{task}}",
     "createAsk": "Criou a tarefa {{task}} e pediu a {{ai}}",
+    "createFailed": "Não foi possível criar a tarefa “{{title}}”",
     "disable": "Desligou esta automação",
     "other": "{{name}}",
+    "otherFailed": "{{name}} não foi concluído",
+    "sendFailed": "Não foi possível enviar para {{host}}",
     "sent": "Enviou para {{host}}",
     "wouldComment": "Escrever uma nota em {{task}}",
     "wouldCreate": "Criar a tarefa “{{title}}”",
@@ -226,6 +261,7 @@
     "trialTip": "Criada ao testar a automação {{id}} “{{name}}”"
   },
   "outside": {
+    "direct": "o programa acessa a rede por conta própria",
     "none": "Nada sai deste PC",
     "noTasks": "não cria tarefas",
     "notEntered": "{{name}} (sem destino ainda)",
@@ -260,12 +296,20 @@
     "runs": "Execuções"
   },
   "review": {
+    "close": "Fechar",
     "found_one": "{{count}} apontamento",
     "found_many": "{{count}} apontamentos",
     "found_other": "{{count}} apontamentos",
+    "head_one": "{{count}} apontamento",
+    "head_many": "{{count}} apontamentos",
+    "head_other": "{{count}} apontamentos",
+    "headMust_one": "{{count}} a corrigir",
+    "headMust_many": "{{count}} a corrigir",
+    "headMust_other": "{{count}} a corrigir",
     "must": "Corrigir: {{text}}",
     "note": "Nota: {{text}}",
     "ok": "Sem apontamentos",
+    "open": "Detalhes",
     "running": "Revisando",
     "unavailable": "Não foi possível revisar (a IA não rodou)"
   },
@@ -462,7 +506,10 @@
     "showIntent": "Ver o que faria",
     "summary": "Relatório: {{text}}",
     "title": "Testar {{id}}",
+    "triggerAi": "Escolher um evento roda o trigger, que usa uma IA uma vez",
+    "triggerCost": "Escolher um evento roda o trigger, que usa uma IA uma vez (cerca de ${{usd}})",
     "triggerFailed": "O trigger falhou: {{message}}",
+    "triggerMayAi": "Escolher um evento roda o trigger. Pode usar uma IA",
     "which": "Com qual evento testar ({{when}})",
     "write": "Escrever o que chega",
     "writeLabel": "O que chega (JSON)",
@@ -480,7 +527,9 @@
   "window": {
     "failed": "Não foi possível ler {{id}}",
     "label": "Automação {{id}}",
+    "next": "Próxima automação",
     "panes": "Mostrar",
+    "previous": "Automação anterior",
     "resize": "Mudar a largura da janela"
   }
 }

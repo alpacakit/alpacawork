@@ -43,6 +43,8 @@
     "back": "取消",
     "beforeNewTitle": "开启新版本之前",
     "beforeTitle": "开启之前",
+    "destinations": "发送目标",
+    "destinationsMissing": "填入发送目标之前无法开启",
     "diff": "比较文件",
     "direct": "不经过 alpacawork 的操作",
     "directNote": "这些由程序直接执行，无法停止",
@@ -75,7 +77,7 @@
     "latest": "版本",
     "live": "运行中的版本",
     "new": "新版本",
-    "review": "AI 复查：{{text}}",
+    "reviewLabel": "AI 复查：",
     "showLive": "运行中的版本",
     "showNew": "新版本",
     "timeout": "时间上限",
@@ -97,6 +99,21 @@
     "final": "删除的自动执行无法恢复。",
     "keeps": "它创建的任务会保留。",
     "title": "删除 {{id}}“{{name}}”？"
+  },
+  "destination": {
+    "cancel": "取消",
+    "enter": "填入",
+    "header": "认证标头（可选）",
+    "headerPlaceholder": "认证标头（可选。Authorization: Bearer …）",
+    "hidden": "{{host}}/…（已隐藏）",
+    "missing": "尚未填入",
+    "note": "保存后粘贴的内容会隐藏，只显示主机名。同一项目的自动执行共用。",
+    "reenter": "重新填入",
+    "save": "保存",
+    "url": "{{name}} 的发送目标 URL",
+    "urlPlaceholder": "粘贴发送目标的 URL（https://…）",
+    "usedBy": "其他使用的自动执行：{{list}}",
+    "viaCoordinator": "也可以在会话中交给协调者填入（会留在会话记录中）。"
   },
   "dot": {
     "awaiting": "新版本待开启",
@@ -123,6 +140,20 @@
     "stopped": "已中止",
     "todo": "未开始",
     "waiting": "待审核"
+  },
+  "field": {
+    "by": "来自",
+    "by_ai": "AI",
+    "by_human": "我",
+    "from": "之前",
+    "kinds": "紧张的资源",
+    "phase": "阶段",
+    "phase_continuing": "持续中",
+    "phase_entered": "开始紧张",
+    "scheduledAt": "预定时间",
+    "task": "任务",
+    "to": "之后",
+    "type": "类型"
   },
   "group": {
     "attention": "待处理",
@@ -169,6 +200,7 @@
     "todayOutside_other": "外发 {{count}} 次",
     "views": "显示"
   },
+  "listJoin": "、",
   "mark": {
     "ai": "使用 AI",
     "awaiting": "新版本待开启",
@@ -189,8 +221,11 @@
     "comment": "在 {{task}} 写了记录",
     "create": "创建了任务 {{task}}",
     "createAsk": "创建了任务 {{task}} 并委托给 {{ai}}",
+    "createFailed": "未能创建任务「{{title}}」",
     "disable": "关闭了此自动执行",
     "other": "{{name}}",
+    "otherFailed": "{{name}} 未完成",
+    "sendFailed": "未能发送到 {{host}}",
     "sent": "已发送到 {{host}}",
     "wouldComment": "在 {{task}} 写记录",
     "wouldCreate": "创建任务「{{title}}」",
@@ -208,6 +243,7 @@
     "trialTip": "试运行自动执行 {{id}}“{{name}}”时创建"
   },
   "outside": {
+    "direct": "程序会直接联网",
     "none": "不外发",
     "noTasks": "不创建任务",
     "notEntered": "{{name}}（尚无发送目标）",
@@ -240,10 +276,14 @@
     "runs": "运行记录"
   },
   "review": {
+    "close": "收起",
     "found_other": "{{count}} 条意见",
+    "head_other": "{{count}} 条意见",
+    "headMust_other": "{{count}} 处需修改",
     "must": "需修改：{{text}}",
     "note": "意见：{{text}}",
     "ok": "无意见",
+    "open": "详细",
     "running": "正在复查",
     "unavailable": "无法复查（AI 未运行）"
   },
@@ -424,7 +464,10 @@
     "showIntent": "查看将会做什么",
     "summary": "报告：{{text}}",
     "title": "试运行 {{id}}",
+    "triggerAi": "选择事件后会运行 trigger，使用一次 AI",
+    "triggerCost": "选择事件后会运行 trigger，使用一次 AI（约 ${{usd}}）",
     "triggerFailed": "trigger 失败：{{message}}",
+    "triggerMayAi": "选择事件后会运行 trigger，可能使用 AI",
     "which": "用哪个事件试运行（{{when}}）",
     "write": "填写内容来试运行",
     "writeLabel": "收到的内容（JSON）",
@@ -442,7 +485,9 @@
   "window": {
     "failed": "无法读取 {{id}}",
     "label": "自动执行 {{id}}",
+    "next": "下一个自动执行",
     "panes": "显示",
+    "previous": "上一个自动执行",
     "resize": "调整窗口宽度"
   }
 }

@@ -138,10 +138,13 @@ export function aiCostText(t: T, facts: Facts): string | null {
 export const usd = (value: number) => value >= 1 ? value.toFixed(2).replace(/\.00$/, "") : value >= 0.01 ? value.toFixed(2) : value.toPrecision(1);
 
 /** Where it may reach out of this PC, and how many tasks one run may make: "Sends to hooks.slack.com · up to 1 task a run". */
-export function outsideText(t: T, facts: Facts): string {
+export function outsideText(t: T, facts: Facts, direct: readonly { kind: string }[] | null = null): string {
   const hosts = facts.outside.map(destination => destination.host ?? t("outside.notEntered", { name: destination.name }));
-  return [hosts.length ? t("outside.sends", { hosts: hosts.join(t("trigger.or")) }) : t("outside.none"),
-    facts.limits.tasksPerRun ? t("outside.tasks", { count: facts.limits.tasksPerRun }) : t("outside.noTasks")].join(t("join"));
+  // A program that reaches the network itself does so whatever it names to send to: said beside it.
+  const reaches = !!direct?.some(effect => effect.kind === "network");
+  return [hosts.length ? t("outside.sends", { hosts: hosts.join(t("trigger.or")) }) : reaches ? null : t("outside.none"),
+    reaches ? t("outside.direct") : null,
+    facts.limits.tasksPerRun ? t("outside.tasks", { count: facts.limits.tasksPerRun }) : t("outside.noTasks")].filter(Boolean).join(t("join"));
 }
 
 /** A run's outcome in a word: asked (made a task for an AI), done, failed, skipped, running (where), stopped. */
@@ -168,8 +171,11 @@ export function runLine(t: T, run: Pick<Run, "state" | "summary" | "trigger" | "
 
 /** Why a run did not go through, in words the screen has for the server's kind, else the server's own sentence. */
 export function reasonText(t: T, run: Pick<Run, "reasonKind" | "reasonText"> & { error?: Run["error"] }): string | null {
+  // That the program failed says nothing a person can act on: what it wrote itself, where it did, says why.
+  if (run.reasonKind && GENERAL_FAILURES.has(run.reasonKind) && run.error?.message) return run.error.message;
   return (run.reasonKind && reasonWords(t, run.reasonKind)) || run.reasonText || run.error?.message || (run.reasonKind ? t("runs.reason.other") : null);
 }
+const GENERAL_FAILURES = new Set(["program_failed", "error", "failed"]);
 
 /** The screen's words for a server's reason kind: `limit:tasks.create` says the operation whose limit it met. */
 export function reasonWords(t: T, kind: string): string | null {
@@ -197,6 +203,13 @@ export function dayCounts(runs: readonly Pick<Run, "state" | "kind" | "folded">[
 /** An operation the program asked of alpacawork, in words: "made task T52 and asked gpt-6.2-sol(medium)", "sent to hooks.slack.com". */
 export function operationText(t: T, operation: Operation, facts?: Facts): string {
   const input = (operation.input ?? {}) as Record<string, unknown>;
+  if (operation.failed) {
+    const why = operation.code ? reasonWords(t, operation.code) ?? operation.code : null;
+    const what = operation.name === "tasks.create" ? t("operation.createFailed", { title: typeof input.title === "string" ? input.title : "" })
+      : operation.name === "send" || operation.name === "fetch" ? t("operation.sendFailed", { host: operation.target ?? "" })
+      : t("operation.otherFailed", { name: operation.name });
+    return why ? `${what}${t("colon")}${why}` : what;
+  }
   const result = (operation.result ?? {}) as Record<string, unknown>;
   if (operation.name === "tasks.create") {
     const id = typeof result.id === "string" ? result.id : operation.target, title = typeof input.title === "string" ? input.title : "";

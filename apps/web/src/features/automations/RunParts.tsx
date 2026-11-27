@@ -41,9 +41,9 @@ export function RunRow({ automation, run, facts }: { automation: string; run: Ru
   const line = runLine(t, run);
   const failed = run.state === "failed";
   return <li data-automation-run={run.number} data-run-state={run.state} className="border-b border-rule">
-    <div className="relative grid grid-cols-[3.25rem_4.5rem_minmax(0,1fr)] items-baseline gap-x-3 py-2.5 text-sm narrow:grid-cols-[2.75rem_4rem_minmax(0,1fr)] narrow:py-3">
+    <div className="relative grid grid-cols-[3.25rem_auto_minmax(0,1fr)] items-baseline gap-x-3 py-2.5 text-sm narrow:grid-cols-[2.75rem_auto_minmax(0,1fr)] narrow:py-3">
       <span className="tabular-nums">{formatClock(run.at)}</span>
-      <span className={cn("text-xs", failed ? "font-semibold text-error" : "text-muted")}>{outcomeWord(t, run)}
+      <span className={cn("text-xs whitespace-nowrap", failed ? "font-semibold text-error" : "text-muted")}>{outcomeWord(t, run)}
         {run.kind === "trial" && <span data-automation-trial className="ms-1 text-muted">{t("runs.trial")}</span>}</span>
       <span className={cn("min-w-0 [overflow-wrap:anywhere]", run.state === "skipped" && "text-muted")}>
         <button type="button" data-automation-run-open aria-expanded={open} onClick={() => setOpen(!open)}
@@ -87,7 +87,7 @@ function RunFacts({ run, facts }: { run: RunDetail; facts: Facts }) {
   const asks = run.operations.filter(operation => operation.name === "ai.ask");
   const done = run.operations.filter(operation => operation.name !== "ai.ask" && !operation.name.startsWith("tasks.list") && !operation.name.endsWith(".read"));
   return <dl className="m-0 grid grid-cols-[6.5rem_minmax(0,1fr)] gap-x-4 gap-y-2 narrow:grid-cols-1 narrow:gap-y-0.5">
-    {!!run.event.fields?.length && <Fact name={t("runs.arrived")}><Fields fields={run.event.fields} /></Fact>}
+    {!!run.event.fields?.length && <Fact name={t("runs.arrived")}><Fields fields={run.event.fields} kind={run.event.kind} /></Fact>}
     {run.trigger && <Fact name={t("runs.passes")}>{t(run.trigger.run ? "runs.passed" : "runs.notPassed", { reason: run.trigger.reason })}</Fact>}
     {asks.map((operation, at) => <Fact key={at} name={t("runs.judged")}>{askText(t, operation)}</Fact>)}
     {(done.length > 0 || run.state === "done") && <Fact name={t("runs.didFor")}>
@@ -122,10 +122,27 @@ export function Fact({ name, children }: { name: string; children: ReactNode }) 
   return <><dt className="text-muted">{name}</dt><dd className="m-0 min-w-0 [overflow-wrap:anywhere] narrow:mb-1.5">{children}</dd></>;
 }
 
+/**
+ * An event's fields as words: a task's state changing, words on a task, the PC's pressure, a time are the server's
+ * fields, said in the screen's words; a signal's data is its sender's, said as it came.
+ */
+export function fieldWords(t: ReturnType<typeof useTranslation<"automations">>["t"], kind: string, [name, value]: readonly [string, string]): [string, string] {
+  if (kind === "signal") return [name, value];
+  const say = (key: string) => (t as unknown as (key: string, options?: object) => string)(key, { defaultValue: "" });
+  const label = say(`field.${name}`) || name;
+  const words = name === "from" || name === "to" ? say(`event.${value}`) : name === "by" ? say(`field.by_${value}`) : name === "type" ? say(`trigger.kind.${value}`)
+    : name === "kinds" ? value.split(", ").map(kind => say(`pressure.${kind}`) || kind).join(t("pressure.join"))
+    : name === "phase" ? say(`field.phase_${value}`) : name === "scheduledAt" ? formatClock(value) : "";
+  return [label, words || value];
+}
+export const fieldsText = (t: ReturnType<typeof useTranslation<"automations">>["t"], kind: string, fields: readonly (readonly [string, string])[]) =>
+  fields.map(field => fieldWords(t, kind, field)).map(([name, value]) => `${name}${t("colon")}${value}`).join(t("join"));
+
 /** What arrived, a name and its value a line, as code is set. */
-export function Fields({ fields }: { fields: readonly (readonly [string, string])[] }) {
-  return <div className="font-mono text-xs">{fields.map(([name, value]) =>
-    <div key={name} className="[overflow-wrap:anywhere]">{name}: {value}</div>)}</div>;
+export function Fields({ fields, kind = "signal" }: { fields: readonly (readonly [string, string])[]; kind?: string }) {
+  const { t } = useTranslation("automations");
+  return <div className={cn("text-xs", kind === "signal" && "font-mono")}>{fields.map(field => fieldWords(t, kind, field)).map(([name, value]) =>
+    <div key={name} className="[overflow-wrap:anywhere]">{name}{t("colon")}{value}</div>)}</div>;
 }
 
 /** What it would do, a line, and for a task it would make the head of its instruction under it. */
