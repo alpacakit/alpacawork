@@ -27,7 +27,7 @@ test('real patches preserve unrelated Run subscribers, but publish subtree Run c
   const baseline = baselines(source.tasks);
   let people = indexPeople(index);
   const project = () => ({ ...mapWorkspace(index, baseline), people, drawing: { root: index.root, restoredAt: null },
-    info: { root: index.root, rev: index.rev, checkpointAt: baseline.checkpoint.at, writable: index.writable,
+    info: { root: index.root, rev: index.rev, checkpointAt: baseline.checkpoint.at, automationsVersion: index.automationsVersion, writable: index.writable,
       errors: index.errors, staleIds: index.staleIds, runs: index.runs, profiles: index.profiles, attachmentBytes: index.attachmentBytes, projects: index.projects,
       presence: index.presence, host: index.host, coordinatorWork: index.coordinatorWork, counts: index.counts, home: index.home } });
   const store = createWorkspaceStore(project());

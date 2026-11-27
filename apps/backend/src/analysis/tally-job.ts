@@ -1,9 +1,9 @@
 import { Worker } from 'node:worker_threads';
 import type { ChangeLog } from '@alpacawork/db';
 import { backendEntry } from '../app-paths.js';
-import type { Tally } from '../agents/adapters/tally.js';
+import type { RunTallyObservation } from './tally-file.js';
 
-export function startTallyJob(root: string, tallySince: number, changes: ChangeLog, onTallies: (batch: [string, Tally][]) => void) {
+export function startTallyJob(root: string, tallySince: number, changes: ChangeLog, onTallies: (batch: RunTallyObservation[]) => void) {
   const worker = new Worker(backendEntry('analysis/tally-worker'), { workerData: { root, tallySince } });
   const release = changes.register('analysis-tally');
   const unsubscribe = changes.subscribe(() => {
@@ -20,7 +20,7 @@ export function startTallyJob(root: string, tallySince: number, changes: ChangeL
     exited = true; unsubscribe(); release(); resolve();
   }));
   worker.on('error', error => console.error('Analysis tally worker failed', error));
-  worker.on('message', ({ batch, issue }: { batch?: [string, Tally][]; issue?: string }) => {
+  worker.on('message', ({ batch, issue }: { batch?: RunTallyObservation[]; issue?: string }) => {
     if (batch) onTallies(batch);
     if (issue) console.error('Analysis tally could not read Run', issue);
   });

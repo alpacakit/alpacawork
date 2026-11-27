@@ -5,7 +5,7 @@ import { Mapping, StepMap } from '@tiptap/pm/transform';
 import { diffArrays } from 'diff';
 import type { DraftEntry } from '@/features/forms/draft-store';
 import { attachmentsOf } from '@/domain/attachments';
-import { documentSchema, documentUnits, draftDocument, hasContent, parseDocument, replyIn, unitsDocument, type DocumentUnit } from './document';
+import { automationIn, documentSchema, documentUnits, draftDocument, hasContent, parseDocument, replyIn, unitsDocument, type DocumentUnit } from './document';
 import { afterSend } from './lifecycle';
 
 type Entries = Record<string, DraftEntry>;
@@ -18,8 +18,11 @@ export const INPUT_PORTION = 'inputPortion';
 export type InputEdit = { before: ProseMirrorNode; mapping: Mapping };
 const portion = (values: Values): Portion | null => values[INPUT_PORTION] ? portionSchema.parse(JSON.parse(values[INPUT_PORTION])) : null;
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
-const context = (unit: DocumentUnit) => unit.type === 'taskLabel';
-const hasBody = (values: Values) => documentUnits(draftDocument(values)).some(unit => !context(unit));
+/** What stays as the next message's context: Task labels, and an automation's badge (a new one's is the message's own). */
+const context = (unit: DocumentUnit) => unit.type === 'taskLabel' || unit.type === 'automationLabel' && unit.attrs.id !== 'new';
+/** A reply or badge a newer one has taken the place of leaves the send's own words and files to retain. */
+const replaceable = (unit: DocumentUnit) => unit.type === 'replyLabel' || unit.type === 'automationLabel';
+const hasBody = (values: Values) => documentUnits(draftDocument(values)).some(unit => !context(unit) && !replaceable(unit));
 const bound = (sent: Values, input: string, draft: DraftEntry) => sent.from === input && sent.fresh === draft.values.requestId;
 // Delivery may have ended while the complete original still waits to be recovered.
 export const retainingInput = (sent: Values) => sent.stage !== 'accepted' && !sent.taken;
@@ -51,7 +54,7 @@ export function claimInput(entries: Entries, input: string): string {
  * park another Task's draft, or refuse to overwrite newer unowned writing.
  */
 export function retainedInput(sent: Values, draft: DraftEntry): boolean {
-  const recipients = (values: Values) => documentUnits(draftDocument(values)).flatMap(unit => unit.type === 'taskLabel' ? [unit.attrs.id] : []);
+  const recipients = (values: Values) => documentUnits(draftDocument(values)).flatMap(unit => (unit.type === 'taskLabel' || unit.type === 'automationLabel') && context(unit) ? [unit.attrs.id] : []);
   return validSpans(sent, draft) !== null
     && same(recipients(sent), recipients(draft.values))
     && attachmentsOf(sent).every(file => attachmentsOf(draft.values).some(each => same(file, each)))
@@ -73,7 +76,9 @@ export function recoverRetainedInput(sent: Values, draft: DraftEntry): ReturnTyp
     if (part.added) return null; // A changed body cannot prove the original is still retained.
     if (!part.removed) { at += part.count; continue; }
     // Recipient labels are shared input context, never restored over the person's current recipients.
-    const missing = part.value.filter(unit => !context(unit));
+    // An automation badge comes back over the visible input instead (outbox.ts restore), never shifting another
+    // message's held words.
+    const missing = part.value.filter(unit => !context(unit) && unit.type !== 'automationLabel');
     const position = positions[at] ?? (positions.at(-1) ?? -1) + 1;
     insertions.set(position, [...insertions.get(position) ?? [], ...missing]);
   }
@@ -199,7 +204,7 @@ export function editProjectedInput(entries: Entries, input: string, values: Valu
   if (!owners.length) return { ...entries, [input]: { ...draft, revision, values } };
   const visible = projectInput(entries, input)!, nextDoc = draftDocument(values);
   const left = documentUnits(draftDocument(visible)), right = documentUnits(nextDoc);
-  const replacesReply = !!replyIn(nextDoc);
+  const replacesReply = !!replyIn(nextDoc), replacesAutomation = !!automationIn(nextDoc);
   const all = owners.flatMap(owner => owner.spans), raw = documentUnits(draftDocument(draft.values));
   const oldPositions = boundaries(left), newPositions = boundaries(right);
   if (edit && !same(documentUnits(parseDocument(edit.before.toJSON())), left)) throw new Error('Visible input changed before its edit');
@@ -219,9 +224,10 @@ export function editProjectedInput(entries: Entries, input: string, values: Valu
   };
   const chunks = owners.flatMap(owner => owner.spans.map(span => {
     const before = raw.slice(0, span.from).filter((_, at) => !all.some(each => covers(each, at))).length;
-    // A newer reply is visible context. Its predecessor remains in the immutable outgoing snapshot;
-    // retain its body here without putting two reply labels in the canonical document.
-    const units = documentUnits(span.content).filter(unit => !replacesReply || unit.type !== 'replyLabel');
+    // A newer reply or automation badge is visible context. Its predecessor remains in the immutable outgoing snapshot;
+    // retain its body here without putting two such labels in the canonical document.
+    const units = documentUnits(span.content).filter(unit => !(replacesReply && unit.type === 'replyLabel')
+      && !(replacesAutomation && unit.type === 'automationLabel'));
     return { key: owner.key, at: move(before), from: span.from, units };
   })).sort((a, b) => a.at - b.at || a.from - b.from);
   const units: DocumentUnit[] = [], portions = new Map(owners.map(owner => [owner.key, [] as Span[]]));

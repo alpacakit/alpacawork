@@ -10,7 +10,7 @@ import type { ReaderAdmission } from '@/features/reader/next-question';
 import { deliveryNotice, deliveryNoticeId } from './delivery-notice';
 import { acknowledgeReaderSend, failReaderSend } from './reader-send';
 import { useConversation, readConversationSnapshot, withStatus, withLearnt } from './coordinator';
-import { replyIn, inlines } from './editor/document';
+import { replyIn, inlines, automationIn } from './editor/document';
 import { begin, outgoingBlock, outgoingBlockText, deliveryOutcome, isWithdrawn, simpleOutgoing, outgoingKey, refuse as refuseOutgoing } from './editor/outbox';
 import { copyRecoveredFiles } from './editor/recovered-files';
 import { skillStanding, skillsUnverified } from './editor/skills';
@@ -46,7 +46,7 @@ export function deliverOutgoing({ root, client, surface, draw }: DeliveryPlace, 
     return Promise.resolve("rejected");
   }
   const { fixed } = attempt, scope = { root, conversationId: fixed.conversationId };
-  const turn: LocalTurn = { id: requestId, at: new Date().toISOString(), ask: fixed.text, ...(fixed.tasks ? { tasks: fixed.tasks } : {}), attachments: fixed.attachments, files: attempt.files,
+  const turn: LocalTurn = { id: requestId, at: new Date().toISOString(), ask: fixed.text, ...(fixed.tasks ? { tasks: fixed.tasks } : {}), ...(fixed.automation ? { automation: fixed.automation, ...automationIn(attempt.doc)?.name ? { automationName: automationIn(attempt.doc)!.name } : {} } : {}), attachments: fixed.attachments, files: attempt.files,
     ...(fixed.replyTo ? { replyTo: { id: fixed.replyTo, answeredAt: replyIn(attempt.doc)?.answeredAt ?? '', head: '' } } : {}),
     root, conversationId: fixed.conversationId, stage: 'sending', refusal: null };
   return draw(turn, async (): Promise<ReaderAdmission> => {

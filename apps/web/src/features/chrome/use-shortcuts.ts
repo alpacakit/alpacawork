@@ -18,7 +18,7 @@ export function useGlobalShortcuts() {
     if (dialogs.dialog?.kind === "input") { dialogs.close(); return true; }
     if (dialogs.dialog) return false;
     if (inComposer) leaveComposer();
-    else if (view.reader.open) closeReaderStep();
+    else if (view.reader.open || view.automation) closeReaderStep();
     else if (view.selected) view.closeDetail();
     else if (isSearchShown(view)) {
       cancelPendingSearch();

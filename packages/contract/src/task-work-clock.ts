@@ -1,6 +1,7 @@
 import type { TaskState } from '@alpacawork/raw';
+import type { TaskLog } from '@alpacawork/raw/task-log-schema';
 
-type StateChange = { at: string; toState: TaskState | null };
+type StateChange = Pick<TaskLog, 'at' | 'toState'>;
 type TaskStateInterval = { from: number; to: number; state: TaskState };
 
 /** Explicit instructions to the responsible person begin a new estimate round; automatic returns do not. */

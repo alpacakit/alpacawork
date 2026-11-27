@@ -6,6 +6,10 @@ const EXECUTABLE_ISSUES = ['not_absolute', 'not_found', 'not_file', 'not_executa
 export type ExecutableIssue = typeof EXECUTABLE_ISSUES[number];
 
 export const businessReasonOptions = [
+  z.object({ kind: z.literal('http_destination_blocked') }).strict(),
+  z.object({ kind: z.literal('http_destination_certificate') }).strict(),
+  z.object({ kind: z.literal('http_destination_invalid') }).strict(),
+  z.object({ kind: z.literal('http_destination_unreachable') }).strict(),
   // Installation and descriptor publication refusals share the existing typed reason contract.
   z.object({ kind: z.literal('directory_path_invalid'), path: z.string() }).strict(),
   z.object({ kind: z.literal('filesystem_access_denied'), path: z.string(), operation: z.string(), code: z.string() }).strict(),

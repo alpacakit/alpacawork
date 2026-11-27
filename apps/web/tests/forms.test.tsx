@@ -221,7 +221,7 @@ test("a ✔ the coordinator did not carry out (refused for an older version) bri
   const ahead = () => upNext(useSitting.getState().order, ["T1", "T2"].filter(id => !data.tasks.some(task => task.id === id && submittedReaderTurn(useDraftStore.getState().entries, useWriteIntentStore.getState().entries, data.info.root, readerTurn(task)))), "T2");
   expect(ahead()).toEqual([]);
   // The server refused the approval: it carried an older version of T1.
-  await finish({ writes: [], refused: [{ task: "T1", code: 'conflict', message: 'Task changed', retry: 'reread' }] });
+  await finish({ writes: [], refused: [{ task: "T1", code: 'conflict', message: 'Task changed', retry: 'reread' }], automations: [] });
   await screen.findByRole("button", { name: "Open" });
   expect(useSitting.getState().departures["T1"]?.status()).toBe("conflict");
   // T1 waits again behind the question on screen.

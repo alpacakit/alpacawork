@@ -4,6 +4,7 @@ import type { ProjectMark } from '@/data/project-marks';
 import { cn } from '@/lib/utils';
 import { choiceWord } from '@alpacawork/contract';
 import { badgeClass, labelPlaceClass, taskTitleClass } from './label-style';
+import { useTranslation } from 'react-i18next';
 
 const faceClass = {
   task: 'bg-hover text-muted',
@@ -30,6 +31,21 @@ export function ProjectLabelText({ mark }: { mark: ProjectMark }) {
   // The name is what tells it apart (two projects can share letters), so it keeps more room than a task's title does.
   return <><ProjectTile name={mark.name} color={mark.color} size={16} /><span data-label-title dir="auto" className="min-w-0 max-w-[7em] truncate">{mark.name}</span></>;
 }
+/**
+ * An automation's badge, wherever it is drawn (the input, its folded line, a sent message): its number and name as a
+ * task's label has them, or, for one to ask for, the words "new automation".
+ */
+export function AutomationLabelText({ id, name }: { id: string; name: string }) {
+  const { t } = useTranslation('ui');
+  if (id === 'new') return <span data-label-title className="min-w-0 truncate text-ink">{t('input.newAutomation')}</span>;
+  // The name takes what its face leaves (AUTOMATION_FACE), not a task title's few characters.
+  return <><span data-label-id className="shrink-0 text-ink tabular-nums">{id}</span><span data-label-title className="min-w-0 truncate">{name}</span></>;
+}
+/**
+ * An automation's badge in the input stands alone at its start, the words written after it: its face takes up to most
+ * of the input's width, so the name says which one it is (a phone still shows its number and the name's start).
+ */
+export const AUTOMATION_FACE = 'max-w-[min(28rem,70vw)] narrow:max-w-[60vw]';
 /** An answer's chip: the question's number, then the first word of the choice's name (what a choice answers by). */
 export function AnswerLabelText({ n, name }: { n: string; name: string }) {
   return <><span className="text-xs text-turn">{n}</span><span className="max-w-[6em] truncate">{choiceWord(name)}</span></>;

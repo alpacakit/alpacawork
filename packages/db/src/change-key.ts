@@ -4,7 +4,7 @@
  */
 export const DATABASE_CHANGE_KINDS = ['task', 'log', 'task_value', 'dependency', 'placement', 'wait_cycle', 'request',
   'start_grant', 'stop_epoch', 'run', 'attempt', 'input', 'return', 'delivery', 'resolution', 'dialogue',
-  'conversation', 'refusal', 'field_def', 'project_field'] as const;
+  'conversation', 'refusal', 'field_def', 'project_field', 'automation', 'automation_run', 'automation_signal'] as const;
 /** Changes outside the control database, observed by serve itself. */
 export const OUTSIDE_CHANGE_KINDS = ['files', 'activity', 'config', 'person'] as const;
 export type ChangeKind = typeof DATABASE_CHANGE_KINDS[number] | typeof OUTSIDE_CHANGE_KINDS[number];

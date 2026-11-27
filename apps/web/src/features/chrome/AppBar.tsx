@@ -14,7 +14,7 @@ import { SearchField } from "./SearchField";
 import { PresenceMenu } from './PresenceMenu';
 import { LimitsMenu } from './LimitsMenu';
 import { ProjectMenu } from "./ProjectMenu";
-import { FaceSwitch } from "@/features/analysis/FaceSwitch";
+import { FaceSwitch } from "./FaceSwitch";
 import { OfflineMark } from "./OfflineMark";
 import { useOfflineShown } from "@/data/reach";
 import { UpdateMark, useGearLabel, useOpenSettingsFromGear } from "@/features/update/UpdateView";

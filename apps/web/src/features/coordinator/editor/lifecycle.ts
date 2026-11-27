@@ -24,7 +24,7 @@
  * own record; what is written is read only to see that nothing is left.
  */
 import { attachmentsOf } from '@/domain/attachments';
-import { draftDocument, emptyDocument, inlines, taskLabel, taskReferencesIn, type Document } from './document';
+import { aboutAutomation, draftDocument, emptyDocument, filterDocument, inlines, taskLabel, taskReferencesIn, type AutomationBadge, type Document, type Inline } from './document';
 
 type Values = Record<string, string>;
 type Seed = { id: string; title: string };
@@ -85,12 +85,12 @@ export const withLine = (values: Values, line: Document['content'][number]) => (
   ({ type: 'doc', content: composing(values) ? [...current.content, line] : [line] });
 /**
  * An example the person picked. With nothing of theirs in the draft it takes the prepared draft's place after the labels
- * the screen put there (where it goes), and stays prepared, so the next example takes its place. After their own words
+ * the screen put there (where it goes: Tasks, or the automation asked about), and stays prepared, so the next example takes its place. After their own words
  * it is one more line of theirs.
  */
 export function offered(values: Values, line: Document['content'][number]): Values | null {
   if (composing(values) && !emptied(values)) return edited(values, withLine(values, line))?.values ?? null;
-  const labels = !written(values) && values.doc ? inlines(draftDocument(values)).filter(node => node.type === 'taskLabel') : [];
+  const labels = !written(values) && values.doc ? inlines(draftDocument(values)).filter(node => node.type === 'taskLabel' || node.type === 'automationLabel') : [];
   const labelled = { ...line, content: [...labels.flatMap(label => [label, { type: 'text' as const, text: ' ' }]), ...line.content ?? []] };
   const { readerDraftTask: _task, readerDraftTurn: _turn, ...rest } = values;
   return { ...rest, phase: 'prepared', doc: JSON.stringify({ type: 'doc', content: [labelled] }) };
@@ -101,10 +101,39 @@ export const submitted = (values: Values, requestId: string): Values => ({ ...va
 export function afterSend(values: Values, remaining: Document): Values {
   return { doc: JSON.stringify(contextLabels(remaining)), phase: 'prepared', seen: values.seen ?? '', seenProject: values.seenProject ?? '', requestId: crypto.randomUUID() };
 }
-/** Task recipients remain the context for the next message, including when it was already being written. */
+/**
+ * Task recipients remain the context for the next message, including when it was already being written; so does the
+ * automation badge left in it. A sent new automation's badge went with its message (input-ownership.ts), so one left
+ * here was put in for the next.
+ */
 function contextLabels(current: Document): Document {
   const labels = [...new Map(inlines(current).flatMap(node => node.type === 'taskLabel' ? [[node.attrs.id, node.attrs] as const] : [])).values()];
-  return labelsDocument(labels);
+  const automation = inlines(current).find(node => node.type === 'automationLabel');
+  const doc = labelsDocument(labels);
+  return automation ? { type: 'doc', content: [{ type: 'paragraph', content: [automation, ...doc.content[0]!.content ?? []] }] } : doc;
+}
+/**
+ * The screen names the automation the input is about (one opened, or a new one to ask for). With nothing of the
+ * person's in the draft, the badge is all it holds, and it stays prepared, so the next opening takes its place. With
+ * their words, only a press for that automation (`pressed`) puts its badge in place of another; an opening leaves
+ * what they are writing addressed as it is. Null when nothing changes.
+ */
+export function badged(values: Values, badge: AutomationBadge, pressed = false): Values | null {
+  if (composing(values) && !emptied(values))
+    return pressed ? edited(values, current => aboutAutomation(current, badge))?.values ?? null : null;
+  const doc = JSON.stringify(aboutAutomation(emptyDocument(), badge));
+  if (!written(values) && values.doc === doc) return null;
+  const { readerDraftTask: _task, readerDraftTurn: _turn, ...rest } = values;
+  return { ...rest, phase: 'prepared', doc };
+}
+/**
+ * The screen shows no automation but `kept` (an automation's ID, `new` for the page asking for one, or null for none):
+ * a draft holding only another's badge, nothing written beside it, is empty again. Words keep their badge.
+ */
+export function unbadged(values: Values, kept: string | null): Values | null {
+  const left = inlines(draftDocument(values)).filter(node => node.type !== 'hardBreak' && (node.type !== 'text' || node.text.trim()));
+  if (!left.length || !left.every(node => node.type === 'automationLabel' && node.attrs.id !== kept)) return null;
+  return { ...values, phase: 'prepared', doc: JSON.stringify(filterDocument(draftDocument(values), (node: Inline) => node.type !== 'automationLabel')) };
 }
 /** A refused send back in its input: its own words and labels, composing; what the screen has seen since stays. */
 export const restored = (sent: Values, input: Values): Values => ({ ...sent, phase: 'composing', seen: input.seen ?? '', seenProject: input.seenProject ?? '' });

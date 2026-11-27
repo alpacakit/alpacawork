@@ -159,6 +159,7 @@ export function recordEvents(context: ReturnType<typeof prepareHistory>, task: C
   const consumers = context.consumers.get(viewId);
   const authorOf = (actor: TaskActor | null, runId?: string): NonNullable<HistoryEvent['author']> => {
     if (actor?.kind === 'human' || actor?.kind === 'main') return { kind: actor.kind };
+    if (actor?.kind === 'automation') return actor;
     const placement = actor?.kind === 'placement' ? placements.get(actor.placementId) : undefined;
     if (!placement) return { kind: 'unknown' };
     const run = runId ? allRuns.get(runId) : undefined;

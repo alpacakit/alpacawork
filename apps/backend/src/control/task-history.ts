@@ -6,6 +6,10 @@ import { startsEstimateRound } from '@alpacawork/contract';
 import { requestActionReasonSchema, type RequestActionReason } from '@alpacawork/raw';
 import { storedTaskLogSchema, type TaskLog } from '@alpacawork/raw/task-log-schema';
 
+/** Durable position shared by the event cursor and the activation boundary. */
+export const taskEventTail = (db: DatabaseSync): number =>
+  Number(db.prepare('SELECT coalesce(max(event_sequence),0) AS sequence FROM task_log').get()!.sequence);
+
 export const TASK_RECORD_COLUMNS = `l.id,l.entry,l.request_id,l.note_title,l.note_description,q.purpose,q.author,q.submitted_at,q.about_run_id,q.answers_question,q.reason,
   json_extract(r.record,'$.role') AS role`;
 export const TASK_RECORD_JOINS = `LEFT JOIN requests q ON q.id=l.request_id LEFT JOIN runs r ON r.request_id=q.id AND r.attempt=0`;

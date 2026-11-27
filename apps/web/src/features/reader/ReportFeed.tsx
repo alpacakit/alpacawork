@@ -60,6 +60,8 @@ import { useTimeView } from "@/state/time-view";
 import { useDialogStore } from "@/state/dialog-store";
 import { useViewStore } from "@/state/view-store";
 import { MarkdownBody, type GalleryImage, type MarkdownTask } from "./MarkdownBody";
+import { splitAutomationInputNote } from "@alpacawork/contract/automation";
+import { HandedInput } from "@/features/automations/RunInput";
 import { fenceLabel } from "./embeds";
 import { UrlImageSlider } from "./ImageSlider";
 import { ReportBody } from "./ReportBody";
@@ -709,7 +711,12 @@ function RecordBody({ report, task, gallery, onFollow, beside, children }: { rep
   if (!report.description) return <>{children}</>;
   const home = report.taskId, request = isInstruction(report), galleryKey = report.replyTo ?? report.key;
   const held = (name: string) => home === task.id ? task.files.find(file => file.name === name) : undefined;
-  const sent = request ? splitAttachments(report.description, taskFileUrl(home, "")) : null;
+  // A task an automation made from a signal or the PC's pressure ends its first instruction with where its AI reads what
+  // was handed over: the person reads it as one line in their words (HandedInput). Only the automation's own request,
+  // naming its own task: the same words quoted in anyone else's request stay as written.
+  const found = request ? splitAutomationInputNote(report.description) : null;
+  const handed = found?.task && report.by === "automation" && found.task === home ? found : null;
+  const sent = request ? splitAttachments(handed?.words ?? report.description, taskFileUrl(home, "")) : null;
   const openAttachment = (path: string) => {
     const image = gallery.find(item => item.reportKey === galleryKey && item.path === path);
     if (image) useViewStore.getState().setImage(image.id);
@@ -721,7 +728,7 @@ function RecordBody({ report, task, gallery, onFollow, beside, children }: { rep
           const saved = held(file.path);
           return { id: file.path, name: file.name, size: saved?.size,
             src: file.media && saved ? taskFileUrl(home, saved.name, saved.revision) : null, open: () => openAttachment(file.path) };
-        })} /></>
+        })} />{handed?.task && <HandedInput task={handed.task} />}</>
       : report.kind === "answer" ? <MarkdownBody text={report.description} task={task} onFollow={onFollow} gallery={gallery} galleryReportKey={galleryKey} />
       : <ReportBody text={report.description} sourceTaskId={home} parentTask={task} gallery={gallery} galleryReportKey={galleryKey} onFollow={onFollow}
         files={report.replyTo && report.answerFiles ? answerBodyFiles({ id: report.answerFiles.requestId, answerFiles: report.answerFiles.files }) : undefined} />}

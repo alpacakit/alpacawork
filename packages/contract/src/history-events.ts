@@ -3,6 +3,7 @@
  * failed Run, a Run's new conversation or one of its compactions, or a dialogue with the coordinator). The server projects the rows; none is made up to fill a gap.
  */
 import { z } from 'zod';
+import { automationActorSchema } from '@alpacawork/raw/automation';
 import { dependencyChangeSchema, TASK_LOG_KINDS, type TaskLog } from '@alpacawork/raw/task-log-schema';
 import { TASK_ID_PATTERN } from '@alpacawork/raw/task-id';
 import { runIdSchema, taskIdSchema, taskStateSchema } from './fields.js';
@@ -22,6 +23,7 @@ const historyAgentFields = {
 /** Authorship is historical; current placement activity never changes who wrote a record. */
 export const historyAuthorSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.enum(['human', 'main', 'unknown']) }).strict(),
+  automationActorSchema,
   z.object({ kind: z.enum(['owner', 'member']), ...historyAgentFields }).strict(),
   z.object({ kind: z.literal('parent'), taskId: taskIdSchema, ...historyAgentFields }).strict(),
 ]);
@@ -76,10 +78,10 @@ export const historyEventSchema = z.object({
   /** The state the record set; null when it kept the state, and on a record that is not a log entry. */
   state: taskStateSchema.nullable(),
   /**
-   * Who wrote the record when that was the user or the coordinator (a log entry's or a Request's author); null for a
+   * Who wrote the record when that was the user, coordinator or an automation (a log entry's or a Request's author); null for a
    * placement's record, a failed Run and a dialogue.
    */
-  by: z.enum(['human', 'main']).nullable(),
+  by: z.enum(['human', 'main', 'automation']).nullable(),
   /** "" when the record has none. */
   title: z.string(), summary: z.string(),
   /** Execution-order IDs, projected by the server for both current and historical records. */

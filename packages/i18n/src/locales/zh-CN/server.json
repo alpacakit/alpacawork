@@ -25,6 +25,11 @@
     "title": "这台主机处于高负载"
   },
   "push": {
+    "automationConsecutiveFailures": "自动化连续失败了三次。",
+    "automationDefinitionChanged": "自动化的定义已更改。",
+    "automationFailed": "{{automation}} 运行失败",
+    "automationFailureAction": "请打开自动化查看失败原因。",
+    "automationOff": "{{automation}} 已关闭",
     "groupTitle": "{{updateCount}} 条更新",
     "reason": {
       "blocked": {

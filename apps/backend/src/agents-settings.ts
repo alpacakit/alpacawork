@@ -171,6 +171,6 @@ function pinCommand(launch: RunRecord['launch'], setting: AgentSetting): string[
 }
 
 /** Placement selects a profile; executable resolution belongs to Run admission. */
-export function validateAgentSelection(config: AgentsSettings, key: string, selected: Selection): void {
-  admission(() => prepareAgentLaunch(compileAgentSetting(key, config.agents[key]), { mode: 'start', path: process.env.PATH || '/bin', explicit: selected }));
+export function validateAgentSelection(config: AgentsSettings, key: string, selected: Selection): Selection {
+  return admission(() => prepareAgentLaunch(compileAgentSetting(key, config.agents[key]), { mode: 'start', path: process.env.PATH || '/bin', explicit: selected })).launch.values;
 }

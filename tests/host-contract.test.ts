@@ -83,13 +83,13 @@ test('unknown Run peaks survive a real episode store, resume and later known obs
   assert.equal(episode.runs[0]!.cpuPeak, null); assert.equal(episode.runs[0]!.memoryPeakBytes, null);
   let store = new HostStore(area);
   try {
-    const id = store.saveEpisode(null, episode, 1000);
+    const id = store.saveEpisode(null, episode, 1000, pressure.tightKinds());
     store.close(); store = new HostStore(area);
-    const saved = store.lastOpen()!.episode;
-    assert.equal(hostEpisodeSchema.parse(saved).runs[0]!.cpuPeak, null);
-    pressure.resume(saved);
+    const saved = store.lastOpen()!;
+    assert.equal(hostEpisodeSchema.parse(saved.episode).runs[0]!.cpuPeak, null);
+    pressure.resume(saved.episode, saved.currentKinds!);
     pressure.observe(2000, { cpu: 95, memoryFreePercent: 50, diskFreeBytes: 1 }, [{ ...load, cpu: 12, memoryBytes: 200 }]);
-    store.saveEpisode(id, pressure.current!, 2000);
+    store.saveEpisode(id, pressure.current!, 2000, pressure.tightKinds());
     assert.equal(store.episode(id)!.runs[0]!.cpuPeak, 12);
     assert.equal(store.episode(id)!.runs[0]!.memoryPeakBytes, 200);
   } finally { store.close(); rmSync(area, { recursive: true, force: true }); }

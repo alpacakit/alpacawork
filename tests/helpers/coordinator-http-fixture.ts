@@ -9,7 +9,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { FileWriter } from "@alpacawork/backend/test-dist/raw/storage.js";
-import { startServer } from "@alpacawork/backend/test-dist/receiver/server.js";
+import { startServer, type ServerOptions } from "@alpacawork/backend/test-dist/receiver/server.js";
 import { RunStore } from "@alpacawork/runs";
 import { initializeControlFixture } from "./control-fixture.ts";
 import { attemptOf } from "@alpacawork/backend/test-dist/runs/execution-control.js";
@@ -56,7 +56,7 @@ export function assertInputMarker(started: { pid: number; session: string },
   if (run.pids.agent !== null) assert.equal(started.pid, run.pids.agent);
 }
 
-export async function fixture(t: { name?: string; after: (fn: () => void | Promise<void>) => void }, choices = false, limits = '', adapter: 'claude' | 'codex' = 'claude') {
+export async function fixture(t: { name?: string; after: (fn: () => void | Promise<void>) => void }, choices = false, limits = '', adapter: 'claude' | 'codex' = 'claude', options?: ServerOptions) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'alpacawork-coordinator-')));
   const setting = fixtureAgentSetting(adapter);
   setting.params.model = choices ? ['opus', 'fable'] : [];
@@ -68,7 +68,7 @@ export async function fixture(t: { name?: string; after: (fn: () => void | Promi
   try { writer.save('config.yaml', null, Buffer.from(config)); project = initializeControlFixture(root); }
   finally { writer.close(); }
   process.env.PATH = installAgentStub(root, adapter === 'claude' ? 'claude' : 'alpacawork-agent', [process.execPath, fake, ...(adapter === 'codex' ? ['--fixture-bridge'] : [])]);
-  let server = await startServer(root);
+  let server = await startServer(root, 0, options);
   t.after(async () => {
     await server.close();
     if (process.env.COORDINATOR_HTTP_EVIDENCE_DIR) {
@@ -105,7 +105,7 @@ export async function fixture(t: { name?: string; after: (fn: () => void | Promi
   }, `Agent of ${id} started`);
   return { root, project, config, get, post, done, agentOf, records: (conversationId: string) => records(root, conversationId),
     app: () => server, url: () => server.url, stop: () => server.close(),
-    restart: async (between?: () => void) => { await server.close(); between?.(); server = await startServer(root); } };
+    restart: async (between?: () => void) => { await server.close(); between?.(); server = await startServer(root, 0, options); } };
 }
 
 export function boundaryEvidence(root: string, task: string, conversationId: string) {

@@ -18,6 +18,13 @@ export function runCredentialHeaders(env: NodeJS.ProcessEnv, required = false): 
 
 export function actorHeaders(env: NodeJS.ProcessEnv): Headers {
   const headers = runCredentialHeaders(env);
+  const program = env.ALPACAWORK_PROGRAM_TOKEN;
+  if (program !== undefined) {
+    if (headers.has('Authorization') || !/^[a-f0-9]{64}$/.test(program))
+      throw new Problem(PROBLEM_CODE.forbidden, 'Invalid or ambiguous automation program credential');
+    headers.set('Authorization', `Alpacawork-Program ${program}`);
+    return headers;
+  }
   if (headers.has('Authorization')) return headers;
   const claude = env.CLAUDE_CODE_SESSION_ID;
   const codex = env.CODEX_THREAD_ID || env.CODEX_SESSION_ID;

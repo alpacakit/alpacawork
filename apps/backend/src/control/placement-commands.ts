@@ -12,7 +12,7 @@ import type { ActionReason, TaskActor } from '@alpacawork/raw';
 import type { Selection } from '@alpacawork/contract/agent-settings';
 import { TaskRepository } from './task-store.js';
 import { taskAtWork, PlacementStore, type PlacementRecord } from './placements.js';
-import { TaskTransition, returnsAt, withControlWrite } from './task-transition.js';
+import { TaskTransition, returnsAt, withControlWrite, type ControlTx } from './task-transition.js';
 import { readAgentsSettings, validateAgentSelection } from '../agents-settings.js';
 import { placeAgentReceiptSchema, setResponsibleReceiptSchema, releaseAgentReceiptSchema,
   placeMemberReceiptSchema, releaseMemberReceiptSchema,
@@ -35,7 +35,7 @@ export class PlacementCommands {
   constructor(readonly root: string) {}
   private requireProfile(requested: string | undefined, selected: Selection = {}, prefix?: AiStackPrefix): string {
     const settings = readAgentsSettings(this.root);
-    if (!settings.ok) throw settings.error;
+    if (settings.ok === false) throw settings.error;
     const rows = prefix ? aiRows(settings.config, prefix) : settings.config.aiStack;
     const key = (prefix?.[0] && prefix[0] !== 'stop' ? rows?.[0]?.agent : requested) ??
       rows?.[0]?.agent ?? defaultAiStack(settings.config)[0]?.agent;
@@ -48,40 +48,43 @@ export class PlacementCommands {
   /** One write about the active task `id` at `expectedTaskHash`, recorded as `actor`. */
   private async write<T>(id: string, expectedTaskHash: string, actor: TaskActor,
     operation: (write: Write) => T): Promise<T> {
-    return withControlWrite(this.root, (tx, db) => {
-      const repository = new TaskRepository(this.root, db);
-      const task = repository.get(id);
-      // placements_task_kind refuses too, but PlacementStore would report that as runs_unavailable.
-      if (task.meta.kind === 'project')
-        throw new Problem(PROBLEM_CODE.invalidInput, 'A project cannot have a responsible or a member', undefined,
-          { reason: { kind: 'project_cannot_have_responsible_or_member' } });
-      if (task.meta.lifecycle !== 'active')
-        throw new Problem(PROBLEM_CODE.notFound, 'Active task does not exist', undefined, { reason: { kind: 'active_task_does_not_exist' } });
-      if (task.hash !== expectedTaskHash)
-        throw new Problem(PROBLEM_CODE.conflict, 'Task changed; reload before retrying', { hash: task.hash }, { reason: { kind: 'task_changed' } });
-      const store = new PlacementStore(this.root, false, db);
-      const record: Write['record'] = (kind, placement, effect, launchValues, prefix, reason) => {
-        if (prefix) db.prepare('UPDATE placements SET ai_prefix=? WHERE id=?').run(JSON.stringify(prefix), placement.id);
-        // After the Task's last record, so its log keeps its order.
-        const latestAt = task.meta.log.reduce((latest, entry) => Math.max(latest, Date.parse(entry.at)), 0);
-        const logId = `L${randomUUID()}`;
-        this.transition.appendRecord(tx, task.id, { id: logId, kind,
-          at: new Date(Math.max(Date.now(), latestAt + 1)).toISOString(),
-          title: null, description: null, actor, fromState: null, toState: null,
-          placementId: placement.id, placementRevision: placement.revision, placementEffect: effect, ...(reason && { reason }),
-          ...(launchValues === undefined ? {} : { launchValues: { ...launchValues } }) });
-        return logId;
-      };
-      const handover = (logId: string) => {
-        if (taskAtWork(task.meta)) returnsAt(tx, task.id).notice('handover', task.id, logId);
-      };
-      const take: Write['take'] = (placementId, input, requesterTask) => {
-        const taken = resultDecision(input, actor, priorResult(tx.runs, task, placementId, actor, requesterTask));
-        return taken && { taken };
-      };
-      try { return operation({ store, record, handover, take }); }
-      finally { store.close(); }
-    });
+    return withControlWrite(this.root, tx => this.writeIn(tx, id, expectedTaskHash, actor, operation));
+  }
+  private writeIn<T>(tx: ControlTx, id: string, expectedTaskHash: string, actor: TaskActor,
+    operation: (write: Write) => T): T {
+    const db = tx.store.connection;
+    const repository = new TaskRepository(this.root, db);
+    const task = repository.get(id);
+    // placements_task_kind refuses too, but PlacementStore would report that as runs_unavailable.
+    if (task.meta.kind === 'project')
+      throw new Problem(PROBLEM_CODE.invalidInput, 'A project cannot have a responsible or a member', undefined,
+        { reason: { kind: 'project_cannot_have_responsible_or_member' } });
+    if (task.meta.lifecycle !== 'active')
+      throw new Problem(PROBLEM_CODE.notFound, 'Active task does not exist', undefined, { reason: { kind: 'active_task_does_not_exist' } });
+    if (task.hash !== expectedTaskHash)
+      throw new Problem(PROBLEM_CODE.conflict, 'Task changed; reload before retrying', { hash: task.hash }, { reason: { kind: 'task_changed' } });
+    const store = new PlacementStore(this.root, false, db);
+    const record: Write['record'] = (kind, placement, effect, launchValues, prefix, reason) => {
+      if (prefix) db.prepare('UPDATE placements SET ai_prefix=? WHERE id=?').run(JSON.stringify(prefix), placement.id);
+      // After the Task's last record, so its log keeps its order.
+      const latestAt = task.meta.log.reduce((latest, entry) => Math.max(latest, Date.parse(entry.at)), 0);
+      const logId = `L${randomUUID()}`;
+      this.transition.appendRecord(tx, task.id, { id: logId, kind,
+        at: new Date(Math.max(Date.now(), latestAt + 1)).toISOString(),
+        title: null, description: null, actor, fromState: null, toState: null,
+        placementId: placement.id, placementRevision: placement.revision, placementEffect: effect, ...(reason && { reason }),
+        ...(launchValues === undefined ? {} : { launchValues: { ...launchValues } }) });
+      return logId;
+    };
+    const handover = (logId: string) => {
+      if (taskAtWork(task.meta)) returnsAt(tx, task.id).notice('handover', task.id, logId);
+    };
+    const take: Write['take'] = (placementId, input, requesterTask) => {
+      const taken = resultDecision(input, actor, priorResult(tx.runs, task, placementId, actor, requesterTask));
+      return taken && { taken };
+    };
+    try { return operation({ store, record, handover, take }); }
+    finally { store.close(); }
   }
   /** A member change by the Task's responsible, against the responsible's revision the caller read. */
   private withResponsibleAt<T>(input: { taskId: string; expectedTaskHash: string; expectedResponsibleRevision: number },
@@ -94,8 +97,12 @@ export class PlacementCommands {
       return operation(write);
     });
   }
-  placeNewResponsible(input: PlaceAgentInput & PlacementOptions, actor: TaskActor) {
-    return this.write(input.taskId, input.expectedTaskHash, actor, ({ store, record, handover }) => {
+  async placeNewResponsible(input: PlaceAgentInput & PlacementOptions, actor: TaskActor) {
+    return withControlWrite(this.root, tx => this.placeNewResponsibleIn(tx, input, actor));
+  }
+  /** Shares the caller's transaction with the task creation and request admission. */
+  placeNewResponsibleIn(tx: ControlTx, input: PlaceAgentInput & PlacementOptions, actor: TaskActor) {
+    return this.writeIn(tx, input.taskId, input.expectedTaskHash, actor, ({ store, record, handover }) => {
       const placed = placementReason(input, actor, { given: givesLaunchValues(input), asked: true });
       const profileKey = this.requireProfile(input.profileKey, input.selected, input.aiStack);
       return placeAgentReceiptSchema.parse(input.replacePlacementId === undefined

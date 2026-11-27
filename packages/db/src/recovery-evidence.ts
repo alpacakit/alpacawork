@@ -1,3 +1,4 @@
+import { automationSecretsTables } from './control-files.js';
 /** Recovery raises the existing sequences; this evidence is a frozen observation, never another allocator. */
 import type { DatabaseSync } from 'node:sqlite';
 export type RecoveryEvidence = { taskNext: number; runNext: number; taskMax: number; runMax: number;
@@ -21,8 +22,18 @@ export function controlRecoveryEvidence(db: DatabaseSync): RecoveryEvidence {
   };
   // Include deleted/history/JSON/public identifiers, rather than only surviving Task rows.
   for (const row of db.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%'").all()) {
-    const table = String(row.name).replaceAll('"','""');
-    for (const value of db.prepare(`SELECT * FROM "${table}"`).iterate())
+    const name = String(row.name);
+    // Opaque payloads, credentials, and derived usage names do not carry app identifiers.
+    if (['automation_signal_receipts', 'automation_signal_items', 'automation_run_data', 'automation_versions',
+      'automation_previews', 'automation_operation_data', 'automation_task_inputs', ...automationSecretsTables, 'analysis_run_skills'].includes(name)) continue;
+    const table = name.replaceAll('"','""');
+    const columns = name === 'automation_runs' ? 'automation_id,number'
+      : name === 'automation_operations' ? 'requested_task_id,request_id'
+      : name === 'automations' ? 'name'
+      : name === 'cli_operations' ? `op_id,operation,fingerprint,committed_at,CASE
+          WHEN operation LIKE 'automation/%' THEN NULL ELSE response_json END`
+      : '*';
+    for (const value of db.prepare(`SELECT ${columns} FROM "${table}"`).iterate())
       for (const field of Object.values(value)) if (typeof field === 'string') scan(field);
   }
   taskMax = Math.max(taskMax, Number(db.prepare('SELECT coalesce(max(number),0) n FROM tasks').get()!.n));

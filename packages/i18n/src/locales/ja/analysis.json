@@ -36,17 +36,17 @@
     "more": "ほかの​アプリ",
     "numbers": "載せる数（{{limit}}つまで）",
     "passed": "手直しなしで完了",
+    "postCancel": "キャンセル",
+    "postClose": "OK",
     "postCopied": "画像をクリップボードにコピーしました。{{name}} の投稿画面で貼り付けてください",
     "postFinished_other": "この{{days}}日間で、AI に任せた仕事が {{value}}件終わりました",
     "postFinishedAll_other": "これまでに、AI に任せた仕事が {{value}}件終わりました",
     "postHintCopy": "画像はクリップボードにコピーされます。投稿画面で貼り付けて投稿してください。",
     "postHintSave": "画像は保存されます。投稿画面で添付して投稿してください。",
-    "postPreparing": "画像を用意しています…",
-    "postOpensIn": "{{count}}秒後に {{name}} を開きます",
-    "postOpenNow": "今すぐ開く",
     "postOpen": "{{name}} を開く",
-    "postCancel": "キャンセル",
-    "postClose": "OK",
+    "postOpenNow": "今すぐ開く",
+    "postOpensIn": "{{count}}秒後に {{name}} を開きます",
+    "postPreparing": "画像を用意しています…",
     "postSave": "画像を保存しました。{{name}} の投稿画面で添付してください",
     "postShare": "この{{days}}日間、AI に任せた仕事の {{value}} が手直しなしで完了しました",
     "postShareAll": "これまでに、AI に任せた仕事の {{value}} が手直しなしで完了しました",
@@ -80,8 +80,8 @@
     "laterTip": "各タスクの1回目の確認の後に、直して待った分",
     "meant": "思った通りか",
     "noFixes": "この期間に分類された直しはありません。",
-    "noQuestions": "問いなしでそのまま採用",
     "none": "この期間に出せるものはありません。",
+    "noQuestions": "問いなしでそのまま採用",
     "ofFixes_one": "あなたが頼んだ直し {{count}}件のうち（分類ごと）",
     "ofFixes_other": "あなたが頼んだ直し {{count}}件のうち（分類ごと）",
     "ofItems_one": "答えた {{count}} 項目のうち",
@@ -176,10 +176,7 @@
     "youText": "確認待ち（あなたが確認するのを待っていた時間）と、答え待ち（あなたへの問いに答えるのを待っていた時間）"
   },
   "face": {
-    "empty": "まだ記録がありません。タスクを依頼すると、その日から、終わったタスクと AI の使用量がここに出ます。",
-    "analysis": "分析",
-    "label": "画面",
-    "use": "使う"
+    "empty": "まだ記録がありません。タスクを依頼すると、その日から、終わったタスクと AI の使用量がここに出ます。"
   },
   "history": {
     "accepted": "受け入れ",
@@ -210,9 +207,9 @@
     "empty": "タスクはありません",
     "more_other": "残り {{count}}件を表示",
     "outcome": "結果",
+    "resize": "幅（左右の矢印キーで変える）",
     "task": "タスク",
-    "usedTitle": "{{name}}のタスク",
-    "resize": "幅（左右の矢印キーで変える）"
+    "usedTitle": "{{name}}のタスク"
   },
   "look": {
     "label": "表示",
@@ -225,12 +222,12 @@
     "change": "条件の変更",
     "command-stopped": "コマンドを上限で打ち切り",
     "compacted": "会話の圧縮",
-    "test": "試験コマンド",
-    "produced": "コミット・PR・紐づいた成果物",
     "instruction": "指示",
     "moved": "移動",
+    "produced": "コミット・PR・紐づいた成果物",
     "question-withdrawn": "問いの取り下げ",
     "report": "報告",
+    "test": "試験コマンド",
     "values-changed": "値の変更"
   },
   "outcome": {
@@ -272,17 +269,17 @@
     "failed-run": "失敗した実行",
     "fan-out": "1回で済む操作の小分け",
     "idle": "何も動いていない",
+    "large-output": "大きなツール出力",
     "limit-hit": "時間の上限で打ち切り",
     "long-step": "長いステップ",
     "long-wait": "長い答え待ち",
+    "outputChars": "{{count, number}}文字",
     "queue-wait": "順番待ち",
     "repeated-failure": "同じ失敗の繰り返し",
     "repeated-question": "同じ問いの繰り返し",
     "rework": "やり直し",
-    "large-output": "大きなツール出力",
-    "same-test-same-commit": "同じ作業ツリーでの試験の繰り返し",
-    "outputChars": "{{count, number}}文字",
-    "same-result": "同じ結果の読み直し"
+    "same-result": "同じ結果の読み直し",
+    "same-test-same-commit": "同じ作業ツリーでの試験の繰り返し"
   },
   "same": "±0",
   "sep": "・",

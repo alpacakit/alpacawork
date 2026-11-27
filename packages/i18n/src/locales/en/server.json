@@ -26,6 +26,11 @@
     "title": "This machine is under heavy load"
   },
   "push": {
+    "automationConsecutiveFailures": "It failed three times in a row.",
+    "automationDefinitionChanged": "Its definition changed.",
+    "automationFailed": "{{automation}} failed to run",
+    "automationFailureAction": "View the automation to check why it failed.",
+    "automationOff": "{{automation}} turned off",
     "groupTitle": "{{updateCount}} updates",
     "reason": {
       "blocked": {

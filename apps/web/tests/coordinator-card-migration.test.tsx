@@ -85,7 +85,7 @@ test('Done disappears with the actual reader and stays absent while a working ta
 });
 
 for (const submitted of [false, true]) test(`clear preserves an unsent draft but settles fixed sends with their conversation; submitted=${submitted}`, async () => {
-  current = { ...empty(), turns: [{ id: 'previous', at, ask: 'Previous', status: 'succeeded', waiting: false, answer: 'Done', seen: true, answeredAt: at, error: null, result: { writes: [], refused: [] }, attachments: [] }] };
+  current = { ...empty(), turns: [{ id: 'previous', at, ask: 'Previous', status: 'succeeded', waiting: false, answer: 'Done', seen: true, answeredAt: at, error: null, result: { writes: [], refused: [], automations: [] }, attachments: [] }] };
   useConversation.setState({ open: true, expanded: true });
   await readConversationThroughOwner(current, root);
   mount(); await waitFor(() => expect(field()).toBeTruthy()); input('Original unsent input'); expect(field().textContent).toBe('Original unsent input');

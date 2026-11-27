@@ -42,6 +42,8 @@
     "more": "Otras apps",
     "numbers": "Números que se muestran (hasta {{limit}})",
     "passed": "Completadas sin correcciones",
+    "postCancel": "Cancelar",
+    "postClose": "Aceptar",
     "postCopied": "Imagen copiada al portapapeles. Pégala en tu publicación de {{name}}",
     "postFinished_one": "En los últimos {{days}} días, la IA terminó {{value}} tarea que le encargué",
     "postFinished_many": "En los últimos {{days}} días, la IA terminó {{value}} tareas que le encargué",
@@ -51,14 +53,12 @@
     "postFinishedAll_other": "Hasta ahora, la IA ha terminado {{value}} tareas que le encargué",
     "postHintCopy": "La imagen se copia al portapapeles. Pégala en la pantalla de publicación antes de publicar.",
     "postHintSave": "La imagen se guarda. Adjúntala en la pantalla de publicación antes de publicar.",
-    "postPreparing": "Preparando la imagen…",
+    "postOpen": "Abrir {{name}}",
+    "postOpenNow": "Abrir ya",
     "postOpensIn_one": "Abriendo {{name}} en {{count}} segundo",
     "postOpensIn_many": "Abriendo {{name}} en {{count}} segundos",
     "postOpensIn_other": "Abriendo {{name}} en {{count}} segundos",
-    "postOpenNow": "Abrir ya",
-    "postOpen": "Abrir {{name}}",
-    "postCancel": "Cancelar",
-    "postClose": "Aceptar",
+    "postPreparing": "Preparando la imagen…",
     "postSave": "Imagen guardada. Adjúntala a tu publicación en {{name}}",
     "postShare": "En los últimos {{days}} días, el {{value}} del trabajo que le encargué a la IA se completó sin correcciones",
     "postShareAll": "Hasta ahora, el {{value}} del trabajo que le encargué a la IA se ha completado sin correcciones",
@@ -92,8 +92,8 @@
     "laterTip": "El trabajo rehecho y esperado tras la primera revisión de cada tarea",
     "meant": "Como querías",
     "noFixes": "No hay arreglos clasificados en este periodo.",
-    "noQuestions": "Aceptadas sin preguntas ni arreglos",
     "none": "Nada que mostrar en este periodo.",
+    "noQuestions": "Aceptadas sin preguntas ni arreglos",
     "ofFixes_one": "Del {{count}} arreglo que pediste, por tipo",
     "ofFixes_other": "De los {{count}} arreglos que pediste, por tipo",
     "ofItems_one": "De {{count}} elemento respondido",
@@ -190,10 +190,7 @@
     "youText": "Esperando tu revisión y esperando tu respuesta a una pregunta"
   },
   "face": {
-    "empty": "Aún no hay registros. Cuando pidas una tarea, aquí aparecerán desde ese día las tareas terminadas y el uso de la IA.",
-    "analysis": "Análisis",
-    "label": "Pantalla",
-    "use": "Usar"
+    "empty": "Aún no hay registros. Cuando pidas una tarea, aquí aparecerán desde ese día las tareas terminadas y el uso de la IA."
   },
   "history": {
     "accepted": "Aceptada",
@@ -230,9 +227,9 @@
     "more_many": "Mostrar {{count}} más",
     "more_other": "Mostrar {{count}} más",
     "outcome": "Resultado",
+    "resize": "Ancho (flechas izquierda y derecha)",
     "task": "Tarea",
-    "usedTitle": "{{name}}",
-    "resize": "Ancho (flechas izquierda y derecha)"
+    "usedTitle": "{{name}}"
   },
   "look": {
     "label": "Vista",
@@ -245,12 +242,12 @@
     "change": "Condiciones cambiadas",
     "command-stopped": "Comando detenido en el límite",
     "compacted": "Conversación compactada",
-    "test": "Comando de prueba",
-    "produced": "Commit, pull request o entregable vinculado",
     "instruction": "Instrucción",
     "moved": "Movida",
+    "produced": "Commit, pull request o entregable vinculado",
     "question-withdrawn": "Pregunta retirada",
     "report": "Informe",
+    "test": "Comando de prueba",
     "values-changed": "Valores cambiados"
   },
   "outcome": {
@@ -296,17 +293,17 @@
     "failed-run": "Ejecución fallida",
     "fan-out": "Uno por uno donde bastaba una lectura",
     "idle": "Nada en marcha",
+    "large-output": "Resultado de herramienta extenso",
     "limit-hit": "Detenido en el límite de tiempo",
     "long-step": "Paso largo",
     "long-wait": "Larga espera de respuesta",
+    "outputChars": "{{count, number}} caracteres",
     "queue-wait": "Esperó para empezar",
     "repeated-failure": "El mismo fallo otra vez",
     "repeated-question": "La misma pregunta otra vez",
     "rework": "Trabajo rehecho",
-    "large-output": "Resultado de herramienta extenso",
-    "same-test-same-commit": "Misma prueba en la misma copia de trabajo",
-    "outputChars": "{{count, number}} caracteres",
-    "same-result": "El mismo resultado leído otra vez"
+    "same-result": "El mismo resultado leído otra vez",
+    "same-test-same-commit": "Misma prueba en la misma copia de trabajo"
   },
   "same": "±0",
   "sep": " · ",

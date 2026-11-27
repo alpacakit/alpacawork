@@ -1,3 +1,6 @@
+import { bundleCommands } from './automations/bundle-commands.js';
+import type { UiLocale } from '@alpacawork/core/ui-language';
+import type { VerifyHttpDestination } from './automations/http-transport.js';
 import { readRunSummary } from './analysis/run-summary-read.js';
 import { managedInstallation } from './installation/setup.js';
 import { localCaller } from '@alpacawork/contract/access-boundaries';
@@ -58,6 +61,13 @@ import { selectWorkspace } from './workspace.js';
 
 export interface Context {
   agentInspection?: import('./agents/availability.js').InspectionEnvironment;
+  hostPressureSupported?: boolean;
+  automationLanguage?: () => UiLocale;
+  bundleRuntime?: import('./automations/bundle-runtime.js').BundleRuntime;
+  hookOrigin?: string;
+  bundleReviews?: import('./automations/bundle-review.js').BundleReviews;
+  bundleDestination?: { url: URL; signingKey: string; header: { name: string; value: string } | null };
+  verifyAutomationHttp?: VerifyHttpDestination;
   root?: string;
   changed?: () => void;
   /** The local CLI that administers the server: where it runs (`requireRoot`) and what it claims (`requireAdmin`). */
@@ -152,6 +162,8 @@ export function requireRoot(context: Context, intent: 'inspect' | 'existing' = '
  */
 export function requireLocal(context: Context, action: { name: 'admin' | 'release' }, root: () => string): Caller {
   const env: Readonly<Record<string, string | undefined>> = context.cli?.env ?? {};
+  if (env.ALPACAWORK_PROGRAM_TOKEN !== undefined)
+    throw new Problem(PROBLEM_CODE.forbidden, 'Automation programs cannot use local management commands');
   const claim: CallerClaim = localCaller.claimsRun(env)
     ? { run: { runId: env.ALPACAWORK_RUN ?? '', token: env.ALPACAWORK_RUN_TOKEN ?? '' } } : {};
   if (!claim.run) {
@@ -326,7 +338,11 @@ export type ServerCommand<Input, C extends Context = Context> = {
   act?: (input: Input, reading: WriteReading) => WriteAct;
   limit?: number;
   journaled?: true;
+  /** Network checks happen after authorization and before the ordered write. */
+  prepareWrite?: (root: string, input: Input, context: C) => Promise<Partial<C>>;
   replayFromRun?: true;
+  /** Trigger traffic has a bounded intake and rechecks its caller on replay. */
+  automationIngress?: (input: Input) => string;
   inputEvidence?: (query: (name: string) => string | undefined) => { replyTo?: string };
   readThread?: (input: Input) => boolean;
 };
@@ -348,6 +364,7 @@ function authorizeAnalysisSubject(root: string, context: Context, subject: Analy
 }
 
 export const taskCommands = {
+  ...bundleCommands,
   'task/get': {
     run: async (root, input, context) => {
       const { readScope } = authorizeRead(root, context, { name: 'task.read' }, input.task);

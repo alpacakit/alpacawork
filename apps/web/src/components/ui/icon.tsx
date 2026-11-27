@@ -127,6 +127,8 @@ const paths = {
     </>
   ),
   close: <path d="m6 6 12 12M6 18 18 6" />,
+  // Three dots in a row: the other things that can be done to what it stands beside.
+  more: <path d="M5.5 12h.01M12 12h.01M18.5 12h.01" strokeWidth={3} />,
   // A broom: the handle down to its head, and the bristles fanned at its foot.
   clear: <path d="M19.5 3.5 12 11M9.75 9.25l5 5-3.25 6.25H4.5l1-6zM8 20.5l1.25-3.5M11 20.5l.5-1.5" />,
   copy: (

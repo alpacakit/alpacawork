@@ -7,7 +7,8 @@ import { useTimelineAxis } from "@/data/timeline-axis";
 import { useLaneReads, useTimelineLanes } from "@/data/timeline-lanes";
 import { errorText } from "@/data/client";
 import { createContext, Fragment, memo, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode, type RefObject } from "react";
-import { TodayMarks } from "@/features/analysis/FaceSwitch";
+import { TodayMarks } from "@/features/analysis/TodayMarks";
+import { AutomationAttentionRows, useHomeAttention } from "@/features/automations/AttentionRows";
 import { useTranslation } from "react-i18next";
 import { useInfiniteQuery, useQuery, type InfiniteData } from "@tanstack/react-query";
 import { isFinished } from "@alpacawork/contract/branch";
@@ -35,6 +36,7 @@ import { finishWordsFor, useFinishWords } from "@/features/people/labels";
 import { RowLines } from "./RowLines";
 import { RowProjectTile } from "./RowProjectTile";
 import { RowEnd, RowTime, RowTimeRoom } from "./RowStatus";
+import { MadeByMark } from "./MadeByMark";
 import { capitalized, dayClock } from "@/domain/day-clock";
 import type { FinishWords } from "@/domain/finish-words";
 import { saysRuns } from "@/domain/row-status";
@@ -218,6 +220,8 @@ export function TimeTree({ entering = false }: { entering?: boolean }) {
   // Rows outside the vertical viewport keep their space, but have no time drawing to recompute
   // for each zoom. Keep one small screen margin so ordinary scrolling reveals a finished strip.
   const [visibleRows, setVisibleRows] = useState<ReadonlySet<string> | null>(() => typeof IntersectionObserver === "undefined" ? null : new Set());
+  // Automations whose run failed wait for a look among the tasks that do (one row each, ahead of them).
+  const attention = useHomeAttention();
   const { tree, sections, selectedAt } = useMemo(() => {
     // Each Task the home list lists has its own row, in its section, in the order the server lists them.
     const listed: Record<HomeSection, { task: Task; row: HomeRow | null; dated?: boolean }[]> = { doing: [], error: [], review: [], awaited: [], held: [], todo: [], done: [] };
@@ -241,12 +245,12 @@ export function TimeTree({ entering = false }: { entering?: boolean }) {
     }
     // A section is drawn while it holds something, its heading included: Done holds its finished Tasks and the
     // shelved ones at its end.
-    const holds = { ...home.counts, done: closedCounts.finished + closedCounts.shelved };
+    const holds = { ...home.counts, error: home.counts.error + attention, done: closedCounts.finished + closedCounts.shelved };
     const nodes: Node[] = [];
     const sections: Section[] = HOME_SECTIONS.filter((section) => !welcome && holds[section] > 0).map((section) => {
       const all = listed[section];
       const { open, shown, hidden } = sectionFold(section, all.length, { stored, opened, more });
-      return { section, count: section === "done" ? closedCounts.finished : home.counts[section], open, hidden, tree: {
+      return { section, count: section === "done" ? closedCounts.finished : holds[section], open, hidden, tree: {
         nodes: all.slice(0, shown).map(({ task, row, dated }) => {
           const up = !!task.parent && !dated;
           const path: string[] = [];
@@ -260,7 +264,7 @@ export function TimeTree({ entering = false }: { entering?: boolean }) {
         }) } };
     });
     return { tree: { nodes }, sections, selectedAt };
-  }, [welcome, index, home, stored, opened, more, selectedHere, closedCounts, finishedPageIds, finishedDated, openedDone]);
+  }, [welcome, index, home, stored, opened, more, selectedHere, closedCounts, finishedPageIds, finishedDated, openedDone, attention]);
   const navigation = useMemo(() => ({ ids: drawnTaskIds(tree), open: openDetail }), [tree]);
   useListNavigationSource(navigation);
   // Only a change to the drawn rows/section furniture can rearrange this fixed-height list. Selecting a row
@@ -460,6 +464,7 @@ export function TimeTree({ entering = false }: { entering?: boolean }) {
           {<>
             {sections.map((section, at) => <Fragment key={section.section}>
               <SectionHead section={section} first={at === 0} shared={shared} onToggle={() => toggleSection(section.section, section.open)} />
+              {section.section === "error" && section.open && <AutomationAttentionRows width={frozen(shared)} edge={columnEdge(shared)} />}
               <Rows group={section.tree} shared={shared} visibleRows={visibleRows} />
               {section.section === "done" && section.open && <div className="bg-bg"><PageTail page={finished} read={finishedRead} sentinel={finishedSentinel} shared={shared} /></div>}
               {section.hidden !== null &&
@@ -671,6 +676,7 @@ const TaskRow = memo(function TaskRow({ node, shared, visibleRows }: TaskRowProp
             </span>
             {press(<>
               <RowProjectTile project={task.projectId} />
+              <MadeByMark task={task} />
               <TaskId id={task.id} className="flex-none text-xs tabular-nums text-muted cap-box" />
               {/* The title keeps about half the line; what stands at its end (the agents first) gives way. */}
               <RowTitle title={task.title} className="min-w-[45%] flex-1 text-base text-ink" />

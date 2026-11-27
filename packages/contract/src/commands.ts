@@ -1,3 +1,4 @@
+import { automationOriginSchema } from '@alpacawork/raw/automation';
 import { runSummarySchema } from './run-summary.js';
 import { analysisSubjectSchema } from '@alpacawork/raw/analysis-subject';
 import { analysisTasksInput, analysisUsageInput, analysisUsageSeriesInput, analysisUsageSeriesViewSchema, analysisListInput, analysisTaskInput, analysisBreakdownInput, analysisBreakdownViewSchema,
@@ -22,13 +23,23 @@ import { beforeRestoreOperationSchema, unknownAfterRestoreOperationSchema } from
 import { attachmentResultSchema, taskGetPlacementSchema, startOrderSchema, taskLifecycleSchema, projectShelfInfoSchema, projectShelfSchema, taskPlanResultSchema, taskWriteResultSchema, taskReportResultSchema,
   taskRequestResultSchema, taskPlacementResultSchema, taskGetRunSchema, controlRunFilesSchema, workspaceUrlSchema } from './control-contract.js';
 import { serverSettingsSchema } from './server-settings.js';
+import {
+  automationIdSchema, automationListInput,
+  AUTOMATION_SIGNAL_DATA_BYTES, automationHookResultSchema, automationInputInput, automationRunStopInput,
+  automationSignalResultSchema, automationRunInput, automationTargetInput,
+} from './automation.js';
+import {
+  automationBundleSchema, automationDestinationListSchema, automationJson, automationProgramInputs, automationProgramListResultSchema,
+  automationProgramPreviewResultSchema, automationProgramRunReceiptSchema, automationProgramRunViewSchema,
+  automationProgramRunsViewSchema, automationProgramViewResultSchema, automationProgramSaveResultSchema, automationReviewResultSchema, automationVersionSchema,
+} from './automation-program.js';
 import { z } from 'zod';
 import { COORDINATOR_MEMO_LIMIT, coordinatorMemoSchema, coordinatorMemoSetInputSchema, coordinatorReplyGetInput } from './coordinator-contract.js';
 import { taskValuesAtSchema, taskValuesChangeSchema, fieldGetResultSchema, fieldListResultSchema, fieldSetResultSchema,
   fieldDeleteResultSchema, PROJECT_SCHEMA, PROJECT_SUMMARY, DEFAULT_DIRECTION_FIELDS, CONDITION_STATUS_RULE } from './task-schema.js';
 import { ESTIMATE_MINUTES, MAX_CONTROL_BODY, MAX_DETAIL_LENGTH, MAX_INSTRUCTION_BYTES } from '@alpacawork/raw/values';
 import { ASPECTS, CAUSES, PLACED_AS, TAKEN, TRIGGERS, REASON_MEANINGS, placedReasonSchema, takenReasonSchema, triggerReasonSchema } from '@alpacawork/raw/reasons';
-import { digestSchema, REPORT_TITLE_GUIDE_WIDTH, REPORT_TITLE_MAX_WIDTH, reportStateSchema, runIdSchema, taskIdSchema,
+import { digestSchema, REPORT_TITLE_GUIDE_WIDTH, REPORT_TITLE_MAX_WIDTH, reportStateSchema, runIdSchema, taskIdSchema, titleSchema, instructionSchema,
   taskKindSchema, taskStateSchema } from './fields.js';
 import {
   dependencySetInput, dependencyClearInput, taskReturnsInput, taskValuesInput, taskListInput, taskGetInput, taskCreateInput, taskUpdateInput, taskReportInput,
@@ -44,6 +55,7 @@ export type CommandOption = {
   key: string;
   description: string;
   cliDetail?: string;
+  cliKey?: string;
   kind: 'text' | 'boolean' | 'number' | 'list' | 'file' | 'json';
   max?: number;
   jsonFile?: true;
@@ -52,8 +64,8 @@ export type CommandOption = {
   queryCount?: true;
   local?: true;
 };
-export function commandFlag(option: Pick<CommandOption, 'key' | 'kind'>): string {
-  return '--' + option.key.replace(/[A-Z]/g, letter => '-' + letter.toLowerCase()) +
+export function commandFlag(option: Pick<CommandOption, 'key' | 'kind' | 'cliKey'>): string {
+  return '--' + (option.cliKey ?? option.key).replace(/[A-Z]/g, letter => '-' + letter.toLowerCase()) +
     (option.kind === 'file' ? '-file' : '');
 }
 
@@ -66,6 +78,7 @@ export function commandRuleHelp(command: Command, showFlags = false): string[] {
 
 const groups: Readonly<Record<string, string>> = {
   dependency: 'Task execution order',
+  automation: 'Manage work that starts on a schedule or trigger',
   project: 'Project management',
   analysis: 'Counted values of finished tasks and AI use, and one task\'s timeline',
   task: 'Tasks: read, plan, request work, report and record',
@@ -124,19 +137,19 @@ export type FileBinding = {
   body?: 'bytes';
   response?: 'bytes';
 };
-type CommandDetails = {
+type CommandDetails<Output extends z.ZodType = z.ZodType> = {
   cli?: false;
   help?: string;
   cliHelp?: string;
   attachesDiffs?: 'description';
   rules?: readonly InputRule<never>[];
-  output: z.ZodType;
+  output: Output;
   file?: FileBinding;
 };
 type Input = z.ZodObject;
 
-function command<Schema extends Input>(kind: CommandKind, description: string, schema: Schema,
-  options: CommandOption[], details: CommandDetails) {
+function command<Schema extends Input, Output extends z.ZodType>(kind: CommandKind, description: string, schema: Schema,
+  options: CommandOption[], details: CommandDetails<Output>) {
   return { kind, description, schema, options, ...details };
 }
 const filePath = z.string().min(1).max(1024).refine(value =>
@@ -197,6 +210,11 @@ const urgent = (what: string) => text('urgent', `Why the requester must read ${w
 const schemaTask = text('task', 'Task ID. Omit for the Run’s own Task, the resolved project or the default schema.',
   { cliDetail: 'See the cwd rule in alpacawork -h.' });
 
+const automationEventFile = { ...file('syntheticEvent', 2 * 1024 * 1024, 'Synthetic event JSON file', true), cliKey: 'event' };
+const automationId = text('automation', 'Automation ID (A<number>)');
+const automationUnder = text('under', 'Project ID (P<number>)');
+const automationName = text('name', 'Automation name');
+
 const taskReasonViewSchema = z.strictObject({
   log: z.string(), at: z.string(), by: z.enum(['human', 'main', 'placement']),
   on: z.enum(['request', 'placement', 'values', 'stop', 'review']), request: z.string().optional(),
@@ -209,7 +227,7 @@ const taskGetResultSchema = z.looseObject({
     id: taskIdSchema, kind: taskKindSchema, parentId: taskIdSchema.nullable(), projectId: taskIdSchema,
     title: z.string(), state: taskStateSchema, baseState: taskStateSchema, hold: z.boolean(),
     lifecycle: taskLifecycleSchema, hash: digestSchema, folder: z.string(),
-    values: z.record(z.string(), z.json()).optional(), analysisSubject: analysisSubjectSchema.optional(),
+    values: z.record(z.string(), z.json()).optional(), origin: automationOriginSchema.optional(), analysisSubject: analysisSubjectSchema.optional(),
   }),
   shelf: projectShelfInfoSchema,
   agents: z.array(taskGetPlacementSchema),
@@ -376,6 +394,78 @@ const definitions = {
     'files/work: md, txt, json, csv, html up to 1 MiB each; node_modules is excluded.',
     'Each match shows one excerpt (about 80 characters), its source and other match count; ancestors have none.',
     'Unreadable sources appear in errors; extension/size exclusions are not errors.') }),
+  'automation/operate': command('write', 'Use this run’s automation SDK grant', automationProgramInputs.operate,
+    [text('operation', 'SDK operation name'), json('input', 'Operation input as JSON')], { output: automationJson }),
+  'automation/types': command('read', 'Write SDK types and complete examples to a directory', emptyInput,
+    [text('dir', 'Local destination directory', { local: true })], { output: z.strictObject({ declaration: z.string(),
+      examples: z.array(z.strictObject({ name: z.string(), files: automationBundleSchema })) }) }),
+  'automation/get': command('read', 'Read an automation and its saved versions', automationTargetInput, [automationId],
+    { output: automationProgramViewResultSchema }),
+  'automation/list': command('read', 'List automations, optionally in one project', automationListInput, [automationUnder],
+    { output: automationProgramListResultSchema }),
+  'automation/versions': command('read', 'Read the saved versions', automationTargetInput, [automationId],
+    { output: z.strictObject({ versions: z.array(automationVersionSchema) }) }),
+  'automation/runs': command('read', 'Read runs newest first, optionally in one automation', automationProgramInputs.runs,
+    [automationId, number('limit', 'Maximum runs (default 50, maximum 200)'), number('before', 'Run numbers below this number in one automation'),
+      text('cursor', 'Cursor from the previous page')],
+    { output: automationProgramRunsViewSchema }),
+  'automation/run': command('read', 'Read an automation run and its retained reference data', automationRunInput,
+    [automationId, number('number', 'Run number within the automation')], { output: automationProgramRunViewSchema }),
+  'automation/preview': command('write', 'Preview the trigger and optionally preview execution', automationProgramInputs.preview,
+    [automationId, automationUnder, json('files', 'Source files in the bundle'), text('dir', 'Local source directory', { local: true }), boolean('run', 'Preview execution as well as the trigger'),
+      text('event', 'Choose a recent event'), automationEventFile],
+    { output: automationProgramPreviewResultSchema }),
+  'automation/try': command('write', 'Try an automation with a confirmed preview', automationProgramInputs.try,
+    [automationId, text('previewHash', 'Hash returned by preview'), text('event', 'Choose a recent event'),
+      automationEventFile], { output: automationProgramRunReceiptSchema }),
+  'automation/new': command('write', 'Save a new automation as a draft', automationProgramInputs.new,
+    [automationName, automationUnder, json('files', 'Source files in the bundle'), text('dir', 'Local source directory', { local: true }), sourceRequest], { output: automationProgramSaveResultSchema }),
+  'automation/save': command('write', 'Save a new version of an automation', automationProgramInputs.save,
+    [automationId, text('expectedHash', 'Current hash returned by automation get'), json('files', 'Source files in the bundle'), text('dir', 'Local source directory', { local: true }), sourceRequest],
+    { output: automationProgramSaveResultSchema }),
+  'automation/pull': command('read', 'Read source files of an automation version', automationProgramInputs.pull,
+    [automationId, text('version', 'Version digest, or latest when omitted'), text('dir', 'Local destination directory', { local: true })],
+    { output: z.strictObject({ digest: digestSchema, files: automationBundleSchema, declaration: z.string() }) }),
+  'automation/review': command('write', 'Review one saved automation version', automationProgramInputs.review,
+    [automationId, text('version', 'Version digest')], { output: z.strictObject({ review: automationReviewResultSchema }) }),
+  'automation/enable': command('write', 'Enable the latest version of an automation', automationProgramInputs.enable,
+    [automationId, text('expectedHash', 'Current hash returned by automation get'), boolean('acknowledgeReview', 'Acknowledge the review')],
+    { output: automationProgramViewResultSchema }),
+  'automation/disable': command('write', 'Disable an automation', automationTargetInput, [automationId],
+    { output: automationProgramViewResultSchema }),
+  'automation/rename': command('write', 'Change the automation display name', automationProgramInputs.rename,
+    [automationId, text('expectedHash', 'Current hash returned by automation get'), automationName], { output: automationProgramViewResultSchema }),
+  'automation/restore': command('write', 'Restore a saved version as the latest version', automationProgramInputs.restore,
+    [automationId, text('expectedHash', 'Current hash returned by automation get'), text('version', 'Version digest')], { output: automationProgramViewResultSchema }),
+  'automation/delete': command('write', 'Delete an automation', automationProgramInputs.version,
+    [automationId, text('expectedHash', 'Current hash returned by automation get')], { output: automationProgramViewResultSchema }),
+  'automation/destination-set': command('write', 'Set a named private HTTPS destination in one project', automationProgramInputs.destination,
+    [automationUnder, automationName, text('url', 'Private HTTPS URL (person only)'), text('header', 'Optional private authentication header'),
+      text('signingKey', 'Optional Standard Webhooks signing key'), sourceRequest], { output: automationDestinationListSchema }),
+  'automation/destination-list': command('read', 'Read named destinations and their public hosts', automationProgramInputs.destinations,
+    [automationUnder], { output: automationDestinationListSchema }),
+  'automation/hook-read': command('read', 'Read the private HTTP hook URL', automationTargetInput,
+    [automationId], { output: automationHookResultSchema }),
+  'automation/hook-create': command('write', 'Create an HTTP hook for a signal automation', automationProgramInputs.version,
+    [automationId, text('expectedHash', 'Current hash returned by automation get')], { output: automationProgramViewResultSchema }),
+  'automation/hook-rotate': command('write', 'Replace an automation’s HTTP hook key', automationProgramInputs.version,
+    [automationId, text('expectedHash', 'Current hash returned by automation get')], { output: automationProgramViewResultSchema }),
+  'automation/hook-delete': command('write', 'Remove an automation’s HTTP hook', automationProgramInputs.version,
+    [automationId, text('expectedHash', 'Current hash returned by automation get')], { output: automationProgramViewResultSchema }),
+  'automation/signal': command('write', 'Send a signal to an enabled automation', automationTargetInput.extend({
+    data: automationJson.optional(), key: z.string().min(1).max(512).optional(),
+  }),
+    [automationId, text('key', 'Retry key for this occurrence (up to 128 characters)'),
+      json('data', 'JSON reference data (up to 64 KiB, depth 8)')],
+    { output: automationSignalResultSchema }),
+  'automation/input': command('read', 'Read reference data for the automation run that created this task', automationInputInput,
+    [taskId], { output: z.strictObject({ automation: automationIdSchema, run: z.number().int().positive(), data: automationJson }) }),
+  'automation/run-stop': command('write', 'Stop an automation while its condition is pending or running', automationRunStopInput,
+    [automationId, number('number', 'Run number within the automation'), number('expectedRunVersion', 'Current run version')],
+    { output: automationProgramRunReceiptSchema }),
+  'automation/run-now': command('write', 'Run an enabled automation once within its limits', automationProgramInputs.runNow,
+    [automationId, text('event', 'Choose a recent event'), automationEventFile],
+    { output: automationProgramRunReceiptSchema }),
   'task/get': command('read', 'Read one Task with its values, placements, open questions and the Run under review; ' +
     'more only when asked', taskGetInput, [
     taskId,
@@ -651,6 +741,7 @@ export function byteBinding(id: ByteCommand): FileBinding {
   return binding;
 }
 export type CommandInput<Name extends CommandName> = z.output<(typeof definitions)[Name]['schema']>;
+export type CommandOutput<Name extends CommandName> = z.output<(typeof definitions)[Name]['output']>;
 export type CommandHandler<Context> = (input: Record<string, unknown>, context: Context) => unknown;
 export type Command = ReturnType<typeof command> & {
   id: CommandName;
@@ -677,12 +768,12 @@ function parametersOf(command: Command): ParameterSet {
     const field = command.schema.shape[option.key];
     if (!field) throw new Error(`Missing field for ${command.id}: ${option.key}`);
     const codec = option.jsonFile || option.jsonScalar || option.nullable || option.kind === 'json'
-      ? codecs.json(z.json())
-      : option.kind === 'boolean' ? codecs.boolean()
-      : option.kind === 'number' && !option.queryCount
-        ? codecs.positiveInteger()
-      : option.kind === 'list' ? codecs.stringList()
-      : codecs.string();
+        ? codecs.json(z.json())
+        : option.kind === 'boolean' ? codecs.boolean()
+        : option.kind === 'number' && !option.queryCount
+          ? codecs.positiveInteger()
+        : option.kind === 'list' ? codecs.stringList()
+        : codecs.string();
     return { name: option.key, description: option.description, codec,
       requirement: field.isOptional() ? optional() : required() };
   });

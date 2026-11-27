@@ -1,7 +1,7 @@
 import { queryClient as client } from '@/data/query-client';
 import { readIndex, subscribeReads } from '@/data/read-model';
 import { useSendGrace } from '@/data/send-grace';
-import { replyIn } from './editor/document';
+import { replyIn, automationIn } from './editor/document';
 import { createContext, startTransition, useContext, useEffect, useMemo, useSyncExternalStore, useOptimistic, type ReactNode } from "react";
 import type { CoordinatorTurn } from "@/data/coordinator";
 import { useShallow } from "zustand/react/shallow";
@@ -12,7 +12,7 @@ import { press, type Press } from "./press";
 import { isOutgoingIn, isLive, outgoing, outgoingDisplay, outgoingFinished, useOutbox, type Outgoing, type OutgoingDisplay } from "./editor/outbox";
 
 /** A message as it is drawn: serve's turn, or one sent from here that no snapshot holds yet. */
-export type SentTurn = Pick<CoordinatorTurn, "id" | "at" | "ask" | "tasks" | "attachments" | "filesExpired" | "replyTo" | "joinRequested" | "deliveryError"> & { status?: CoordinatorTurn["status"]; waiting?: boolean };
+export type SentTurn = Pick<CoordinatorTurn, "id" | "at" | "ask" | "tasks" | "automation" | "automationName" | "attachments" | "filesExpired" | "replyTo" | "joinRequested" | "deliveryError"> & { status?: CoordinatorTurn["status"]; waiting?: boolean };
 /**
  * A request sent from here that no drawn snapshot holds yet, in the conversation it was sent to (`root`,
  * `conversationId`). `waiting`: fixed here, not sent yet; `sending`: an attempt at it is under way in this page, or serve was seen to have it (never drawn
@@ -79,7 +79,7 @@ export function partitionTurns(turns: readonly CoordinatorTurn[], local: readonl
 }
 
 const toLocal = (root: string, item: Outgoing, live: boolean): LocalTurn => ({ id: item.requestId, at: item.at, ask: item.fixed.text,
-  ...(item.fixed.tasks ? { tasks: item.fixed.tasks } : {}), attachments: item.fixed.attachments, files: item.files,
+  ...(item.fixed.tasks ? { tasks: item.fixed.tasks } : {}), ...(item.fixed.automation ? { automation: item.fixed.automation, ...automationIn(item.doc)?.name ? { automationName: automationIn(item.doc)!.name } : {} } : {}), attachments: item.fixed.attachments, files: item.files,
   ...(item.fixed.replyTo ? { replyTo: { id: item.fixed.replyTo, answeredAt: replyIn(item.doc)?.answeredAt ?? '', head: '' } } : {}), root, conversationId: item.fixed.conversationId,
   ...outgoingDisplay(item, live) });
 const ShownConversation = createContext<Shown | null>(null);

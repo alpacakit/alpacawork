@@ -183,7 +183,7 @@ for (const hook of ['waiting', 'shown'] as const) test(`${hook} reader ignores e
   if (hook === 'waiting') expect(waiting).toEqual([]);
   act(() => { reconcileOutbox(served({ id:'c1',nextLaunch: { agent: 'claude', values: {} },...SERVED,busy:false,cancelled:[],admitted:{},turns:[{
     id:requestId,at:new Date().toISOString(),ask:'answer',attachments:[],status:'succeeded',waiting:false,
-    answer:null,seen:false,answeredAt:null,error:null,result:{writes:[],refused:[]}
+    answer:null,seen:false,answeredAt:null,error:null,result:{writes:[],refused:[],automations:[]}
   }] }),root, null,true); });
   expect(useDraftStore.getState().entries[outgoingKey(root,requestId)]?.values.stage).toBe('settled');
   if (hook === 'waiting') expect(waiting).toEqual([]);

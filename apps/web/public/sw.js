@@ -139,7 +139,7 @@ self.addEventListener("push", (event) => {
   }));
 });
 
-// Tap: an open window of the screen moves to the task (or opens the settings tab a host push names); otherwise the screen opens on it.
+// Tap: an open window moves to the destination; otherwise the destination opens in a new window.
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const url = new URL(event.notification.data && event.notification.data.url ? event.notification.data.url : "/", self.location.origin);
@@ -150,7 +150,7 @@ self.addEventListener("notificationclick", (event) => {
     const client = windows.find((item) => new URL(item.url).origin === self.location.origin);
     if (client) {
       await client.focus();
-      client.postMessage({ type: "open-task", task, settings });
+      client.postMessage({ type: "open-task", task, settings, search: url.search });
       return;
     }
     await self.clients.openWindow(url.href);

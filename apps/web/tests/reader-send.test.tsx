@@ -46,7 +46,7 @@ const plainDoc = labelled(emptyDocument(), task);
 const first = decideOf(twoAsked)[0]!;
 const doc = toggleAnswer(plainDoc, task, choiceAnswer(answerTask(task, responsible.revision), 'Q1', first, first.choices[0]!));
 /** The server's result for a message: what its writes recorded, and what it refused. */
-const result = (writes: CoordinatorResult['writes'] = [], refused: CoordinatorResult['refused'] = []): CoordinatorResult => ({ writes, refused });
+const result = (writes: CoordinatorResult['writes'] = [], refused: CoordinatorResult['refused'] = []): CoordinatorResult => ({ writes, refused, automations: [] });
 type Write = CoordinatorResult['writes'][number];
 /** A record the message's writes left on `task` (T3): its kind, the state it led to (none when unsaid) and what it names. */
 const wrote = (kind: Write['kind'], more: Partial<Write> = {}): Write => ({ task: 'T3', record: 'L9', kind, toState: null, ...more });

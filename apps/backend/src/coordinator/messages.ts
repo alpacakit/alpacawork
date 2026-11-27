@@ -11,6 +11,7 @@ import { answerFilesSchema, type AnswerFiles } from '@alpacawork/contract';
 import { problemErrorSchema, recordedProblemSchema } from '@alpacawork/contract/problem';
 import { replyAccess } from '@alpacawork/contract/access-boundaries';
 import { currentRequestRun, UNSETTLED_INPUTS_SQL } from '@alpacawork/runs';
+import { automationMessageChanges } from '../automations/bundle-store.js';
 
 type Screen = { source: string; conversation: string; runId?: string };
 
@@ -94,10 +95,11 @@ export function refuse(db: DatabaseSync, request: string, taskId: string, proble
 }
 
 type Write = CoordinatorResult['writes'][number];
-/** Successes come solely from effect logs; refuses from complete immutable Problem snapshots. */
+/** Successes come solely from effect logs (automations' from their change records); refuses from complete immutable Problem snapshots. */
 export function resultsOf(db: DatabaseSync, requestIds: readonly string[]): Map<string, CoordinatorResult> {
-  const results = new Map(requestIds.map(id => [id, { writes: [], refused: [] } as CoordinatorResult]));
+  const results = new Map(requestIds.map(id => [id, { writes: [], refused: [], automations: [] } as CoordinatorResult]));
   if (!requestIds.length) return results;
+  for (const [request, changes] of automationMessageChanges(db, requestIds)) results.get(request)!.automations.push(...changes);
   const ids = JSON.stringify(requestIds);
   // The two disjoint Task record forms both use their author's message index. A cross-table coalesce scans all history.
   const records = db.prepare(`SELECT id,request_id,task FROM (
@@ -136,7 +138,7 @@ export function saidAt(db: DatabaseSync, requestIds: readonly string[]): Map<str
 }
 function userMark(log: readonly TaskLog[]): { at: string; message: string | null } | null {
   const mark = [...log].reverse().find(entry => entry.userRequested !== undefined);
-  if (mark?.userRequested !== true) return null;
+  if (mark?.userRequested !== true || mark.actor.kind === 'automation') return null;
   return { at: mark.at, message: mark.actor.kind === 'main' ? mark.actor.message ?? null : null };
 }
 export const markMessages = (logs: readonly (readonly TaskLog[])[]) => logs.flatMap(log => userMark(log)?.message ?? []);

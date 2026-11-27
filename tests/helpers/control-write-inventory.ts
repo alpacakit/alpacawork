@@ -35,22 +35,39 @@ export const routingFiles = new Set(['apps/backend/src/control/return-router.ts'
 // A value version is written only beside the task_values change whose touch announces the same write.
 export const unobservedTables = new Set(['agents', 'cli_operations', 'file_path_reservations', 'file_operations',
   'run_commands', 'task_sequence', 'run_sequence', 'workspace_identity', 'control_migration_sources',
-  'control_migration_evidence', 'control_schema_migrations', '__drizzle_migrations', 'task_value_versions',
+  'control_migration_evidence', 'automation_cursor', 'automation_save_requests', 'automation_pending_skill_events', 'analysis_run_skills', 'automation_signal_receipts', 'control_schema_migrations', '__drizzle_migrations', 'task_value_versions',
   'task_value_versions_since', 'coordinator_reset_ops']);
 /** These columns carry protocol progress, not screen or seat facts. */
 export const unobservedColumns: Record<string, string[]> = {
   coordinator_conversations: ['visible_turns'],
+  automations: ['next_at', 'event_after', 'host_pressure_after', 'host_pressure_cursor'],
+  automation_previews: ['attempt'],
+  automation_runs: ['attempt'],
   run_attempts: ['next_seq', 'last_digest', 'claimed', 'spawn_intent', 'started_json', 'completed_digest', 'dirty', 'acked_seq'],
 };
 export const protocolOnly = (site: WriteSite) => {
-  if (site.table !== 'run_attempts') return false;
-  const set = /^UPDATE run_attempts SET ([\s\S]+?) WHERE\b/.exec(site.sql)?.[1];
+  if (!['run_attempts', 'automations', 'automation_previews', 'automation_runs'].includes(site.table)) return false;
+  const set = /^UPDATE \w+ SET ([\s\S]+?) WHERE\b/.exec(site.sql)?.[1];
   if (!set) return false;
   const columns = [...set.matchAll(/(?:^|,)\s*(\w+)\s*=/g)].map(match => match[1]!);
-  return columns.length > 0 && columns.every(column => unobservedColumns.run_attempts!.includes(column));
+  return columns.length > 0 && columns.every(column => unobservedColumns[site.table]!.includes(column));
 };
-export const trackedSite = (site: WriteSite) => !maintenanceFiles.has(site.file)
-  && !unobservedTables.has(site.table) && !protocolOnly(site);
+// These writes require a full storage budget or an unavailable process census. The fixture covers their normal paths.
+const storageCapSite = (site: WriteSite) => site.file === 'apps/backend/src/automations/bundle-runs.ts'
+  && /^DELETE FROM automation_(?:run_data|signal_items|operation_data|previews|task_inputs) WHERE rowid IN \(SELECT value FROM json_each\(\?\)\)/.test(site.sql);
+const processFaultSite = (site: WriteSite) => site.file === 'apps/backend/src/automations/bundle-runtime.ts'
+  && /^UPDATE automation_runs SET phase='stopping',(?:reason_kind='interrupted',)?version=version\+1 WHERE automation_id=\? AND number=\?(?: AND state='running')?$/.test(site.sql);
+// An interrupted, unfinished preview has no public operation history to invalidate.
+const previewProtocolSite = (site: WriteSite) => site.file === 'apps/backend/src/automations/bundle-runtime.ts'
+  && site.table === 'automation_operations' && site.sql.endsWith("WHERE preview_id=? AND outcome='running'");
+export const writeSiteStatus = (site: WriteSite) => maintenanceFiles.has(site.file) ? 'maintenance'
+  : unobservedTables.has(site.table) || protocolOnly(site) || previewProtocolSite(site) ? 'unobserved'
+    : storageCapSite(site) ? 'storage-cap' : processFaultSite(site) ? 'process-fault'
+      : routingFiles.has(site.file) ? 'pending-routing' : 'touch';
+export const trackedSite = (site: WriteSite) => {
+  const status = writeSiteStatus(site);
+  return status === 'touch' || status === 'pending-routing';
+};
 
 /** Records successful execution, not preparation or a matching touch call. Only a test installs this observer. */
 export function observeWriteSites(sites: readonly WriteSite[]) {

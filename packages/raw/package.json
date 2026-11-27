@@ -9,6 +9,10 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./automation": {
+      "types": "./dist/automation.d.ts",
+      "default": "./dist/automation.js"
+    },
     "./reasons": {
       "types": "./dist/reasons.d.ts",
       "default": "./dist/reasons.js"

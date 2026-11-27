@@ -93,7 +93,7 @@ type View = {
    * `intent`: a press's meaning (reader-send); `answers`: the questions a draft's choices answer. The server decides
    * which AI the turn starts with (the conversation's `nextLaunch`).
    */
-  ask: (input: { conversationId: string; id: string; text: string; tasks?: string[]; skills?: string[]; attachments: string[];
+  ask: (input: { conversationId: string; id: string; text: string; tasks?: string[]; automation?: string; skills?: string[]; attachments: string[];
     intent?: CoordinatorIntent; answers?: CoordinatorAnswers; replyTo?: string | null; retryOf?: string }, basis?: WriteBasis, keepalive?: boolean) => Promise<boolean>;
   messageAction: (action: "withdraw" | "send-now", id: string) => Promise<void>;
   clear: () => Promise<void>;

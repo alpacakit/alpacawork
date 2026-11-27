@@ -189,7 +189,7 @@ test("a folded bar opens one menu from ☰ or the name, and reaches the faces, p
     fireEvent.click(document.querySelector("[data-project-trigger]")!);
     const menu = await screen.findByRole("dialog");
     expect(menu.querySelector("[data-project-new]")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: i18n.t("analysis:face.analysis") }));
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("chrome:face.analysis") }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(useViewStore.getState().analysis).not.toBeNull();
     fireEvent.click(opener);

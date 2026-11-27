@@ -31,6 +31,37 @@ const accessExamples: Readonly<Record<string, readonly Example[]>> = {
   'field.use': [{ label: 'Project fields (Task here means the project)', action: { name: 'field.use' },
     task: { kind: 'project', id: 'T1', parentId: null, project: 'T1' } }],
   'task.file-get': readUp,
+  'automation.operate': [{ label: 'Use the current automation run credential', action: { name: 'automation.operate' } }],
+  'automation.types': [{ label: 'Read SDK types and examples', action: { name: 'automation.types' } }],
+  'automation.pull': [{ label: 'Read source files', action: { name: 'automation.pull' } }],
+  'automation.versions': [{ label: 'Read saved versions', action: { name: 'automation.versions' } }],
+  'automation.destination-list': [{ label: 'Read named destinations', action: { name: 'automation.destination-list' } }],
+  'automation.save': [{ label: 'Save version', action: { name: 'automation.save' } }],
+  'automation.review': [{ label: 'Review version', action: { name: 'automation.review' } }],
+  'automation.rename': [{ label: 'Rename', action: { name: 'automation.rename' } }],
+  'automation.get': [{ label: 'Read automation', action: { name: 'automation.get' } }],
+  'automation.list': [{ label: 'List automations', action: { name: 'automation.list' } }],
+  'automation.runs': [{ label: 'Read runs', action: { name: 'automation.runs' } }],
+  'automation.run': [{ label: 'Read one run', action: { name: 'automation.run' } }],
+  'automation.preview': [{ label: 'Preview a trial', action: { name: 'automation.preview' } }],
+  'automation.try': [{ label: 'Try an automation', action: { name: 'automation.try' } }],
+  'automation.new': [{ label: 'Create draft', action: { name: 'automation.new' } }],
+  'automation.enable': [{ label: 'Enable', action: { name: 'automation.enable' } }],
+  'automation.disable': [{ label: 'Disable', action: { name: 'automation.disable' } }],
+  'automation.restore': [{ label: 'Restore a saved version as the draft', action: { name: 'automation.restore' } }],
+  'automation.signal': [{ label: 'Send signal', action: { name: 'automation.signal' } }],
+  'automation.input': [{ label: 'Read run input', action: { name: 'automation.input' } }],
+  'automation.destination-set': [
+    { label: 'Enter the private HTTPS destination directly', action: { name: 'automation.destination-set' } },
+    { label: 'Set the destination from a delivered screen message', action: { name: 'automation.destination-set.from_request' } },
+  ],
+  'automation.hook-read': [{ label: 'Read the private HTTP hook URL', action: { name: 'automation.hook-read' } }],
+  'automation.hook-create': [{ label: 'Create HTTP hook', action: { name: 'automation.hook-create' } }],
+  'automation.hook-rotate': [{ label: 'Replace HTTP hook key', action: { name: 'automation.hook-rotate' } }],
+  'automation.hook-delete': [{ label: 'Remove HTTP hook', action: { name: 'automation.hook-delete' } }],
+  'automation.run-stop': [{ label: 'Stop a run', action: { name: 'automation.run-stop' } }],
+  'automation.run-now': [{ label: 'Run once now', action: { name: 'automation.run-now' } }],
+  'automation.delete': [{ label: 'Delete', action: { name: 'automation.delete' } }],
   'analysis.tasks': readTree, 'analysis.usage': readTree, 'analysis.usage-series': readTree,
   'analysis.breakdown': readTree, 'analysis.list': readTree, 'analysis.task': readTree,
   'analysis.changes': readTree, 'analysis.trace': readUp, 'analysis.findings': readUp, 'analysis.at': readUp,
@@ -103,6 +134,7 @@ const run = (taskId: string, worker = false): Caller => ({ kind: 'run', taskId,
   runId: `R${taskId.slice(1)}`, placementId: `P${taskId.slice(1)}`, role: worker ? 'worker' : 'owner', responsible: !worker });
 const callers = {
   human: { kind: 'human' }, coordinator: { kind: 'coordinator', source: 'claude', conversation: 'S1' },
+  screenCoordinator: { kind: 'coordinator', source: 'screen', provider: 'claude', conversation: 'S1', runId: 'R1' },
   own: run('T3'), parent: run('T2'), member: run('T3', true), other: run('T4'), asked: run('T5'), foreign: run('T20'),
 } satisfies Record<string, Caller>;
 type Person = keyof typeof callers;
@@ -118,11 +150,14 @@ function permits(item: Example, person: Person, ownHeld: boolean): boolean {
 }
 function peopleText(people: readonly Person[], item: Example): string {
   const remaining = new Set(people), text: string[] = [];
-  if (remaining.has('human') && remaining.has('coordinator')) {
-    text.push(SEAT_TEXT.user); remaining.delete('human'); remaining.delete('coordinator');
+  if (remaining.has('human') && remaining.has('coordinator') && remaining.has('screenCoordinator')) {
+    text.push(SEAT_TEXT.user);
+    remaining.delete('human'); remaining.delete('coordinator'); remaining.delete('screenCoordinator');
   }
   if (remaining.has('human')) { text.push(SEAT_TEXT.human); remaining.delete('human'); }
-  if (remaining.has('coordinator')) { text.push('the coordinator'); remaining.delete('coordinator'); }
+  if (remaining.has('coordinator') && remaining.has('screenCoordinator')) {
+    text.push('the coordinator'); remaining.delete('coordinator'); remaining.delete('screenCoordinator');
+  }
   const runs: Person[] = ['own', 'parent', 'member', 'other', ...(item.asked ? ['asked' as const] : [])];
   if (runs.every(person => remaining.has(person))) {
     text.push(remaining.has('foreign') ? SEAT_TEXT.run
@@ -135,7 +170,8 @@ function peopleText(people: readonly Person[], item: Example): string {
   } else if (remaining.has('own') && remaining.has('member')) {
     text.push(SEAT_TEXT.placement); remaining.delete('own'); remaining.delete('member');
   }
-  const labels: Record<Person, string> = { human: SEAT_TEXT.human, coordinator: 'the coordinator', own: SEAT_TEXT.own,
+  const labels: Record<Person, string> = { human: SEAT_TEXT.human, coordinator: 'the coordinator in an outside conversation',
+    screenCoordinator: SEAT_TEXT.screen_coordinator, own: SEAT_TEXT.own,
     parent: SEAT_TEXT.parent, member: 'a member Run of this Task', other: 'another Run in this project',
     foreign: 'a Run in another project', asked: SEAT_TEXT.own.replace('the Task', 'the addressed Task') };
   for (const person of remaining) text.push(labels[person]);
@@ -162,7 +198,7 @@ export function accessHelp(command: string): string {
   if (command === 'coordinator memo.get' || command === 'coordinator memo.set')
     return `\nAccess: Only ${SEAT_TEXT.screen_coordinator} in the open conversation.`;
   if (command === 'coordinator reply.get') return `\nAccess: ${replyAccess.help}`;
-  if (command === 'operation.get') return `\nAccess: ${operationReadHelp}\n  Referenced Tasks: only ${permissionText({ label: 'Referenced Tasks', action: operationReadActions(['T3'])[0]!.action })}.\n  No Task: only ${permissionText({ label: 'No Task', action: operationReadActions([])[0]!.action })}.`;
+  if (command === 'operation.get') return `\nAccess: ${operationReadHelp}\n  Referenced Tasks: only ${permissionText({ label: 'Referenced Tasks', action: operationReadActions(['T3'])[0]!.action })}.\n  Other receipts: only ${permissionText({ label: 'Other receipts', action: operationReadActions([])[0]!.action })}.`;
   const examples = accessExamples[command];
   if (!examples) throw new Error(`No access description for ${command}`);
   const groups = new Map<string, string[]>();
@@ -179,6 +215,8 @@ export function accessHelp(command: string): string {
     if (index >= 0) lines[index] += ' ' + urgentRecipient.help.replace('--urgent: ', '');
   }
   if (command === 'task.update') lines.push('  Every changed field must be allowed.');
+  if (['automation.get', 'automation.list', 'automation.runs', 'automation.run', 'automation.preview'].includes(command))
+    lines.push('  A Run reads automations and runs only in its own project.');
   if (command.startsWith('analysis.')) lines.push("  A Run's analysis is restricted to its own project.");
   if (command === 'task.list') lines.push('  A Run\'s tree is restricted to its own project.');
   if (command === 'run.list') lines.push('  A Run lists only its own project\'s Task Runs, and its --under must be in that project. ' +

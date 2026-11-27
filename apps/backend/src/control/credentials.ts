@@ -8,6 +8,7 @@ import { runIdSchema } from '@alpacawork/contract/fields';
 import { RunStore } from '@alpacawork/runs';
 import type { Caller } from './authorize.js';
 import { RunEventImporter } from '../runs/event-importer.js';
+import { resolveProgramCredential } from '../automations/program-credentials.js';
 
 const FILE = 'run-credential.key';
 function openKey(path: string, allowMissing: boolean): number | null {
@@ -81,6 +82,7 @@ type Provider = Exclude<Extract<TaskActor, { kind: 'main' }>['provider'], 'mcp'>
  */
 export type CallerClaim = {
   run?: { runId: string; token: string };
+  program?: string;
   direct?: { provider: Provider; conversationId: string };
   replayOpId?: string;
   mcp?: true;
@@ -102,6 +104,7 @@ const TASK_RUN_CONVERSATION = { conversation: 'task_run' } as const;
  * thread first (`resolvingMayImport`).
  */
 export function resolveCaller(root: string, claim: CallerClaim, store: RunStore | null, importing = true): Caller {
+  if (claim.program !== undefined) return resolveProgramCredential(root, store?.connection, claim.program);
   if (claim.run) return runCaller(root, claim.run, claim.replayOpId, store);
   if (claim.mcp) return { kind: 'coordinator', source: 'mcp', conversation: 'mcp' };
   if (!claim.direct) return { kind: 'human' };

@@ -331,10 +331,17 @@ test('the served worker still shows Push and routes notification taps to an exis
     let closed = 0;
     await sw.dispatch('notificationclick', { notification: { close: () => { closed++; }, data: { url: '/?task=T1&settings=push' } } });
     assert.equal(closed, 1); assert.equal(sw.focused(), 1);
-    assert.equal(JSON.stringify(sw.messages), JSON.stringify([{ type: 'open-task', task: 'T1', settings: 'push' }]));
+    assert.equal(JSON.stringify(sw.messages), JSON.stringify([{ type: 'open-task', task: 'T1', settings: 'push', search: '?task=T1&settings=push' }]));
+    const automationUrl = '/?face=settings&automation=A12';
+    await sw.dispatch('notificationclick', { notification: { close: () => { closed++; }, data: { url: automationUrl } } });
+    assert.equal(JSON.stringify(sw.messages.at(-1)), JSON.stringify({
+      type: 'open-task', task: null, settings: null, search: automationUrl.slice(1),
+    }));
+    assert.equal(closed, 2); assert.equal(sw.focused(), 2);
     sw.noWindows();
     await sw.dispatch('notificationclick', { notification: { close: () => { closed++; }, data: { url: '/?task=T2' } } });
-    assert.deepEqual(sw.opened, [base + '/?task=T2']); assert.equal(closed, 2);
+    await sw.dispatch('notificationclick', { notification: { close: () => { closed++; }, data: { url: automationUrl } } });
+    assert.deepEqual(sw.opened, [base + '/?task=T2', base + automationUrl]); assert.equal(closed, 4);
   });
 });
 

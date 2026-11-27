@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { pushSubscribeResponseSchema, pushUnsubscribeResponseSchema, type PushDevice } from "@alpacawork/contract";
 import { taskAtAddress, type TaskIndex } from "@/domain/tasks";
 import { useDialogStore } from "@/state/dialog-store";
+import { readOpenAutomation } from "@/features/automations/place";
 import { urlValue, writeUrlValue } from "@/state/screen-settings";
 import { useViewStore } from "@/state/view-store";
 import { api } from "./queries";
@@ -33,7 +34,7 @@ const openSettingsTab = (tab: unknown) => {
 };
 
 /**
- * A tapped notification asks the open window to move to its task, or to open the settings tab it names
+ * A tapped notification asks the open window to move to its task, its automation, or the settings tab it names
  * (sw.js `notificationclick`). A window the tap opened reads the same from its URL once.
  */
 export function useOpenFromNotification(index: TaskIndex) {
@@ -46,12 +47,17 @@ export function useOpenFromNotification(index: TaskIndex) {
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
     const onMessage = (event: MessageEvent) => {
-      const data: unknown = event.data;
-      if (typeof data !== "object" || data === null || (data as { type?: unknown }).type !== "open-task") return;
-      openSettingsTab((data as { settings?: unknown }).settings);
+      const data = event.data as { type?: unknown; search?: unknown; settings?: unknown; task?: unknown } | null;
+      if (data?.type !== "open-task") return;
+      const automation = typeof data.search === "string" ? readOpenAutomation(new URLSearchParams(data.search)) : null;
+      if (automation) {
+        useViewStore.getState().openAutomation(automation.id, automation.pane);
+        return;
+      }
+      openSettingsTab(data.settings);
       // The notice names its task as the screen's URL does (its ID); opening it outside the project in view widens the
       // list to every project (state/bootstrap.ts).
-      const address = (data as { task?: unknown }).task;
+      const address = data.task;
       const task = typeof address === "string" ? taskAtAddress(address, index) : undefined;
       if (task) useViewStore.getState().openTask(task.id, { reader: true });
     };

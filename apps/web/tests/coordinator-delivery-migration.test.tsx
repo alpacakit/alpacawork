@@ -25,7 +25,7 @@ import { TestWorkspace } from './fixtures';
 const root = '/fixture', cid = 'migration-delivery', key = draftKey(root, 'coordinator', cid);
 const snapshot = (turns: any[] = [], busy = false) => served({ id: cid, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy, admitted: {}, cancelled: [], turns });
 const turn = (input: any, extra = {}) => ({ ...input.tasks?.length ? { tasks: input.tasks } : {}, ...input.skills?.length ? { skills: input.skills } : {}, id: input.id, at: '2026-10-16T00:00:00Z', ask: input.text, attachments: [],
-  status: 'succeeded', waiting: false, answer: 'Done', seen: true, answeredAt: '2026-10-16T00:00:01Z', error: null, result: { writes: [], refused: [] }, ...extra });
+  status: 'succeeded', waiting: false, answer: 'Done', seen: true, answeredAt: '2026-10-16T00:00:01Z', error: null, result: { writes: [], refused: [], automations: [] }, ...extra });
 const reply = (value: unknown, status = 200) => new Response(snapshotJson(value), { status });
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(r => { resolve = r; }); return { promise, resolve }; }
 const NO_TURNS: never[] = [];

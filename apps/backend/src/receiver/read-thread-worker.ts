@@ -92,6 +92,7 @@ function answerable(head: string): AcceptedRead | null {
   const input = parse(repeatedQuery(url));
   if (input === null) return null;
   const claim = claimOf(headers);
+  if (claim.program !== undefined) return null;
   const store = RunStore.openReadable(root, { busyTimeoutMs: 1000 });
   if (!store) return null;
   try { return resolvingMayImport(claim, store) ? null : { caller: resolveCaller(root, claim, store, false), input }; }

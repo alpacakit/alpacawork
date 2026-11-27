@@ -1,4 +1,5 @@
 import { UrlViewer } from "./viewer/Viewer";
+import { AutomationWindow } from "@/features/automations/AutomationWindow";
 import { TaskAnalysisPane } from "@/features/analysis/TaskAnalysis";
 import { endTime } from '@/features/telemetry/count';
 import { markRead, useReadReady } from "@/state/read-store";
@@ -24,6 +25,7 @@ import { MoveSection } from "@/features/forms/MoveInputs";
 import { HoldKey } from "./HoldKey";
 import { TaskActions } from "./TaskActions";
 import { FrameButtons, ReaderHeader, readerHeadBox, ReaderTitle } from "./ReaderHeader";
+import { OriginLine } from "./OriginLine";
 import { ContextPage, ReportFeed } from "./ReportFeed";
 import { COLUMN, looksWide } from "./reading-column";
 import { FilesTab } from "./files/FilesTab";
@@ -66,6 +68,14 @@ export type ReaderMode = "overlay" | "docked" | "sheet";
  * open stands in the reader's one column, but an HTML page (COLUMN, looksWide: reading-column.ts).
  */
 export function Reader({ mode, overlapping = false, canDock = mode === "docked" }: { mode: ReaderMode; overlapping?: boolean; canDock?: boolean }) {
+  const automation = useViewStore((state) => state.automation?.id ?? null);
+  const whole = useViewStore((state) => state.reader.whole === true);
+  // An automation open stands in the same window a task does (its frame, width, Expand and ×), with its own head.
+  if (automation) return <ReaderFrame sheet={mode === "sheet"} whole={whole}><AutomationWindow key={automation} id={automation} mode={mode} canDock={canDock} /></ReaderFrame>;
+  return <TaskReader mode={mode} overlapping={overlapping} canDock={canDock} />;
+}
+
+function TaskReader({ mode, overlapping, canDock }: { mode: ReaderMode; overlapping: boolean; canDock: boolean }) {
   const { t } = useTranslation("reader");
   const selected = useViewStore((state) => state.selected);
   const people = useReaderPeople(selected);
@@ -232,7 +242,7 @@ export function Reader({ mode, overlapping = false, canDock = mode === "docked" 
       <div ref={content} data-reader-content style={{ touchAction: swipeable ? "pan-y pinch-zoom" : undefined }} onScroll={(event) => { setScrolled(event.currentTarget.scrollTop > 0); noteScroll(event.currentTarget.scrollTop); }} className={`reader-content min-h-0 flex-1 overflow-auto px-4 py-2 text-base [overflow-wrap:anywhere] [overflow-anchor:none] narrow:px-3`}>
         {/* Every pane stands under the task's title and its tabs (ReaderEntries), which scroll with it. */}
         <div data-head-title className={`relative -mx-4 -mt-2 mb-2 border-b border-rule pb-1 narrow:-mx-3 narrow:px-3 ${COLUMN.title}`}>
-          <ReaderTitle task={task} titleRef={titleRef} /><ReaderEntries task={task} detail={detail} pane={pane} /><ReaderPanelSlot />{notes}{reading}</div>
+          <ReaderTitle task={task} titleRef={titleRef} /><OriginLine task={task} detail={detail} /><ReaderEntries task={task} detail={detail} pane={pane} /><ReaderPanelSlot />{notes}{reading}</div>
         <div data-reading-column={wide ? "wide" : ""} data-held-hidden={hidden || undefined} inert={hidden} aria-hidden={hidden || undefined}
           className={cn(!wide && COLUMN.body, hidden && "invisible", dim && "opacity-50")}>
         {/* A History read back too far to read again whole keeps what it showed, and offers its newest events instead. */}

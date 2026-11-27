@@ -10,7 +10,7 @@ import { platform, type HostReading } from '@alpacawork/core';
 import { linuxAdapter } from '../packages/core/dist/platform/linux.js';
 import { parseCpuTicks, parseMeminfo, parseProcessStat } from '../packages/core/dist/platform/linux-host.js';
 import { Pressure } from '@alpacawork/backend/test-dist/host/pressure.js';
-import { HostMonitor } from '@alpacawork/backend/test-dist/host/monitor.js';
+import { HostMonitor, type HostPressureObservation } from '@alpacawork/backend/test-dist/host/monitor.js';
 import { hostPushEvent } from '@alpacawork/backend/test-dist/host/alert.js';
 import { HostStore } from '@alpacawork/backend/test-dist/host/store.js';
 import { PushStore } from '@alpacawork/backend/test-dist/receiver/push.js';
@@ -170,6 +170,64 @@ describe('the monitor and its record', () => {
     } finally { monitor.close(); }
   });
 
+  test('observes new pressure kinds during an episode, and resumes only the kinds still tight', async () => {
+    const base = Date.parse('2026-10-15T00:00:00Z');
+    const observed: (HostPressureObservation | null)[] = [];
+    const starts: number[] = [];
+    let cpu: number | null = 95;
+    let freeBytes = 40 * GB, failed = false;
+    const newMonitor = () => new HostMonitor({ root, runs: () => [], parallel: () => null,
+      noticeChanged: () => {}, episodeStarted: episode => starts.push(episode.start),
+      pressureObserved: observation => observed.push(observation),
+      source: source((_runs, now) => {
+        if (failed) throw new Error('synthetic measurement failure');
+        return { ...sampleAt(now, cpu ?? 20), cpu, disk: { freeBytes, totalBytes: 900 * GB } };
+      }) });
+    let monitor = newMonitor();
+    const tick = (seconds: number) => {
+      monitor.tick(base + at(seconds));
+      return observed.at(-1);
+    };
+    try {
+      assert.deepEqual(tick(0)?.entered, ['disk']);
+      assert.deepEqual(tick(120)?.entered, ['cpu']);
+      assert.deepEqual(observed.at(-1)?.kinds, ['cpu', 'disk']);
+      assert.deepEqual(observed.at(-1)?.runs, [{ runId: 'R10', taskId: 'T1', cpu: 85, memoryBytes: GB }]);
+
+      cpu = null;
+      assert.deepEqual(tick(125)?.kinds, ['disk'], 'an unmeasured CPU does not keep sending pressure');
+
+      cpu = 20;
+      tick(130);
+      assert.deepEqual(tick(250)?.kinds, ['disk']);
+      failed = true;
+      assert.equal(tick(260), null);
+      monitor.close();
+
+      failed = false;
+      cpu = 95;
+      monitor = newMonitor();
+      const first = tick(270);
+      assert.equal(first?.episodeStart, base);
+      assert.deepEqual(first?.kinds, ['disk']);
+      assert.deepEqual(first?.entered, []);
+      const reentry = tick(390);
+      assert.deepEqual(reentry?.entered, ['cpu']);
+
+      cpu = 20;
+      freeBytes = 60 * GB;
+      tick(400);
+      const recovered = tick(520);
+      assert.equal(recovered?.episodeStart, null);
+      assert.deepEqual(recovered?.kinds, []);
+      assert.deepEqual(recovered?.entered, []);
+      assert.deepEqual(starts, [base], 'the same episode produces one push');
+      const status = await monitor.status(base + at(520));
+      assert.ok(status.supported);
+      assert.deepEqual(new Set(status.episodes[0]!.kinds), new Set(['cpu', 'disk']));
+    } finally { monitor.close(); }
+  });
+
   test('a host push goes out while its episode is tight and is closed unsent once it is not', async () => {
     const sent: string[] = [];
     const store = await PushStore.open(root, { subject: 'https://localhost', sender: async (_device, payload) => { sent.push(payload.tag); return { status: 201 }; } });
@@ -192,7 +250,7 @@ describe('the monitor and its record', () => {
   test('an episode left open by a stopped server ends at its last sample', () => {
     const store = new HostStore(root);
     const id = store.saveEpisode(null, { start: 1000, end: null, kinds: ['memory'],
-      peak: { cpu: 10, memoryFreePercent: 5, diskFreeBytes: GB * 100 }, runs: [] }, 5000);
+      peak: { cpu: 10, memoryFreePercent: 5, diskFreeBytes: GB * 100 }, runs: [] }, 5000, ['memory']);
     store.closeOpen(null);
     assert.equal(store.episode(id)?.end, 5000);
     store.close();
@@ -201,8 +259,8 @@ describe('the monitor and its record', () => {
   test('a restart while tight continues the open episode without a second push', async () => {
     const base = Date.parse('2026-10-15T00:00:00Z');
     const store = new HostStore(root);
-    const id = store.saveEpisode(null, { start: base, end: null, kinds: ['cpu'], peak: { cpu: 97, memoryFreePercent: 60, diskFreeBytes: 400 * GB }, runs: [] }, base + at(50));
-    const stale = store.saveEpisode(null, { start: base - 86_400_000, end: null, kinds: ['cpu'], peak: { cpu: 97, memoryFreePercent: 60, diskFreeBytes: 400 * GB }, runs: [] }, base - 86_000_000);
+    const id = store.saveEpisode(null, { start: base, end: null, kinds: ['cpu'], peak: { cpu: 97, memoryFreePercent: 60, diskFreeBytes: 400 * GB }, runs: [] }, base + at(50), ['cpu']);
+    const stale = store.saveEpisode(null, { start: base - 86_400_000, end: null, kinds: ['cpu'], peak: { cpu: 97, memoryFreePercent: 60, diskFreeBytes: 400 * GB }, runs: [] }, base - 86_000_000, ['cpu']);
     store.close();
     const started: number[] = [], held: (number | null)[] = [];
     const monitor = new HostMonitor({ root, runs: () => [], parallel: () => null, noticeChanged: () => {},

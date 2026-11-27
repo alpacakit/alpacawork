@@ -39,7 +39,7 @@ export function operationReadActions(tasks: readonly string[]): {
 }
 export const operationReadHelp =
   'A receipt naming Tasks requires task.read on every referenced Task (Runs stay within their project); ' +
-  'a receipt naming no Task requires screen access.';
+  'an automation receipt requires automation get in its project; other receipts require screen access.';
 
 /** Local admin/release do not carry the HTTP coordinator identity. Presence claims a Run, even with an empty value. */
 export const localCaller = {

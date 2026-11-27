@@ -1,11 +1,10 @@
 import { z } from 'zod';
-import { runUsageSummarySchema } from '@alpacawork/contract/run-summary';
+import { runUsageNameSchema as name, runUsageSummarySchema } from '@alpacawork/contract/run-summary';
 import { noOutputs, noProduced } from '../../runs/step-evidence.js';
 import { simpleInvocations } from '../../runs/shell-command.js';
 import { object } from './output.js';
 
 export const TALLY_VERSION = 3;
-const name = z.string().regex(/^[A-Za-z0-9_.:/@+ -]{1,160}$/);
 export const tallySchema = runUsageSummarySchema.extend({
   v: z.literal(TALLY_VERSION), provider: name, model: name.nullable(),
   state: z.enum(['complete', 'partial', 'unsupported']),

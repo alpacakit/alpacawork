@@ -19,7 +19,12 @@ export type Caller =
   | { kind: 'run'; runId: string; placementId: string; taskId: string; role: 'owner' | 'worker'; responsible: boolean }
   | ({ kind: 'coordinator'; conversation: string } &
     ({ source: 'screen'; provider: Provider; runId: string } | { source: CoordinatorSource }))
+  | { kind: 'program'; attemptId: string; automationUuid: string; automationId: string; revision: number; runNumber: number;
+      stage: 'condition' | 'action'; project: string; triggerTaskId: string | null; trial: boolean }
+  | { kind: 'program'; attemptId: string; previewActor: TaskActor; stage: 'condition' | 'action'; project: string }
   | { kind: 'human' };
+
+export const automationProgramCommands = ['automation/operate'] as const;
 
 /** One Task as the table reads it. */
 export type TaskFacts = {
@@ -56,6 +61,14 @@ export type Facts = {
 type UpdateField = 'title' | 'values' | 'cwd' | 'color' | 'userRequested' | 'analysisSubject';
 /** What the caller asks to do, with what decides who may do it. */
 export type Action =
+  | { name: 'automation.types' | 'automation.get' | 'automation.list' | 'automation.runs' | 'automation.run' |
+      'automation.save' | 'automation.pull' | 'automation.versions' | 'automation.review' | 'automation.rename' | 'automation.destination-list' |
+      'automation.preview' | 'automation.try' |
+      'automation.new' | 'automation.enable' |
+      'automation.restore' | 'automation.delete' | 'automation.signal' | 'automation.input' | 'automation.run-now' | 'automation.run-stop' |
+      'automation.destination-set' | 'automation.destination-set.from_request' | 'automation.hook-create' | 'automation.hook-rotate' | 'automation.hook-delete' | 'automation.hook-read' }
+  | { name: 'automation.operate' }
+  | { name: 'automation.disable'; automation?: string }
   /** One Task: task get, task returns, a question's text, a file read; run get reads its Run's Task. */
   | { name: 'task.read' }
   /** The tree (task list): a Run reads its own project's. */
@@ -117,6 +130,35 @@ export type Row = { readonly grants: readonly Grant[]; readonly whileHeld?: true
  * not confer the owner's reporting, question, checkpoint or worker-instruction duties, or human-only server access.
  */
 export const ACTIONS = {
+  'automation.operate': { grants: [] },
+  'automation.types': { grants: [['run'], ['user']], whileHeld: true },
+  'automation.pull': { grants: [['run'], ['user']], whileHeld: true },
+  'automation.versions': { grants: [['run'], ['user']], whileHeld: true },
+  'automation.destination-list': { grants: [['run','same_project'], ['user']], whileHeld: true },
+  'automation.save': { grants: [['user']] },
+  'automation.review': { grants: [['user']] },
+  'automation.rename': { grants: [['user']] },
+  'automation.get': { grants: [['run'], ['user']], whileHeld: true },
+  'automation.list': { grants: [['run'], ['user']], whileHeld: true },
+  'automation.runs': { grants: [['run'], ['user']], whileHeld: true },
+  'automation.run': { grants: [['run'], ['user']], whileHeld: true },
+  'automation.preview': { grants: [['run'], ['user']], whileHeld: true },
+  'automation.try': { grants: [['human']] },
+  'automation.new': { grants: [['user']] },
+  'automation.enable': { grants: [['human']] },
+  'automation.disable': { grants: [['user']] },
+  'automation.restore': { grants: [['user']] },
+  'automation.delete': { grants: [['user']] },
+  'automation.destination-set': { grants: [['human']] },
+  'automation.destination-set.from_request': { grants: [['screen_coordinator']] },
+  'automation.hook-create': { grants: [['user']] },
+  'automation.hook-rotate': { grants: [['human']] },
+  'automation.hook-delete': { grants: [['human']] },
+  'automation.hook-read': { grants: [['human']] },
+  'automation.signal': { grants: [['run', 'same_project'], ['user']] },
+  'automation.input': { grants: [['run', 'same_project'], ['user']], whileHeld: true },
+  'automation.run-stop': { grants: [['user']] },
+  'automation.run-now': { grants: [['human']] },
   /** A Run reads its own project, and the projects above it whose policies its launches carry. */
   'task.read': { grants: [['run', 'same_project'], ['run', 'project_above'], ['user']], whileHeld: true },
   'task.list': { grants: [['run'], ['user']], whileHeld: true },
@@ -244,6 +286,8 @@ export function actsOf(action: Action, task: TaskFacts | null, caller: Caller): 
 function recordedActor(caller: Caller, quote: Quote | null, message?: string): TaskActor {
   switch (caller.kind) {
     case 'run': return { kind: 'placement', placementId: caller.placementId };
+    case 'program': return 'previewActor' in caller ? caller.previewActor : { kind: 'automation', automationId: caller.automationId,
+      revision: caller.revision, runNumber: caller.runNumber };
     case 'human': return { kind: 'human' };
     case 'coordinator': return { kind: 'main', provider: caller.source === 'screen' ? caller.provider : caller.source,
       conversationId: caller.conversation, ...(quote ? { quote } : {}), ...(message ? { message } : {}) };
@@ -305,6 +349,10 @@ const describeGrant = ([seat, ...conditions]: Grant) =>
  * Whether the caller may do the action: the actor to record and a Run's read scope (its own project; null reads every project); else the refusal.
  */
 export function decide(caller: Caller, action: Action, facts: Facts): Decision | Problem {
+  if (action.name === 'automation.operate' && caller.kind === 'program')
+    return { actor: recordedActor(caller, facts.quote, facts.message), readScope: caller.project };
+  if (caller.kind === 'program' || action.name === 'automation.operate')
+    return new Problem(PROBLEM_CODE.forbidden, 'This operation requires the current automation run credential', { action: action.name });
   // A Run read without its project would read every project.
   if (caller.kind === 'run' && facts.runProject === null)
     return new Problem(PROBLEM_CODE.forbidden, "A Run acts only in its own project, and the Run's project was not read", undefined,

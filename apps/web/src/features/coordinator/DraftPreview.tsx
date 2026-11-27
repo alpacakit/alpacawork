@@ -5,8 +5,10 @@ import { TaskIcon } from '@/components/ui/state-label';
 import { useEveryTaskIndex } from '@/data/queries';
 import { cn } from '@/lib/utils';
 import type { Document, Inline } from './editor/document';
-import { LabelFace, SkillMark, TaskLabelText, AnswerLabelText, ProjectLabelText, projectFace } from './LabelFace';
+import { AUTOMATION_FACE, LabelFace, SkillMark, TaskLabelText, AnswerLabelText, AutomationLabelText, ProjectLabelText, projectFace } from './LabelFace';
 import { useProjectMarks } from '@/data/project-marks';
+import { useTranslation } from 'react-i18next';
+import { inputPlaceholder } from './editor/placeholder';
 
 type Label = Exclude<Inline, { type: 'text' | 'hardBreak' }>;
 /** A visual projection only: recipients, choices and skills precede the person's words. */
@@ -18,7 +20,7 @@ export function previewContent(doc: Document) {
     labels.push(node);
     return '';
   }).join('')).join(' ').replace(/\s+/g, ' ').trim();
-  const order = { replyLabel: -1, taskLabel: 0, answerLabel: 1, skillLabel: 2 };
+  const order = { replyLabel: -2, automationLabel: -1, taskLabel: 0, answerLabel: 1, skillLabel: 2 };
   return { labels: labels.sort((a, b) => order[a.type] - order[b.type]), text };
 }
 /** Titles can give up their width; whole labels that cannot fit are counted at the end. */
@@ -36,12 +38,14 @@ export function fittingLabels(width: number, minimums: number[], counter: number
 /** The preview is inside the capsule's open button, so none of its label faces contains controls or takes focus. */
 export function DraftPreview({ doc, preview }: { doc: Document; preview: { readonly labels: readonly Label[]; readonly text: string } }) {
   const { labels, text } = preview;
+  const { t } = useTranslation('ui');
   const index = useEveryTaskIndex();
   const marks = useProjectMarks();
   const area = useRef<HTMLSpanElement>(null), ruler = useRef<HTMLSpanElement>(null);
   const [fit, setFit] = useState<{ count: number; minimums: number[] }>({ count: labels.length, minimums: [] });
   const face = (label: Label) => {
     if (label.type === 'replyLabel') return <LabelFace kind="reply"><ReplyLabelText answeredAt={label.attrs.answeredAt} /></LabelFace>;
+    if (label.type === 'automationLabel') return <LabelFace kind="task" className={AUTOMATION_FACE}><AutomationLabelText {...label.attrs} /></LabelFace>;
     if (label.type === 'taskLabel') {
       const mark = marks.get(label.attrs.id);
       if (mark) return <LabelFace kind="project" style={projectFace(mark)}><ProjectLabelText mark={mark} /></LabelFace>;
@@ -76,6 +80,9 @@ export function DraftPreview({ doc, preview }: { doc: Document; preview: { reado
       style={label.type === 'taskLabel' ? { minWidth: fit.minimums[i] } : undefined}>{faces[i]}</span>)}
     {count < labels.length && <span data-capsule-more className="flex-none text-sm text-muted">+{labels.length - count}</span>}
     {text && <span data-capsule-text className="min-w-0 flex-1 truncate text-ink">{text}</span>}
+    {/* An automation's badge with nothing written beside it says, before a press, what may be asked of it. */}
+    {!text && labels.some(label => label.type === 'automationLabel') && <span data-capsule-hint className="min-w-0 flex-1 truncate text-muted">
+      {inputPlaceholder(doc, t, id => marks.has(id), true)}</span>}
     {/* Natural faces supply their own metrics, including the shared typography; never estimate from string length. */}
     <span ref={ruler} className="pointer-events-none invisible absolute top-0 left-0 flex w-max items-center gap-0.5">
       {faces.map((face, i) => <span key={i} data-preview-measure className="flex flex-none">{face}</span>)}

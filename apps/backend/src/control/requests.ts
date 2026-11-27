@@ -179,7 +179,7 @@ export class RequestService {
           const serverRequest = context.purpose === 'return_continuation' &&
             isServerRequest(runSnapshot.returns.filter(row => context.returnIds.includes(row.id)));
           const settings = readAgentsSettings(this.root);
-          if (!settings.ok) throw settings.error;
+          if (settings.ok === false) throw settings.error;
           const limits = settings.config.limits;
           const placement = input.targetPlacementId
             ? tx.getPlacement(input.targetPlacementId) : tx.responsiblePlacement(input.taskId);
@@ -275,7 +275,7 @@ export class RequestService {
           if (limit) refuse(limit, 'This parent has reached its total child-run limit; completed children still count toward this limit.',
             { kind: 'parent_has_reached_total_child_run_limit_completed_children_still_count_toward_limit' });
           const launch = preparedResume ?? snapshotLaunch(mode);
-          if (!launch.ok) refuse(launch.code === 'not_resumable' ? PROBLEM_CODE.notResumable : PROBLEM_CODE.responsibleMissing, 'Responsible profile cannot launch this request', { kind: 'responsible_profile_cannot_launch_request' });
+          if (launch.ok === false) refuse(launch.code === 'not_resumable' ? PROBLEM_CODE.notResumable : PROBLEM_CODE.responsibleMissing, 'Responsible profile cannot launch this request', { kind: 'responsible_profile_cannot_launch_request' });
           const session = mode === 'continue' ? head!.session : assignedSession(launch.launch, profile);
           const deliveryState = admittedDelivery(mode === 'continue', session, runs);
           // A placement's Request waits in its sender's wait cycle: the calling Run's Task.

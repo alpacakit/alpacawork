@@ -1,3 +1,4 @@
+import { taskOrigin } from '@alpacawork/raw/task-log-schema';
 import type { ControlTaskDTO, ControlTaskHeadDTO } from '@alpacawork/contract/control';
 /** Wire structure is assembled here; policy owns the action candidates. */
 import type { ControlTask, TaskValues } from '@alpacawork/raw';
@@ -15,5 +16,6 @@ export function controlTaskHead<Values extends TaskValues | undefined>(task: Omi
 }
 /** A read Task: its head and its History. */
 export function controlTaskView<Values extends TaskValues | undefined>(task: Omit<ControlTask, 'values'> & { values: Values }): Omit<ControlTaskDTO, 'values'> & { values: Values } {
-  return { ...controlTaskHead(task), log: task.meta.log };
+  const origin = taskOrigin(task.meta.log);
+  return { ...controlTaskHead(task), log: task.meta.log, ...(origin ? { origin } : {}) };
 }

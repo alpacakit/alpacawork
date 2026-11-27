@@ -10,6 +10,7 @@ import { recordedProblemSchema } from './problem.js';
 import { taskLogSchema } from '@alpacawork/raw/task-log-schema';
 import { digestSchema, logIdSchema, runIdSchema, taskIdSchema } from './fields.js';
 import { answerFileSchema } from './coordinator-files.js';
+import { automationBadgeTargetSchema, automationMessageChangeSchema } from './automation.js';
 import { contextViewSchema } from './agent-context.js';
 import { sha256Utf8 } from './options-base.js';
 
@@ -49,6 +50,11 @@ export type CoordinatorAnswers = z.infer<typeof coordinatorAnswersInputSchema>;
 export const coordinatorMessageSchema = z.object({
   context: taskIdSchema.nullable(),
   tasks: z.array(taskIdSchema).optional(),
+  /**
+   * The automation the message is about, apart from its Tasks: its badge, an automation's number or `new` for one to
+   * create. The server compares it with what the coordinator saved from this message, never refusing the save.
+   */
+  automation: automationBadgeTargetSchema.optional(),
   skills: z.array(z.string().min(1).max(256)).max(128).optional(),
   attachments: z.array(z.string()).max(COORDINATOR_ATTACHMENT_LIMIT),
   intent: recordedOperationSchema.nullable(),
@@ -63,6 +69,7 @@ export type CoordinatorMessage = z.infer<typeof coordinatorMessageSchema>;
 export const coordinatorMessageInputSchema = z.object({
   conversationId: z.string(), id: z.string(), text: z.string(),
   tasks: coordinatorMessageSchema.shape.tasks,
+  automation: coordinatorMessageSchema.shape.automation,
   skills: coordinatorMessageSchema.shape.skills,
   attachments: coordinatorMessageSchema.shape.attachments,
   intent: coordinatorIntentSchema.optional(),
@@ -74,11 +81,12 @@ export const coordinatorMessageInputSchema = z.object({
 export type CoordinatorMessageInput = z.input<typeof coordinatorMessageInputSchema>;
 
 /** Admission treats task IDs and invoked skills as sets; attachments and answers keep their order. */
-export function coordinatorMessageContent(input: Pick<CoordinatorMessage, 'tasks' | 'skills' | 'attachments' | 'answers' | 'retryOf'>
+export function coordinatorMessageContent(input: Pick<CoordinatorMessage, 'tasks' | 'skills' | 'attachments' | 'answers' | 'retryOf' | 'automation'>
   & { intent?: CoordinatorMessage['intent'] }): CoordinatorMessage {
   return { context: null, tasks: [...new Set(input.tasks ?? [])].sort(), attachments: input.attachments,
     intent: input.intent ?? null, ...(input.skills?.length ? { skills: [...new Set(input.skills)].sort() } : {}),
-    ...(input.answers === undefined ? {} : { answers: input.answers }), ...(input.retryOf === undefined ? {} : { retryOf: input.retryOf }) };
+    ...(input.answers === undefined ? {} : { answers: input.answers }), ...(input.retryOf === undefined ? {} : { retryOf: input.retryOf }),
+    ...(input.automation === undefined ? {} : { automation: input.automation }) };
 }
 
 /** Both serve and the outbox hash the same admitted input, scoped to its conversation and message ID. */
@@ -108,12 +116,14 @@ export type CoordinatorError = z.infer<typeof coordinatorErrorSchema>;
 /**
  * What the server did with a message once the turn it opened has ended: the records its writes left on Tasks (those
  * quoting its words), in order, each with the state it led to (null when it kept the state); an answer names the
- * question it closed, a review's OK the Run it approved. Then the writes it refused, with why.
+ * question it closed, a review's OK the Run it approved. Then the writes it refused, with why. Then the automations it
+ * created or edited, each compared with the message's badge.
  */
 export const coordinatorResultSchema = z.object({
   writes: z.array(z.object({ task: taskIdSchema, record: logIdSchema, kind: taskLogSchema.shape.kind,
     toState: taskLogSchema.shape.toState, question: logIdSchema.optional(), runId: runIdSchema.optional() }).strict()),
   refused: z.array(recordedProblemSchema.extend({ task: taskIdSchema })),
+  automations: z.array(automationMessageChangeSchema),
 }).strict();
 export type CoordinatorResult = z.infer<typeof coordinatorResultSchema>;
 /**
@@ -127,6 +137,9 @@ export const coordinatorTurnSchema = z.object({
   /** Serve's receipt of the input it took (coordinatorMessageDigest of the admitted message), as a status carries it. */
   inputDigest: digestSchema,
   tasks: coordinatorMessageSchema.shape.tasks,
+  automation: coordinatorMessageSchema.shape.automation,
+  /** The badge's automation's name now, read where the conversation is drawn: the words carry only its number. */
+  automationName: z.string().optional(),
   skills: coordinatorMessageSchema.shape.skills,
   attachments: coordinatorMessageSchema.shape.attachments,
   intent: recordedOperationSchema.optional(), answers: coordinatorMessageSchema.shape.answers,

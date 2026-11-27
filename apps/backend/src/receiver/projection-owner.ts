@@ -328,7 +328,9 @@ export class ProjectionOwner {
         return usable ? [{ id: project.id, title: usable.meta.title, parentId: usable.meta.parentId,
           depth: readable.ancestors(project.id).length, color: usable.settings!.color, cwd: this.locations[project.id] || null, counts: aggregate.menu(project.id) }] : [];
       });
-    const meta: ProjectionMeta = { ...environment, projects, projectShelfVersion: records.shelf().revision, staleIds: [...taskFailures.keys()],
+    // The automations are not Tasks: any write of one, or of a run, moves their one version.
+    const automationsVersion = full || keys.some(key => key.kind === 'automation' || key.kind === 'automation_run') ? String(through) : before!.meta.automationsVersion;
+    const meta: ProjectionMeta = { ...environment, projects, projectShelfVersion: records.shelf().revision, automationsVersion, staleIds: [...taskFailures.keys()],
       person: personal.person, presence: personal.presence, host: personal.host, coordinatorWork: personal.coordinatorWork,
       errors: [...environment.errors, ...personal.errors ?? [], ...[...taskFailures.values()].map(failure => failure.error)] };
     let next: HeldFrame = { generation: this.options.generation, pv, applied: through, records, values, structural, good, aggregate,

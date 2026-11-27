@@ -408,7 +408,7 @@ function Card() {
       retryIds.current.set(retryKey, again);
     }
     scrollThreadToEnd(drawn.body);
-    try { await useConversation.getState().ask({ conversationId: again.conversationId, id: again.id, retryOf: turn.id, text: turn.ask, ...(turn.tasks ? { tasks: turn.tasks } : {}), attachments: [],
+    try { await useConversation.getState().ask({ conversationId: again.conversationId, id: again.id, retryOf: turn.id, text: turn.ask, ...(turn.tasks ? { tasks: turn.tasks } : {}), ...(turn.automation ? { automation: turn.automation } : {}), attachments: [],
       ...(turn.replyTo ? { replyTo: turn.replyTo.id } : {}), ...(intent?.success ? { intent: intent.data } : {}), ...(turn.answers ? { answers: turn.answers.map(({ task, question }) => ({ task, question })) } : {}) }); }
     // Pressed again, it goes under the same ID (a lost answer is said as unknown, not as this; lib/notify.ts failure).
     catch (error) { notify.failure(error, { about: "coordinator retry", from: "coordinator", text: t("coordinatorCard.sendFailed") }); }

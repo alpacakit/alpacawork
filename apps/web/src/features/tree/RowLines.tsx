@@ -6,6 +6,7 @@ import { CapStrut } from "@/components/ui/text-mark";
 import { TONE, useTaskLook } from "@/components/ui/tone";
 import type { PeopleIndex } from "@/domain/people";
 import { ReportTime, RowKindWord, RunningRuns, StatusNotes, StatusTime, TimeSlot, WaitedNote } from "./RowStatus";
+import { MadeByMark } from "./MadeByMark";
 import { RowProjectTile } from "./RowProjectTile";
 import { SentArc, SentWord } from "./SentArc";
 import { cn } from "@/lib/utils";
@@ -55,6 +56,7 @@ export function RowLines({ task, people, lifted, counts, title, unread }: {
     {/* The press's two rows are the row's (subgrid): the marks share this line's baseline, the title takes the next. */}
     <span id={meta} data-row-meta className={cn("col-start-3 row-start-2 flex min-w-0 items-baseline gap-2 text-xs tabular-nums", TONE.aside)}>
       <RowProjectTile project={task.projectId} />
+      <MadeByMark task={task} />
       <span data-row-id className="flex-none">
         {lifted && `${lifted} › `}<span data-row-own-id>{task.id}</span>
       </span>

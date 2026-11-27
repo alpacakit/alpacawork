@@ -120,7 +120,7 @@ test("a share the server withholds (under ten accepted) is never written, nor is
 
 const place = (url: string) => readAnalysis(new URLSearchParams(url));
 const navigation = (analysis: AnalysisPlace | null, task: string | null = null): Navigation => ({ project: null, task, taskAddress: null, full: false,
-  pane: "task", path: null, query: "", image: null, view: null, event: null, analysis });
+  pane: "task", path: null, query: "", image: null, view: null, event: null, automations: null, automation: null, analysis });
 const step = (from: string, to: string) => isStep(navigation(place(from)), navigation(place(to)), new URL(`http://x/?${from}`), new URL(`http://x/?${to}`));
 
 test("the analysis's place survives its URL, with the defaults left out", () => {

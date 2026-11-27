@@ -3,8 +3,10 @@ import { runIdSchema } from './fields.js';
 import { runCompactionSchema, newConversationSchema } from './run-contract.js';
 import { checkoutDirSource, rawDigestSchema, stepFingerprintSchema } from './work-contract.js';
 
+import { runUsageNameSchema } from './usage-name.js';
+export { runUsageNameSchema };
+
 const count = z.number().int().nonnegative();
-const name = z.string().regex(/^[A-Za-z0-9_.:/@+ -]{1,160}$/);
 export const RUN_SUMMARY_LIMITS = { largest: 5, tests: 100, commits: 50, prs: 20, files: 200, basis: 3, repeats: 100 } as const;
 export const runOutputSummarySchema = z.strictObject({
   chars: count,
@@ -18,8 +20,8 @@ export const runProducedSchema = z.strictObject({
 });
 export const runBasisSchema = z.array(outputRef).max(RUN_SUMMARY_LIMITS.basis);
 export const runUsageSummarySchema = z.strictObject({
-  tools: z.record(name, count), mcp: z.record(name, count),
-  skills: z.record(name, z.strictObject({ call: count, read: count })), subagentTools: count,
+  tools: z.record(runUsageNameSchema, count), mcp: z.record(runUsageNameSchema, count),
+  skills: z.record(runUsageNameSchema, z.strictObject({ call: count, read: count })), subagentTools: count,
   outputs: runOutputSummarySchema, produced: runProducedSchema, basis: runBasisSchema,
 });
 export const runTestSchema = z.strictObject({

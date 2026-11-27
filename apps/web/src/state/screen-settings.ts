@@ -83,8 +83,9 @@ const SCREEN_KEYS = {
   // The scene of a task's Analysis tab (its timeline): an instant and the finding it was entered from.
   at: { storage: false }, finding: { storage: false },
   theme: { storage: false }, settings: { storage: false },
-  // The analysis face and what is open on it (features/analysis/place.ts).
-  face: { storage: false }, look: { storage: false }, span: { storage: false }, list: { storage: false },
+  // The face shown and what is open on it (features/automations/place.ts, features/analysis/place.ts).
+  face: { storage: false }, automation: { storage: false }, automationTab: { storage: false }, automations: { storage: false },
+  look: { storage: false }, span: { storage: false }, list: { storage: false },
   measure: { storage: false }, group: { storage: false }, member: { storage: false }, bin: { storage: false },
   model: { storage: false }, effort: { storage: false },
   card: { storage: false },

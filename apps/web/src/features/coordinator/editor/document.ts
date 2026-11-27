@@ -3,6 +3,7 @@ import { formatTask, taskTokens } from './wire';
 import { z } from 'zod';
 import { parseTaskId, taskIdSchema } from '@alpacawork/contract';
 import { coordinatorAnswersInputSchema, type CoordinatorAnswers } from '@alpacawork/contract/coordinator';
+import { automationBadgeTargetSchema } from '@alpacawork/contract/automation';
 import type { JSONContent } from '@tiptap/core';
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { Mapping } from '@tiptap/pm/transform';
@@ -16,6 +17,8 @@ const taskAttrs = z.object({ id: taskIdSchema, title: z.string() });
 /** An answer names the question it answers (its asking record): what it asks is fixed there. */
 const answerAttrs = z.object({ ...coordinatorAnswersInputSchema.element.shape, n: z.string(), name: z.string(), answer: z.string() });
 const replyAttrs = z.object({ id: z.string().min(1).max(256), answeredAt: z.string() });
+/** The automation a draft is about: an automation's number and its name as the screen showed it, or `new` (no name). */
+const automationAttrs = z.object({ id: automationBadgeTargetSchema, name: z.string() });
 export const READER_OPERATION_MARK = 'readerOperation';
 const inline = z.discriminatedUnion('type', [
   z.object({ type: z.literal('text'), text: z.string().min(1), marks: z.array(z.object({type:z.literal(READER_OPERATION_MARK)})).optional() }),
@@ -24,22 +27,18 @@ const inline = z.discriminatedUnion('type', [
   z.object({ type: z.literal('answerLabel'), attrs: answerAttrs }),
   z.object({ type: z.literal('skillLabel'), attrs: skillAttrs }),
   z.object({ type: z.literal('replyLabel'), attrs: replyAttrs }),
+  z.object({ type: z.literal('automationLabel'), attrs: automationAttrs }),
 ]);
-export const documentSchema = z.object({ type: z.literal('doc'), content: z.array(z.object({ type: z.literal('paragraph'), content: z.array(inline).optional() })).min(1) }).refine(doc => {
-  let foundReply = false;
-  for (const block of doc.content) {
-    if (!block.content) continue;
-    for (const node of block.content) {
-      if (node.type !== 'replyLabel') continue;
-      if (foundReply) return false;
-      foundReply = true;
-    }
-  }
-  return true;
-}, 'Only one reply label is allowed');
+/**
+ * A draft holds at most one reply label. Automation badges are kept one to what the input shows (`aboutAutomation`):
+ * the stored draft also holds the words of messages still on their way, each with its own badge.
+ */
+export const documentSchema = z.object({ type: z.literal('doc'), content: z.array(z.object({ type: z.literal('paragraph'), content: z.array(inline).optional() })).min(1) }).refine(doc =>
+  doc.content.flatMap(block => block.content ?? []).filter(node => node.type === 'replyLabel').length <= 1, 'Only one reply label is allowed');
 export type Document = z.infer<typeof documentSchema>;
 export type Inline = z.infer<typeof inline>;
 export type Answer = z.infer<typeof answerAttrs>;
+export type AutomationBadge = z.infer<typeof automationAttrs>;
 export const emptyDocument = (): Document => ({ type: 'doc', content: [{ type: 'paragraph' }] });
 export function textDocument(text: string): Document {
   return { type: 'doc', content: text.split('\n').map(line => ({ type: 'paragraph', ...(line ? { content: [{ type: 'text' as const, text: line }] } : {}) })) };
@@ -206,6 +205,9 @@ export function serialize(doc: Document, mark: (name: string) => '/' | '$' | und
       else if (node.type === 'taskLabel') { badge(formatTask(node.attrs.id, node.attrs.title)); task = node.attrs.id; }
       else if (node.type === 'answerLabel') { badge(`${task === node.attrs.task ? '' : node.attrs.task + ' '}${node.attrs.answer}`); task = node.attrs.task; }
       else if (node.type === 'skillLabel') { badge(`${mark(node.attrs.name) ?? node.attrs.invocation}${node.attrs.name}`); task = null; }
+      // An automation's label is written as its number: its name, which may hold any character, is read where it is
+      // shown. A new one has no number to write, only the message's badge.
+      else if (node.type === 'automationLabel') { if (node.attrs.id !== 'new') badge(node.attrs.id); task = null; }
     }
     return text.trimEnd();
   }).join('\n').trim();
@@ -219,6 +221,24 @@ export function replyIn(doc: Document): Reply | undefined {
     }
   }
 }
+/** The automation the draft's badge names, sent as the message's `automation`. */
+export function automationIn(doc: Document): AutomationBadge | undefined {
+  for (const node of inlines(doc)) if (node.type === 'automationLabel') return node.attrs;
+}
+/**
+ * The one way an automation's badge goes into a draft: it takes the place of any other, at the start after a reply's.
+ * A press that changes nothing returns the same document.
+ */
+export function aboutAutomation(doc: Document, badge: AutomationBadge): Document {
+  const current = automationIn(doc);
+  if (current?.id === badge.id && current.name === badge.name) return doc;
+  const next = filterDocument(doc, node => node.type !== 'automationLabel');
+  const first = next.content[0]!.content ?? [];
+  const at = first[0]?.type === 'replyLabel' ? 1 : 0;
+  next.content[0]!.content = [...first.slice(0, at), { type: 'automationLabel', attrs: automationAttrs.parse(badge) }, ...first.slice(at)];
+  return documentSchema.parse(next);
+}
+
 /** A Task's label, not a project's: a reply takes these off. */
 const isTaskLabel = (node: Inline) => node.type === 'taskLabel' && parseTaskId(node.attrs.id)?.kind === 'task';
 /**

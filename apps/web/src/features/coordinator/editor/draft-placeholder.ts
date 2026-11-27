@@ -11,7 +11,7 @@ export function draftPlaceholder(text: () => string) {
       state.doc.descendants((node, pos) => {
         if (content) return false;
         content = hasInlineContent(node.type.name, node.text);
-        if (['taskLabel', 'replyLabel'].includes(node.type.name)) lastLabel = pos;
+        if (['taskLabel', 'replyLabel', 'automationLabel'].includes(node.type.name)) lastLabel = pos;
         return !content;
       });
       if (content) return null;

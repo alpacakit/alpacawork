@@ -72,9 +72,9 @@ export class Pressure {
   }
 
   /** Continues an episode a restarted server left open: its measures count as tight until they calm down. */
-  resume(episode: EpisodeDraft): void {
-    this.current = { ...episode, end: null };
-    for (const kind of episode.kinds) this.tracks[kind] = { tight: true, since: null };
+  resume(episode: EpisodeDraft, currentKinds: readonly HostKind[]): void {
+    this.current = { start: episode.start, end: null, kinds: episode.kinds, peak: episode.peak, runs: episode.runs };
+    for (const kind of KINDS) this.tracks[kind] = { tight: currentKinds.includes(kind), since: null };
   }
 
   /** The measures tight now, in a stable order. */

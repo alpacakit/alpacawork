@@ -1,12 +1,17 @@
 import { afterEach, beforeAll, expect, test } from 'vitest';
 import { useState } from 'react';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render as bareRender, screen } from '@testing-library/react';
 import { i18n, startI18n } from '@alpacawork/i18n';
 import { AiStack } from '../src/features/panels/AiStack';
 import { readAgentsDraft } from '../src/features/panels/agent-settings-draft';
 import { readStack, stackIssues, writeStack, type StackRowDraft } from '../src/features/panels/ai-stack-draft';
+import { WithQueries } from './fixtures';
+import { queryClient } from '../src/data/query-client';
+
+// Drawn as the screen draws it, inside the queries' provider: an agent's mark reads the server settings.
+const render = (ui: Parameters<typeof bareRender>[0]) => bareRender(ui, { wrapper: WithQueries });
 beforeAll(async () => { startI18n(); await i18n.changeLanguage('en'); });
-afterEach(cleanup);
+afterEach(() => { cleanup(); queryClient.clear(); });
 
 const read = readAgentsDraft('claude:\n  params:\n    model: [opus, fable]\n    effort: [medium, high]\n'
   + 'codex:\n  params:\n    model: [gpt-6.2-sol, gpt-6.1-terra]\n    effort: [medium, high]\n    fast: ["-", fast]\n');

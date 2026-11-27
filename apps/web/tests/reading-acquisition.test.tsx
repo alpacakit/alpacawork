@@ -50,7 +50,7 @@ async function fixture() {
   const query = readQuery(client, options.queryKey)!;
   const mapped = mapWorkspace(index, { checkpoint: { at: new Date(0).toISOString(), tasks: {} }, reads: {}, firstSeen: new Map() });
   const store = createWorkspaceStore({ ...mapped, people: indexPeople(index), drawing: { root: index.root, restoredAt: null }, info: {
-    root: index.root, rev: index.rev, checkpointAt: new Date(0).toISOString(), writable: index.writable,
+    root: index.root, rev: index.rev, checkpointAt: new Date(0).toISOString(), automationsVersion: index.automationsVersion, writable: index.writable,
     errors: index.errors, staleIds: index.staleIds, runs: index.runs, profiles: index.profiles,
     attachmentBytes: value.attachmentBytes, projects: index.projects, presence: index.presence, host: index.host, coordinatorWork: index.coordinatorWork,
     counts: index.counts, home: index.home,

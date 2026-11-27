@@ -326,7 +326,7 @@ test('a screen message\'s result is what its turn\'s writes recorded and what th
   assert.ok(writes.some(write => write.kind === 'answered' && write.question === asked.question), JSON.stringify(writes));
   const serverError = JSON.parse(refusal.stderr).error;
   delete serverError.detail.operation; // The CLI adds its own receipt-check hint after the server response.
-  assert.deepEqual(resultOf(), { writes, refused: [{ task: asked.task, ...serverError }] });
+  assert.deepEqual(resultOf(), { writes, refused: [{ task: asked.task, ...serverError }], automations: [] });
 });
 
 test('serve\'s periodic pass drops a cleared conversation\'s files', async t => {
@@ -361,6 +361,6 @@ test('a real write fault keeps its unknown-save classification in the screen res
   if (actual.detail?.operation) { delete actual.detail.operation; if (!Object.keys(actual.detail).length) delete actual.detail; }
   w.end(screen);
   const result = new CoordinatorConversation(w.root).read().turns.find(turn => turn.id === screen.requestId)!.result;
-  assert.deepEqual(result, { writes: [], refused: Array.from({ length: attempts }, () => ({ task: asked.task, ...actual })) });
+  assert.deepEqual(result, { writes: [], refused: Array.from({ length: attempts }, () => ({ task: asked.task, ...actual })), automations: [] });
   assert.equal((await call(url, ['task', 'get', '--task', asked.task])).task.hash, before.hash);
 });

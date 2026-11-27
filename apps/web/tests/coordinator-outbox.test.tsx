@@ -12,10 +12,10 @@ import { createElement } from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { i18n, startI18n } from "@alpacawork/i18n";
 import { mutateInput } from '../src/features/coordinator/editor/draft';
-import { observed } from '../src/features/coordinator/editor/lifecycle';
+import { badged, observed } from '../src/features/coordinator/editor/lifecycle';
 import { availableInput, inputDraftFiles, canTakeBack, begin, cancelUnsent, freeze, holds, outgoingDisplay, holdsReaderTurn, awaitsReaderResult, observeReaderTurns, nextDelivery, outgoing, outgoingKey, reconcileOutbox, refuse, restoreReaderDraft, parkedReaderDraft, returnReaderSubmission, takeBack, useOutbox } from "../src/features/coordinator/editor/outbox";
 import { draftKey, readDrafts, updateDraft, useDraftStore } from "../src/features/forms/draft-store";
-import { choiceAnswer, emptyDocument, markReaderOperation, textDocument, toggleAnswer } from "../src/features/coordinator/editor/document";
+import { automationIn, choiceAnswer, draftDocument, emptyDocument, markReaderOperation, textDocument, toggleAnswer } from "../src/features/coordinator/editor/document";
 import { decideOf } from "../src/domain/questions";
 import { api } from "../src/data/resources";
 import { useConversation } from "../src/features/coordinator/coordinator";
@@ -265,7 +265,7 @@ test(`ordinary text (${about}, ${state}) has no expected write or failure toast`
   vi.stubGlobal('fetch', vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
     if (url === '/api/coordinator/messages') {
       posted = JSON.parse(String(init!.body));
-      return new Response(messageJson(conv(cid, [{ ...sentTurn(id, posted.text, 'succeeded'), result: { writes: [], refused: [] } }]), id));
+      return new Response(messageJson(conv(cid, [{ ...sentTurn(id, posted.text, 'succeeded'), result: { writes: [], refused: [], automations: [] } }]), id));
     }
     return reply({ status: 'unavailable', profile: 'claude', skills: [] });
   }));
@@ -320,7 +320,7 @@ test('returning one reader answer never overwrites another draft and successful 
  expect(useDraftStore.getState().entries[key]!.values.doc).toContain('new writing');
  expect(useDraftStore.getState().entries[outgoingKey(root,id)]!.values.doc).toContain('original');
  const second=crypto.randomUUID();freeze(root,fixed('success'),values('success',second),undefined,[binding]);
- const turn={...sentTurn(second,'success'),result:{writes:[{task:'T1',record:'L1',kind:'answered',question:'Q1',toState:null}],refused:[]}};
+ const turn={...sentTurn(second,'success'),result:{writes:[{task:'T1',record:'L1',kind:'answered',question:'Q1',toState:null}],refused:[],automations:[]}};
  reconcileOutbox(conv(cid,[turn]),root, null);
  expect(useDraftStore.getState().entries[outgoingKey(root,second)]?.values).toEqual({doc:JSON.stringify(emptyDocument()),requestId:second,reader:JSON.stringify([binding]),stage:'settled'});
  expect(readDrafts().unavailable).toBe(false);
@@ -370,7 +370,7 @@ for (const replacement of ['all','operation','context-operation','append'] as co
  useDraftStore.setState({entries:{[key]:{status:'editing',values:{...values('',id),doc:JSON.stringify(markReaderOperation(textDocument(`${task.id} Approve`))),readerIntent:JSON.stringify({task:task.id,action:'continue',aboutRun:'R1',expectedTaskHash:task.hash}),readerIntentTurn:JSON.stringify(readerTurn(task))}}}});
  let posted:any;const errors=vi.spyOn(notify,'error');
  vi.stubGlobal('fetch',vi.fn().mockImplementation(async(url:string,init?:RequestInit)=>{
-  if(url==='/api/coordinator/messages'){posted=JSON.parse(String(init!.body));return new Response(messageJson(conv(cid,[{...sentTurn(id,posted.text,'succeeded'),context:task.id,result:{writes:posted.intent ? [{task:task.id,record:'L9',kind:'request_accepted',toState:null}] : [],refused:[]}}]),id));}
+  if(url==='/api/coordinator/messages'){posted=JSON.parse(String(init!.body));return new Response(messageJson(conv(cid,[{...sentTurn(id,posted.text,'succeeded'),context:task.id,result:{writes:posted.intent ? [{task:task.id,record:'L9',kind:'request_accepted',toState:null}] : [],refused:[],automations:[]}}]),id));}
   return reply({status:'unavailable',profile:'claude',skills:[]});
  }));
  render(<TestWorkspace data={data}><CoordinatorInput launch={{ next: { agent: 'claude', values: {} }, ready: false }}/></TestWorkspace>);
@@ -602,7 +602,7 @@ for (const explicit of [false, true]) test(`${explicit ? 'explicit operations re
  // Serve has it: the coordinator takes the next message after this one, while the card waits for the answer.
  reconcileOutbox(conv(cid,[sentTurn(id)]),root, null,true);
  expect(held()).toEqual({next:explicit,card:true});
- const turn={...sentTurn(id,'sent','succeeded'),result:{writes:explicit?[{task:'T1',record:'L1',kind:'answered',question:'Q1',toState:null}]:[],refused:[]}};
+ const turn={...sentTurn(id,'sent','succeeded'),result:{writes:explicit?[{task:'T1',record:'L1',kind:'answered',question:'Q1',toState:null}]:[],refused:[],automations:[]}};
  reconcileOutbox(conv(cid,[turn]),root, null,false);
  expect(held()).toEqual({next:explicit,card:true});
  reconcileOutbox(conv(cid,[turn]),root, null,true);
@@ -616,7 +616,7 @@ for (const explicit of [false, true]) test(`${explicit ? 'explicit operations re
 test('a successful clarification does not block recovering a later refused follow-up on the same question', () => {
  const first=setup(),ordinary={...binding,expectedWrites:null};
  freeze(root,fixed(),values('sent',first),{from:key},[ordinary]);
- reconcileOutbox(conv(cid,[{...sentTurn(first,'sent','succeeded'),result:{writes:[],refused:[]}}]),root, null,true);
+ reconcileOutbox(conv(cid,[{...sentTurn(first,'sent','succeeded'),result:{writes:[],refused:[],automations:[]}}]),root, null,true);
  const second=crypto.randomUUID();
  expect(freeze(root,fixed('follow-up'),values('follow-up',second),{from:key},[ordinary])).toBe(second);
  returnReaderSubmission(root,second,'refused');
@@ -644,7 +644,7 @@ test('a mixed message releases completed conversation targets while protecting i
  const id=setup(), ordinary={...binding,taskId:'T2',expectedWrites:null};
  const operation={...binding,kind:'intent' as const,expectedWrites:[{kind:'request_accepted' as const}]};
  freeze(root,fixed(),values('sent',id),{from:key},[operation,ordinary]);
- reconcileOutbox(conv(cid,[{...sentTurn(id,'sent','succeeded'),result:{writes:[{task:'T1',record:'L1',kind:'request_accepted',toState:null}],refused:[]}}]),root, null,true);
+ reconcileOutbox(conv(cid,[{...sentTurn(id,'sent','succeeded'),result:{writes:[{task:'T1',record:'L1',kind:'request_accepted',toState:null}],refused:[],automations:[]}}]),root, null,true);
  expect(holdsReaderTurn(readDrafts().entries,root,operation)).toBe(true);
  expect(holdsReaderTurn(readDrafts().entries,root,ordinary)).toBe(false);
 });
@@ -717,6 +717,18 @@ test('opening another refused answer parks a recovered original even when its te
   expect(restoreReaderDraft(root, cid, 'T1')).toBe(true);
   expect(useDraftStore.getState().entries[key]!.values.doc).toContain('T1');
   expect(parkedReaderDraft(useDraftStore.getState().entries, root, cid, 'T1')).toBeNull();
+});
+
+test('a file sent with only a new automation badge stays with its send when another badge is put in', () => {
+  const id = setup();
+  const files = [{ name: 'a.txt', path: `attachments/${id}/a.txt`, absolutePath: '/a.txt', size: 1 }];
+  const doc = { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'automationLabel', attrs: { id: 'new', name: '' } }] }] };
+  updateDraft(key, { values: { ...values('', id), doc: JSON.stringify(doc), attachments: JSON.stringify(files), phase: 'composing' } });
+  freeze(root, { ...fixed(''), automation: 'new', attachments: ['a.txt'] }, useDraftStore.getState().entries[key]!.values, { from: key });
+  mutateInput(key, values => badged(values, { id: 'A7', name: 'Other' }, true));
+  const visible = availableInput(useDraftStore.getState().entries, root, key)!;
+  expect(attachmentsOf(visible)).toEqual([]);
+  expect(automationIn(draftDocument(visible))?.id).toBe('A7');
 });
 
 test('immediate undo restores files after the prepared input follows another Task', () => {

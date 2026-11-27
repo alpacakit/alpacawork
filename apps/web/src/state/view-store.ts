@@ -7,7 +7,8 @@ import { useDialogStore } from "./dialog-store";
 import { markRead } from "./read-store";
 import { fitReaderWidth, readerWidth } from "./screen-settings";
 import { useTimeView } from "./time-view";
-import type { AnalysisPlace } from "@/features/analysis/place";
+import type { AutomationPane, AutomationsPlace, OpenAutomation } from "@/features/automations/place";
+import { analysisValues, type AnalysisPlace } from "@/features/analysis/place";
 
 /**
  * What the reader is looking at: the list's project, the search,
@@ -36,10 +37,27 @@ export type Navigation = { project: string | null; task: string | null; taskAddr
   view: string | null; event: string | null; turnSequence?: boolean;
   /** On the Analysis tab, the scene of its timeline the URL names (`at`, `finding`): the same address an AI reads. */
   scene?: Scene | null;
-  /** The analysis face and what is open on it; null on the list of tasks. A task open over it is the reader, as on the list. */
+  /** The automations face (its table or its runs); null on another face. A task may be open over any face. */
+  automations: AutomationsPlace | null;
+  /**
+   * The automation open in the reader's window, over any face, as a task is: the window shows one or the other, so at
+   * most one of `automation` and the reader's task is set.
+   */
+  automation: OpenAutomation | null;
+  /** The analysis face and what is open on it; null on another face. At most one of `automations` and `analysis` is set. */
   analysis: AnalysisPlace | null };
 /** A scene of a task's timeline: a finding it was entered from, and the instant shown (either may be missing). */
 export type Scene = { at: string | null; finding: string | null };
+/** Which face the screen shows: the list of tasks to work with (Use), the analysis, or the automations. */
+export type FaceName = "use" | "analysis" | "automations";
+export const faceOf = (navigation: Pick<Navigation, "automations" | "analysis">): FaceName =>
+  navigation.automations ? "automations" : navigation.analysis ? "analysis" : "use";
+/**
+ * Whether a face's own part is under the task's panel: a task opens over any face as one panel (`openTask` leaves the
+ * face as it is). What is under it stays drawn, hidden where it would stand in the panel's place, so closing the task
+ * shows it as it was left (its scroll, what was open in it): never taken off the page for the while.
+ */
+export const useUnderTask = () => useViewStore(state => state.reader.open);
 /** The task the navigation's reader shows, known or waited for. */
 export const readerOn = (navigation: Navigation) => navigation.task ?? navigation.taskAddress;
 /** A place in the reader: a task and what of it is shown (Reports, About, Files and the folder or file open there). */
@@ -130,9 +148,19 @@ type ViewState = {
   openTaskFile: (taskId: string, path: string) => void;
   /** Open a folder or file of `taskId` in the current rule tab. */
   setFilePath: (taskId: string, path: string) => void;
+  /** The automations face and what is open on it (`Navigation.automations`). */
+  automations: AutomationsPlace | null;
+  /** The automation open in the reader's window (`Navigation.automation`). */
+  automation: OpenAutomation | null;
+  /** Opens an automation in the reader's window over the face shown (a task open there gives way to it). */
+  openAutomation: (id: string, pane?: AutomationPane) => void;
+  /** Shows another pane of the automation open. */
+  setAutomationPane: (pane: AutomationPane) => void;
+  /** Shows the automations at a place (closing a task open over another place, ending a search); null goes back to the list of tasks. */
+  showAutomations: (place: AutomationsPlace | null) => void;
   /** The analysis face and what is open on it (`Navigation.analysis`). */
   analysis: AnalysisPlace | null;
-  /** Shows the analysis at a place, closing the task open; null goes back to the list of tasks. */
+  /** Shows the analysis at a place, as `showAutomations` shows the automations; null goes back to the list of tasks. */
   showAnalysis: (place: AnalysisPlace | null) => void;
   /** Apply a validated URL as one transition, without the side effects of the individual navigation actions. */
   applyNavigation: (navigation: Navigation) => void;
@@ -215,9 +243,25 @@ function intent<A extends unknown[]>(change: (...args: A) => void, bound: boolea
   return (...args: A) => navigate(() => change(...args), { bound: typeof bound === "boolean" ? bound : bound(...args) });
 }
 
-/** Whether one analysis place is another only by its look. */
-const otherLookOnly = (before: AnalysisPlace | null, after: AnalysisPlace) =>
-  !!before && JSON.stringify({ ...before, look: after.look }) === JSON.stringify(after);
+/** The face shown and what is open on it: the automations, the analysis, or neither (the list of tasks). */
+type Face = Pick<Navigation, "automations" | "analysis">;
+const NO_FACE: Face = { automations: null, analysis: null };
+const sameAutomations = (a: AutomationsPlace | null, b: AutomationsPlace | null) => a === b || !!a && !!b && a.tab === b.tab;
+/** One analysis place is the other, or differs only by its look (another look is no move: a task open over it stays). */
+const sameAnalysis = (a: AnalysisPlace | null, b: AnalysisPlace | null) => a === b || !!a && !!b
+  && String(analysisValues({ ...a, look: b.look })) === String(analysisValues(b));
+/**
+ * The one move of the face (the automations or the analysis shown, at a place, or the list of tasks): what moves under a
+ * task open over it closes that task, as moving under any surface does.
+ */
+function toFace(state: ViewState, face: Face): Partial<ViewState> {
+  const moved = !(sameAutomations(state.automations, face.automations) && sameAnalysis(state.analysis, face.analysis));
+  return { ...face, ...moved && state.automation ? { automation: null } : {},
+    ...moved && state.reader.open ? { selected: null, ...NO_SURFACE, event: null, reader: closedReader(state.reader) } : {} };
+}
+/** The face shown by its switch, a link or a notification: coming to a face (not the list's) ends a search too. */
+const showFace = (state: ViewState, face: Face): Partial<ViewState> => ({ ...toFace(state, face),
+  ...face.automations || face.analysis ? { searchOpen: false, query: "", ...state.query ? queryEdit(state) : {} } : {} });
 
 /** What closes with the reader or a move in it: every surface over it (`surfacesOf`, state/history-step.ts). */
 const NO_SURFACE = { image: null, view: null } as const;
@@ -253,7 +297,8 @@ export const useViewStore = create<ViewState>((set, get) => ({
     }
     get().setReaderFull(requested === "full");
   },
-  setQuery: intent((query) => set((state) => ({ query, ...queryEdit(state), ...query && state.analysis ? { analysis: null } : {} }))),
+  // A search shows its results on the list's face: begun on another face, it moves the face as its button does.
+  setQuery: intent((query) => set((state) => ({ ...query && (state.automations || state.analysis) ? toFace(state, NO_FACE) : {}, query, ...queryEdit(state) }))),
   clearSearch: intent(() => set((state) => ({ query: "", ...queryEdit(state) }))),
   select: intent((id) => set({ selected: id })),
   // The move on to the next question after an answer acts on the reader that took the answer.
@@ -267,7 +312,7 @@ export const useViewStore = create<ViewState>((set, get) => ({
       // through the questions, or a task chosen by hand, stays what it was. Its URL does not change, so its step neither.
       const here = reader && state.reader.open && state.selected === id && state.reader.pane === pane;
       return {
-        selected: id,
+        selected: id, ...reader ? { automation: null } : {},
         ...NO_SURFACE, event: event !== undefined ? event : here ? state.event : null, scene: here ? state.scene : null,
         reader: reader ? { ...state.reader, open: true, pane, turnSequence: here ? state.reader.turnSequence : turnSequence, opening: (state.reader.opening ?? 0) + (turnSequence ? 0 : 1),
           whole: whole ?? (state.reader.open && state.reader.whole),
@@ -293,7 +338,7 @@ export const useViewStore = create<ViewState>((set, get) => ({
   closeReader: intent(() => {
     const focus = readerFocusReturn();
     const { reader } = get();
-    set((state) => ({ ...NO_SURFACE, event: null, reader: closedReader(state.reader), selected: reader.returnTo ? reader.returnTo.selected : state.selected }));
+    set((state) => ({ ...NO_SURFACE, event: null, automation: null, reader: closedReader(state.reader), selected: reader.returnTo ? reader.returnTo.selected : state.selected }));
     focus();
   }, true),
   setReaderPane: intent((pane) => set((state) => ({ ...NO_SURFACE, event: null, scene: null, reader: { ...state.reader, pane }, filePath: null })), true),
@@ -302,20 +347,28 @@ export const useViewStore = create<ViewState>((set, get) => ({
     const opening = fileOpening(taskId, path);
     if (opening.view && readerShows(get())) { set({ view: opening.view }); return; }
     openedByPress = true;
-    set((state) => ({ selected: taskId, ...NO_SURFACE, image: opening.image, view: opening.view, event: null,
+    set((state) => ({ selected: taskId, automation: null, ...NO_SURFACE, image: opening.image, view: opening.view, event: null,
       filePath: { taskId, path: opening.path }, reader: { ...state.reader, open: true, pane: "files", whole: state.reader.open && state.reader.whole } }));
   }),
   setFilePath: intent((taskId, path) => set({ filePath: { taskId, path } }), true),
+  automations: null,
+  automation: null,
+  // The window shows the automation in a task's place: the task open there closes, as opening another task would.
+  openAutomation: intent((id, pane = "about") => {
+    openedByPress = true;
+    set((state) => ({ automation: { id, pane }, ...NO_SURFACE, event: null, ...state.reader.open ? { selected: null, reader: closedReader(state.reader) } : {} }));
+  }),
+  setAutomationPane: intent((pane) => set((state) => state.automation ? { automation: { ...state.automation, pane } } : {}), true),
   analysis: null,
-  // Coming to the analysis closes the task open and ends a search, as the search's own button does: the analysis takes
-  // the list's place. A search begun on it goes back to the list, where its results are (setQuery).
-  // Another look under a task open over the face is no move: the task stays open over it, as the look is no step.
-  showAnalysis: intent((analysis) => set((state) => !analysis ? { analysis }
-    : { analysis, searchOpen: false, query: "", ...state.query ? queryEdit(state) : {},
-      ...state.reader.open && !otherLookOnly(state.analysis, analysis) ? { selected: null, ...NO_SURFACE, event: null, reader: closedReader(state.reader) } : {} })),
+  // A task opens over whatever face is shown (openTask leaves the face as it is). Moving the face or what is open on it
+  // closes the task over it, as moving under a surface does (another look of the analysis is no move); coming to the
+  // automations or the analysis ends a search too, as the search's own button does: the face takes the list's place. A
+  // search begun on one goes back to the list, where its results are (setQuery).
+  showAutomations: intent((automations) => set((state) => showFace(state, { automations, analysis: null }))),
+  showAnalysis: intent((analysis) => set((state) => showFace(state, { automations: null, analysis }))),
   /** The URL shown into the store (state/bootstrap.ts): the only other writer of what the URL holds. */
   applyNavigation: (navigation) => {
-    const { project, task, taskAddress, full, pane, path, query, image, view, event, turnSequence, analysis, scene } = navigation;
+    const { project, task, taskAddress, full, pane, path, query, image, view, event, turnSequence, automations, automation, analysis, scene } = navigation;
     endReaderInput(task); openedByPress = false;
     if (task) markRead(task);
     // The reader shows the task the URL names, or waits for it while it is looked up (`awaitedTask`).
@@ -327,7 +380,7 @@ export const useViewStore = create<ViewState>((set, get) => ({
       return {
         // A URL with no task says nothing of the reader's width (full belongs to the task): going back to the list from
         // a task opened full keeps it for the next one, as closing it does.
-        project, query, analysis, readerFull: shown ? full : state.readerFull, navigationReady: true, queryEditedBeforeNavigation: false,
+        project, query, automations, automation: shown ? null : automation, analysis, readerFull: shown || automation ? full : state.readerFull, navigationReady: true, queryEditedBeforeNavigation: false,
         selected: task, image, view, event, scene,
         reader: { ...state.reader, open: !!shown, address: task ? null : taskAddress, pane, returnTo: shown === state.selected ? state.reader.returnTo : null, turnSequence,
           whole: !!shown && state.reader.open && state.reader.whole },
@@ -348,5 +401,5 @@ export function screenNavigation(): Navigation {
     event: shown && view.reader.pane === "task" ? view.event : null,
     scene: shown && view.reader.pane === "analysis" ? view.scene : null,
     path: shown && view.filePath?.taskId === shown && view.reader.pane === "files" ? view.filePath.path || null : null,
-    query: view.query, analysis: view.analysis };
+    query: view.query, automations: view.automations, automation: shown ? null : view.automation, analysis: view.analysis };
 }

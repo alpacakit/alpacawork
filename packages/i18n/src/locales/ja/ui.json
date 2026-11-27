@@ -16,6 +16,12 @@
       "title": "試した AI",
       "tookOver": "{{agent}} が引き継ぎました"
     },
+    "automationResult": {
+      "created": "<open>{{id}}</open> を作りました",
+      "edited": "<open>{{id}}</open> を直しました",
+      "notBadge": "（札の {{id}} とは別の1件です）",
+      "notNew": "（札は「新しい自動実行」でした）"
+    },
     "clear": "会話を消す",
     "clearAbout": "表示もメモも消して、空の会話にします。元に戻せません",
     "clearConfirm": "もう一度で消去",
@@ -301,11 +307,15 @@
     "copyProject": "{{id}} をコピー",
     "enterHint": "Enterで送信 · Shift+Enterで改行（⌘/Ctrl+Enterでも送信）",
     "expand": "欄を高くする",
+    "newAutomation": "新しい自動実行",
     "noMatches": "当たる候補がありません",
     "openProject": "一覧で見る",
     "openTask": "開く",
     "placeholder": "タスクの管理も作業の依頼も、すべてここで",
+    "placeholderAutomation": "{{id}} 関連の指示・質問（例：8時半に変えて）",
+    "placeholderAutomations": "自動実行を言葉で作る・直す（例：毎朝9時に、確認待ちのタスクをまとめて報告して）",
     "placeholderFolded": "依頼はすべてここから",
+    "placeholderNewAutomation": "何をいつ動かすかを書く（例：毎朝9時に、確認待ちのタスクをまとめて報告して）",
     "placeholderProject": "このプロジェクト関連の指示・質問",
     "placeholderTask": "{{id}} 関連の指示・質問",
     "placeholderTasks": "{{id}}ほか 関連の指示・質問",

@@ -1,10 +1,15 @@
 import { afterEach, beforeAll, expect, test, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render as bareRender, screen } from '@testing-library/react';
 import { i18n, startI18n } from '@alpacawork/i18n';
 import { AgentSettings } from '../src/features/panels/AgentSettings';
 import { beginDraftOptionsEdit, newAgentDraft, type AgentsDraft } from '../src/features/panels/agent-settings-draft';
+import { WithQueries } from './fixtures';
+import { queryClient } from '../src/data/query-client';
+
+// Drawn as the screen draws it, inside the queries' provider: an agent's mark reads the server settings.
+const render = (ui: Parameters<typeof bareRender>[0]) => bareRender(ui, { wrapper: WithQueries });
 beforeAll(async () => { startI18n(); await i18n.changeLanguage('en'); });
-afterEach(cleanup);
+afterEach(() => { cleanup(); queryClient.clear(); });
 
 test('open portal actions stop editing when the parent disables the form', () => {
   const draft: AgentsDraft = { source: '{}', agents: [beginDraftOptionsEdit(newAgentDraft('codex', 'codex', 'codex'), 'a'.repeat(64))] };

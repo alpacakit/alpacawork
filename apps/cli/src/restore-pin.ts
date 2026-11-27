@@ -9,8 +9,19 @@ import { z } from 'zod';
 import { CONTRACT_HEADER } from '@alpacawork/contract/client-contract';
 const pinSchema=z.object({version:z.literal(1),fingerprint:z.string().regex(/^[a-f0-9]{64}$/),restoreId:restoreIdSchema}).strict();
 const digest=(value:string|Uint8Array)=>createHash('sha256').update(value).digest('hex');
+function withRestore(prepared: PreparedRequest, restoreId: string): PreparedRequest {
+  const headers = new Headers(prepared.headers as [string, string][]);
+  headers.set(RESTORE_HEADER, restoreId);
+  return Object.freeze({ ...prepared, headers: Object.freeze([...headers].map(pair => Object.freeze(pair))) });
+}
+
 export async function pinRestore(prepared:PreparedRequest,opId:string,server:string,timeoutMs:number):Promise<PreparedRequest> {
   const env=process.env;
+  if (env.ALPACAWORK_PROGRAM_TOKEN !== undefined) {
+    const restore = restoreIdSchema.safeParse(env.ALPACAWORK_PROGRAM_RESTORE_ID);
+    if (!restore.success) throw new Problem(PROBLEM_CODE.forbidden, 'The automation program has no workspace restore identity');
+    return withRestore(prepared, restore.data);
+  }
   const base=join(userStateDirectory(env),'write-pins',digest(server));
   const name=digest(opId)+'.json';
   // Caller claims and transport compatibility are not the operation's immutable input.
@@ -35,6 +46,5 @@ export async function pinRestore(prepared:PreparedRequest,opId:string,server:str
     // A concurrent first caller may have selected the earlier identity. The immutable winner owns this operation.
     pinned=read();
   }
-  const headers=new Headers(prepared.headers as [string,string][]);headers.set(RESTORE_HEADER,pinned.restoreId);
-  return Object.freeze({...prepared,headers:Object.freeze([...headers].map(pair=>Object.freeze(pair)))});
+  return withRestore(prepared, pinned.restoreId);
 }

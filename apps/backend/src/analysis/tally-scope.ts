@@ -30,11 +30,11 @@ export function readTallyScope(root: string): number | null {
   return since;
 }
 
+export const tallyUnfinished = `state NOT IN (${RUN_ENDED_STATES.map(state => `'${state}'`).join(',')})`;
 const terminal = RUN_ENDED_STATES.filter(state => state !== RUN_STATE.joined).map(state => `'${state}'`).join(',');
-const startedAtMs = "round(unixepoch(json_extract(record,'$.started_at'), 'subsec') * 1000)";
+export const tallyStartedAtMs = "round(unixepoch(json_extract(record,'$.started_at'), 'subsec') * 1000)";
 const endedAtMs = "round(unixepoch(json_extract(record,'$.ended_at'), 'subsec') * 1000)";
 
 /** Shared by collection and reads. Bind the exact collection start in milliseconds. */
-export const tallyEligible = `task_id IS NOT NULL AND state IN (${terminal})
-  AND json_extract(record,'$.pids.agent') IS NOT NULL
-  AND min(${startedAtMs}, ${endedAtMs}) >= ?`;
+const tallyLaunched = "task_id IS NOT NULL AND json_extract(record,'$.pids.agent') IS NOT NULL";
+export const tallyEligible = `${tallyLaunched} AND state IN (${terminal}) AND min(${tallyStartedAtMs}, ${endedAtMs}) >= ?`;

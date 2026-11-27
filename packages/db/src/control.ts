@@ -14,7 +14,7 @@ import { checkDatabaseFiles, validBusyTimeout, type DatabaseOptions } from './sq
 import { ChangeScope, currentChangeScope, guardControlWrites } from './change-scope.js';
 
 import { controlDatabasePath } from './control-files.js';
-export { controlDatabasePath } from './control-files.js';
+export { automationSecretsTables, controlDatabasePath } from './control-files.js';
 export const taskHash = (uuid: string, revision: number | bigint) =>
   createHash('sha256').update(`task-v1:${uuid}:${revision}`).digest('hex');
 const operationConnection = new AsyncLocalStorage<{ root: string; db: DatabaseSync }>();

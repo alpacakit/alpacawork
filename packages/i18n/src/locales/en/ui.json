@@ -16,6 +16,12 @@
       "title": "AIs tried",
       "tookOver": "{{agent}} took over"
     },
+    "automationResult": {
+      "created": "Created <open>{{id}}</open>",
+      "edited": "Changed <open>{{id}}</open>",
+      "notBadge": " (not {{id}}, the badge’s automation)",
+      "notNew": " (the badge asked for a new automation)"
+    },
     "clear": "Clear conversation",
     "clearAbout": "Removes the messages and the memo, leaving an empty conversation. This cannot be undone",
     "clearConfirm": "Click again to clear",
@@ -313,11 +319,15 @@
     "copyProject": "Copy {{id}}",
     "enterHint": "Enter to send · Shift+Enter for a new line (⌘/Ctrl+Enter also sends)",
     "expand": "Make input taller",
+    "newAutomation": "New automation",
     "noMatches": "No matching items",
     "openProject": "View in list",
     "openTask": "Open",
     "placeholder": "Manage tasks and request work, all from here",
+    "placeholderAutomation": "Instructions or questions about {{id}} (e.g. make it 8:30)",
+    "placeholderAutomations": "Make or change automations in words (e.g. every morning at 9, report the tasks awaiting review)",
     "placeholderFolded": "Ask for anything here",
+    "placeholderNewAutomation": "Say what to run and when (e.g. every morning at 9, report the tasks awaiting review)",
     "placeholderProject": "Instructions or questions about this project",
     "placeholderTask": "Instructions or questions about {{id}}",
     "placeholderTasks": "Instructions or questions about {{id}} and others",
