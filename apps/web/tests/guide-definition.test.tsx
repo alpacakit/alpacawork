@@ -278,6 +278,11 @@ test("a balloon stands right by its part, clear of the boxes it is told to, on t
   const aside = placeBalloon({ ...conversation, left: 380, width: 600 }, size, view, "top", "middle", [foot]);
   const overlap = aside.x < foot.left + foot.width && aside.x + size.width > foot.left && aside.y + size.height > foot.top;
   expect(overlap).toBe(false);
+  // The send button at the view's end, a maximized conversation over it and the words beside it: no side stands clear,
+  // and the balloon would hide the button, so it stands by the button, never over it.
+  const narrow = { width: 900, height: 640 }, sendAtEnd = { left: 843, top: 587, width: 32, height: 32 }, small = { width: 194, height: 48 };
+  const by = placeBalloon(sendAtEnd, small, narrow, "right", "middle", [{ left: 0, top: 12, width: 900, height: 560 }, { left: 0, top: 540, width: 830, height: 70 }]);
+  expect(by.x + small.width <= sendAtEnd.left || by.x >= sendAtEnd.left + sendAtEnd.width).toBe(true);
 });
 
 test("shown again from its first screen, the guide points at the input whatever the work, until something is written or sent", () => {

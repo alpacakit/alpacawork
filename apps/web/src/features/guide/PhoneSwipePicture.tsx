@@ -23,7 +23,7 @@ export function PhoneSwipePicture() {
         <span className="h-4 rounded border border-ink/25" />
       </div>
       {/* The stamp stands where the screen is, not on the moving card, as the phone's own does. */}
-      <span data-guide-swipe-stamp className={cn("absolute top-9 left-1/2 flex -translate-x-1/2 -rotate-12 items-center gap-0.5 rounded border-2 border-current bg-stamp px-1 py-0.5 text-micro font-extrabold whitespace-nowrap", stampInk.send)}>
+      <span data-guide-swipe-stamp className={cn("absolute top-9 left-1/2 flex -translate-x-1/2 -rotate-12 items-center gap-0.5 rounded border-2 border-current bg-stamp px-1 py-0.5 text-xs font-extrabold whitespace-nowrap", stampInk.send)}>
         <Icon name="plane" className="size-[1em] stroke-[2.75]" />{t("swipe.send")}
       </span>
       {/* The finger: a round mark where it touches. */}

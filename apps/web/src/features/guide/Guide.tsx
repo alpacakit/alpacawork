@@ -128,7 +128,8 @@ function standing(target: Box, size: { width: number; height: number }, view: { 
  * clear of the boxes the target is not in (a detail taking the whole screen holds the target: it stands by the target
  * alone, never pushed back over the very part it points at); with none of those either (a conversation taking all the
  * room over the input), it stands on the asked side as far as the view lets it, over the target's own edge rather than
- * over a part it was told to keep clear.
+ * over a part it was told to keep clear, where it leaves most of the target seen; over a target it would hide (a
+ * button), it stands by the target alone, as with a detail taking the whole screen.
  */
 export function placeBalloon(target: Box, size: { width: number; height: number }, view: { width: number; height: number }, asked: GuideSide,
   align: GuideAlign = "middle", clear: readonly Box[] = []): Placed {
@@ -137,7 +138,10 @@ export function placeBalloon(target: Box, size: { width: number; height: number 
     .reduce<Standing | null>((best, each) => best && best.away <= each.away ? best : each, null);
   const holds = (box: Box) => box.left <= target.left && box.top <= target.top
     && box.left + box.width >= target.left + target.width && box.top + box.height >= target.top + target.height;
-  const stood = stands(clear) ?? stands(clear.filter(box => !holds(box))) ?? standing(target, size, view, asked, align, []);
+  // Over the target's own edge only where the balloon leaves most of it seen (a conversation, not a button).
+  const roomy = 2 * size.width <= target.width || 2 * size.height <= target.height;
+  const stood = stands(clear) ?? stands(clear.filter(box => !holds(box))) ?? (roomy ? standing(target, size, view, asked, align, []) : null)
+    ?? stands([]) ?? standing(target, size, view, asked, align, []);
   const x = clamp(stood.x, MARGIN, view.width - size.width - MARGIN), y = clamp(stood.y, MARGIN, view.height - size.height - MARGIN);
   const middleX = target.left + target.width / 2, middleY = target.top + target.height / 2;
   return stood.side === "top" || stood.side === "bottom"
