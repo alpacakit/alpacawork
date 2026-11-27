@@ -216,7 +216,8 @@ export function CardPane({ place, reads: { face, tasks, usage }, waitFrom }: {
     : facts === null ? <p className="text-soft">{t("usage.none")}</p> : <CardSkeleton waitFrom={waitFrom} />;
 
   const drawn = async () => facts && svg ? { name: cardFileName(facts), png: await cardPng(svg) } : null;
-  /** Saves the picture into the downloads; says so with `message`, or says nothing when the caller tells it otherwise. */
+  /** Saves the picture into the downloads; says so, or that it failed, with toasts, or says nothing when the caller (a post,
+   *  which says it in its own box) passes null. */
   const save = async (message: string | null = t("card.saved")) => {
     try {
       const picture = await drawn();
@@ -228,7 +229,7 @@ export function CardPane({ place, reads: { face, tasks, usage }, waitFrom }: {
       setTimeout(() => URL.revokeObjectURL(link.href), 4000);
       if (message) notify.success(message);
       return true;
-    } catch { notify.error(t("card.drawFailed")); return false; }
+    } catch { if (message !== null) notify.error(t("card.drawFailed")); return false; }
   };
   const copy = () => { if (svg) copyCard(svg).then(() => notify.success(t("card.copied")), () => notify.error(t("card.copyFailed"))); };
   const share = async () => {
