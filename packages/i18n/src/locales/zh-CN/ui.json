@@ -41,6 +41,8 @@
     "draft": "草稿",
     "earlierCount_other": "更早的 {{count}} 条消息",
     "earlierFailed": "无法加载。",
+    "earlierFold": "收起更早的消息",
+    "earlierLimit": "最多可回看 {{limit}} 条更早的消息",
     "earlierMore": "加载更早的内容",
     "earlierReading": "加载中…",
     "error": {

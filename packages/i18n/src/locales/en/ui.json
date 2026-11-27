@@ -42,6 +42,8 @@
     "earlierCount_one": "{{count}} earlier message",
     "earlierCount_other": "{{count}} earlier messages",
     "earlierFailed": "Could not load.",
+    "earlierFold": "Collapse earlier messages",
+    "earlierLimit": "You can go back up to {{limit}} earlier messages",
     "earlierMore": "Load earlier",
     "earlierReading": "Loading…",
     "error": {

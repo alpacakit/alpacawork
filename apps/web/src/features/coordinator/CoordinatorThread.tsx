@@ -1,4 +1,5 @@
-import { Fragment, memo, useCallback, useMemo, useState, useRef, type ReactNode } from "react";
+import { Fragment, memo, useCallback, useEffect, useLayoutEffect, useMemo, useState, useRef, type ReactNode } from "react";
+import { COORDINATOR_HISTORY_LIMIT } from "@alpacawork/contract/coordinator";
 import { useShallow } from "zustand/react/shallow";
 import { useTranslation } from "react-i18next";
 import { CopyButton } from "@/components/ui/copy-button";
@@ -148,20 +149,43 @@ function EarlierRow({ count, reveal }: { count: number; reveal: () => void }) {
   </li>;
 }
 /**
- * At the top of the opened history, while older turns are still to be read: a press reads the next page of them. It
- * says it is reading meanwhile, and that it could not, with the same press to try again.
+ * At the top of the opened history: it folds the history again. While older turns are still to be read, the next page
+ * of them is read as this comes near the reading (or the thread is short enough to show it): it says it is reading
+ * meanwhile, and that it could not, with a press to try again. Once the history holds as many as the screen keeps,
+ * it says nothing older is shown.
  */
-function ReadOlder({ reading, failed, read }: { reading: boolean; failed: boolean; read: () => void }) {
+function EarlierHead({ held, more, full, reading, failed, read, fold }: { held: number; more: boolean; full: boolean; reading: boolean;
+  failed: boolean; read: () => void; fold: () => void }) {
   const { t } = useTranslation("ui");
-  return <li data-earlier-more={reading ? "reading" : failed ? "failed" : ""} className="relative border-b border-rule pl-(--gutter)">
-    <button type="button" disabled={reading} onClick={read}
-      className="group flex min-h-11 w-full items-center gap-1.5 py-2 text-left text-xs text-muted disabled:cursor-default narrow:min-h-12">
-      <span className={`${ON_RAIL} top-1/2 flex -translate-y-1/2`}><Icon name="up" className={cn("size-3.5 text-muted", ON_DISC)} /></span>
-      <span role={reading || failed ? "status" : undefined} className={cn(failed && "text-error", reading && "motion-safe:animate-pulse")}>
-        {reading ? t("coordinatorCard.earlierReading") : failed ? t("coordinatorCard.earlierFailed") : null}</span>
-      <span className="ml-auto rounded-sm px-2 underline decoration-line underline-offset-3 group-hover:text-ink group-hover:decoration-ink group-disabled:no-underline">
-        {t("coordinatorCard.earlierMore")}</span>
-    </button>
+  const place = useRef<HTMLLIElement>(null);
+  const latest = useRef(read);
+  latest.current = read;
+  const waiting = more && !reading && !failed;
+  // Seen once per wait: a wait ends with the read it starts, and the next begins with what that read brought (`held`),
+  // so a head still in sight after a read reads on.
+  useEffect(() => {
+    const row = place.current;
+    if (!waiting || !row || typeof IntersectionObserver === "undefined") return;
+    let asked = false;
+    const sight = new IntersectionObserver(entries => {
+      if (asked || !entries.some(entry => entry.isIntersecting)) return;
+      asked = true; latest.current();
+    }, { root: row.closest("[data-card-scroll]"), rootMargin: "400px 0px 0px 0px" });
+    sight.observe(row);
+    return () => sight.disconnect();
+  }, [waiting, held]);
+  const said = reading ? t("coordinatorCard.earlierReading") : failed ? t("coordinatorCard.earlierFailed")
+    : full ? t("coordinatorCard.earlierLimit", { limit: COORDINATOR_HISTORY_LIMIT }) : null;
+  return <li ref={place} data-earlier-head data-earlier-more={reading ? "reading" : failed ? "failed" : full ? "full" : more ? "" : "none"}
+    className="relative border-b border-rule pl-(--gutter)">
+    <div className="flex min-h-11 items-center gap-1.5 py-2 text-xs text-muted narrow:min-h-12">
+      <span className={`${ON_RAIL} top-1/2 flex -translate-y-1/2`}><Icon name="fold" className={cn("size-3.5 text-muted", ON_DISC)} /></span>
+      <span role={said ? "status" : undefined} className={cn("min-w-0", failed && "text-error", reading && "motion-safe:animate-pulse")}>{said}</span>
+      {failed && <button type="button" data-earlier-read onClick={read} className={LINE_ACTION}>{t("coordinatorCard.earlierMore")}</button>}
+      <button type="button" data-earlier-fold aria-expanded aria-label={t("coordinatorCard.earlierFold")} onClick={fold}
+        className="ml-auto flex-none rounded-sm px-2 underline decoration-line underline-offset-3 hover:text-ink hover:decoration-ink">
+        {t("coordinatorCard.exchangeFold")}</button>
+    </div>
   </li>;
 }
 /**
@@ -273,6 +297,15 @@ export const CoordinatorThread = memo(function CoordinatorThread({ turns: recent
     return 'here';
   });
   const readOlder = () => { if (thread.current) keepThreadPosition(thread.current); void earlier.readMore(); };
+  // Opened or folded by hand, the history's head and its entrance take each other's place, and the focus goes with it.
+  const refocus = useRef<string | null>(null);
+  const handEarlier = (open: boolean) => { refocus.current = open ? "[data-earlier-fold]" : "[data-earlier=folded] button"; toggle(EARLIER, open); };
+  useLayoutEffect(() => {
+    const target = refocus.current && thread.current?.querySelector<HTMLButtonElement>(refocus.current);
+    if (!target) return;
+    refocus.current = null;
+    target.focus({ preventScroll: true });
+  });
   // Where the coordinator started again: before the message it started with, or at the end until there is one. A message
   // drawn as no row of its own (sent into another, or sent again in its place) leaves its line before the next row in
   // serve's order, so a line is never folded away with it.
@@ -322,8 +355,8 @@ export const CoordinatorThread = memo(function CoordinatorThread({ turns: recent
   return <>
     <ol ref={thread} data-action-focus-scope tabIndex={-1} data-coordinator-thread className={cn("relative m-0 list-none px-3 pt-1 pb-2 [overflow-wrap:anywhere] [--gutter:--spacing(6)] [--rail:7px] before:absolute before:top-5 before:bottom-5 before:left-[calc(--spacing(3)+var(--rail))] before:w-px before:bg-rule", empty && "before:hidden")}>
       {empty && <ConversationStart />}
-      {hidden > 0 && !earlierOpen && <EarlierRow count={hidden} reveal={() => toggle(EARLIER, true)} />}
-      {earlierOpen && earlier.more && <ReadOlder reading={earlier.reading} failed={earlier.failed} read={readOlder} />}
+      {hidden > 0 && !earlierOpen && <EarlierRow count={hidden} reveal={() => handEarlier(true)} />}
+      {earlierOpen && (start > 0 || !!served.earlier) && <EarlierHead held={earlier.turns.length} more={earlier.more} full={earlier.full} reading={earlier.reading} failed={earlier.failed} read={readOlder} fold={() => handEarlier(false)} />}
       {rows}
       {!shown.tail.length && resetLines(null)}
     </ol>
