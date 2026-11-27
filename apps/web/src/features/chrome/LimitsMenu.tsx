@@ -132,7 +132,9 @@ export function LimitsMenu() {
   return <>
     <Button ref={trigger} variant="ghost" size="bar" data-limits-trigger
       aria-haspopup="dialog" aria-expanded={open} aria-label={label} title={label} onClick={() => setOpen(value => !value)}
-      className="w-auto min-w-0 gap-4 px-2 narrow:w-auto narrow:min-w-9">
+      className={cn("w-auto min-w-0 gap-4 px-2 narrow:w-auto narrow:min-w-9", stopped && "pr-3")}>
+      {/* Words end flush with their box, while a mark or a ring has air inside its own: a button ending in the time keeps
+          a wider right edge, so the time does not sit against it. */}
       {bar.map(limit => <BarAgent key={limit.agent.adapter} limit={limit} />)}
       {stopped && <>
         <span className="hidden text-sm whitespace-nowrap text-error @min-[60rem]:inline">{stoppedWords(stopped, now, i18n.language, t)}</span>
