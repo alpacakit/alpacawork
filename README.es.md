@@ -34,7 +34,7 @@
   </picture>
 </p>
 
-alpacawork es una herramienta de orquestación de IA: reparte el trabajo entre los agentes de programación con IA que ya tienes en tu PC, como Claude Code y Codex, y lleva su seguimiento. Escribe lo que quieres en un solo cuadro de chat, y el coordinador, la IA que es tu punto de contacto, lo convierte en tareas y las asigna a otras IA. Tú haces tres cosas: pedir, responder preguntas y revisar los resultados. También puedes usarlo desde tu teléfono de la misma manera.
+alpacawork es una herramienta de orquestación de IA. Te permite dirigir desde un solo chat a los agentes de programación con IA que ya tienes en tu PC, como Claude Code y Codex. Escribe lo que quieres, y el coordinador, la IA que es tu punto de contacto, lo convierte en tareas, las asigna a otras IA y lleva su seguimiento. Tú haces tres cosas: pedir, responder preguntas y revisar los resultados. También puedes usarlo desde tu teléfono de la misma manera.
 
 <p align="center">
   <img src="docs/images/demo-dark-es.webp" alt="Una petición escrita en el cuadro de chat del teléfono se convierte en tres tareas que avanzan en paralelo en la lista del PC; se revisa un resultado y se desliza para marcar la tarea como completada, y una pregunta de la IA se responde eligiendo una opción; al final, el teléfono y el PC lado a lado" width="800">
