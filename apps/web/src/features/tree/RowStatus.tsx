@@ -275,9 +275,13 @@ export function RowTime({ id, task }: { id?: string; task: Task }) {
 /** The row end's time's slot: as wide as a time of two figures ("12時間"), so the speed column stands still. */
 const ROW_TIME_SLOT = "inline-block min-w-[3.25em] text-right";
 
-/** The heading's room over the rows' times (RowTime): the heading has no time of its own. */
-export function RowTimeRoom() {
-  return <span aria-hidden="true" className={cn(ROW_TIME_SLOT, "invisible flex-none pr-2 text-xs")}>0</span>;
+/**
+ * The heading's room over the rows' times (RowTime): the heading has no time of its own, and beside a narrow list it
+ * holds the speed's unit and help there (`children`).
+ */
+export function RowTimeRoom({ children }: { children?: ReactNode }) {
+  return children ? <span className={cn(ROW_TIME_SLOT, "mb-0.5 flex flex-none items-center gap-0.5 pr-2 text-left text-xs")}>{children}</span>
+    : <span aria-hidden="true" className={cn(ROW_TIME_SLOT, "invisible flex-none pr-2 text-xs")}>0</span>;
 }
 
 function RowChildren({ childCount, word }: { childCount: string; word: boolean }) {

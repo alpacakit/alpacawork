@@ -58,7 +58,7 @@ import { useConnection } from "@/data/connection";
 import { PullMark, usePullToRefresh } from "./pull-refresh";
 import { ReadFailure, ReadNote } from "@/components/ui/loadable";
 import { useDeviceValue } from "@/lib/device-storage";
-import { HeadingAgents, HeadingTokenSpeed, RowTokenSpeed, SPEED_LANE, SpeedLane, speedLane } from "./token-speed";
+import { HeadingAgents, HeadingSpeedUnit, HeadingTokenSpeed, RowTokenSpeed, SPEED_LANE, SpeedLane, speedLane } from "./token-speed";
 import { isOpen, SECTION_START, sectionFold, sectionsOpen, storedWith } from "./section-fold";
 import { useOfflineShown } from "@/data/reach";
 import { useListEntrance } from "./list-entrance";
@@ -548,8 +548,8 @@ function SectionHead({ section, first, shared, onToggle }: { section: Section; f
         {section.section === "done" && <TodayMarks />}
         {section.section === "doing" && <span className={cn(HEAD_LINE, "ml-auto min-w-0 shrink narrow:pr-1.5")}><HeadingAgents tops={sectionTops(section)} narrow={shared.narrow} timeApart={shared.lane > 0} /></span>}
       </h2>
-      {shared.lane > 0 && section.section === "doing" && <SpeedLane width={shared.lane} className={cn("mb-0.5", shared.lane < SPEED_LANE && "pr-2")}><HeadingTokenSpeed tops={sectionTops(section)} compact={shared.lane < SPEED_LANE} /></SpeedLane>}
-      {shared.lane > 0 && section.section === "doing" && <RowTimeRoom />}
+      {shared.lane > 0 && section.section === "doing" && <SpeedLane width={shared.lane} className={cn("mb-0.5", shared.lane < SPEED_LANE && "pr-3")}><HeadingTokenSpeed tops={sectionTops(section)} compact={shared.lane < SPEED_LANE} /></SpeedLane>}
+      {shared.lane > 0 && section.section === "doing" && <RowTimeRoom>{shared.lane < SPEED_LANE && <HeadingSpeedUnit tops={sectionTops(section)} />}</RowTimeRoom>}
     </div>
   </div>;
 }
@@ -676,7 +676,7 @@ const TaskRow = memo(function TaskRow({ node, shared, visibleRows }: TaskRowProp
               timeApart={timeApart} />
           </div>}
           {shared.lane > 0 && node.row?.section === "doing" && <>
-            <SpeedLane width={shared.lane} className="items-center"><RowTokenSpeed task={task} compact={shared.lane < SPEED_LANE} /></SpeedLane>
+            <SpeedLane width={shared.lane} className={cn("items-center", shared.lane < SPEED_LANE && "pr-3")}><RowTokenSpeed task={task} compact={shared.lane < SPEED_LANE} /></SpeedLane>
             <RowTime id={timeId} task={task} />
           </>}
         </div>

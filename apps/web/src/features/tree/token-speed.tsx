@@ -135,27 +135,26 @@ function MinuteBars({ bars, scale }: { bars: number[]; scale: number }) {
     })}
   </svg>;
 }
-/** Beside a narrow list the bars' slot holds only the heading's unit, as wide on every row so the numbers line up. */
-const UNIT_WIDTH = 24;
-/** What the heading's help takes, beside a narrow list, of the column's right padding (pr-3 → pr-2). */
-const COMPACT_HELP_ROOM = 4;
 
 function rowTip(t: (key: string, options?: Record<string, unknown>) => string, row: RowShown) {
   const peak = Math.max(...row.bars), mean = Math.round(row.bars.reduce((sum, bar) => sum + bar, 0) / row.bars.length);
   return t("speed.rowTip", { rate: formatRate(row.rate), mean: formatRate(mean), peak: formatRate(peak) });
 }
 
-/** The speed column at the title column's end, before the time: a number and the minute's bars, or the number alone beside a narrow list. */
-/** Its number's slot, the gap and the bars, and the room before the time after it: nothing left over before the number. */
-export const SPEED_LANE = 96;
-const COMPACT_LANE = 68;
+/**
+ * The speed column at the title column's end, before the row's time: a number and the minute's bars, or the number alone
+ * beside a narrow list. Its width is its number's slot, the gap and the bars, and the room before the time (pr-2; a
+ * step more, pr-3, beside a narrow list, where no bars stand between): nothing left over on either side.
+ */
+export const SPEED_LANE = 92;
+const COMPACT_LANE = 40;
 /** A list narrower than this (the detail open beside it) keeps its time strip's room with the number alone; under 600px there is no column. */
 const FULL_LANE_SHEET = 900;
 export const speedLane = (sheet: number) => sheet < FULL_LANE_SHEET ? COMPACT_LANE : SPEED_LANE;
 
 /** One cell of the speed column, in every row and heading alike, so the numbers stand in one column. */
 export function SpeedLane({ width, className, children }: { width: number; className?: string; children?: ReactNode }) {
-  return <div data-speed-lane style={{ width }} className={cn("flex flex-none justify-end pr-3 text-xs", className)}>{children}</div>;
+  return <div data-speed-lane style={{ width }} className={cn("flex flex-none justify-end pr-2 text-xs", className)}>{children}</div>;
 }
 
 /**
@@ -168,7 +167,7 @@ export function RowTokenSpeed({ task, compact }: { task: Task; compact: boolean 
   const row = JSON.parse(key) as RowShown;
   return <span data-token-speed title={rowTip(t, row)} className={cn("flex items-baseline whitespace-nowrap", compact ? "gap-1" : "gap-2")}>
     <RateNumber rate={row.rate} live={row.live} />
-    {compact ? <span aria-hidden="true" style={{ width: UNIT_WIDTH }} className="flex-none" /> : <MinuteBars bars={row.bars} scale={row.scale} />}
+    {!compact && <MinuteBars bars={row.bars} scale={row.scale} />}
   </span>;
 }
 
@@ -203,8 +202,7 @@ function SpeedHelp({ bars, className }: { bars: boolean; className?: string }) {
 /**
  * The In progress heading's total in the speed column, with the unit that names the column below and the column's help
  * after it, so the help reads as the speed's and not as one more AI's mark; its number stands over the rows' numbers and
- * the unit where their bars do. Beside a narrow list the unit is the short one, so the unit and the help fit the slot
- * the rows keep empty and the heading's right padding.
+ * the unit where their bars do. Beside a narrow list the number alone (HeadingSpeedUnit says the rest).
  */
 export function HeadingTokenSpeed({ tops, compact }: { tops: readonly Task[]; compact: boolean }) {
   const { t } = useTranslation("tree");
@@ -215,12 +213,24 @@ export function HeadingTokenSpeed({ tops, compact }: { tops: readonly Task[]; co
     <span title={t("speed.totalTip", { count: tops.length })} className="contents">
       <RateNumber rate={Number(key)} live className="font-medium" />
     </span>
-    <span style={{ width: compact ? UNIT_WIDTH + COMPACT_HELP_ROOM : BARS_WIDTH }}
-      className={cn("flex flex-none items-center text-muted", compact ? "gap-0.5 text-[10px]" : "gap-1 text-[11px]")}>
-      <span title={t("speed.totalTip", { count: tops.length })}>{t(compact ? "speed.perSecond" : "speed.unit")}</span>
-      <SpeedHelp bars={!compact} />
-    </span>
+    {!compact && <span style={{ width: BARS_WIDTH }} className="flex flex-none items-center gap-1 text-[11px] text-muted">
+      <span title={t("speed.totalTip", { count: tops.length })}>{t("speed.unit")}</span>
+      <SpeedHelp bars />
+    </span>}
   </span>;
+}
+
+/**
+ * Beside a narrow list the speed column holds the numbers alone; the heading's short unit and the help stand in its
+ * empty time column (RowTimeRoom), so no row keeps room for them.
+ */
+export function HeadingSpeedUnit({ tops }: { tops: readonly Task[] }) {
+  const { t } = useTranslation("tree");
+  if (!useSpeedKey(totalKey(tops))) return null;
+  return <>
+    <span title={t("speed.totalTip", { count: tops.length })} className="text-[10px] text-muted">{t("speed.perSecond")}</span>
+    <SpeedHelp bars={false} />
+  </>;
 }
 
 /** The time's slot after it on In progress rows: a fixed width so the squares line up whatever the time says. */
