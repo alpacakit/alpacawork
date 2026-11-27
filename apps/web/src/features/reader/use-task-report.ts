@@ -18,6 +18,7 @@ import { acceptedInReader, onScreen, useReaderTurnHeld, type ReaderCard, type Re
 import { readerTurn } from './submission';
 import { departurePreviewed, readerActionsHeld } from './departure';
 import { notify } from '@/lib/notify';
+import { rememberSent } from '@/features/coordinator/sent-here';
 
 type TaskWriteResult = ReturnType<typeof taskWriteResultSchema.parse>;
 type ReportSubmission = { admission: 'rejected'; reason: ApiError }
@@ -93,6 +94,8 @@ export function useTaskReportTarget(opening: ReportOpening, card: ReaderCard | n
         draft: { choice, ...words.title !== undefined && { title: words.title }, ...words.description !== undefined && { description: words.description } },
         admitted: record => {
           operationId = record.operationId;
+          // The row's icon turns the same arc as for a sent instruction until the new state shows (sent-mark.ts).
+          rememberSent(record.operationId, [task.id], key);
           if (!answer) return;
           const current = () => {
             const held = useWriteIntentStore.getState().entries[key];

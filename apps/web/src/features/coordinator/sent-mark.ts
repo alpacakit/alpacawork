@@ -4,21 +4,25 @@ import { useDraftStore } from '@/features/forms/draft-store';
 import { stateSince } from '@/domain/tasks';
 import { useConversation } from './coordinator';
 import { outgoingItem, type Outgoing } from './editor/outbox';
+import { useWriteIntentStore, type WriteIntent } from '@/data/write-intent';
 import { forgetSent, settleSent, useSentHere, type SentHere } from './sent-here';
 import { useEffect } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
 /**
- * The sole rule for the arc around a row's state icon that says "an instruction went to this Task and its work has
- * not started yet". Only this page's own sends count (sent-here.ts), so other devices show nothing.
+ * The sole rule for the arc around a row's state icon that says "something this page sent to this Task has not shown
+ * on its row yet": an instruction to the coordinator whose work has not started, or a state change not yet reported.
+ * Only this page's own sends count (sent-here.ts), so other devices show nothing.
  *
- * A send is on its way until it ends: refused, cancelled or taken back before serve has it; then, once its coordinator
- * turn exists, until that turn has ended (succeeded, failed, or any turn with a result: a joined turn's result comes
- * when the Run it joined ends) or was withdrawn. A row shows the arc while its latest send on its way names it and the
- * row has not taken the work up: no Run queued or running on it, and the same state transition as at the press (a
- * review the request invalidates moves the row to In progress at admission). Both sides of that comparison are serve's own
- * record, so no device clock is involved. Once the row took the work up, that send no longer names it (settleSent), so
- * the arc never comes back when the Run ends before the coordinator's turn does.
+ * An instruction is on its way until it ends: refused, cancelled or taken back before serve has it; then, once its
+ * coordinator turn exists, until that turn has ended (succeeded, failed, or any turn with a result: a joined turn's
+ * result comes when the Run it joined ends) or was withdrawn. A state change is on its way while its write waits out
+ * its undo time or is being delivered; any answer, a failure or an unknown result included, ends it (a confirmed write
+ * has already shown the Task it committed). A row shows the arc while its latest send on its way names it and the row
+ * has not taken it up: the state transition differs from the one at the press (a review the request invalidates moves
+ * the row to In progress at admission), or, for an instruction, a Run is queued or running on it. Both sides of that
+ * comparison are serve's own record, so no device clock is involved. Once the row took it up, that send no longer
+ * names it (settleSent), so the arc never comes back when the Run ends before the coordinator's turn does.
  */
 type Turn = CoordinatorConversation['turns'][number];
 type Flag = 'on' | 'off' | 'none';
@@ -38,17 +42,26 @@ export function turnFlag(conversation: CoordinatorConversation | null, requestId
 /** A send is on its way while its turn is open, or before serve shows a turn, while this device still holds it. */
 export const onItsWay = (local: Flag, turn: Flag) => turn === 'on' || (turn === 'none' && local === 'on');
 
+/** A state change is on its way while its own write waits out its undo time or is being delivered. */
+export const writeOnItsWay = (entry: WriteIntent | undefined, requestId: string) =>
+  entry?.operationId === requestId && (entry.status === 'waiting' || entry.status === 'pending');
+
 type MarkedTask = Pick<Task, 'state' | 'stateLog' | 'rowFacts'>;
-/** Whether the row took the work up since the press. `false` baseline: its state at the press was not known, so only a Run says. */
-export function tookUp(task: MarkedTask, baseline: string | null | false): boolean {
+/**
+ * Whether the row took the send up since the press. A Run counts only for an instruction (`byRun`): a state change can be
+ * sent to a Task already running. `false` baseline: its state at the press was not known, so only a Run says.
+ */
+export function tookUp(task: MarkedTask, baseline: string | null | false, byRun = true): boolean {
   const status = task.rowFacts.status?.kind;
-  if (status === 'queued' || status === 'running') return true;
+  if (byRun && (status === 'queued' || status === 'running')) return true;
   return baseline !== false && stateSince(task) !== baseline;
 }
 
+/** What the arc says it waits for: an instruction's work, or a state change. */
+export type SentMark = 'instruction' | 'state';
 /**
- * One row against this page's sends that name it (oldest first) and whether each is on its way: whether the arc shows,
- * which sends the row has now answered (to settle), and which ended (to forget).
+ * One row against this page's sends that name it (oldest first) and whether each is on its way: what the arc shows for
+ * (null: none), which sends the row has now answered (to settle), and which ended (to forget).
  */
 export function sentVerdict(task: MarkedTask & { id: string }, named: readonly SentHere[], way: readonly boolean[]) {
   const ended: string[] = [], open: SentHere[] = [];
@@ -57,19 +70,20 @@ export function sentVerdict(task: MarkedTask & { id: string }, named: readonly S
     else ended.push(send.requestId);
   });
   const latest = open.at(-1);
-  if (!latest) return { marked: false, settle: [] as string[], ended };
-  if (tookUp(task, latest.tasks[task.id]!)) return { marked: false, settle: open.map(send => send.requestId), ended };
-  return { marked: true, settle: [] as string[], ended };
+  if (!latest) return { marked: null, settle: [] as string[], ended };
+  if (tookUp(task, latest.tasks[task.id]!, !latest.write)) return { marked: null, settle: open.map(send => send.requestId), ended };
+  return { marked: (latest.write ? 'state' : 'instruction') as SentMark, settle: [] as string[], ended };
 }
 
 /** The arc's verdict for one row; it settles and forgets what the verdict says, so a pair never marks again. */
-export function useSentMark(task: { id: string } & MarkedTask): boolean {
+export function useSentMark(task: { id: string } & MarkedTask): SentMark | null {
   const named = useSentHere(useShallow(state => state.sends.filter(send => task.id in send.tasks)));
   const root = useConversation(view => view.root);
   const locals = useDraftStore(state => named.map(send => localFlag(outgoingItem(state.entries, root, send.requestId))).join());
   const turns = useConversation(view => named.map(send => turnFlag(view.conversation, send.requestId)).join());
-  const local = locals.split(','), turn = turns.split(',');
-  const verdict = sentVerdict(task, named, named.map((_, n) => onItsWay(local[n] as Flag, turn[n] as Flag)));
+  const writes = useWriteIntentStore(state => named.map(send => send.write ? writeOnItsWay(state.entries[send.write], send.requestId) : '').join());
+  const local = locals.split(','), turn = turns.split(','), write = writes.split(',');
+  const verdict = sentVerdict(task, named, named.map((send, n) => send.write ? write[n] === 'true' : onItsWay(local[n] as Flag, turn[n] as Flag)));
   const settle = verdict.settle.join(), ended = verdict.ended.join();
   useEffect(() => {
     if (settle) settleSent(task.id, settle.split(','));
