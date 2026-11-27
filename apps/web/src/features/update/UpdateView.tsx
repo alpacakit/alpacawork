@@ -169,9 +169,11 @@ export function UpdateSettingsTab() {
   // What a candidate replaces is what its confirmation names; with none offered, what this PC has that comes with alpacawork.
   const targets = useUpdateTargets("candidateId" in status ? status.candidateId : null)
     ?? (skills ? ["alpacawork", ...SKILL_OFFERS.filter(offer => offer.from.kind === "bundled" && skills.find(each => each.name === offer.name)?.installed).map(offer => offer.name)] : null);
-  const skillName = (name: string) => name === "alpacawork" ? t("update.page.appSkill")
-    : SKILL_OFFERS.some(offer => offer.name === name) ? setup(`skills.items.${name}.title`) : name;
-  const items = [{ name: t("update.page.app"), kind: null }, ...(targets ?? []).map(name => ({ name: skillName(name), kind: t("update.page.skill") }))];
+  const skillTitle = (name: string) => name === "alpacawork" ? t("update.page.appSkill")
+    : SKILL_OFFERS.some(offer => offer.name === name) ? setup(`skills.items.${name}.title`) : null;
+  // A skill reads as Recommended skills shows it: what it is for, then its name, the one that is in the skills folder.
+  const items = [{ key: "app", title: t("update.page.app"), isSkill: false, name: null },
+    ...(targets ?? []).map(name => { const title = skillTitle(name); return { key: name, title: title ?? name, isSkill: true, name: title ? name : null }; })];
   if (!known) return <RegionSkeleton shape="settingRows" rows={4} />;
   return <div data-settings-update className="space-y-8">
     <UpdateCard />
@@ -179,10 +181,13 @@ export function UpdateSettingsTab() {
       <h4 className="m-0 text-base font-semibold">{t("update.page.targets")}</h4>
       <p className="m-0 mt-1 text-sm text-muted [word-break:auto-phrase]">{t("update.page.targetsNote")}</p>
       {targets === null ? <RegionSkeleton shape="settingRows" rows={3} className="mt-3" /> : <ul className="m-0 mt-3 list-none border-t border-line p-0">
-        {items.map(item => <li key={item.name} className="flex min-h-12 items-center gap-3 border-b border-line py-2">
-          <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-0.5">
-            <span className="text-sm [word-break:auto-phrase]">{item.name}</span>
-            {item.kind && <span className="flex-none rounded-full border border-line px-1.5 text-xs text-muted">{item.kind}</span>}
+        {items.map(item => <li key={item.key} data-update-target={item.key} className="flex min-h-12 items-center gap-3 border-b border-line py-2">
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm [word-break:auto-phrase]">{item.title}</span>
+            {item.isSkill && <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+              {item.name && <code data-update-skill-name className="font-mono text-xs text-soft [overflow-wrap:anywhere]">{item.name}</code>}
+              <span className="flex-none rounded-full border border-line px-1.5 text-xs text-muted">{t("update.page.skill")}</span>
+            </span>}
           </span>
           <span className="w-28 flex-none text-end text-xs text-soft tabular-nums">
             {status.kind === "done" ? status.version : next ? <>{APP_VERSION}<TextMark className="mx-1"><Icon name="arrowRight" className="size-3" /></TextMark><span className="font-semibold text-ink">{next}</span></> : APP_VERSION}</span>
@@ -246,24 +251,30 @@ export function UpdateCard({ quiet = false }: { quiet?: boolean }) {
   const card = useCard(status);
   if (quiet && !updateHasNews(status)) return null;
   const mark = CARD_MARK[card.tone];
-  return <section data-update-card={status.kind} role="status" aria-live="polite" className="flex flex-wrap items-start gap-x-4 gap-y-4 rounded-lg border border-line px-5 py-4">
+  // One row carries the mark, the state with its versions, and the press, centred on each other: the mark on the two
+  // lines boxed to their capitals and baseline, not on the card. What to do or what happens next reads under them.
+  return <section data-update-card={status.kind} role="status" aria-live="polite"
+    className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 rounded-lg border border-line px-5 py-4 [grid-template-areas:'mark_head_press'_'._body_body'_'._steps_steps'] narrow:grid-cols-1 narrow:[grid-template-areas:'head'_'body'_'steps'_'press']">
     {/* On a phone the mark stands in the title's line, so the words keep the card's width. */}
-    <span className={cn("grid size-9 flex-none place-items-center rounded-full narrow:hidden", mark.className)}>
+    <span className={cn("grid size-9 place-items-center rounded-full [grid-area:mark] narrow:hidden", mark.className)}>
       <Icon name={mark.icon} className={cn("size-4.5", card.tone === "busy" && "animate-spin [animation-duration:1.4s]")} strokeWidth={2.25} /></span>
-    <div className="min-w-0 flex-1 basis-56">
-      <div data-update-state><h4 className={cn("m-0 text-base font-semibold [word-break:auto-phrase]", card.tone === "warn" && "text-warn")}>
+    <div data-update-state className="contents">
+      {/* Boxed to the title's capitals and the versions' baseline for the mark beside them; on a phone, where the mark
+          stands in the title's line, the lines keep their whole height. */}
+      <div className="cap-box [grid-area:head] narrow:[text-box:normal]"><h4 className={cn("m-0 text-base font-semibold [word-break:auto-phrase]", card.tone === "warn" && "text-warn")}>
         <TextMark className="me-2 hidden narrow:inline-grid"><span className={cn("grid size-6 place-items-center rounded-full", mark.className)}>
           <Icon name={mark.icon} className={cn("size-3.5", card.tone === "busy" && "animate-spin [animation-duration:1.4s]")} strokeWidth={2.5} /></span></TextMark>{card.title}</h4>
-      <p className="m-0 mt-0.5 flex flex-wrap items-baseline gap-x-3 text-sm text-muted tabular-nums">
-        <span>alpacawork {card.from ? <>{card.from}<TextMark className="mx-1"><Icon name="arrowRight" className="size-3.5" /></TextMark><span className="font-semibold text-ink">{card.to}</span></> : card.to}</span>
-        {card.to && <ReleaseNotes version={card.to} />}
-      </p>
-      {card.body && <p className="m-0 mt-2 text-sm text-muted [word-break:auto-phrase]">{card.body}</p>}</div>
-      {/* Two presses (copy the pause, then retry) read as steps under the words that explain them. */}
-      {card.pause && <div className="mt-3 flex flex-wrap items-center gap-2 narrow:[&>*]:flex-1">
-        <PauseInstruction version={card.pause} />{card.action && <CardPress card={card} sending={sending} />}</div>}
+        {/* Running text, not a flex line, so the box above trims its last line and a wrapped line keeps its leading. */}
+        <p className="m-0 mt-0.5 text-sm text-muted tabular-nums">
+          <span className="me-2 whitespace-nowrap">alpacawork {card.from ? <>{card.from}<TextMark className="mx-1"><Icon name="arrowRight" className="size-3.5" /></TextMark><span className="font-semibold text-ink">{card.to}</span></> : card.to}</span>
+          {card.to && <>{" "}<ReleaseNotes version={card.to} /></>}
+        </p></div>
+      {card.body && <p className="m-0 mt-3 text-sm text-muted [grid-area:body] [word-break:auto-phrase]">{card.body}</p>}
     </div>
-    {card.action && !card.pause && <div className="flex-none self-center narrow:w-full narrow:[&>*]:w-full"><CardPress card={card} sending={sending} /></div>}
+    {/* Two presses (copy the pause, then retry) read as steps under the words that explain them. */}
+    {card.pause && <div className="mt-3 flex flex-wrap items-center gap-2 [grid-area:steps] narrow:[&>*]:flex-1">
+      <PauseInstruction version={card.pause} />{card.action && <CardPress card={card} sending={sending} />}</div>}
+    {card.action && !card.pause && <div className="[grid-area:press] narrow:mt-4 narrow:[&>*]:w-full"><CardPress card={card} sending={sending} /></div>}
   </section>;
 }
 
