@@ -144,7 +144,7 @@ test("a new version whose review is unread is turned on only after its findings 
   fireEvent.click(document.querySelector('[data-automation-band="awaiting"] [data-automation-band-act]')!);
   expect(document.querySelector('[data-automation-band="before-on"] h3 + [data-automation-band-back]')).not.toBeNull();
   expect(sent.some(call => call.path.includes("automation/enable"))).toBe(false);
-  expect(text('[data-automation-band="before-on"] [data-automation-review]')).toMatch(/^1 to fix/);
+  expect(text('[data-automation-band="before-on"] [data-automation-review]')).toMatch(/^1 finding \(1 to fix\): Counts done tasks too/);
   fireEvent.click(document.querySelector("[data-automation-review-open]")!);
   expect(text('[data-automation-band="before-on"]')).toContain("Fix: Counts done tasks too");
   // Having read them, the person may go back to the band they came from (to drop the new version instead).
@@ -200,4 +200,19 @@ test("a draft that sends to a destination not entered yet says so and is turned 
   fireEvent.change(document.querySelector(`${band} [data-automation-destination-url]`)!, { target: { value: "https://hooks.example.com/x" } });
   fireEvent.click(document.querySelector(`${band} [data-automation-destination-save]`)!);
   await waitFor(() => expect(sent.find(call => call.path.includes("automation/destination-set"))?.body).toEqual({ under: "P1", name: "chat", url: "https://hooks.example.com/x" }));
+});
+
+test("a review says how many of its findings must be fixed, in one line led by a fix, its long summary only when opened", () => {
+  const review = { state: "fix" as const, summary: "A long summary of everything the review saw. ".repeat(10), model: "sonnet", at: "2026-11-27T05:01:00.000Z", acknowledged: null,
+    findings: [{ level: "note" as const, file: "main.ts", line: 2, title: "A note", text: "A note in full" },
+      { level: "must" as const, file: "main.ts", line: 9, title: "Counts done tasks too", text: "It counts done tasks too, in full" },
+      { level: "note" as const, file: "main.ts", line: 12, title: "Another note", text: "Another note in full" }] };
+  const reviewed = automation({ id: "A9", enabled: false, everEnabled: false, live: null, latest: version({ review }) });
+  const data = screenData();
+  seedAutomations(data, listOf([reviewed]));
+  opened("A9");
+  windowOn(data, "A9");
+  const line = text('[data-automation-band="before-on"] [data-automation-review]')!;
+  expect(line).toMatch(/^3 findings \(1 to fix\): Counts done tasks too/);
+  expect(line).not.toContain("A long summary");
 });

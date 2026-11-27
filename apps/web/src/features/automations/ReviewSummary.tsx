@@ -15,12 +15,17 @@ export function ReviewSummary({ review }: { review: Review }) {
   if (review.state === "running") return <span>{t("review.running")}</span>;
   if (review.state === "unavailable") return <span>{t("review.unavailable")}</span>;
   if (!review.findings.length) return <span>{t("review.ok")}</span>;
-  const must = review.findings.some(finding => finding.level === "must");
+  // The count says how many must be fixed among them; the line is the first finding's title (one line by the server's
+  // rule), a fix first; the review's own summary, of any length, is read opened.
+  const must = review.findings.filter(finding => finding.level === "must");
+  const first = must[0] ?? review.findings[0]!;
   return <span data-automation-review className="block">
-    <span className="block">{t(must ? "review.headMust" : "review.head", { count: review.findings.length })}
-      {(review.summary || review.findings[0]?.title) && <>{t("colon")}{review.summary || review.findings[0]!.title}</>}{" "}
-      <Button variant="ref" data-automation-review-open aria-expanded={open} className="narrow:min-h-11" onClick={() => setOpen(!open)}>{t(open ? "review.close" : "review.open")}</Button></span>
+    <span className="flex min-w-0 items-baseline gap-1">
+      <span className="min-w-0 truncate">{t("review.head", { count: review.findings.length })}{must.length > 0 && t("review.mustPart", { count: must.length })}
+        {t("colon")}{first.title ?? first.text}</span>
+      <Button variant="ref" data-automation-review-open aria-expanded={open} className="flex-none narrow:min-h-11" onClick={() => setOpen(!open)}>{t(open ? "review.close" : "review.open")}</Button></span>
     {open && <span className="mt-1 block">
+      {review.summary && <span className="mb-1 block text-muted">{review.summary}</span>}
       {review.findings.map((finding, at) => <span key={at} className="mb-1 block">
         {t(finding.level === "must" ? "review.must" : "review.note", { text: finding.title ?? finding.text })}
         {finding.title && finding.text !== finding.title && <span className="block text-muted">{finding.text}</span>}
