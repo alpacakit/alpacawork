@@ -269,8 +269,8 @@ export function RowEnd({ task, childCount, id, timeApart, className }: { task: T
  * A working row's time at the row's end, after the speed column: its right edge is every other row's time's (the line's
  * right padding), so the times of all sections stand in one column, the working ones in the working colour.
  */
-export function RowTime({ task }: { task: Task }) {
-  return <span data-row-time className={cn(TIME_SLOT, "flex-none self-center pr-2 text-xs")}><StatusTime task={task} /></span>;
+export function RowTime({ id, task }: { id?: string; task: Task }) {
+  return <span id={id} data-row-time className={cn(TIME_SLOT, "flex-none self-center pr-2 text-xs")}><StatusTime task={task} /></span>;
 }
 
 /** The heading's room over the rows' times (RowTime): the heading has no time of its own. */

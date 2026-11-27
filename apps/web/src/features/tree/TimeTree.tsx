@@ -610,7 +610,9 @@ const TaskRow = memo(function TaskRow({ node, shared, visibleRows }: TaskRowProp
   const label = useRef<HTMLDivElement>(null);
   useTint(label, `row:${task.id}`, task.hash, shared.drawing);
   const title = useRef<HTMLButtonElement>(null);
-  const endId = useId();
+  const endId = useId(), timeId = useId();
+  // A working row beside the speed column says its time at the row's end (RowTime), outside its end's words.
+  const timeApart = shared.lane > 0 && node.row?.section === "doing";
   const enter = useRef<(() => void) | null>(null);
   const look = useTaskLook(task);
   const stateWord = look.word;
@@ -667,15 +669,15 @@ const TaskRow = memo(function TaskRow({ node, shared, visibleRows }: TaskRowProp
               <TaskId id={task.id} className="flex-none text-xs tabular-nums text-muted" />
               {/* The title keeps about half the line; what stands at its end (the agents first) gives way. */}
               <RowTitle title={task.title} className="min-w-[45%] flex-1 text-base text-ink" />
-            </>, "flex min-w-[45%] flex-1 items-center gap-1.5 text-left after:absolute after:inset-0 after:content-['']", endId)}
+            </>, "flex min-w-[45%] flex-1 items-center gap-1.5 text-left after:absolute after:inset-0 after:content-['']", timeApart ? `${endId} ${timeId}` : endId)}
             {/* The row's one time at its end, with what is so of its state before it. It stands beside the press, as its time
                 is a press of its own; the press's cover lies over the rest of it, so a press there still opens the task. */}
             <RowEnd id={endId} task={task} childCount={progress ? `${progress.done}/${progress.total}` : null}
-              timeApart={shared.lane > 0 && node.row?.section === "doing"} />
+              timeApart={timeApart} />
           </div>}
           {shared.lane > 0 && node.row?.section === "doing" && <>
             <SpeedLane width={shared.lane} className="items-center"><RowTokenSpeed task={task} compact={shared.lane < SPEED_LANE} /></SpeedLane>
-            <RowTime task={task} />
+            <RowTime id={timeId} task={task} />
           </>}
         </div>
         {shared.strips && (visibleRows === null || visibleRows.has(task.id)
