@@ -8,6 +8,20 @@ When you hand several jobs to AI, work is left for you: remembering what you ask
 
 What you do comes down to three things: ask, answer questions, and check the results. It is built so you can do all of them on a phone.
 
+## Work moves by task, not by conversation
+
+Most tools for AI agents organize work around your conversation with the AI. alpacawork organizes it around tasks, and gives each task the AI it needs at the time.
+
+So the screen lists the tasks you asked for, not conversations with the AI. You ask from the input box at the bottom of the screen. The coordinator's reply appears above the input box; press it to open the conversation.
+
+Work is organized by task for these reasons:
+
+- **You want the results, not the conversation.** What was made, what is left, and the questions for you are grouped by task. You don't have to scroll back through a long conversation to find them.
+- **Tasks and conversations don't line up one to one.** What a job involves changes along the way. One conversation mixes several jobs, and one job spans several conversations. In alpacawork the record stays with the task, so starting a new conversation does not lose the history or the results.
+- **Swap the AI, and the work goes on.** Whether you switch the assigned AI to another model or from Claude Code to Codex, the new AI picks up from the task's record.
+- **One task can have several AIs.** You can put an AI on each role, such as one that builds and one that checks.
+- **The AI manages large work as a hierarchy of tasks.** The AI splits work into subtasks, and tasks are grouped by project. The list shows how far each one has got.
+
 ## How one request moves along
 
 Suppose you ask, "Build a booking form for the shop's site." The numbers in the diagram match the numbers in the text below.

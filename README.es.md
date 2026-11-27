@@ -40,6 +40,10 @@ alpacawork es una herramienta de orquestación de IA. Te permite dirigir desde u
   <img src="docs/images/demo-dark-es.webp" alt="Una petición escrita en el cuadro de chat del teléfono se convierte en tres tareas que avanzan en paralelo en la lista del PC; se revisa un resultado y se desliza para marcar la tarea como completada, y una pregunta de la IA se responde eligiendo una opción; al final, el teléfono y el PC lado a lado" width="800">
 </p>
 
+## El trabajo avanza por tareas, no por conversaciones
+
+La mayoría de las herramientas para agentes de IA organizan el trabajo en torno a la conversación con la IA. En alpacawork, pides desde un solo chat y el trabajo que pides avanza por tareas. Por eso la pantalla muestra las tareas que pediste, no conversaciones con la IA. Los resultados y las preguntas para ti se agrupan por tarea, y el historial se queda en la tarea aunque empieces una conversación nueva o cambies de IA. Los motivos están en [Cómo funciona](docs/es/concept.md#el-trabajo-avanza-por-tareas-no-por-conversaciones).
+
 ## Instalar
 
 Pega el siguiente texto en Claude Code o Codex, en tu PC. La IA instala alpacawork y te indica la URL de la pantalla de configuración inicial, que normalmente también se abre en tu navegador.
