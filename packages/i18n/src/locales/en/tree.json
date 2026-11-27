@@ -30,7 +30,7 @@
       "direct": "The front-desk AI answers short questions right here. <b>Ask for a job, like “make …”, and it becomes a task in the list.</b> The front-desk AI decides which it is.",
       "label": "This label tells the AI <b>which task or project you mean</b>. Without it, the AI works it out from the conversation. Try removing it and sending your request.",
       "more": "Once you have looked over the report, <b>you can keep asking.</b> Try having it make one more version to compare.",
-      "phone": "Away from your desk, <b>you can answer questions from your phone.</b> The steps are in {{settings}} under “{{apps}}”.",
+      "phone": "<b>You can also send instructions and answer questions from your phone.</b> The AI is not left waiting while you are away from your desk, so it is worth setting up. The steps are in {{settings}} under “{{apps}}”.",
       "phoneGrip": "Drag the handle up or down to change the height.",
       "phoneNotify": "Notifications are off on this phone. Turn them on to be notified when a question or a report arrives.",
       "phoneQuestion": "Choose an answer, then swipe right to send it, or left for “{{hold}}”. Bring your finger back partway and nothing happens.",

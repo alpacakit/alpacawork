@@ -30,7 +30,7 @@
       "direct": "A IA da recepção responde aqui as perguntas curtas. <b>Se você pedir um trabalho, como “faça …”, ele vira uma tarefa na lista.</b> A IA da recepção decide qual é o caso.",
       "label": "Esta etiqueta indica à IA <b>de qual tarefa ou projeto você fala</b>. Sem ela, a IA entende pela conversa. Experimente removê-la e enviar seu pedido.",
       "more": "Depois de conferir o relatório, <b>você pode continuar pedindo.</b> Experimente pedir mais uma versão para comparar.",
-      "phone": "Longe da mesa, <b>você pode responder às perguntas pelo celular.</b> O passo a passo está em {{settings}}, em “{{apps}}”.",
+      "phone": "<b>Você também pode enviar instruções e responder perguntas pelo celular.</b> Assim a IA não fica esperando quando você está longe da mesa, por isso recomendamos configurar. O passo a passo está em {{settings}}, em “{{apps}}”.",
       "phoneGrip": "Arraste a alça para cima ou para baixo para mudar a altura.",
       "phoneNotify": "As notificações estão desativadas neste celular. Ative-as para ser avisado quando chegar uma pergunta ou um relatório.",
       "phoneQuestion": "Escolha uma resposta e deslize para a direita para enviá-la, ou para a esquerda para “{{hold}}”. Se voltar o dedo no meio do caminho, nada acontece.",
