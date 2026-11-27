@@ -24,7 +24,6 @@
     "week": "Weekly"
   },
   "card": {
-    "copied": "Image copied",
     "copy": "Copy",
     "copyFailed": "Couldn't copy. Save the image instead",
     "dark": "Dark",

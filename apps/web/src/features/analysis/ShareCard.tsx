@@ -245,7 +245,7 @@ export function CardPane({ place, reads: { face, tasks, usage }, waitFrom }: {
     } catch { if (message !== null) notify.error(t("card.drawFailed")); return false; }
   };
   const preview = useRef<HTMLDivElement>(null);
-  const [copied, copy] = useWorked(() => !!svg && copyCard(svg).then(() => { notify.success(t("card.copied")); return true; }, () => { notify.error(t("card.copyFailed")); return false; }));
+  const [copied, copy] = useWorked(() => !!svg && copyCard(svg).then(() => true, () => { notify.error(t("card.copyFailed")); return false; }));
   const share = async () => {
     try {
       const picture = await drawn();
