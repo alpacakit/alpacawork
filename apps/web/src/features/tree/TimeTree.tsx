@@ -548,7 +548,7 @@ function SectionHead({ section, first, shared, onToggle }: { section: Section; f
         {section.section === "done" && <TodayMarks />}
         {section.section === "doing" && <span className={cn(HEAD_LINE, "ml-auto min-w-0 shrink narrow:pr-1.5")}><HeadingAgents tops={sectionTops(section)} narrow={shared.narrow} /></span>}
       </h2>
-      {shared.lane > 0 && section.section === "doing" && <SpeedLane width={shared.lane} className="mb-0.5"><HeadingTokenSpeed tops={sectionTops(section)} compact={shared.lane < SPEED_LANE} /></SpeedLane>}
+      {shared.lane > 0 && section.section === "doing" && <SpeedLane width={shared.lane} className={cn("mb-0.5", shared.lane < SPEED_LANE && "pr-2")}><HeadingTokenSpeed tops={sectionTops(section)} compact={shared.lane < SPEED_LANE} /></SpeedLane>}
     </div>
   </div>;
 }
