@@ -32,7 +32,7 @@ export { stepJournalEntrySchema, stepTimeSourceSchema, stepFingerprintSchema, st
 export { clipRunText, previewRunLine, previewToolInput, toolInputText, toolInputDocument, toolInputParts, inputDocument, fullRunText, toolResultText, toolArgumentText, type InputParts } from './work-preview.js';
 import { runWorkSchema, runStepsSchema, RUN_NOTE_LIMIT, RUN_TOOL_NAME_LIMIT } from './work-contract.js';
 import { runOutputSchema } from './run-output.js';
-export { runOutputSpeed, OUTPUT_WINDOW_SECONDS, type RunOutput, type RunOutputSpeed } from './run-output.js';
+export { runOutputSpeed, OUTPUT_WINDOW_SECONDS, SAMPLE_COUNT as OUTPUT_BARS, type RunOutput, type RunOutputSpeed } from './run-output.js';
 export const runActivitySchema = z.object({
   at: z.iso.datetime({ offset: true }), kind: runActivityKindSchema,
   toolName: z.string().max(RUN_TOOL_NAME_LIMIT).nullable(),

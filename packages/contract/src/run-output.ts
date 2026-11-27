@@ -1,7 +1,8 @@
 import { z } from 'zod';
 
 const SAMPLE_SECONDS = 5;
-const SAMPLE_COUNT = 12;
+/** How many bars a minute of output is said in. */
+export const SAMPLE_COUNT = 12;
 export const OUTPUT_WINDOW_SECONDS = SAMPLE_SECONDS * SAMPLE_COUNT;
 export const runOutputSchema = z.object({
   buckets: z.array(z.tuple([z.int().nonnegative(), z.int().positive()])).max(OUTPUT_WINDOW_SECONDS),

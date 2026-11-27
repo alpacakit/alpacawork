@@ -8,7 +8,7 @@
  */
 import { useLayoutEffect, useSyncExternalStore, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { runOutputSpeed, type RunOutputSpeed } from "@alpacawork/contract/run";
+import { OUTPUT_BARS, runOutputSpeed, type RunOutputSpeed } from "@alpacawork/contract/run";
 import { AgentMark } from "@/components/ui/agent-mark";
 import { useServerSettings } from "@/data/queries";
 import { agentKind } from "@/domain/agent-mark";
@@ -104,9 +104,16 @@ function useSpeedKey(read: (data: WorkspaceData, now: number) => string) {
 
 /** `live`: output counted in the 5 seconds ending now; otherwise the rate is the latest one held between model calls. */
 type RowShown = { rate: number; live: boolean; bars: number[]; scale: number };
+/** A minute of bars that counted nothing: what a row says while its agents have output nothing measured yet. */
+const SILENT_BARS: readonly number[] = Array(OUTPUT_BARS).fill(0);
+/**
+ * A working row says 0 from its first moment, before its agents' first counted output arrives, so its speed never
+ * stands empty while it works. A row with no agent running says nothing.
+ */
 const rowKey = (task: Task) => (data: WorkspaceData, now: number) => {
   const speed = rowSpeed(task, data, now);
-  if (!speed) return "";
+  if (!speed) return runningRunsSaid(task)
+    ? JSON.stringify({ rate: 0, live: false, bars: [...SILENT_BARS], scale: sharedScale(data, now) } satisfies RowShown) : "";
   const bars = speed.bars.map(shown);
   return JSON.stringify({ rate: shown(speed.rate), live: bars.at(-1)! > 0, bars, scale: sharedScale(data, now) } satisfies RowShown);
 };
@@ -171,12 +178,13 @@ export function RowTokenSpeed({ task, compact }: { task: Task; compact: boolean 
   </span>;
 }
 
-/** The section's total: the sum of the numbers its rows show, so the two always add up. */
+/** The section's total: the sum of the numbers its rows show (0 for a working row not measured yet), so the two always add up. */
 const totalKey = (tops: readonly Task[]) => (data: WorkspaceData, now: number) => {
   let total = 0, measured = false;
   for (const task of tops) {
     const speed = rowSpeed(task, data, now);
     if (speed) { measured = true; total += shown(speed.rate); }
+    else if (runningRunsSaid(task)) measured = true;
   }
   return measured ? String(total) : "";
 };
