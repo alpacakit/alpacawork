@@ -63,7 +63,8 @@
     "review": "Review"
   },
   "sent": {
-    "pending": "Instruction sent"
+    "pending": "Instruction sent",
+    "stateChange": "State change sent"
   },
   "shelved": {
     "archived": "Archived",

@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const TAKEN = ['adopted', 'fix', 'redo', 'addition', 'new_request', 'dropped'] as const;
 export const CAUSES = ['unclear_request', 'misread', 'shortfall', 'premise_changed', 'external', 'other'] as const;
 export const ASPECTS = ['look_feel', 'behavior', 'wording', 'speed', 'scope', 'presentation'] as const;
-export const PLACED_AS = ['policy', 'lighter', 'exception'] as const;
+export const PLACED_AS = ['default', 'policy', 'lighter', 'exception'] as const;
 export const TRIGGERS = ['instruction', 'found', 'misjudged', 'refine'] as const;
 export const REASON_MEANINGS = {
   taken: {
@@ -31,7 +31,9 @@ export const REASON_MEANINGS = {
     presentation: 'How the result is organized or presented for review.',
   } satisfies Record<typeof ASPECTS[number], string>,
   placedAs: {
-    policy: 'The choice follows the applicable placement policy.',
+    default: 'No model or effort is given with --ai-stack or --selected, because neither the user\'s words nor the project ' +
+      'policy names one for this work.',
+    policy: 'The AI named is what the user\'s words or the project policy name for this work.',
     lighter: 'A lighter model or lower effort is being tried.',
     exception: 'This choice departs from policy. Give one line with --placed-note.',
   } satisfies Record<typeof PLACED_AS[number], string>,

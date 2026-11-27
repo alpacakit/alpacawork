@@ -9,6 +9,7 @@ import { daysBetween, dayLabel, format, splitFigure, inUnit, monthLabel, numberT
 import { axisLabels } from "./charts";
 import { OpenMark, tipAround } from "./parts";
 import { Icon } from "@/components/ui/icon";
+import { TextMark } from "@/components/ui/text-mark";
 import type { Bucket, Group, ListSet, ListValue } from "./contract";
 
 /**
@@ -76,7 +77,7 @@ export function Parts({ items = [], line }: { items?: PartItem[]; line?: { name:
     <div className="grid w-full grid-cols-[minmax(0,1fr)_var(--part-value,auto)_var(--part-share,auto)] gap-x-2 gap-y-1">
       {items.map(item => {
         const cells = <>
-          <span className={name}>{item.color && <i aria-hidden className={cn("me-2 inline-block size-2 flex-none self-center rounded-xs", item.color)} />}{item.name}</span>
+          <span className={name}>{item.color && <TextMark className="me-2"><i aria-hidden className={cn("inline-block size-2 flex-none rounded-xs", item.color)} /></TextMark>}{item.name}</span>
           <span data-part-col="value" className={value}>{item.value}{item.onOpen ? <OpenMark /> : <i aria-hidden className="inline-block size-3 flex-none" />}</span>
           <span data-part-col="share" className={cn(share, "text-soft tabular-nums")}>{item.share ?? ""}</span>
         </>;
@@ -531,15 +532,15 @@ function DayWindow({ day, say, room, at, box, onList, onPart, onStep, first, las
     </div>
     {parts.length > 0 && <div className="mt-1.5 -mx-1.5 grid grid-cols-[auto_auto_auto] gap-x-4">
       {(room.say.parts?.(0) ?? []).map((part, index) => <div key={`room-${index}`} aria-hidden className="invisible col-span-3 grid h-0 grid-cols-subgrid overflow-hidden px-1.5">
-        <span className="flex items-center whitespace-nowrap">{part.color && <i className="me-2 inline-block size-2" />}{part.name}</span>
+        <span className="flex items-baseline whitespace-nowrap">{part.color && <TextMark className="me-2"><i className="inline-block size-2" /></TextMark>}{part.name}</span>
         <span className="font-semibold whitespace-nowrap tabular-nums">{part.value}</span>
-        <span className="flex items-center gap-0.5 text-xs whitespace-nowrap tabular-nums">{part.share ?? ""}{part.list && <OpenMark />}</span>
+        <span className="flex items-baseline gap-0.5 text-xs whitespace-nowrap tabular-nums">{part.share ?? ""}{part.list && <OpenMark />}</span>
       </div>)}
       {parts.map(part => {
         const cells = <>
-          <span className="flex items-center whitespace-nowrap text-muted">{part.color && <i aria-hidden className={cn("me-2 inline-block size-2 rounded-xs", part.color)} />}{part.name}</span>
+          <span className="flex items-baseline whitespace-nowrap text-muted">{part.color && <TextMark className="me-2"><i className={cn("inline-block size-2 rounded-xs", part.color)} /></TextMark>}{part.name}</span>
           <span className="text-end font-semibold whitespace-nowrap text-ink tabular-nums decoration-ink underline-offset-4 group-hover/open:underline">{part.value}</span>
-          <span className="flex items-center justify-end gap-0.5 text-xs whitespace-nowrap text-soft tabular-nums">{part.share ?? ""}{part.list && <OpenMark />}</span>
+          <span className="flex items-baseline justify-end gap-0.5 text-xs whitespace-nowrap text-soft tabular-nums">{part.share ?? ""}{part.list && <OpenMark />}</span>
         </>;
         const row = "group/open col-span-3 grid grid-cols-subgrid items-center rounded-sm px-1.5 py-1.5";
         return part.list ? <button key={part.name} type="button" data-part-index={parts.indexOf(part)} onClick={() => onPart(part.list!)} className={cn(row, "text-start hover:bg-hover")}>{cells}</button>
@@ -547,11 +548,11 @@ function DayWindow({ day, say, room, at, box, onList, onPart, onStep, first, las
       })}
     </div>}
     {say.line && <div className="mt-2 border-t border-rule pt-2">
-      <div className="flex items-baseline justify-between gap-6"><span className="flex items-center text-muted"><LineMark />{say.line.name}</span>
+      <div className="flex items-baseline justify-between gap-6"><span className="flex items-baseline text-muted"><LineMark />{say.line.name}</span>
         <b className="font-semibold text-ink tabular-nums">{say.line.value(at)}</b></div>
       <div className="ps-5 text-soft">{say.line.base(at)}</div>
     </div>}
-    {onList && <button type="button" data-window-list="" onClick={onList} className="group/open mt-2 flex w-full items-center gap-1 border-t border-rule pt-2 text-muted hover:text-ink">{t("window.list")}<OpenMark /></button>}
+    {onList && <button type="button" data-window-list="" onClick={onList} className="group/open mt-2 flex w-full items-baseline gap-1 border-t border-rule pt-2 text-muted hover:text-ink">{t("window.list")}<OpenMark /></button>}
   </div>;
 }
 
@@ -583,10 +584,10 @@ function Total({ written, className }: { written: string; className?: string }) 
     <b className="text-heading font-semibold tabular-nums">{value}</b>{unit && <span className="text-base text-muted">{unit}</span>}</span>;
 }
 
-/** The mark of a per-task line (─●), as its name is drawn wherever the line is named. */
-export const LineMark = () => <svg aria-hidden viewBox="0 0 16 8" className="me-2 h-2 w-4 flex-none overflow-visible">
+/** The mark of a per-task line (─●), as its name is drawn wherever the line is named, centred on the name's capitals. */
+export const LineMark = () => <TextMark className="me-2"><svg viewBox="0 0 16 8" className="h-2 w-4 flex-none overflow-visible">
   <line x1="0" y1="4" x2="16" y2="4" className="stroke-trend [stroke-width:1.5]" /><circle cx="8" cy="4" r="2.5" className="fill-trend stroke-bg [stroke-width:1]" />
-</svg>;
+</svg></TextMark>;
 
 /* ── a chart: the scale's one mark over its top line, a line across its middle, bins over the group's days ── */
 type Scale = { top: number; label: string };
@@ -639,7 +640,7 @@ function Frame({ row, scale, lineScale, height, children }: { row: number; scale
     <div className={cn("relative", height)}>
       <span aria-hidden className="absolute bottom-full start-0 text-xs whitespace-nowrap text-soft">{scale.label}</span>
       {/* The line's scale: only the value its top stands for, as quiet as the bars' (the line is named on the left). */}
-      {lineScale && <span aria-hidden className="absolute end-0 bottom-full flex items-center text-xs whitespace-nowrap text-soft"><LineMark />{lineScale}</span>}
+      {lineScale && <span aria-hidden className="absolute end-0 bottom-full flex items-baseline text-xs whitespace-nowrap text-soft"><LineMark />{lineScale}</span>}
       <i aria-hidden className="pointer-events-none absolute inset-x-0 top-0 border-t border-rule" />
       <i aria-hidden className="pointer-events-none absolute inset-x-0 top-1/2 border-t border-rule" />
       <div className="absolute inset-0 border-b border-lit-line">{children}</div>

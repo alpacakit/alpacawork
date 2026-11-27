@@ -1,7 +1,7 @@
 import { beforeAll, expect, test } from "vitest";
 import { i18n, startI18n } from "@alpacawork/i18n";
 import type { AgentLimits, LimitWindow } from "@alpacawork/contract/agent-limits";
-import { barLimit, besideModelWindow, limitTone, resetWords, stoppedWords, windowLabel } from "../src/domain/limits";
+import { barLimit, barLimits, besideModelWindow, limitTone, resetWords, stoppedWords, windowLabel } from "../src/domain/limits";
 
 beforeAll(async () => { startI18n(); await i18n.changeLanguage("en"); });
 const t = (key: string, options?: Record<string, unknown>) => i18n.t(key, options);
@@ -89,6 +89,27 @@ test("an agent whose limits are unknown shows none in its place, and no bar unti
     [row("claude"), row("codex"), row("copilot")]), NOW)))
     .toEqual({ kind: "unknown", agent: "codex", percent: null });
   expect(barLimit(response([agent("claude", "unavailable"), agent("grok", "unsupported")], [row("claude")]), NOW)).toBeNull();
+});
+
+test("the bar shows two agents in the stack's order, always with the one work goes on with, then the others whose limits are read", () => {
+  const shown = (agents: AgentLimits[], stack: ReturnType<typeof row>[]) => barLimits(response(agents, stack), NOW).map(shownOf);
+  const claude = agent("claude", "ok", [week(37)]), codex = agent("codex", "ok", [week(8)]), copilot = agent("copilot", "ok", [week(5)]);
+  const spent = (adapter: AgentLimits["adapter"]) => agent(adapter, "ok", [week(100)]);
+  expect(shown([claude, codex, copilot], [row("claude", "opus"), row("codex"), row("copilot")]))
+    .toEqual([{ kind: "limited", agent: "claude", percent: 37 }, { kind: "limited", agent: "codex", percent: 8 }]);
+  // Past two spent agents, the third carries on and stands beside the last spent one.
+  expect(shown([spent("claude"), spent("codex"), copilot], [row("claude"), row("codex"), row("copilot")]))
+    .toEqual([{ kind: "stopped", agent: "codex", percent: 100 }, { kind: "limited", agent: "copilot", percent: 5 }]);
+  // An agent listed twice is one place, said by its first row that can work.
+  expect(shown([agent("claude", "ok", [week(40), week(100, "Fable")]), codex], [row("claude", "fable"), row("claude", "opus"), row("codex")]))
+    .toEqual([{ kind: "limited", agent: "claude", percent: 40 }, { kind: "limited", agent: "codex", percent: 8 }]);
+  // Beyond the stack: one whose limits are read fills the room; one whose limits are not, does not.
+  expect(shown([claude, agent("grok", "unsupported"), codex], [row("claude")]))
+    .toEqual([{ kind: "limited", agent: "claude", percent: 37 }, { kind: "limited", agent: "codex", percent: 8 }]);
+  expect(shown([claude, agent("codex", "unavailable")], [row("claude")])).toEqual([{ kind: "limited", agent: "claude", percent: 37 }]);
+  // Listed in the stack, an unknown one keeps its place: work may go there.
+  expect(shown([claude, agent("codex", "unavailable")], [row("claude"), row("codex")]))
+    .toEqual([{ kind: "limited", agent: "claude", percent: 37 }, { kind: "unknown", agent: "codex", percent: null }]);
 });
 
 test("every window has a name in words, a model's own window names its model, and the account's sets itself apart", () => {

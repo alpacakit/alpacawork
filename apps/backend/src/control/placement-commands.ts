@@ -3,7 +3,7 @@
  * decided and check only the Task's and the placements' facts. A change's record goes through TaskTransition, and a
  * Task at work tells its new responsible in the same write by a handover notice, whose line return-lines draws.
  */
-import { placementReason, priorResult, resultDecision, type DecisionOptions, type PlacementOptions } from './action-reasons.js';
+import { givesLaunchValues, placementReason, priorResult, resultDecision, type DecisionOptions, type PlacementOptions } from './action-reasons.js';
 import { randomUUID } from 'node:crypto';
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 import type { AiStackPrefix } from '@alpacawork/contract';
@@ -96,7 +96,7 @@ export class PlacementCommands {
   }
   placeNewResponsible(input: PlaceAgentInput & PlacementOptions, actor: TaskActor) {
     return this.write(input.taskId, input.expectedTaskHash, actor, ({ store, record, handover }) => {
-      const placed = placementReason(input, actor, true);
+      const placed = placementReason(input, actor, { given: givesLaunchValues(input), asked: true });
       const profileKey = this.requireProfile(input.profileKey, input.selected, input.aiStack);
       return placeAgentReceiptSchema.parse(input.replacePlacementId === undefined
         ? { ...store.createAndPlace({ taskId: input.taskId,
@@ -113,7 +113,8 @@ export class PlacementCommands {
       const candidate = store.placements(input.taskId).find(item => item.id === input.placementId);
       if (!candidate) throw new Problem(PROBLEM_CODE.notFound, 'Placement does not belong to task', undefined, { reason: { kind: 'placement_does_not_belong_task' } });
       this.requireProfile(candidate.profileKey);
-      const placed = placementReason(input, actor, true);
+      // Handing over keeps the AI the placement already has, so there are no launch values to match the reason against.
+      const placed = placementReason(input, actor, { asked: true });
       return setResponsibleReceiptSchema.parse(store.setResponsible(input.placementId, input.expectedPlacementRevision,
         result => handover(record('responsible_changed', result.placement, 'responsible', undefined, undefined, placed && { placed }))));
     });
@@ -130,7 +131,7 @@ export class PlacementCommands {
   }
   placeMember(input: PlaceMemberInput & PlacementOptions, actor: TaskActor) {
     return this.withResponsibleAt(input, actor, ({ store, record }) => {
-      const placed = placementReason(input, actor, true);
+      const placed = placementReason(input, actor, { given: givesLaunchValues(input), asked: true });
       const profileKey = this.requireProfile(input.profileKey, input.selected, input.aiStack);
       if (input.agentId === undefined)
         return placeMemberReceiptSchema.parse(store.createAndPlace({ taskId: input.taskId,

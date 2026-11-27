@@ -18,6 +18,7 @@ import { ControlTaskCommands } from '@alpacawork/backend/test-dist/control/task-
 import { ControlTaskStore } from '@alpacawork/backend/test-dist/control/task-store.js';
 import { PlacementStore } from '@alpacawork/backend/test-dist/control/placements.js';
 import { PlacementCommands } from '@alpacawork/backend/test-dist/control/placement-commands.js';
+import { placementReason } from '@alpacawork/backend/test-dist/control/action-reasons.js';
 import { issueRunCredential } from '@alpacawork/backend/test-dist/control/credentials.js';
 import { startServer } from '@alpacawork/backend/test-dist/receiver/server.js';
 import { placeMemberReceiptSchema } from '@alpacawork/contract/control';
@@ -51,7 +52,7 @@ const taskHash = async (root: string, id: string) =>
 
 test('responsible Run places a new member, reuses its person ID, and releases an idle placement', async t => {
   const h = await setup(t);
-  const first = await h.commands.placeMember({ placedAs: 'policy', taskId: h.task.id, profileKey: 'claude', expectedTaskHash: h.task.hash,
+  const first = await h.commands.placeMember({ placedAs: 'default', taskId: h.task.id, profileKey: 'claude', expectedTaskHash: h.task.hash,
     expectedResponsibleRevision: h.owner.revision }, h.actor);
   assert.deepEqual([first.agent.id, first.placement.responsible, first.placement.active],
     [first.placement.agentId, false, true]);
@@ -59,7 +60,7 @@ test('responsible Run places a new member, reuses its person ID, and releases an
     expectedTaskHash: await taskHash(h.root, h.task.id), expectedResponsibleRevision: h.owner.revision,
     expectedPlacementRevision: first.placement.revision }, h.actor);
   assert.deepEqual([ended.placement.id, ended.placement.active], [first.placement.id, false]);
-  const second = await h.commands.placeMember({ placedAs: 'policy', taskId: h.task.id, agentId: first.agent.id,
+  const second = await h.commands.placeMember({ placedAs: 'default', taskId: h.task.id, agentId: first.agent.id,
     profileKey: 'claude', expectedTaskHash: await taskHash(h.root, h.task.id),
     expectedResponsibleRevision: h.owner.revision }, h.actor);
   assert.equal(second.agent.id, first.agent.id);
@@ -70,14 +71,24 @@ test('an AI placing a member must give a placement reason', async t => {
   const h = await setup(t);
   await assert.rejects(h.commands.placeMember({ taskId: h.task.id, profileKey: 'claude', expectedTaskHash: h.task.hash,
     expectedResponsibleRevision: h.owner.revision }, h.actor),
-  { code: 'invalid_input', reason: { kind: 'reason_required', flag: '--placed-as', choices: 'policy|lighter|exception' } });
+  { code: 'invalid_input', reason: { kind: 'reason_required', flag: '--placed-as', choices: 'default|policy|lighter|exception' } });
+});
+
+test('an AI declares default exactly when it gives no launch values, another reason only when it gives them, and either on a handover', () => {
+  const ai = { kind: 'placement', placementId: 'P1' } as const;
+  const refused = (kind: string) => ({ code: 'invalid_input', reason: { kind } });
+  assert.deepEqual(placementReason({ placedAs: 'default' }, ai, { given: false, asked: true }), { code: 'default' });
+  assert.deepEqual(placementReason({ placedAs: 'policy' }, ai, { given: true, asked: true }), { code: 'policy' });
+  assert.throws(() => placementReason({ placedAs: 'policy' }, ai, { given: false, asked: true }), refused('placement_reason_needs_selection'));
+  assert.throws(() => placementReason({ placedAs: 'default' }, ai, { given: true, asked: true }), refused('placement_default_names_an_ai'));
+  assert.deepEqual(placementReason({ placedAs: 'default' }, ai, { asked: true }), { code: 'default' });
 });
 
 test('member mutations reject a current owner target and stale revision', async t => {
   const h = await setup(t);
   const base = { taskId: h.task.id, profileKey: 'claude',
     expectedTaskHash: h.task.hash, expectedResponsibleRevision: h.owner.revision };
-  await assert.rejects(h.commands.placeMember({ placedAs: 'policy', ...base, expectedResponsibleRevision: 2 }, h.actor),
+  await assert.rejects(h.commands.placeMember({ placedAs: 'default', ...base, expectedResponsibleRevision: 2 }, h.actor),
     (error: { code: string }) => error.code === 'conflict');
   await assert.rejects(h.commands.releaseMember({ taskId: h.task.id, placementId: h.owner.id,
     expectedTaskHash: h.task.hash, expectedResponsibleRevision: h.owner.revision,
@@ -87,7 +98,7 @@ test('member mutations reject a current owner target and stale revision', async 
 
 test('member with a queued Run cannot be released', async t => {
   const h = await setup(t);
-  const member = await h.commands.placeMember({ placedAs: 'policy', taskId: h.task.id, profileKey: 'claude', expectedTaskHash: h.task.hash,
+  const member = await h.commands.placeMember({ placedAs: 'default', taskId: h.task.id, profileKey: 'claude', expectedTaskHash: h.task.hash,
     expectedResponsibleRevision: h.owner.revision }, h.actor);
   const store = new RunStore(h.root, { busyTimeoutMs: 0 });
   try { store.write(tx => createFixtureRun(store, tx, { task: h.task.id, placementId: member.placement.id, requestId: globalThis.crypto.randomUUID(),
@@ -120,7 +131,7 @@ test('HTTP member assignment binds authorization to the request, not a shared se
   const post = async (headers: Record<string, string> = {}, quote?: string) =>
     fetch(new URL('/api/commands/agent/assign', url), { method: 'POST',
       headers: { 'content-type': 'application/json', ...headers },
-      body: JSON.stringify({ task: ownTask.id, role: 'member', profile: 'claude', placedAs: 'policy',
+      body: JSON.stringify({ task: ownTask.id, role: 'member', profile: 'claude', placedAs: 'default',
         expectedTaskHash: (await tasks.get(ownTask.id)).hash, expectedResponsibleRevision: ownPlacement.revision,
         ...(quote === undefined ? {} : { quote }) }) });
   const accepts = async (headers: Record<string, string>, actor: object, quote?: string) => {

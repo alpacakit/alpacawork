@@ -15,6 +15,7 @@ import { useMoveToTask } from "./use-move-to-task";
 import { RegionSkeleton } from "@/components/ui/skeleton";
 import { ReadFailure } from "@/components/ui/loadable";
 import { Message } from "@/components/ui/message";
+import { TextMark } from "@/components/ui/text-mark";
 import { modelLabel } from "@/domain/agent-label";
 
 type Measured = Extract<HostStatus, { supported: true }>;
@@ -140,8 +141,8 @@ function Tile({ label, value, side, tight, chart, note = [], gpu }: { label: str
   return (
     <div data-host-meter data-host-gpu={gpu} data-tight={tight || undefined}
       className={cn("flex min-w-0 flex-col rounded-lg border px-3 pt-2 pb-2.5", tight ? "border-warn bg-strain" : "border-line")}>
-      <span className={cn("flex min-w-0 items-center gap-1 text-xs", tight ? "text-warn" : "text-muted")}>
-        {tight && <Icon name="caution" className="size-3.5 shrink-0" />}
+      <span className={cn("flex min-w-0 items-baseline gap-1 text-xs", tight ? "text-warn" : "text-muted")}>
+        {tight && <TextMark><Icon name="caution" className="size-3.5 shrink-0" /></TextMark>}
         <span data-host-label className="truncate">{label}</span>
         {tight && <span className="sr-only">{t("host.tight")}</span>}</span>
       <span className={cn("truncate text-xl font-semibold tabular-nums", tight && "text-warn")}>{value}

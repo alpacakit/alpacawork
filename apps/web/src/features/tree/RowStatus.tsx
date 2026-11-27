@@ -8,7 +8,7 @@ import { TimeTipPopover } from "./time-tip";
 import type { Task } from "@/data/types";
 import { AgentCounts, NarrowTokenSpeed, TIME_SLOT } from "./token-speed";
 import { AgentMark } from "@/components/ui/agent-mark";
-import { TextMark } from "@/components/ui/text-mark";
+import { CapCentred, TextMark } from "@/components/ui/text-mark";
 import { crewOf } from "@/domain/people";
 import { useNarrow } from "@/state/view-store";
 import { useConnection } from "@/data/connection";
@@ -94,7 +94,7 @@ export function StatusTime({ task }: { task: Task }) {
 export function RunningRuns({ task }: { task: Task }) {
   const narrow = useNarrow();
   if (!runningRunsSaid(task)) return null;
-  return <span data-row-running-runs={runningRunsSaid(task)} className="ml-1.5 flex min-w-0 shrink items-center gap-1.5 self-center whitespace-nowrap">
+  return <span data-row-running-runs={runningRunsSaid(task)} className="ml-1.5 flex min-w-0 shrink items-baseline gap-1.5 whitespace-nowrap">
     <AgentCounts tasks={[task]} />
     {narrow && <NarrowTokenSpeed task={task} />}
   </span>;
@@ -281,7 +281,7 @@ const ROW_TIME_SLOT = "inline-block min-w-[3.25em] text-right";
  * holds the speed's unit and help there (`children`).
  */
 export function RowTimeRoom({ children }: { children?: ReactNode }) {
-  return children ? <span className={cn(ROW_TIME_SLOT, "mb-0.5 flex flex-none items-center gap-0.5 pr-2 text-left text-xs")}>{children}</span>
+  return children ? <span className={cn(ROW_TIME_SLOT, "flex flex-none items-baseline gap-0.5 pr-2 text-left text-xs")}>{children}</span>
     : <span aria-hidden="true" className={cn(ROW_TIME_SLOT, "invisible flex-none pr-2 text-xs")}>0</span>;
 }
 
@@ -305,7 +305,7 @@ export function RowKindWord({ task }: { task: Task }) {
 function StoppedAgent({ task }: { task: Task }) {
   const people = usePeopleFor(task.id, true);
   const owner = crewOf(task.id, people).responsible;
-  return owner ? <AgentMark name={owner.profileKey} label className="mr-[-0.1em] size-[1em] flex-none self-center opacity-55" /> : null;
+  return owner ? <CapCentred className="mr-[-0.1em]"><AgentMark name={owner.profileKey} label className="size-[1em] opacity-55" /></CapCentred> : null;
 }
 
 function KindWord({ task }: { task: Task }) {

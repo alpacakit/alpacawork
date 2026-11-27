@@ -2,6 +2,7 @@ import type * as React from "react";
 import { Trans, useTranslation } from "react-i18next";
 import type { SKILL_OFFERS } from "@alpacawork/contract";
 import { BetaMark, RecommendedMark } from "./parts";
+import { CapCentred } from "@/components/ui/text-mark";
 
 type Offer = typeof SKILL_OFFERS[number];
 
@@ -17,8 +18,8 @@ export function SkillOfferText({ offer, state, marked = false }: { offer: Offer;
     <span className="flex flex-wrap items-baseline gap-x-3">
       <span className="font-semibold [word-break:auto-phrase]">{t(`skills.items.${offer.name}.title`)}</span>
       {/* Marked only where nothing is given up for it: a recommended one that costs time and tokens is ticked, not urged. */}
-      {marked && offer.recommended && !offer.cost && <RecommendedMark className="self-center" />}
-      {offer.beta && <BetaMark className="self-center" />}
+      {marked && offer.recommended && !offer.cost && <CapCentred><RecommendedMark /></CapCentred>}
+      {offer.beta && <CapCentred><BetaMark /></CapCentred>}
       {state}
     </span>
     <span className="mt-0.5 block text-sm text-muted [word-break:auto-phrase]">{t(`skills.items.${offer.name}.what`)}</span>

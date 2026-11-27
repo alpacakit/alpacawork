@@ -54,7 +54,7 @@ export function RowLines({ task, people, lifted, counts, title, unread }: {
     </>, "col-span-3 col-start-1 row-span-2 row-start-2 grid min-w-0 grid-cols-subgrid grid-rows-subgrid items-baseline text-left", meta)}
     {/* The press's two rows are the row's (subgrid): the marks share this line's baseline, the title takes the next. */}
     <span id={meta} data-row-meta className={cn("col-start-3 row-start-2 flex min-w-0 items-baseline gap-2 text-xs tabular-nums", TONE.aside)}>
-      <RowProjectTile project={task.projectId} className="self-center" />
+      <RowProjectTile project={task.projectId} />
       <span data-row-id className="flex-none">
         {lifted && `${lifted} › `}<span data-row-own-id>{task.id}</span>
       </span>

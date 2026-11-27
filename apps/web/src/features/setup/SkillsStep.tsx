@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field";
 import { ReadFailure } from "@/components/ui/loadable";
 import { RegionSkeleton } from "@/components/ui/skeleton";
+import { CapCentred } from "@/components/ui/text-mark";
 import { cn } from "@/lib/utils";
 import { notify } from "@/lib/notify";
 import { problemText } from "@/features/forms/problem-text";
@@ -51,9 +52,10 @@ export function SkillsStep({ onBack, onNext }: { onBack: () => void; onNext: () 
         const done = installed(offer.name);
         const item = job?.items.find(each => each.name === offer.name);
         return <li key={offer.name} data-setup-skill={offer.name} className="border-b border-line">
-          <label className={cn("grid cursor-pointer grid-cols-[22px_minmax(0,1fr)] items-start gap-x-3 py-3", (done || installing) && "cursor-default")}>
-            <input type="checkbox" checked={done || ticked.has(offer.name)} disabled={done || installing || !selectable(offer.name)}
-              onChange={event => toggle(offer.name, event.target.checked)} className="mt-0.75 size-4.5 cursor-pointer accent-ink disabled:cursor-default" />
+          <label className={cn("grid cursor-pointer grid-cols-[22px_minmax(0,1fr)] items-baseline gap-x-3 py-3", (done || installing) && "cursor-default")}>
+            {/* The box centres on the capitals of the skill's name (CapCentred), on its first line when it wraps. */}
+            <CapCentred><input type="checkbox" checked={done || ticked.has(offer.name)} disabled={done || installing || !selectable(offer.name)}
+              onChange={event => toggle(offer.name, event.target.checked)} className="size-4.5 cursor-pointer accent-ink disabled:cursor-default" /></CapCentred>
             <SkillOfferText offer={offer} marked
               state={done ? <span className="ml-auto text-sm whitespace-nowrap text-done">{t("skills.installed")}</span>
                 : item?.state === "installing" && installing ? <span className="ml-auto text-sm whitespace-nowrap text-muted">{t("skills.installing")}</span> : null} />

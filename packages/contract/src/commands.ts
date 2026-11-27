@@ -525,7 +525,9 @@ const definitions = {
     expectedTaskHash, text('replace', 'Responsible placement to replace'),
     number('expectedPlacementRevision', 'Revision of the responsible placement it replaces'),
     number('expectedResponsibleRevision', 'Current responsible revision'), ...placementOptions, quote, sourceRequest,
-  ], { rules: agentAssignRules, output: taskPlacementResultSchema, help: help(...placementMeanings) }),
+  ], { rules: agentAssignRules, output: taskPlacementResultSchema, help: help(
+    'An AI actor gives with --ai-stack the agent, model and effort that the user\'s words or the project policy name for this work, ' +
+      'and omits it when they name none. Values not given come from the server\'s AI order for tasks.', ...placementMeanings) }),
   'agent/handover': command('write', 'Transfer responsibility to an active placement; it learns the Task\'s state and open work',
     agentHandoverInput, [taskId, text('agent', 'Placement ID'), expectedTaskHash, placementRevision, ...placementOptions, quote, sourceRequest],
     { output: taskPlacementResultSchema, help: help(...placementMeanings) }),

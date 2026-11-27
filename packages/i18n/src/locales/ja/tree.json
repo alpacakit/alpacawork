@@ -62,7 +62,8 @@
     "review": "レビュー"
   },
   "sent": {
-    "pending": "指示を送りました"
+    "pending": "指示を送りました",
+    "stateChange": "状態の変更を送りました"
   },
   "shelved": {
     "archived": "アーカイブ",
