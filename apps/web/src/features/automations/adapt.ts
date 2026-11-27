@@ -107,8 +107,10 @@ export function toRunDetail(automationId: string, run: ServerRun, event: Program
 }
 
 /** What asks for a look, with the run that failed and why when it is a failure (the server names it). */
-function attentionOf(attention: AutomationProgramView["attention"]): Automation["attention"] {
-  return attention.map(item => item.kind === "failed" ? { kind: item.kind, at: item.at, run: item.run, reasonKind: item.reasonKind, reasonText: item.reason }
+function attentionOf(attention: AutomationProgramView["attention"], lastRun: ServerRun | null = null): Automation["attention"] {
+  // What a destination answered is read from the run that failed, when it is the last one.
+  return attention.map(item => item.kind === "failed" ? { kind: item.kind, at: item.at, run: item.run, reasonKind: item.reasonKind, reasonText: item.reason,
+    httpStatus: lastRun?.number === item.run ? answeredStatus(lastRun.operations) : null }
     : { kind: item.kind, at: item.at, run: null, reasonKind: null, reasonText: null });
 }
 
@@ -120,7 +122,7 @@ export function toAutomation(view: AutomationProgramView): Automation {
   return { id: view.id, project: view.project, name: view.name, enabled: view.enabled, disabledReason: view.disabledReason, hash: view.hash,
     latest: toVersion(view.latest), live: view.live ? toVersion(view.live) : null, awaitingEnable: view.awaitingEnable,
     everEnabled: view.everEnabled, hook: view.hook, pendingSignal: view.pendingSignal,
-    lastRun: view.lastRun ? toRun(view.id, view.lastRun) : null, next: view.nextAt ? [view.nextAt] : [], attention: attentionOf(view.attention), week: toWeek(view.week) };
+    lastRun: view.lastRun ? toRun(view.id, view.lastRun) : null, next: view.nextAt ? [view.nextAt] : [], attention: attentionOf(view.attention, view.lastRun), week: toWeek(view.week) };
 }
 
 /**
@@ -133,7 +135,7 @@ function fromListItem(item: ListItem): Automation {
     review: item.latest.review as Version["review"], preview: null };
   return { id: item.id, project: item.project, name: item.name, enabled: item.enabled, disabledReason: item.disabledReason, hash: item.hash, latest, live: null,
     awaitingEnable: item.awaitingEnable, everEnabled: item.everEnabled, hook: { exists: false }, pendingSignal: null,
-    lastRun: item.lastRun ? toRun(item.id, item.lastRun) : null, next: item.nextAt ? [item.nextAt] : [], attention: attentionOf(item.attention), week: toWeek(item.week), listed: true };
+    lastRun: item.lastRun ? toRun(item.id, item.lastRun) : null, next: item.nextAt ? [item.nextAt] : [], attention: attentionOf(item.attention, item.lastRun), week: toWeek(item.week), listed: true };
 }
 
 export function toList(list: z.infer<typeof automationProgramListResultSchema>): AutomationList {

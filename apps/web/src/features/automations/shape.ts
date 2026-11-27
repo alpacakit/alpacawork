@@ -124,7 +124,7 @@ export type RunDetail = z.infer<typeof runDetailSchema>;
  * failure names the run that failed and why (later runs may have been skipped since, for other reasons).
  */
 export const attentionSchema = z.object({ kind: z.enum(["failed", "disabled", "awaiting_enable", "stopping"]), at,
-  run: z.number().nullable(), reasonKind: z.string().nullable(), reasonText: z.string().nullable() });
+  run: z.number().nullable(), reasonKind: z.string().nullable(), reasonText: z.string().nullable(), httpStatus: z.number().nullable().optional() });
 export type Attention = z.infer<typeof attentionSchema>;
 
 /** The last 7 days of runs: those its event matched, those that went on to `run`, failed, skipped (and why, counted). */
