@@ -15,7 +15,7 @@ function layoutTop(element: HTMLElement): number {
   for (let node: HTMLElement | null = element; node; node = node.offsetParent as HTMLElement | null) top += node.offsetTop;
   return top;
 }
-type Position = { update: () => void; end: () => void; retain: () => void; jump: (target: HTMLElement, options: ScrollIntoViewOptions, past?: number) => void };
+type Position = { update: () => void; end: () => void; retain: () => void; hold: () => void; jump: (target: HTMLElement, options: ScrollIntoViewOptions, past?: number) => void };
 const positions = new WeakMap<HTMLElement, Position>();
 const positionOf = (thread: HTMLElement) => {
   const area = thread.closest<HTMLElement>('[data-card-scroll]');
@@ -23,6 +23,11 @@ const positionOf = (thread: HTMLElement) => {
 };
 /** Opening or folding the displayed history requests the current place, rather than following its height change. */
 export function keepThreadPosition(thread: HTMLElement) { positionOf(thread)?.retain(); }
+/**
+ * A press that opens or folds something in the thread (a turn's work) is the person's own move: what is read stays
+ * where it is as that grows or shrinks, as after a scroll, rather than being followed to the last thing said.
+ */
+export function holdThreadPosition(thread: HTMLElement) { positionOf(thread)?.hold(); }
 /** Every explicit send entrance, including resending an old failure, asks the same owner for the latest place. */
 export function scrollThreadToEnd(thread: HTMLElement) { positionOf(thread)?.end(); }
 /**
@@ -156,7 +161,9 @@ export function useThreadPosition(body: HTMLElement, host: HTMLElement | null, a
       const sized = area.scrollHeight !== rememberedHeight || area.clientHeight !== rememberedRoom;
       // Following the end with nothing kept, a change that moves nothing and sizes nothing (a second ticking by) asks nothing.
       if (following && !anchor && !sized) return;
-      if (following && sized && !(anchor && pastFollow())) {
+      // A disclosure moving in the thread (a turn's work, pressed by the person) is not new words to follow: what is read
+      // stays where it is while it moves; still at the end once it has, the end is followed again.
+      if (following && sized && !(anchor && pastFollow()) && !unfolding()) {
         const from = area.scrollTop;
         area.scrollTop = followTop();
         // What it follows comes into sight by gliding there, not by a jump.
@@ -241,6 +248,8 @@ export function useThreadPosition(body: HTMLElement, host: HTMLElement | null, a
       // otherwise the browser clamps the requested position before the old message can stay at its original height.
       const room = area.clientHeight - below(body.getBoundingClientRect().bottom);
       if (room > 0) { bottomRoom += room; body.style.paddingBottom = `${bottomRoom}px`; }
+      takeOver(); following = false; if (!anchor) findAnchor();
+    }, hold: () => {
       takeOver(); following = false; if (!anchor) findAnchor();
     }, jump: (target, options, past = 0) => {
       takeOver();
