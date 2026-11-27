@@ -8,6 +8,20 @@ Cuando encargas varios trabajos a la IA, a la persona le queda otro trabajo: rec
 
 Tú haces tres cosas: pedir, responder preguntas y revisar los resultados. Las tres están pensadas para poder hacerse desde el teléfono.
 
+## El trabajo avanza por tareas, no por conversaciones
+
+La mayoría de las herramientas para agentes de IA organizan el trabajo en torno a la conversación con la IA. alpacawork lo organiza en torno a tareas, y a cada tarea le asigna la IA que necesita en ese momento.
+
+Por eso la pantalla muestra las tareas que pediste, no conversaciones con la IA. Pides desde el cuadro de texto de la parte inferior de la pantalla. La respuesta del coordinador aparece encima del cuadro de texto; púlsala para abrir la conversación.
+
+El trabajo se organiza por tareas por estos motivos:
+
+- **Lo que quieres saber es el resultado, no la conversación.** Lo que se hizo, lo que falta y las preguntas para ti se agrupan por tarea. No hace falta repasar una conversación larga para encontrarlos.
+- **Las tareas y las conversaciones no se corresponden uno a uno.** Lo que implica un trabajo cambia por el camino. En una conversación se mezclan varios trabajos, y un trabajo se reparte entre varias conversaciones. En alpacawork el registro se queda en la tarea, así que empezar una conversación nueva no borra el historial ni los resultados.
+- **Si cambias de IA, el trabajo sigue.** Tanto si cambias la IA asignada por otro modelo como si pasas de Claude Code a Codex, la nueva IA continúa desde el registro de la tarea.
+- **Una tarea puede avanzar con varias IA.** Puedes poner una IA en cada rol, como una que construye y otra que revisa.
+- **La IA gestiona el trabajo grande como una jerarquía de tareas.** La IA divide el trabajo en subtareas, y las tareas se agrupan por proyecto. En la lista ves hasta dónde ha llegado cada una.
+
 ## Cómo avanza una solicitud
 
 Supongamos que pides “Haz un formulario de reservas para la web de la tienda”. Los números del diagrama son los mismos que los del texto de abajo.
