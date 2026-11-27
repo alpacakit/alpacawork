@@ -40,8 +40,11 @@ const subscribe = (notify: () => void) => {
   return () => system.removeEventListener("change", notify);
 };
 
+/** The saved theme the server started the page in; it stands until the settings are read, so a reload does not flip. */
+const served = document.documentElement.dataset.theme;
+
 function useTheme(): Theme {
-  const preference = usePersonalSettings((state) => state.values.theme);
+  const preference = usePersonalSettings((state) => state.values.theme) ?? served;
   const [manual] = useState<Theme | null>(() => {
     const theme = urlValue("theme");
     return theme === "light" || theme === "dark" ? theme : null;

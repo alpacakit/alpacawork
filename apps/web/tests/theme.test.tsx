@@ -1,5 +1,5 @@
 import { seedPersonal } from './read-fixtures';
-import { afterEach, expect, test } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
 import { act, cleanup, render } from "@testing-library/react";
 import { usePersonalSettings } from "../src/data/personal-settings";
 import { useApplyTheme } from "../src/state/theme";
@@ -32,4 +32,17 @@ test("switching the screen theme updates browser chrome, while the install manif
   expect(status.content).toBe("black");
   // The server answers the manifest with the saved theme; one stable address keeps the installed app from churning.
   expect(manifest.getAttribute("href")).toBe("/manifest.webmanifest");
+});
+
+test("before the settings are read, the saved theme the server started the page in stands", async () => {
+  document.documentElement.dataset.theme = "dark";
+  document.head.insertAdjacentHTML("beforeend", `<style data-test-pwa>
+    :root { --bg: #f4f6f9; } :root[data-theme="dark"] { --bg: #0e0f12; }
+  </style><meta data-test-pwa name="theme-color" content="#0e0f12">`);
+  vi.resetModules();
+  const { useApplyTheme: apply } = await import("../src/state/theme");
+  function Served() { apply(); return null; }
+  render(<Served />);
+  expect(document.documentElement.dataset.theme).toBe("dark");
+  expect(document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')!.content).toBe("#0e0f12");
 });
