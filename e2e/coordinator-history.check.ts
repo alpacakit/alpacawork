@@ -17,7 +17,7 @@ const conversation = { id: 'history', nextLaunch: { agent: 'claude', values: {} 
   turns: [...Array.from({ length: 19 }, (_, n) => turn(older + n)), latest] };
 
 test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
-test('the history opens in place and is read back a page at a time as the reader nears its top, up to the limit', async ({ page, runtime }) => {
+test('the history opens in place of its entrance and is read back a page at a time as the reader nears its top, up to the limit', async ({ page, runtime }) => {
   test.setTimeout(120_000);
   const pages: string[] = [];
   await page.route('**/api/coordinator', async route => {
@@ -54,13 +54,17 @@ test('the history opens in place and is read back a page at a time as the reader
   // Brought up to show the entrance, a little short of the end.
   await area.evaluate(el => { el.scrollTop = 0; el.dispatchEvent(new Event('scroll')); });
   await settleMotion(page);
-  const where = async () => (await entrance.boundingBox())!.y;
+  const latestRow = page.locator(`[data-coordinator-message="turn-${older + 19}"]`);
+  const where = async () => (await latestRow.boundingBox())!.y;
   const at = await where();
   await entrance.locator('button').tap();
-  // One page comes in above the entrance, which stays where it was pressed, with nothing gliding past.
+  // The entrance leaves and one page comes in above the latest exchange, which stays where it was, with nothing gliding
+  // past: the end of the history shows where the entrance was.
   await expect(page.locator('[data-coordinator-message]')).toHaveCount(70);
   await settleMotion(page);
+  await expect(entrance).toHaveCount(0);
   expect(await where()).toBeCloseTo(at, 0);
+  await expect(page.locator(`[data-coordinator-message="turn-${older + 18}"]`)).toBeInViewport();
   expect(await page.evaluate(() => (window as any).glides)).toBe(0);
   expect(pages).toEqual([`turn-${older}`]);
   // Each page comes as the reader nears the top of what is read, and reading back stops at the limit.

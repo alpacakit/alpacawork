@@ -477,7 +477,7 @@ try {
           if (scene === 'conversation-history') {
             await page.locator('[data-earlier="folded"] > button').first().click();
             await settle(page, 800);
-            if (!await page.locator('[data-earlier=open]').count()) throw new Error('Conversation history did not open');
+            if (await page.locator('[data-earlier]').count()) throw new Error('Conversation history entrance did not disappear');
             if (await page.locator('[data-coordinator-turn]').count() < turns) throw new Error('Conversation history did not open');
           }
           const box = await area.boundingBox();

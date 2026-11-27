@@ -1,4 +1,4 @@
-import { Fragment, memo, useCallback, useEffect, useLayoutEffect, useMemo, useState, useRef, type ReactNode } from "react";
+import { Fragment, memo, useCallback, useEffect, useMemo, useState, useRef, type ReactNode } from "react";
 import { COORDINATOR_HISTORY_LIMIT } from "@/data/coordinator-history";
 import { useShallow } from "zustand/react/shallow";
 import { useTranslation } from "react-i18next";
@@ -136,19 +136,20 @@ function Outcome({ turn }: { turn: CoordinatorTurn }) {
 /* Hallmark · component: one exchange of the conversation (a message, what joined it, and its answer) · states: open (all of
  * it) · folded (the message's first two lines and the answer's first sentence; a press opens it) */
 /**
- * The history's entrance, just above the opening's latest exchange, counted in messages: it stays where it is while
- * the history is open, and the same press folds it again.
+ * The history's entrance, just above the opening's latest exchange, counted in messages. A press opens the history and
+ * the entrance leaves: what it stood for comes in where it was, the latest exchange staying where it is, so the end of
+ * the history shows in its place. The history folds again with the next opening of the conversation.
  */
-function EarlierRow({ count, open, toggle }: { count: number; open: boolean; toggle: () => void }) {
+function EarlierRow({ count, reveal }: { count: number; reveal: () => void }) {
   const { t } = useTranslation("ui");
   const focus = useActionFocus();
-  return <li {...focus} data-earlier={open ? "open" : "folded"} className="relative scroll-mt-14 border-b border-rule pl-(--gutter)">
-    <button type="button" aria-expanded={open} onClick={toggle}
+  return <li {...focus} data-earlier="folded" className="relative scroll-mt-14 border-b border-rule pl-(--gutter)">
+    <button type="button" aria-expanded={false} onClick={reveal}
       className="group flex min-h-11 w-full items-center gap-1.5 py-2 text-left text-xs text-muted narrow:min-h-12">
       <span className="relative font-medium text-ink cap-box">
-        <span className={`${ON_RAIL} -ml-(--gutter) inset-y-0 flex items-center`}><Icon name={open ? "fold" : "unfold"} className={cn("size-3.5 text-muted", ON_DISC)} /></span>{t("coordinatorCard.earlierCount", { count })}</span>
+        <span className={`${ON_RAIL} -ml-(--gutter) inset-y-0 flex items-center`}><Icon name="unfold" className={cn("size-3.5 text-muted", ON_DISC)} /></span>{t("coordinatorCard.earlierCount", { count })}</span>
       <span className="ml-auto rounded-sm px-2 cap-box underline decoration-line underline-offset-3 group-hover:text-ink group-hover:decoration-ink">
-        {t(open ? "coordinatorCard.exchangeFold" : "coordinatorCard.exchangeOpen")}</span>
+        {t("coordinatorCard.exchangeOpen")}</span>
     </button>
   </li>;
 }
@@ -314,20 +315,6 @@ export const CoordinatorThread = memo(function CoordinatorThread({ turns: recent
     return 'here';
   });
   const readOlder = () => { if (thread.current) keepThreadPosition(thread.current); void earlier.readMore(); };
-  // Folded, what was read above the entrance leaves, and the entrance stays in sight where it was pressed, as far as what
-  // is left above it allows (the reading does not stay down in the latest exchange's end).
-  const kept = useRef<number | null>(null);
-  const toggleEarlier = () => {
-    const row = thread.current?.querySelector<HTMLElement>("[data-earlier]");
-    kept.current = earlierOpen && row ? row.getBoundingClientRect().top : null;
-    toggle(EARLIER, !earlierOpen);
-  };
-  useLayoutEffect(() => {
-    const at = kept.current, row = thread.current?.querySelector<HTMLElement>("[data-earlier]"), area = thread.current?.closest<HTMLElement>("[data-card-scroll]");
-    if (at === null || earlierOpen) return;
-    kept.current = null;
-    if (row && area) area.scrollTop += row.getBoundingClientRect().top - at;
-  });
   // Where the coordinator started again: before the message it started with, or at the end until there is one. A message
   // drawn as no row of its own (sent into another, or sent again in its place) leaves its line before the next row in
   // serve's order, so a line is never folded away with it.
@@ -353,9 +340,9 @@ export const CoordinatorThread = memo(function CoordinatorThread({ turns: recent
   }, [earlier.resets, served.resets, turns, work, shown.tail]);
   const resetLines = (id: string | null) => resets.get(id)?.map(reset => <ResetLine key={reset.id} reset={reset} />) ?? null;
   const tailStart = work.length;
-  // The history is counted whole, open or folded: the turns of the snapshot before its latest exchange and those before it.
+  // Folded, the history is counted whole: the turns of the snapshot before its latest exchange and those before it.
   const count = Math.max(0, shown.thread.findIndex(turn => turn.id === opened.latest)) + (served.earlier?.count ?? 0);
-  const entrance = count > 0 && <EarlierRow count={count} open={earlierOpen} toggle={toggleEarlier} />;
+  const entrance = count > 0 && !earlierOpen && <EarlierRow count={count} reveal={() => toggle(EARLIER, true)} />;
   const rows = [...work.map(turn => ({ kind: 'server' as const, turn })), ...shown.tail].map((row, at) => {
     // Lines of a reset stand before the message it started with; one with none yet, before what is still on its way.
     const lines = at === tailStart ? <>{resetLines(null)}{resetLines(row.turn.id)}</> : at >= start || earlierOpen ? resetLines(row.turn.id) : null;

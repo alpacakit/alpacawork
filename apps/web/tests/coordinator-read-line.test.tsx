@@ -47,23 +47,21 @@ test("opening reads folded history without unfolding it; its entrance counts mes
   expect(calls.flatMap(([, init]) => JSON.parse(String(init?.body)).seen)).toEqual(['turn-4', 'turn-5']);
 });
 
-test("revealing history shows earlier exchanges above its entrance, which stays and folds them again, the focus kept on it", async () => {
+test("revealing history removes its entrance, shows earlier exchanges and hands focus to the next operation without scrolling", async () => {
   show(five.map(turn => ({ ...turn, seen: true })));
   expect(shape()).toBe('Eo');
   const button = document.querySelector<HTMLButtonElement>('[data-earlier] button')!;
+  const next = document.querySelector<HTMLButtonElement>('[data-coordinator-message="turn-5"] button')!;
+  const focus = vi.spyOn(next, 'focus');
   button.focus();
   fireEvent.click(button);
   await act(async () => {});
-  expect(shape()).toBe('ffffEo');
-  expect(button.getAttribute('aria-expanded')).toBe('true');
+  expect(document.querySelector('[data-earlier]')).toBeNull();
+  expect(shape()).toBe('ffffo');
   expect([...document.querySelectorAll<HTMLElement>('[data-coordinator-message]')].map(row => row.dataset.coordinatorMessage))
     .toEqual(five.map(turn => turn.id));
-  expect(document.activeElement).toBe(button);
-  fireEvent.click(button);
-  await act(async () => {});
-  expect(shape()).toBe('Eo');
-  expect(button.getAttribute('aria-expanded')).toBe('false');
-  expect(document.activeElement).toBe(button);
+  expect(document.activeElement).toBe(next);
+  expect(focus).toHaveBeenCalledWith({ preventScroll: true });
 });
 
 test("arrivals stay shown while old history remains independently folded", async () => {
@@ -80,7 +78,7 @@ test("opening the conversation again folds manually opened history", async () =>
   try {
     show(five.map(turn => ({ ...turn, seen: true })));
     fireEvent.click(document.querySelector('[data-earlier] button')!);
-    expect(document.querySelector('[data-earlier]')?.getAttribute('data-earlier')).toBe('open');
+    expect(document.querySelector('[data-earlier]')).toBeNull();
     act(() => useConversation.getState().setExpanded(false));
     await act(async () => useConversation.getState().setExpanded(true));
     expect(shape()).toBe('Eo');
