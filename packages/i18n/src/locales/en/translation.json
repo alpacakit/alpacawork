@@ -233,7 +233,7 @@
       "host_status_not_running": "The host status check is not running",
       "http_destination_blocked": "The destination must use a public HTTPS address",
       "http_destination_certificate": "Could not verify the HTTPS certificate for the destination",
-      "http_destination_invalid": "Enter a valid HTTPS destination without credentials or a fragment",
+      "http_destination_invalid": "Enter a URL starting with https:// (no user name or password, and nothing from # on)",
       "http_destination_unreachable": "Could not connect to the destination over HTTPS",
       "illegal_run_state_transition": "Run state transition not allowed",
       "index_not_running": "The index projection is not running",

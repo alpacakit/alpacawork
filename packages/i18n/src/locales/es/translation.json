@@ -233,7 +233,7 @@
       "host_status_not_running": "La comprobación del estado del equipo no está en marcha",
       "http_destination_blocked": "El destino debe usar una dirección HTTPS pública",
       "http_destination_certificate": "No se pudo verificar el certificado HTTPS del destino",
-      "http_destination_invalid": "Introduce una URL HTTPS válida sin credenciales ni fragmento",
+      "http_destination_invalid": "Introduce una URL que empiece por https:// (sin usuario ni contraseña, y nada desde #)",
       "http_destination_unreachable": "No se pudo conectar con el destino por HTTPS",
       "illegal_run_state_transition": "Transición de estado de la ejecución no permitida",
       "index_not_running": "La proyección del índice no está en marcha",

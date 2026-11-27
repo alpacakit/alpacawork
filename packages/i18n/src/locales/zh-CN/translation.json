@@ -233,7 +233,7 @@
       "host_status_not_running": "主机状态检查未在运行",
       "http_destination_blocked": "发送地址必须是公开的 HTTPS 地址",
       "http_destination_certificate": "无法验证发送地址的 HTTPS 证书",
-      "http_destination_invalid": "请输入不含凭据或片段的有效 HTTPS URL",
+      "http_destination_invalid": "请输入以 https:// 开头的 URL（不含用户名和密码，也不含 # 及其后的部分）",
       "http_destination_unreachable": "无法通过 HTTPS 连接发送地址",
       "illegal_run_state_transition": "不允许这样转换运行状态",
       "index_not_running": "索引投影未在运行",

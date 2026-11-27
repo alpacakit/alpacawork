@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
@@ -105,14 +105,16 @@ function AutomationRow({ automation, open }: { automation: Automation; open: boo
   const mark = nameMark(automation);
   const attention = attentionOf(automation);
   const failed = attention?.kind === "failed" || attention?.kind === "disabled";
-  return <div role="row" data-automation-row={automation.id} aria-current={open ? "true" : undefined}
+  const row = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (open) row.current?.scrollIntoView({ block: "nearest" }); }, [open]);
+  return <div ref={row} role="row" data-automation-row={automation.id} aria-current={open ? "true" : undefined}
     className={cn(ROW_GRID, "relative border-b border-rule py-2.5 hover:bg-row-hover aria-[current=true]:bg-hover narrow:py-2")}>
     <StateDot automation={automation} failed={failed} />
-    <span role="cell" className="flex min-w-0 items-baseline gap-1.5">
+    <span role="cell" className="flex min-w-0 items-baseline gap-1.5 narrow:flex-wrap narrow:gap-y-0.5">
       <span className="flex-none text-xs text-muted tabular-nums">{automation.id}</span>
       {/* The whole row opens it; the name is its button, so a screen reader hears what opens. */}
       <button type="button" data-automation-open={automation.id} onClick={() => openAutomation(automation.id)}
-        className="min-w-0 truncate text-start font-medium narrow:line-clamp-2 narrow:whitespace-normal after:absolute after:inset-0 after:content-[''] focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring">
+        className="min-w-0 truncate text-start font-medium narrow:line-clamp-2 narrow:min-w-[7rem] narrow:flex-1 narrow:whitespace-normal after:absolute after:inset-0 after:content-[''] focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring">
         <span dir="auto">{automation.name}</span></button>
       {mark && <span data-automation-mark={mark} className="flex-none rounded-xs border border-line px-1 text-xs whitespace-nowrap text-muted">{t(`mark.${mark}`)}</span>}
     </span>
@@ -153,7 +155,7 @@ function LastRun({ automation, failure: failed, narrow }: { automation: Automati
     : last && <><span className="tabular-nums">{formatLogTime(last.at, i18n.language)}</span>{" "}
       <span className="text-ink">{outcomeWord(t, last)}</span></>;
   return <>
-    <span role="cell" data-automation-last className="min-w-0 truncate text-sm text-muted">{head}
+    <span role="cell" data-automation-last className="min-w-0 truncate text-sm text-muted narrow:max-w-[9.5rem] narrow:text-end">{head}
       {why && !narrow && <span className="@max-[60rem]:hidden">{t("join")}{why}</span>}</span>
     {why && narrow && <span data-automation-failed-why className="col-start-2 col-end-4 text-sm text-muted">{why}</span>}
   </>;

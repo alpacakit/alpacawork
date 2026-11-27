@@ -177,7 +177,8 @@ function MoreMenu({ automation }: { automation: Automation }) {
 /**
  * What asks for something, one band at most, above the panes so every pane shows it: a failure (or going off by
  * itself) with why and what to do; a new version waiting to be turned on, beside the one running; a draft, with what to
- * read before turning it on. Its main act stands at the right of its heading, in view where the window opens.
+ * read before turning it on. A failure's or a new version's act stands at the right of its heading, in view where the
+ * window opens; turning on from the before-on band stands under what was read.
  */
 function Band({ automation, reading, onRead, onBack }: { automation: Automation; reading: boolean; onRead: () => void; onBack: () => void }) {
   const attention = attentionOf(automation);
@@ -312,7 +313,8 @@ function reviewLine(t: ReturnType<typeof useTranslation<"automations">>["t"], ve
 /**
  * A draft, before it is first turned on: what the AI's look found (or that it could not look), what it does directly
  * and not through alpacawork (which cannot be stopped), and what it would do, from its last showing. Turning it on
- * stands at the heading: "Turn on, having read this" when there is something to read.
+ * stands under them ("Turn on, having read this" when there is something to read); opened from another button, only
+ * Cancel stands at the heading, where that press was.
  */
 function BeforeOnBand({ automation, onBack }: { automation: Automation; onBack?: () => void }) {
   const asked = !!onBack;
@@ -365,6 +367,8 @@ function AboutPane({ automation, destinationsAbove }: { automation: Automation; 
   const notes = whenNotes(t, facts.when, automation.hook.exists);
   const week = automation.week;
   const busiest = week?.busiestDay ?? null;
+  // Matched but not settled yet (waiting, going on): what makes the counts add up to those matched.
+  const unsettled = week ? week.matched - week.done - week.failed - week.stopped - week.skipped : 0;
   return <div data-automation-about>
     <Section title={t("about.facts")}>
       <Row name={t("about.when")}>
@@ -398,7 +402,8 @@ function AboutPane({ automation, destinationsAbove }: { automation: Automation; 
         {t("about.weekLine", { matched: week.matched, done: week.done, skipped: week.skipped })}
         {week.skippedBy.length > 0 && t("about.weekWhy", { list: week.skippedBy.map(item => `${skipName(t, item.reason)} ${item.count}`).join(t("join")) })}
         {week.failed > 0 && <>{t("join")}{t("about.weekFailed", { count: week.failed })}</>}
-        {week.stopped > 0 && <>{t("join")}{t("about.weekStopped", { count: week.stopped })}</>}</>}</p>
+        {week.stopped > 0 && <>{t("join")}{t("about.weekStopped", { count: week.stopped })}</>}
+        {unsettled > 0 && <>{t("join")}{t("about.weekGoing", { count: unsettled })}</>}</>}</p>
     </Section>}
   </div>;
 }
@@ -524,7 +529,8 @@ function outsideEffects(version: Version): { kind: string; text: string; finding
     const finding = findings.find(each => each.outsideEffect === effect.kind && each.outsidePart === effect.text);
     return { kind: effect.kind, text: effect.text, finding: finding ? finding.title ?? finding.text : null };
   });
-  const alone = findings.filter(finding => !effects.some(effect => effect.kind === finding.outsideEffect && effect.text === finding.outsidePart))
+  // What only the review found is an operation of its own only when no part says that kind already.
+  const alone = findings.filter(finding => !effects.some(effect => effect.kind === finding.outsideEffect))
     .map(finding => ({ kind: finding.outsideEffect!, text: finding.title ?? finding.text, finding: null }));
   return [...effects, ...alone];
 }

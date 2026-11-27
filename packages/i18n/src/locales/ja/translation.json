@@ -233,7 +233,7 @@
       "host_status_not_running": "ホストの状態を調べる処理が動いていません",
       "http_destination_blocked": "送り先には公開の HTTPS アドレスを指定してください",
       "http_destination_certificate": "送り先の HTTPS 証明書を確認できませんでした",
-      "http_destination_invalid": "認証情報やフラグメントを含まない HTTPS の URL を入力してください",
+      "http_destination_invalid": "https:// で始まる URL を入れてください（利用者名・パスワードと、# から後ろは入れません）",
       "http_destination_unreachable": "送り先に HTTPS で接続できませんでした",
       "illegal_run_state_transition": "許可されていないRunの状態遷移です",
       "index_not_running": "一覧の投影処理が動いていません",

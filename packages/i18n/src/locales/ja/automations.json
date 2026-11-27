@@ -14,6 +14,7 @@
     "trigger": "通す物",
     "week": "過去7日",
     "weekFailed_other": "失敗した {{count}}",
+    "weekGoing_other": "まだ終わっていない {{count}}",
     "weekLine": "当たった {{matched}} ・ 済んだ {{done}} ・ 見送った {{skipped}}",
     "weekNone": "過去7日に当たった出来事はありません",
     "weekStopped_other": "止めた {{count}}",

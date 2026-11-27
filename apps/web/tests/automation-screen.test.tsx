@@ -239,3 +239,19 @@ test("one by the clock with a trigger asks nothing on opening: its next time is 
   fireEvent.click(document.querySelector("[data-automation-try-next]")!);
   await waitFor(() => expect(sent.some(path => path.includes("automation/preview"))).toBe(true));
 });
+
+test("an outside effect the review also names is said once, with its finding, never as none found", () => {
+  const review = { state: "fix" as const, summary: "", model: "sonnet", at: "2026-11-27T05:01:00.000Z", acknowledged: null,
+    findings: [{ level: "must" as const, file: "main.ts", line: 4, title: "Deletes files it does not describe", text: "It deletes files", outsideEffect: "file" as const, outsidePart: "node:fs/promises" },
+      { level: "note" as const, file: "main.ts", line: 9, title: "Sends out what it does not describe", text: "It sends out", outsideEffect: "network" as const, outsidePart: "fetch" }] };
+  const sweep = automation({ id: "A13", enabled: false, everEnabled: false, live: null,
+    latest: version({ review, direct: [{ kind: "file", text: "node:fs/promises" }, { kind: "network", text: "fetch" }] }) });
+  const data = screenData();
+  seedAutomations(data, listOf([sweep]));
+  opened("A13");
+  windowOn(data, "A13");
+  const band = text('[data-automation-band="before-on"]')!;
+  expect(band).toContain("node:fs/promises");
+  expect(band).toContain("Deletes files it does not describe");
+  expect(band).not.toContain("None found");
+});

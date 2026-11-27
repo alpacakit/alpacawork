@@ -16,6 +16,8 @@
     "week": "Last 7 days",
     "weekFailed_one": "failed {{count}}",
     "weekFailed_other": "failed {{count}}",
+    "weekGoing_one": "not finished {{count}}",
+    "weekGoing_other": "not finished {{count}}",
     "weekLine": "Matched {{matched}} · done {{done}} · skipped {{skipped}}",
     "weekNone": "Nothing matched in the last 7 days",
     "weekStopped_one": "stopped {{count}}",
