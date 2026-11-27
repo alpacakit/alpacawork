@@ -20,7 +20,7 @@ Work is organized by task for these reasons:
 - **Tasks and conversations don't line up one to one.** What a job involves changes along the way. One conversation mixes several jobs, and one job spans several conversations. In alpacawork the record stays with the task, so starting a new conversation does not lose the history or the results.
 - **Swap the AI, and the work goes on.** Whether you switch the assigned AI to another model or from Claude Code to Codex, the new AI picks up from the task's record.
 - **One task can have several AIs.** You can put an AI on each role, such as one that builds and one that checks.
-- **The AI manages large work as a hierarchy of tasks.** The AI splits work into subtasks, and tasks are grouped by project. The list shows how far each one has got.
+- **The AI manages large work as a hierarchy of tasks.** The AI splits work into subtasks, and tasks are grouped by project. The list shows how far along each one is.
 
 ## How one request moves along
 

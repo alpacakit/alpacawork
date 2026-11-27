@@ -17,7 +17,7 @@ Por isso, a tela mostra as tarefas que você pediu, não conversas com a IA. Voc
 O trabalho é organizado por tarefas por estes motivos:
 
 - **O que você quer saber é o resultado, não a conversa.** O que foi feito, o que falta e as perguntas para você ficam reunidos por tarefa. Não é preciso voltar por uma conversa longa para encontrá-los.
-- **Tarefas e conversas não se correspondem uma a uma.** O que um trabalho envolve muda no caminho. Em uma conversa se misturam vários trabalhos, e um trabalho se estende por várias conversas. No alpacawork o registro fica na tarefa, então começar uma conversa nova não apaga o histórico nem os resultados.
+- **Tarefas e conversas não se correspondem um a um.** O que um trabalho envolve muda no caminho. Em uma conversa se misturam vários trabalhos, e um trabalho se estende por várias conversas. No alpacawork o registro fica na tarefa, então começar uma conversa nova não apaga o histórico nem os resultados.
 - **Troque a IA, e o trabalho continua.** Seja trocando a IA atribuída por outro modelo, seja passando do Claude Code para o Codex, a nova IA continua a partir do registro da tarefa.
 - **Uma tarefa pode avançar com várias IAs.** Você pode colocar uma IA em cada papel, como uma que constrói e outra que revisa.
 - **A IA gerencia trabalhos grandes como uma hierarquia de tarefas.** A IA divide o trabalho em subtarefas, e as tarefas ficam separadas por projeto. Na lista, você vê até onde cada uma chegou.
