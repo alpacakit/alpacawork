@@ -6,7 +6,7 @@ import { shownInReader, useViewStore } from "@/state/view-store";
 import { analysisSurfaces } from "@/features/analysis/place";
 import { useConversation } from "./coordinator";
 import { leastHeight } from "./foot";
-import { atLargest, atRight, besidePanel, BETWEEN, clearlySmaller, pushedAcross, pushingPanel, ceilingOf, EDGE, FIRST, keptAt, keptFrame, keptWithin, placeFrame, placeMaximized, pulledOut, restoredFrame, smallerFrame, type Frame, type Pull, type Room } from "./frame";
+import { atLargest, atRight, besidePanel, BETWEEN, clearlySmaller, pushedAcross, pushingPanel, ceilingOf, EDGE, FIRST, keptAt, keptFrame, keptWithin, placeFrame, placeMaximized, pulledOut, restoredFrame, smallerFrame, stayingWhereDrawn, type Frame, type Pull, type Room } from "./frame";
 import { cancelFrameGesture, groundPress, moveFrame, type FrameHand } from "./frame-hand";
 import { conversationExtent } from "./PhoneSheet";
 
@@ -110,6 +110,8 @@ export function useFramePlacement({ surfaces, frame, setHeld, open, expanded, ow
   // The panel at the window's right when last placed (null: none then): the one whose left edge coming in pushes the
   // frame across (pushingPanel), and the one a new panel there takes the place of (what stands left of it glides).
   const panelWas = useRef<{ element: HTMLElement; left: number } | null>(null);
+  // The window's width when last placed: a room come out with it is the window's, not a panel put away.
+  const windowWas = useRef(innerWidth);
   // The docked panels watched for their size (placeFoot keeps this to those on the page).
   const watched = useRef<HTMLElement[]>([]);
   const pullNow = useRef<Pull | null>(null), gave = useRef<{ left: number; width: number } | null>(null);
@@ -205,6 +207,11 @@ export function useFramePlacement({ surfaces, frame, setHeld, open, expanded, ow
     const was = panelWas.current;
     if (right && was && right.element !== was.element) glide.current = true;
     const roomNow = whole && besidePanel(whole, right);
+    // A panel at the right put away: it stays where it was drawn beside it (not with the window sized or a side held).
+    const stay = roomNow && stayingWhereDrawn(frameNow.current, drawnAt.current, roomNow, innerWidth !== windowWas.current,
+      holding.current || readerEdgeHeld.get());
+    windowWas.current = innerWidth;
+    if (stay) { keptFrame.set(stay); frameNow.current = stay; }
     // Placed as open while the conversation is drawn, its sinking away too: what leaves stays where it stood.
     const kept = roomNow && placeFrame(frameNow.current, roomNow, element.getBoundingClientRect().height, shown);
     // Pushed by the panel to the room's left (not by the hand), it is kept by the left from now on.

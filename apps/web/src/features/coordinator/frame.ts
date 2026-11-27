@@ -13,8 +13,8 @@ import { deviceValue, jsonCodec } from "@/lib/device-storage";
  * conversation's entrance over the input, less the keyboard at the foot (the visual viewport). The bar and the entrance
  * are the input's to keep clear: the conversation open over the input reaches the window's top (`reach`), over the
  * bar (a window the hand made that tall) and over the entrance (hidden while it is open). Holding it in never changes what is kept,
- * so a window made smaller and large again, the reader or a file opened and closed, or the keyboard up and down, puts it back
- * where it was. Only where the room has not the conversation's height on the far side is the whole drawn nearer its
+ * so a window made smaller and large again, or the keyboard up and down, puts it back where it was. A panel at the right
+ * put away is the one change that does: the frame stays where it was drawn beside it (stayingWhereDrawn). Only where the room has not the conversation's height on the far side is the whole drawn nearer its
  * end's opposite, and the conversation as tall as what is left.
  *
  * It is never wider than what is read in it (`widest`): wider would only add empty room round the reading column.
@@ -196,6 +196,20 @@ export const pushingPanel = (held: boolean, left: number, was: number | undefine
 export function pushedAcross(frame: Frame, placed: Placed, room: Room, pushed: boolean): Frame | null {
   if (!pushed || frame.side === "left" || placed.width > LEAST_WIDTH) return null;
   return placed.left - room.left <= SIDE ? keptWithin({ ...frame, side: "left", x: SIDE }, room) : null;
+}
+
+/**
+ * The room come out further right (`room`, from `was.room`, where the frame was last drawn at `was.placed`) while the
+ * window keeps its width and nothing is held: a panel at the window's right put away (the reader closed or taken to
+ * the whole window, a file beside it closed, the analysis put away), or given way to one further right. The frame
+ * stays where it was drawn, as wide as it was drawn: that is what is kept from now on (keptAt), as if the hand had put
+ * it there. Not so where the room comes out because the window is sized (`sized`) or the hand holds a panel's edge or
+ * the frame (`held`): those hold the frame by its side as before. Null where it is not so, or is kept so already.
+ */
+export function stayingWhereDrawn(frame: Frame, was: { placed: Placed; room: Room } | null, room: Room, sized: boolean, held: boolean): Frame | null {
+  if (!was || sized || held || room.right <= was.room.right) return null;
+  const stay = { ...keptAt(was.placed, room, frame), height: frame.height };
+  return (["side", "x", "edge", "y", "width"] as const).every(key => stay[key] === frame[key]) ? null : stay;
 }
 
 /** The end of the room the input at `top`..`foot` is nearer. */

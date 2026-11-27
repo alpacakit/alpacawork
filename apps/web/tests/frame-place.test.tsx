@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clearlySmaller, FIRST, frameAt, placeFrame, placeMaximized, restoredFrame, SIDE, type Room } from "@/features/coordinator/frame";
+import { besidePanel, clearlySmaller, FIRST, frameAt, placeFrame, placeMaximized, restoredFrame, SIDE, stayingWhereDrawn, type Frame, type Room } from "@/features/coordinator/frame";
 
 const room = (left: number, right: number): Room => ({ left, right, top: 60, reach: 12, bottom: 900, widest: 770 });
 
@@ -27,5 +27,27 @@ describe("the conversation made smaller from its largest", () => {
     const back = placeFrame(restoredFrame({ ...dragged, width: most.width }, dragged, at, input), at, input, true);
     expect(clearlySmaller(back, at)).toBe(true);
     expect(back.height).toBeLessThan(most.height * 0.8);
+  });
+});
+
+describe("a panel at the right put away", () => {
+  const whole = room(0, 1600), input = 50;
+  const closed = (frame: Frame, panel: number) => {
+    const beside = besidePanel(whole, { left: panel }), placed = placeFrame(frame, beside, input, false);
+    const kept = stayingWhereDrawn(frame, { placed, room: beside }, whole, false, false) ?? frame;
+    return { placed, after: placeFrame(kept, whole, input, false) };
+  };
+  it("leaves the coordinator where and as wide as it was drawn beside it", () => {
+    for (const [frame, panel] of [[FIRST, 900], [{ ...FIRST, side: "right", x: SIDE }, 1000], [{ ...FIRST, side: "right", x: 72 }, 1000],
+      [FIRST, 400]] as const) {
+      const { placed, after } = closed(frame, panel);
+      expect([after.left, after.width]).toEqual([placed.left, placed.width]);
+    }
+    expect(closed(FIRST, 400).after.width).toBeLessThan(FIRST.width);
+  });
+  it("still holds it by its side when the window is sized or a panel's edge is held", () => {
+    const beside = besidePanel(whole, { left: 900 }), placed = placeFrame(FIRST, beside, input, false);
+    expect(stayingWhereDrawn(FIRST, { placed, room: beside }, whole, true, false)).toBeNull();
+    expect(stayingWhereDrawn(FIRST, { placed, room: beside }, whole, false, true)).toBeNull();
   });
 });
