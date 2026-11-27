@@ -1,6 +1,6 @@
 # alpacawork documentation
 
-alpacawork is a tool for handing work to AI agents on your PC, such as Claude Code and Codex. Write a request in the input box, and the AI turns it into a task and carries it out. A task appears under "Awaiting review" only when it needs your judgment.
+alpacawork is an AI orchestration tool: it hands work to AI agents on your PC, such as Claude Code and Codex. Write a request in the input box, and the AI turns it into a task and carries it out. A task appears under "Awaiting review" only when it needs your judgment.
 
 If you are new, start with "Getting started" below. In about 15 minutes, you'll have made your first request and checked the result.
 
