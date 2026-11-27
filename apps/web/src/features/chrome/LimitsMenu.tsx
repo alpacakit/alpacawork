@@ -87,24 +87,27 @@ function barWords(shown: BarLimit, name: string, now: number, locale: string, t:
 
 /**
  * One agent in the bar: its mark, then a ring as full as the window that holds it, as the menu reads (the name, then its
- * bars). One whose limits are unknown has an empty ring and a faded mark; one nothing holds, the ring of no limit (four arcs).
+ * bars). One nothing holds has the ring of no limit (four arcs); one whose limits are unknown, a dash in the ring's place,
+ * as an empty ring would read as 0%. A mark is faded while its agent cannot take work (stopped, or unknown), since a
+ * spent ring and one past 80% share a colour.
  */
 function BarAgent({ limit }: { limit: BarLimit }) {
   const percent = "window" in limit ? limit.window.usedPercent : 0;
   return <span data-limits-agent={limit.agent.adapter} data-limit-kind={limit.kind} className="flex flex-none items-center gap-1">
-    <AgentMark name={limit.agent.adapter} kind={limit.agent.adapter} className={cn(limit.kind === "unknown" && "opacity-50")} />
-    <UsageRing percent={percent} tone={limitTone(percent)} open={limit.kind === "unlimited"} />
+    <AgentMark name={limit.agent.adapter} kind={limit.agent.adapter} className={cn((limit.kind === "stopped" || limit.kind === "unknown") && "opacity-50")} />
+    {limit.kind === "unknown" ? <span className="w-4 text-center text-sm text-muted">—</span>
+      : <UsageRing percent={percent} tone={limitTone(percent)} open={limit.kind === "unlimited"} />}
   </span>;
 }
 
 /**
  * The bar's plan limits: up to two agents tasks run on (`barLimits`), each as a ring and its mark, with no names: the
- * marks say whose they are. While every agent is stopped, the words after them say until when the first works again
- * (a folded bar keeps only that agent and the time). The windows, percents and reset times are in the label and the menu.
+ * marks say whose they are. While every agent is stopped, it shows only the one that works again first, and until when,
+ * so the time reads as that agent's. The windows, percents and reset times are in the label and the menu.
  * A press opens every agent's windows with when each resets and the account each is signed in as. Nothing shows until
  * some agent's limits are known.
  */
-export function LimitsMenu({ folded = false }: { folded?: boolean }) {
+export function LimitsMenu() {
   const { t, i18n } = useTranslation("chrome");
   // The bar is drawn before the first index: the limits are read once it names the workspace.
   const root = useFrameSelector(data => data?.info.root ?? null);
@@ -121,15 +124,15 @@ export function LimitsMenu({ folded = false }: { folded?: boolean }) {
   // The menu marks the window the bar's agent of now shows, so its figure is found there.
   const shownWindow = "window" in shown ? shown.window : null;
   const stopped = shown.kind === "stopped" ? shown.window : null;
-  const bar = folded && stopped ? [shown] : barLimits(limits.data, now);
+  const bar = stopped ? [shown] : barLimits(limits.data, now);
   const label = bar.map(limit => barWords(limit, AGENT_NAMES[limit.agent.adapter].short, now, i18n.language, t)).join("\n");
   const stackLabel = t("limits.openStack", { title: t("panels:agentSettings.aiStack.title") });
   const read = readWords(agents.map(agent => agent.observedAt).filter(at => at !== null).sort()[0] ?? null, now, t);
   const status = refreshing ? t("limits.refreshing") : read;
   return <>
-    <Button ref={trigger} variant="ghost" size="bar" data-limits-trigger data-tone={limitTone(shownWindow?.usedPercent ?? 0)}
+    <Button ref={trigger} variant="ghost" size="bar" data-limits-trigger
       aria-haspopup="dialog" aria-expanded={open} aria-label={label} title={label} onClick={() => setOpen(value => !value)}
-      className="w-auto min-w-0 gap-3 px-2 narrow:w-auto narrow:min-w-9">
+      className="w-auto min-w-0 gap-4 px-2 narrow:w-auto narrow:min-w-9">
       {bar.map(limit => <BarAgent key={limit.agent.adapter} limit={limit} />)}
       {stopped && <>
         <span className="hidden text-sm whitespace-nowrap text-error @min-[60rem]:inline">{stoppedWords(stopped, now, i18n.language, t)}</span>

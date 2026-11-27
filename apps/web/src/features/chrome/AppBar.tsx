@@ -107,7 +107,7 @@ export function AppBar({ docked = false }: { docked?: boolean }) {
               agent work goes on with has used (a press shows every agent's). */}
           <div className="flex min-w-0 items-center gap-1.5 narrow:gap-0">
             {offline && <OfflineMark />}
-            <LimitsMenu folded={folded} />
+            <LimitsMenu />
           </div>
           {/* The bar's face. On a phone every button here is a 36px place (44px tall), so their marks stand 20px apart. */}
           <div className="flex flex-none items-center gap-1.5 narrow:gap-0">
