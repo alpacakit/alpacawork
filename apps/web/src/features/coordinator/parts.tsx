@@ -16,7 +16,7 @@ import { tookSteps } from '@alpacawork/contract/run';
 import { Icon } from '@/components/ui/icon';
 import { MarkdownBody } from '@/features/reader/MarkdownBody';
 import { followTask } from './follow-task';
-import { scrollThreadTo } from './thread-position';
+import { holdThreadPosition, scrollThreadTo } from './thread-position';
 import { cn } from '@/lib/utils';
 import { useConnection } from '@/data/connection';
 
@@ -116,13 +116,15 @@ export function TurnWork({ turn }: { turn: Pick<CoordinatorTurn, 'id' | 'at' | '
   // Brought up to date whenever any of its steps starts or ends, however many run at once, and once more as it ends.
   const steps = useRunSteps(run, open && worked, running ? mine?.stepEvents ?? 0 : 'ended');
   const block = useRef<HTMLDivElement>(null);
-  // Opened after the answer, the pill goes to the top where it must move, so the answer's start stays in sight under it.
   // Brought into sight as it is shown: at once with what was read before, else once the first read answers.
-  useListedInSight(open ? steps.listed : null, block, !running);
+  useListedInSight(open ? steps.listed : null, block);
   // How many steps, said on the line while they are listed under it; folded, the line says the latest step.
   const count = open ? stepCount(steps) : undefined;
   if (!running && !turn.workedBy) return null;
-  const toggle = () => setOpen(!open);
+  const toggle = () => {
+    if (block.current) holdThreadPosition(block.current);
+    setOpen(!open);
+  };
   return <div>
     {running && mine?.words && <div data-working-words dir="auto" className="mb-2 [overflow-wrap:anywhere]"><MarkdownBody text={mine.words} task={null} variant="note" onFollow={followTask} /></div>}
     {/* The work line beside the message, at the size of its other states and the answer's own line. */}
@@ -165,11 +167,12 @@ function Chevron({ open }: { open: boolean }) {
 }
 /**
  * The steps are read after the press: once first drawn, the line and the list under it come into sight as one place
- * request, the list's head (the line, then "earlier") first. One that does not fit below where it is starts at the top.
- * The list unfolds from nothing (DisclosureBody), so where it goes is measured at the height it unfolds to, and it
- * glides there with the unfolding.
+ * request, the list's head (the line, then "earlier") first. The conversation moves only as far as the list needs: one
+ * that does not fit below where it is is brought up until its end is in sight, and only one taller than the
+ * conversation starts at the top. The list unfolds from nothing (DisclosureBody), so where it goes is measured at the
+ * height it unfolds to, and it glides there with the unfolding.
  */
-function useListedInSight(read: unknown, block: RefObject<HTMLElement | null>, top = false) {
+function useListedInSight(read: unknown, block: RefObject<HTMLElement | null>) {
   const listed = useRef(false);
   useLayoutEffect(() => {
     if (!read) { listed.current = false; return; }
@@ -177,12 +180,14 @@ function useListedInSight(read: unknown, block: RefObject<HTMLElement | null>, t
     if (listed.current || !element) return;
     listed.current = true;
     const area = element.closest<HTMLElement>('[data-card-scroll]')?.getBoundingClientRect() ?? { top: 0, bottom: window.innerHeight };
+    // What is in sight starts under the conversation's head, where a list placed at the top starts (its scroll margin).
+    const top = area.top + (Number.parseFloat(getComputedStyle(element).scrollMarginTop) || 0);
     const body = element.querySelector<HTMLElement>('[data-disclosure-body]');
     const grows = body ? Math.max(0, body.scrollHeight - body.getBoundingClientRect().height) : 0;
     const drawn = element.getBoundingClientRect(), box = { top: drawn.top, bottom: drawn.bottom + grows, height: drawn.height + grows };
-    if (box.top < area.top || box.height > area.bottom - area.top || (top && box.bottom > area.bottom)) scrollThreadTo(element, element, { block: 'start' }, grows);
+    if (box.top < top || box.height > area.bottom - top) scrollThreadTo(element, element, { block: 'start' }, grows);
     else if (box.bottom > area.bottom) scrollThreadTo(element, element, { block: 'end' }, grows);
-  }, [read, block, top]);
+  }, [read, block]);
 }
 
 /**

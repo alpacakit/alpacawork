@@ -197,3 +197,70 @@ test('an opened log, a step opened in it and the focus there stay as they are wh
   await expect(turn.locator('[data-run-step=running]')).toHaveCount(0);
   await expect(turn.locator('[data-work-mark]')).toHaveCount(0);
 });
+
+test('an answer\'s work opens with the conversation moved only as far as its list needs', async ({ page, runtime }) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const agent = new URL('../tests/fixtures/fake-work-agent.mjs', import.meta.url).pathname;
+  const existing = parse(readFileSync(join(runtime.root, 'config.yaml'), 'utf8'));
+  installAgentStub(runtime.root, 'claude', [process.execPath, agent]);
+  const setting = fixtureAgentSetting('claude');
+  setting.params.model = ['opus']; setting.params.effort = ['medium'];
+  writeFixtureConfig(runtime.root, stringify({ ...existing, agents: { fake: setting, ...existing.agents } }));
+  for (const stage of ['end', 'unknown', 'update', 'finish']) writeFileSync(join(runtime.root, `work-${stage}`), '');
+  await open(page, runtime);
+  await writeCoordinator(page);
+  const lines = page.locator('[data-answer-steps] > button');
+  for (const [at, words] of ['Answer at length', 'Then briefly', 'Once more'].entries()) {
+    await readyCoordinator(page, runtime);
+    await page.locator('[data-one-input]').click();
+    await page.keyboard.insertText(words);
+    await page.locator('[data-ask-send]').click();
+    if (!at) await openCoordinator(page);
+    await expect(lines).toHaveCount(at + 1);
+  }
+  const panel = page.locator('[data-coordinator-panel]'), area = panel.locator('[data-card-scroll]');
+  await settleMotion(page, panel, true);
+  // Where a line stands in the conversation, and where its list (open or not) ends, from the conversation's top.
+  const place = (at: number) => lines.nth(at).evaluate(line => {
+    const area = line.closest<HTMLElement>('[data-card-scroll]')!.getBoundingClientRect();
+    const block = line.closest<HTMLElement>('[data-answer-steps]')!.getBoundingClientRect();
+    return { line: line.getBoundingClientRect().top - area.top, end: block.bottom - area.top, room: area.height };
+  });
+  const press = async (at: number) => { const box = (await lines.nth(at).boundingBox())!; await page.mouse.click(box.x + 8, box.y + box.height / 2); };
+  // Read to the end of the conversation: the middle answer's list fits under it, so nothing moves.
+  await wheel(page, area, 3000);
+  await settleMotion(page, panel, true);
+  const before = await place(1);
+  await press(1);
+  await expect(page.locator('[data-answer-steps]').nth(1).locator('[data-run-steps=open] [data-run-step]')).toHaveCount(3);
+  await settleMotion(page, panel, true);
+  expect(Math.abs((await place(1)).line - before.line), 'kept in place at the end').toBeLessThan(2);
+  await press(1);
+  await settleMotion(page, panel, true);
+  // Unfolding at once where motion is reduced, it is kept in place just the same.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await wheel(page, area, 3000);
+  await settleMotion(page, panel, true);
+  const still = await place(1);
+  await press(1);
+  await expect(page.locator('[data-answer-steps]').nth(1).locator('[data-run-steps=open] [data-run-step]')).toHaveCount(3);
+  await settleMotion(page, panel, true);
+  expect(Math.abs((await place(1)).line - still.line), 'kept in place without motion').toBeLessThan(2);
+  await press(1);
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await settleMotion(page, panel, true);
+  // Near the conversation's foot, the list comes up until its end is in sight, not to the conversation's top.
+  await lines.nth(2).evaluate(line => {
+    const area = line.closest<HTMLElement>('[data-card-scroll]')!;
+    area.scrollTop += line.getBoundingClientRect().top - area.getBoundingClientRect().top - (area.clientHeight - 50);
+  });
+  await wheel(page, area, -1);
+  await settleMotion(page, panel, true);
+  await press(2);
+  await expect(page.locator('[data-answer-steps]').nth(2).locator('[data-run-steps=open] [data-run-step]')).toHaveCount(3);
+  await settleMotion(page, panel, true);
+  const opened = await place(2);
+  expect(opened.end).toBeLessThanOrEqual(opened.room + 1);
+  expect(opened.end, 'moved no further than its end').toBeGreaterThan(opened.room - 4);
+});
