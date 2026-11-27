@@ -7,7 +7,7 @@ import type { IncomingHttpHeaders, ServerResponse } from "node:http";
 import { gzipSync } from "node:zlib";
 import { screenName } from "../control/project-settings.js";
 import { offeredVoice } from '../voice.js';
-import { createPersonSettings } from './person-state.js';
+import { savedTheme } from './person-state.js';
 const WEB_DIRECTORY = join(appRoot(import.meta.url), 'apps/backend/public');
 const types: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -55,7 +55,6 @@ export function createWebAssets(root: string, directory = WEB_DIRECTORY) {
   let manifest: Record<string, unknown> | undefined;
   let colors: { light: string; dark: string } | undefined;
   let version: string | undefined;
-  const person = createPersonSettings(root);
   const add = (pathname: string, file: string) => {
     const type = types[extname(file)];
     if (!type) return;
@@ -124,14 +123,18 @@ export function createWebAssets(root: string, directory = WEB_DIRECTORY) {
     const voice = pathname === '/' ? offeredVoice(root) : null;
     if (index && manifest && colors && (pathname === "/" || pathname === "/manifest.webmanifest")) {
       const name = screenName(root);
+      // The saved theme is the one choice that holds between visits, so the page starts in it: its first frame and the
+      // window's bar take their colour from the document's first parse, and a browser can miss a later change of the bar.
+      const saved = savedTheme(root);
       if (pathname === "/") {
-        const bytes = Buffer.from(index.replace('</head>', voice ? '<meta name="alpacawork-voice" content="enabled"></head>' : '</head>').replaceAll("__PWA_LIGHT__", colors.light)
-          .replaceAll("__PWA_DARK__", colors.dark).replaceAll("__PWA_NAME__", htmlEscape(name)));
+        const bytes = Buffer.from(index.replace('</head>', voice ? '<meta name="alpacawork-voice" content="enabled"></head>' : '</head>')
+          .replace("__PWA_THEME__", saved ?? "system").replaceAll("__PWA_LIGHT__", saved ? colors[saved] : colors.light)
+          .replaceAll("__PWA_DARK__", saved ? colors[saved] : colors.dark).replaceAll("__PWA_NAME__", htmlEscape(name)));
         asset = { bytes, type: "text/html; charset=utf-8", tag: entityTag(bytes) };
       } else {
         // An installed app keeps these colours from its last update and paints Android's navigation bar with theme_color;
-        // the page cannot change it at runtime. The saved theme is the one choice that holds between visits.
-        const color = person.values().theme === "dark" ? colors.dark : colors.light;
+        // the page cannot change it at runtime.
+        const color = saved === "dark" ? colors.dark : colors.light;
         const bytes = Buffer.from(JSON.stringify({ ...manifest, name, short_name: name,
           theme_color: color, background_color: color }));
         asset = { bytes, type: "application/manifest+json; charset=utf-8", tag: entityTag(bytes) };

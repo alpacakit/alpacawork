@@ -534,6 +534,10 @@ describe('serve', () => {
     assert.equal(dark.short_name, dark.name);
     assert.equal(dark.theme_color, colors.dark);
     assert.equal(dark.background_color, colors.dark);
+    // A reload starts in the saved theme, so the page and the window's bar do not show the OS's theme first.
+    const reloaded = await (await fetch(base + '/')).text();
+    assert.match(reloaded, /<html lang="en" data-theme="dark">/);
+    assert.equal([...reloaded.matchAll(/name="theme-color"[^>]* content="([^"]+)"/g)].map(match => match[1]).join(), `${colors.dark},${colors.dark}`);
     // An old page's per-visit address no longer picks the colour.
     const stale = await (await fetch(base + '/manifest.webmanifest?theme=light')).json() as Record<string, unknown>;
     assert.equal(stale.theme_color, colors.dark);
@@ -544,6 +548,11 @@ describe('serve', () => {
     const literal = await (await fetch(base + '/')).text();
     assert.match(literal, /<title>alpacawork<\/title>/);
     assert.match(literal, /name="apple-mobile-web-app-title" content="Team __PWA_LIGHT__"/);
+    // Settings that cannot be read still open the page, which shows that failure itself.
+    writeFileSync(join(root, '.alpacawork', 'personal-settings.json'), '{broken');
+    const unreadable = await fetch(base + '/');
+    assert.equal(unreadable.status, 200);
+    assert.match(await unreadable.text(), /<html lang="en" data-theme="system">/);
   });
 
   test('subscriptions: key, register, list, refuse unknown endpoints, remove', async () => {
