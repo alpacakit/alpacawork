@@ -33,7 +33,7 @@ import { useTitleKeys } from "@/features/forms/title-keys";
 import { finishWordsFor, useFinishWords } from "@/features/people/labels";
 import { RowLines } from "./RowLines";
 import { RowProjectTile } from "./RowProjectTile";
-import { RowEnd } from "./RowStatus";
+import { RowEnd, RowTime, RowTimeRoom } from "./RowStatus";
 import { capitalized, dayClock } from "@/domain/day-clock";
 import type { FinishWords } from "@/domain/finish-words";
 import { saysRuns } from "@/domain/row-status";
@@ -58,7 +58,7 @@ import { useConnection } from "@/data/connection";
 import { PullMark, usePullToRefresh } from "./pull-refresh";
 import { ReadFailure, ReadNote } from "@/components/ui/loadable";
 import { useDeviceValue } from "@/lib/device-storage";
-import { HeadingAgents, HeadingTokenSpeed, RowTokenSpeed, SPEED_LANE, SpeedLane, speedLane } from "./token-speed";
+import { HeadingAgents, HeadingSpeedUnit, HeadingTokenSpeed, RowTokenSpeed, SPEED_LANE, SpeedLane, speedLane } from "./token-speed";
 import { isOpen, SECTION_START, sectionFold, sectionsOpen, storedWith } from "./section-fold";
 import { useOfflineShown } from "@/data/reach";
 import { useListEntrance } from "./list-entrance";
@@ -546,9 +546,10 @@ function SectionHead({ section, first, shared, onToggle }: { section: Section; f
           <Icon name="right" className={cn("size-3 text-muted transition-transform motion-reduce:transition-none", section.open && "rotate-90")} />
         </button>
         {section.section === "done" && <TodayMarks />}
-        {section.section === "doing" && <span className={cn(HEAD_LINE, "ml-auto min-w-0 shrink narrow:pr-1.5")}><HeadingAgents tops={sectionTops(section)} narrow={shared.narrow} /></span>}
+        {section.section === "doing" && <span className={cn(HEAD_LINE, "ml-auto min-w-0 shrink narrow:pr-1.5")}><HeadingAgents tops={sectionTops(section)} narrow={shared.narrow} timeApart={shared.lane > 0} /></span>}
       </h2>
-      {shared.lane > 0 && section.section === "doing" && <SpeedLane width={shared.lane} className={cn("mb-0.5", shared.lane < SPEED_LANE && "pr-2")}><HeadingTokenSpeed tops={sectionTops(section)} compact={shared.lane < SPEED_LANE} /></SpeedLane>}
+      {shared.lane > 0 && section.section === "doing" && <SpeedLane width={shared.lane} className={cn("mb-0.5", shared.lane < SPEED_LANE && "pr-3")}><HeadingTokenSpeed tops={sectionTops(section)} compact={shared.lane < SPEED_LANE} /></SpeedLane>}
+      {shared.lane > 0 && section.section === "doing" && <RowTimeRoom>{shared.lane < SPEED_LANE && <HeadingSpeedUnit tops={sectionTops(section)} />}</RowTimeRoom>}
     </div>
   </div>;
 }
@@ -609,7 +610,9 @@ const TaskRow = memo(function TaskRow({ node, shared, visibleRows }: TaskRowProp
   const label = useRef<HTMLDivElement>(null);
   useTint(label, `row:${task.id}`, task.hash, shared.drawing);
   const title = useRef<HTMLButtonElement>(null);
-  const endId = useId();
+  const endId = useId(), timeId = useId();
+  // A working row beside the speed column says its time at the row's end (RowTime), outside its end's words.
+  const timeApart = shared.lane > 0 && node.row?.section === "doing";
   const enter = useRef<(() => void) | null>(null);
   const look = useTaskLook(task);
   const stateWord = look.word;
@@ -666,12 +669,16 @@ const TaskRow = memo(function TaskRow({ node, shared, visibleRows }: TaskRowProp
               <TaskId id={task.id} className="flex-none text-xs tabular-nums text-muted" />
               {/* The title keeps about half the line; what stands at its end (the agents first) gives way. */}
               <RowTitle title={task.title} className="min-w-[45%] flex-1 text-base text-ink" />
-            </>, "flex min-w-[45%] flex-1 items-center gap-1.5 text-left after:absolute after:inset-0 after:content-['']", endId)}
+            </>, "flex min-w-[45%] flex-1 items-center gap-1.5 text-left after:absolute after:inset-0 after:content-['']", timeApart ? `${endId} ${timeId}` : endId)}
             {/* The row's one time at its end, with what is so of its state before it. It stands beside the press, as its time
                 is a press of its own; the press's cover lies over the rest of it, so a press there still opens the task. */}
-            <RowEnd id={endId} task={task} childCount={progress ? `${progress.done}/${progress.total}` : null} />
+            <RowEnd id={endId} task={task} childCount={progress ? `${progress.done}/${progress.total}` : null}
+              timeApart={timeApart} />
           </div>}
-          {shared.lane > 0 && node.row?.section === "doing" && <SpeedLane width={shared.lane} className="items-center"><RowTokenSpeed task={task} compact={shared.lane < SPEED_LANE} /></SpeedLane>}
+          {shared.lane > 0 && node.row?.section === "doing" && <>
+            <SpeedLane width={shared.lane} className={cn("items-center", shared.lane < SPEED_LANE && "pr-3")}><RowTokenSpeed task={task} compact={shared.lane < SPEED_LANE} /></SpeedLane>
+            <RowTime id={timeId} task={task} />
+          </>}
         </div>
         {shared.strips && (visibleRows === null || visibleRows.has(task.id)
           ? <RowStrip node={node} shared={shared} height={h} title={title} enter={enter} />

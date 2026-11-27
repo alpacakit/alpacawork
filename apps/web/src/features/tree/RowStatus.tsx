@@ -251,16 +251,38 @@ export function WaitedNote({ task, className }: { task: Task; className?: string
   </span>;
 }
 
-/** A computer's one-line row's end, in the phone's quiet line's order: the children's count, what is so of its state, its one time. */
-export function RowEnd({ task, childCount, id, className }: { task: Task; childCount: string | null; id?: string; className?: string }) {
+/**
+ * A computer's one-line row's end, in the phone's quiet line's order: the children's count, what is so of its state, its
+ * one time. `timeApart`: a working row beside the speed column says its time after the speed (RowTime), at the row's end.
+ */
+export function RowEnd({ task, childCount, id, timeApart, className }: { task: Task; childCount: string | null; id?: string; timeApart?: boolean; className?: string }) {
   return <span id={id} data-row-end className={cn("flex min-w-0 shrink items-baseline gap-1.5 text-xs", className)}>
     {task.homeRow?.section === "error" && <RowKindWord task={task} />}
     {childCount && <RowChildren childCount={childCount} word={task.homeRow?.section === "error"} />}
     <WaitedNote task={task} />
     <StatusNotes task={task} />
     <RunningRuns task={task} />
-    <TimeSlot task={task}><StatusTime task={task} /></TimeSlot>
+    {!timeApart && <TimeSlot task={task}><StatusTime task={task} /></TimeSlot>}
   </span>;
+}
+
+/**
+ * A working row's time at the row's end, after the speed column: its right edge is every other row's time's (the line's
+ * right padding), so the times of all sections stand in one column, the working ones in the working colour.
+ */
+export function RowTime({ id, task }: { id?: string; task: Task }) {
+  return <span id={id} data-row-time className={cn(ROW_TIME_SLOT, "flex-none self-center pr-2 text-xs")}><StatusTime task={task} /></span>;
+}
+/** The row end's time's slot: as wide as a time of two figures ("12時間"), so the speed column stands still. */
+const ROW_TIME_SLOT = "inline-block min-w-[3.25em] text-right";
+
+/**
+ * The heading's room over the rows' times (RowTime): the heading has no time of its own, and beside a narrow list it
+ * holds the speed's unit and help there (`children`).
+ */
+export function RowTimeRoom({ children }: { children?: ReactNode }) {
+  return children ? <span className={cn(ROW_TIME_SLOT, "mb-0.5 flex flex-none items-center gap-0.5 pr-2 text-left text-xs")}>{children}</span>
+    : <span aria-hidden="true" className={cn(ROW_TIME_SLOT, "invisible flex-none pr-2 text-xs")}>0</span>;
 }
 
 function RowChildren({ childCount, word }: { childCount: string; word: boolean }) {

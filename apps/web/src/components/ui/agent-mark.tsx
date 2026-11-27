@@ -37,9 +37,9 @@ export const AgentMark = memo(function AgentMark({ name, model, kind: given, lab
   const letters = agentLetters(who.name);
   // One drawing, circle and letters: the letters' middle is the circle's (their capitals' middle at 0.35em below the
   // centre line), whatever font the page has.
-  return <svg data-agent-mark={letters} viewBox="0 0 24 24" {...a11y} className={cn("inline-block size-[1.15em] flex-none select-none", className)}>
+  return <svg data-agent-mark={letters} viewBox="0 0 24 24" {...a11y} className={cn("inline-block size-[1.15em] flex-none overflow-visible select-none", className)}>
     {tip}
-    <circle cx={12} cy={12} r={12} fill={agentColor(who.name, who.kind)} />
+    <circle cx={12} cy={12} r={11.5} fill={agentColor(who.name, who.kind)} />
     <text x={12} y={12} dy="0.35em" textAnchor="middle" fontSize={13} fontWeight={600} fill="#fff" letterSpacing={-0.4}>{letters}</text>
   </svg>;
 });
