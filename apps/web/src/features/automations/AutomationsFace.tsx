@@ -112,7 +112,7 @@ function AutomationRow({ automation, open }: { automation: Automation; open: boo
       <span className="flex-none text-xs text-muted tabular-nums">{automation.id}</span>
       {/* The whole row opens it; the name is its button, so a screen reader hears what opens. */}
       <button type="button" data-automation-open={automation.id} onClick={() => openAutomation(automation.id)}
-        className="min-w-0 truncate text-start font-medium after:absolute after:inset-0 after:content-[''] focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring">
+        className="min-w-0 truncate text-start font-medium narrow:line-clamp-2 narrow:whitespace-normal after:absolute after:inset-0 after:content-[''] focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring">
         <span dir="auto">{automation.name}</span></button>
       {mark && <span data-automation-mark={mark} className="flex-none rounded-xs border border-line px-1 text-xs whitespace-nowrap text-muted">{t(`mark.${mark}`)}</span>}
     </span>

@@ -82,7 +82,7 @@ export function TryDialog({ automation, onClose }: { automation: Automation; onC
             <span className="min-w-0 flex-1">
               <span className="flex items-baseline justify-between gap-3"><span dir="auto" className="min-w-0 truncate">{each.title ?? formatLogTime(each.at, i18n.language)}</span>
                 <span className="flex-none text-xs text-muted tabular-nums">{formatLogTime(each.at, i18n.language)}</span></span>
-              {!!each.fields?.length && <span className="block truncate text-xs text-muted">{fieldsText(t, each.kind, each.fields)}</span>}
+              {!!otherFields(each).length && <span className="block truncate text-xs text-muted">{fieldsText(t, each.kind, otherFields(each))}</span>}
             </span>
           </label>)}
           <label data-automation-try-write className="flex cursor-pointer items-start gap-2.5 rounded-md px-2.5 py-2 hover:bg-row-hover has-checked:bg-hover narrow:min-h-11">
@@ -135,4 +135,10 @@ function IntentResult({ preview, automation }: { preview: Preview; automation: A
     {intents.length ? intents.map((operation, at) => <IntentLine key={at} operation={operation} automation={automation} />) : <p className="m-0">{t("band.intentNothing")}</p>}
     {outcome?.summary && <p className="m-0 text-xs text-muted">{t("try.summary", { text: outcome.summary })}</p>}
   </>;
+}
+
+/** What an event's title does not already say: not the field it was made from, the task it names, or its time. */
+function otherFields(event: { kind: string; title?: string | null; fields?: readonly (readonly [string, string])[] }) {
+  if (event.kind === "schedule") return [];
+  return (event.fields ?? []).filter(([name, value]) => name !== "task" && `${name}: ${value}` !== event.title && value !== event.title);
 }

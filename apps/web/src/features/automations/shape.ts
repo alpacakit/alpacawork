@@ -40,7 +40,9 @@ export type Facts = z.infer<typeof factsSchema>;
 /** An AI's look at a version after it was saved: whether it found something to fix, and where. */
 export const reviewSchema = z.object({
   state: z.enum(["ok", "fix", "unavailable", "running"]),
-  findings: z.array(z.object({ level: z.enum(["must", "note"]), file: z.string(), line: z.number().nullable(), title: z.string().optional(), text: z.string() })),
+  findings: z.array(z.object({ level: z.enum(["must", "note"]), file: z.string(), line: z.number().nullable(), title: z.string().optional(), text: z.string(),
+    /** A finding about something the program does outside alpacawork: its kind, and the part it uses for it. */
+    outsideEffect: z.enum(["file", "network", "process", "other"]).optional(), outsidePart: z.string().optional() })),
   summary: z.string(), model: z.string().nullable(), at: at.nullable(),
   acknowledged: z.object({ by: z.string(), at }).nullable(),
 });
@@ -103,6 +105,8 @@ export const runSchema = z.object({
   startedAt: at.nullable(), endedAt: at.nullable(),
   /** The tasks it made (from their origin), each with its state as the run last read it. */
   tasks: z.array(z.object({ id: z.string(), title: z.string(), state: z.string().nullable() })),
+  /** The status a destination answered with when a send or a read did not go through. */
+  httpStatus: z.number().nullable().optional(),
   /** Skipped runs folded into this one (the same reason, one after another). */
   folded: z.number().optional(),
 });
@@ -124,7 +128,7 @@ export const attentionSchema = z.object({ kind: z.enum(["failed", "disabled", "a
 export type Attention = z.infer<typeof attentionSchema>;
 
 /** The last 7 days of runs: those its event matched, those that went on to `run`, failed, skipped (and why, counted). */
-export const weekSchema = z.object({ matched: z.number(), started: z.number(), done: z.number(), failed: z.number(), skipped: z.number(),
+export const weekSchema = z.object({ matched: z.number(), started: z.number(), done: z.number(), failed: z.number(), stopped: z.number(), skipped: z.number(),
   skippedBy: z.array(z.object({ reason: z.string(), count: z.number() })), busiestDay: z.number() });
 
 export const automationSchema = z.object({

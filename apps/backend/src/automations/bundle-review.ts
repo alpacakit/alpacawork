@@ -3,7 +3,7 @@ import { redactSecrets } from '@alpacawork/core';
 import { automationReviewResultSchema, type AutomationVersion } from '@alpacawork/contract/automation-program';
 import { runClaudeJudge, type AutomationJudgeTransport } from '../agents/adapters/judge-claude.js';
 import { launchSnapshot, readAgentsSettings } from '../agents-settings.js';
-import { savedReplyLanguage } from '../receiver/person-state.js';
+import { createPersonSettings, savedReplyLanguage } from '../receiver/person-state.js';
 import { bundleNowRead, bundleNowWrite } from './bundle-runtime.js';
 import { bundleOutsideEffects, bundleVersion, frozenBundleAi, matchesBundleOutsidePart, updateBundleReview,
   type BundleAutomation } from './bundle-store.js';
@@ -43,7 +43,7 @@ export class BundleReviews {
     try {
       const settings = readAgentsSettings(this.root);
       if (settings.ok) {
-        const language = savedReplyLanguage(this.root);
+        const language = savedReplyLanguage(this.root) ?? screenLanguage(this.root);
         const systemPrompt = language === null ? prompt : prompt +
           `\nWrite the summary and each finding's title and text in ${language}. Keep JSON keys and enumerated values unchanged.`;
         const outsideParts = bundleOutsideEffects(version);
@@ -86,4 +86,12 @@ export class BundleReviews {
     bundleNowWrite(this.root, db => updateBundleReview(db, automation, version.digest, finished));
     return finished;
   }
+}
+
+/** The person's screen language, when no language for the AI's words is set (the review is read on the screen). */
+function screenLanguage(root: string): string | null {
+  try {
+    const value = createPersonSettings(root).values()['language'];
+    return typeof value === 'string' && value ? value : null;
+  } catch { return null; }
 }

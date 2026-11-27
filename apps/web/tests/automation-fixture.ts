@@ -25,7 +25,7 @@ export const automation = (extra: Partial<Automation> = {}): Automation => {
   return {
     id: "A2", project: "P1", name: "Morning", enabled: true, disabledReason: null, hash: "h".repeat(64),
     latest, live: latest, awaitingEnable: false, everEnabled: true, hook: { exists: false }, pendingSignal: null, lastRun: null, next: [],
-    attention: [], week: { matched: 0, started: 0, done: 0, failed: 0, skipped: 0, skippedBy: [], busiestDay: 0 }, ...extra,
+    attention: [], week: { matched: 0, started: 0, done: 0, failed: 0, stopped: 0, skipped: 0, skippedBy: [], busiestDay: 0 }, ...extra,
   };
 };
 

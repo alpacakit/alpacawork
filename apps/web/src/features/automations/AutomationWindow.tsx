@@ -2,6 +2,7 @@ import { automationEventSource } from "@alpacawork/contract/automation-program";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeading } from "@/components/ui/dialog";
 import { Icon } from "@/components/ui/icon";
 import { Message } from "@/components/ui/message";
 import { Popup } from "@/components/ui/popup";
@@ -105,7 +106,7 @@ function Opened({ automation, pane }: { automation: Automation; pane: Automation
         <MoreMenu automation={automation} />
       </span>
     </div>
-    {pane === "log" ? <LogPane automation={automation} /> : pane === "code" ? <CodePane automation={automation} /> : <AboutPane automation={automation} />}
+    {pane === "log" ? <LogPane automation={automation} /> : pane === "code" ? <CodePane automation={automation} /> : <AboutPane automation={automation} destinationsAbove={bandShowsDestinations(automation, reading)} />}
     {trying && <TryDialog automation={automation} onClose={() => setTrying(false)} />}
   </>;
 }
@@ -188,6 +189,14 @@ function Band({ automation, reading, onRead, onBack }: { automation: Automation;
   return null;
 }
 
+/** Whether the band over the panes is the before-on one entering a missing destination (then it is entered only there). */
+function bandShowsDestinations(automation: Automation, reading: boolean): boolean {
+  if (!missingDestination(automation.latest)) return false;
+  const attention = attentionOf(automation);
+  if (reading && needsBefore(automation.latest)) return true;
+  return !(attention && (attention.kind === "failed" || attention.kind === "disabled")) && !automation.awaitingEnable && !automation.enabled && !automation.everEnabled;
+}
+
 /** A band's buttons: a finger's 44px on a phone. */
 const BAND_BUTTON = "narrow:min-h-11";
 
@@ -234,6 +243,7 @@ function AwaitingBand({ automation, onRead }: { automation: Automation; onRead: 
   const latest = automation.latest, live = automation.live!;
   const [before, after] = differing(live.docs.run.summary, latest.docs.run.summary);
   const enable = () => needsBefore(latest) ? onRead() : act.mutate({ act: "enable", automation });
+  const [discarding, setDiscarding] = useState(false);
   return <BandFrame data-automation-band="awaiting" title={t("band.awaitingTitle")}
     action={<Button data-automation-band-act className={BAND_BUTTON} disabled={writeDisabled || act.isPending} onClick={enable}>{t("band.awaitingOn")}</Button>}>
     <p className="m-0 line-clamp-3 text-sm text-muted">{madeBy(t, latest, i18n.language)}{t("sentence")}</p>
@@ -244,7 +254,19 @@ function AwaitingBand({ automation, onRead }: { automation: Automation; onRead: 
     </div>
     <div className="flex flex-wrap items-center gap-2">
       <Button variant="outline" data-automation-diff className={BAND_BUTTON} onClick={() => setPane("code")}>{t("band.diff")}</Button>
-      <Button variant="ghost" data-automation-discard className={BAND_BUTTON} disabled={writeDisabled || act.isPending} onClick={() => act.mutate({ act: "discard", automation })}>{t("band.discard")}</Button>
+      <Button variant="ghost" data-automation-discard className={BAND_BUTTON} disabled={writeDisabled || act.isPending} onClick={() => setDiscarding(true)}>{t("band.discard")}</Button>
+      {discarding && <Dialog open onOpenChange={open => { if (!open) setDiscarding(false); }}>
+        <DialogContent data-automation-discard-confirm>
+          <DialogHeading title={t("discard.title")} />
+          <DialogBody>
+            <p className="m-0">{t("discard.body", { digest: short(latest.digest) })}</p>
+            <DialogFooter>
+              <Button variant="outline" className={BAND_BUTTON} onClick={() => setDiscarding(false)}>{t("discard.cancel")}</Button>
+              <Button data-automation-discard-yes className={BAND_BUTTON} disabled={act.isPending} onClick={() => act.mutate({ act: "discard", automation }, { onSuccess: () => setDiscarding(false) })}>{t("discard.do")}</Button>
+            </DialogFooter>
+          </DialogBody>
+        </DialogContent>
+      </Dialog>}
     </div>
   </BandFrame>;
 }
@@ -304,19 +326,21 @@ function BeforeOnBand({ automation, onBack }: { automation: Automation; onBack?:
   const toRead = reviewToRead(latest), missing = missingDestination(latest);
   const intents = latest.preview?.operations.filter(operation => operation.replaced) ?? [];
   const held = writeDisabled || act.isPending || review.state === "running" || missing;
+  const effects = outsideEffects(latest);
   return <div ref={box}><BandFrame data-automation-band="before-on" title={t(automation.awaitingEnable ? "band.beforeNewTitle" : "band.beforeTitle")}
-    action={onBack ? <Button variant="outline" data-automation-band-back className={BAND_BUTTON} onClick={onBack}>{t("band.back")}</Button> : <Button data-automation-band-act className={BAND_BUTTON} disabled={held}
-      onClick={() => act.mutate({ act: "enable", automation, acknowledge: toRead })}>{t(toRead ? "band.acknowledgeOn" : "band.turnOn")}</Button>}>
+    action={onBack && <Button variant="outline" data-automation-band-back className={BAND_BUTTON} onClick={onBack}>{t("band.back")}</Button>}>
     <dl className="m-0 grid grid-cols-[8rem_minmax(0,1fr)] gap-x-4 gap-y-2.5 text-sm narrow:grid-cols-1 narrow:gap-y-0.5">
-      {latest.facts.outside.length > 0 && <Fact name={t("band.destinations")}>
+      {missing && latest.facts.outside.length > 0 && <Fact name={t("band.destinations")}>
         <DestinationRows automation={automation} names={latest.facts.outside} />
         {missing && <span className="mt-1 block text-xs text-error">{t("band.destinationsMissing")}</span>}
       </Fact>}
       <Fact name={t("band.review")}><ReviewSummary review={review} /></Fact>
       {latest.direct && <Fact name={t("band.direct")}>
         {/* None found is only none when the review looked: without it, only the parts the program uses were read. */}
-        {latest.direct.length ? latest.direct.map((effect, at) => <p key={at} className="m-0">{t(`effect.${effect.kind}`)}{t("colon")}{effect.text}</p>) : review.state === "ok" || review.state === "fix" ? t("band.directNotFound") : t("band.directUnknown")}
-        {latest.direct.length > 0 && <span className="block text-xs text-muted">{t("band.directNote")}</span>}
+        {effects.length ? effects.map((effect, at) => <p key={at} className="m-0">{t(`effect.${effect.kind}`)}{t("colon")}{effect.text}
+          {effect.finding && <span className="block text-xs text-muted">{effect.finding}</span>}</p>)
+          : review.state === "ok" || review.state === "fix" ? t("band.directNotFound") : t("band.directUnknown")}
+        {effects.length > 0 && <span className="block text-xs text-muted">{t("band.directNote")}</span>}
       </Fact>}
       <Fact name={t("band.intent")}>
         {latest.preview?.ran ? intents.length ? intents.map((operation, at) => <IntentLine key={at} operation={operation} automation={automation} />) : t("band.intentNothing")
@@ -324,8 +348,8 @@ function BeforeOnBand({ automation, onBack }: { automation: Automation; onBack?:
         {latest.preview?.ran && <span className="block text-xs text-muted">{t("band.intentFrom", { time: formatLogTime(latest.preview.at, i18n.language) })}</span>}
       </Fact>
     </dl>
-    {onBack && <div className="mt-3 flex"><Button data-automation-band-act className={BAND_BUTTON} disabled={held}
-      onClick={() => act.mutate({ act: "enable", automation, acknowledge: toRead })}>{t(toRead ? "band.acknowledgeOn" : "band.turnOn")}</Button></div>}
+    <div className="mt-3 flex"><Button data-automation-band-act className={BAND_BUTTON} disabled={held}
+      onClick={() => act.mutate({ act: "enable", automation, acknowledge: toRead })}>{t(toRead ? "band.acknowledgeOn" : "band.turnOn")}</Button></div>
   </BandFrame></div>;
 }
 
@@ -333,7 +357,7 @@ function BeforeOnBand({ automation, onBack }: { automation: Automation; onBack?:
  * What it does: when it runs and its limits (the facts the server took from `config`), then what each function does in
  * the AI's own words (its JSDoc), then the last 7 days in one line. The version running is described while one runs.
  */
-function AboutPane({ automation }: { automation: Automation }) {
+function AboutPane({ automation, destinationsAbove }: { automation: Automation; destinationsAbove: boolean }) {
   const { t } = useTranslation("automations");
   const version = automation.live ?? automation.latest;
   const facts = version.facts;
@@ -361,8 +385,8 @@ function AboutPane({ automation }: { automation: Automation }) {
         {aiCostText(t, facts) && <p className="m-0 text-xs text-muted">{aiCostText(t, facts)}</p>}
       </Row>
       <Row name={t("about.outside")}>
-        <p className="m-0">{outsideText(t, facts)}</p>
-        {facts.outside.length > 0 && <div className="mt-1.5"><DestinationRows automation={automation} names={facts.outside} /></div>}
+        <p className="m-0">{outsideText(t, facts, version.direct, destinationsAbove)}</p>
+        {!destinationsAbove && facts.outside.length > 0 && <div className="mt-1.5"><DestinationRows automation={automation} names={facts.outside} /></div>}
       </Row>
     </Section>
     <Section title={t("about.program")}>
@@ -373,7 +397,8 @@ function AboutPane({ automation }: { automation: Automation }) {
       <p data-automation-week-line className="m-0 py-1 text-sm">{!week.matched ? t("about.weekNone") : <>
         {t("about.weekLine", { matched: week.matched, done: week.done, skipped: week.skipped })}
         {week.skippedBy.length > 0 && t("about.weekWhy", { list: week.skippedBy.map(item => `${skipName(t, item.reason)} ${item.count}`).join(t("join")) })}
-        {week.failed > 0 && <>{t("join")}{t("about.weekFailed", { count: week.failed })}</>}</>}</p>
+        {week.failed > 0 && <>{t("join")}{t("about.weekFailed", { count: week.failed })}</>}
+        {week.stopped > 0 && <>{t("join")}{t("about.weekStopped", { count: week.stopped })}</>}</>}</p>
     </Section>}
   </div>;
 }
@@ -487,4 +512,19 @@ function AutomationPager({ id }: { id: string }) {
     <FrameButton data-list-previous icon="left" label={t("window.previous")} disabled={!previous} onPress={() => { if (previous) openAutomation(previous); }} />
     <FrameButton data-list-next icon="right" label={t("window.next")} disabled={!next} onPress={() => { if (next) openAutomation(next); }} />
   </span>;
+}
+
+/**
+ * What a version does outside alpacawork, put together: each effect read from its parts with the review's finding on it,
+ * and each the review alone found (by its title).
+ */
+function outsideEffects(version: Version): { kind: string; text: string; finding: string | null }[] {
+  const findings = version.review.findings.filter(finding => finding.outsideEffect);
+  const effects = (version.direct ?? []).map(effect => {
+    const finding = findings.find(each => each.outsideEffect === effect.kind && each.outsidePart === effect.text);
+    return { kind: effect.kind, text: effect.text, finding: finding ? finding.title ?? finding.text : null };
+  });
+  const alone = findings.filter(finding => !effects.some(effect => effect.kind === finding.outsideEffect && effect.text === finding.outsidePart))
+    .map(finding => ({ kind: finding.outsideEffect!, text: finding.title ?? finding.text, finding: null }));
+  return [...effects, ...alone];
 }

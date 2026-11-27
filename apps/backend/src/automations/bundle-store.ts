@@ -258,7 +258,8 @@ export function bundleVersionView(db: DatabaseSync, root: string, automation: Bu
   return {
     digest, contractVersion: saved.contractVersion, savedAt: saved.savedAt, savedBy: saved.savedBy,
     files: saved.files.map(({ path, source }) => ({ path, bytes: Buffer.byteLength(source) })), docs: saved.docs, parts: saved.parts,
-    outsideEffects: effects.filter(effect => !findings.some(finding => matchesBundleOutsidePart(effect, finding))),
+    // Every effect the program has is said, a review's finding on it too: the screen puts them together.
+    outsideEffects: effects,
     sourceRequest: includeSource ? versionSourceRequest(db, automation.uuid, digest) : null,
     facts: {
       when: { event: config.on.event, where: config.on.where ?? null, textKey: automationEvents[config.on.event].textKey,

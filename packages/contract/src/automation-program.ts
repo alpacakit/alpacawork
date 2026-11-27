@@ -378,7 +378,7 @@ export const automationAttentionSchema = z.array(z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.enum(['disabled','awaiting_enable','stopping']), at: date }),
 ]));
 export const automationWeekSchema = z.strictObject({
-  matched: count, started: count, done: count, skipped: count, failed: count, busiestDay: count,
+  matched: count, started: count, done: count, skipped: count, failed: count, stopped: count, busiestDay: count,
   skippedBy: z.array(z.strictObject({ reason: z.string(), count })),
 });
 export const automationProgramViewSchema = z.strictObject({
@@ -392,7 +392,7 @@ export type AutomationProgramView = z.infer<typeof automationProgramViewSchema>;
 export const automationProgramViewResultSchema = z.strictObject({ automation: automationProgramViewSchema });
 export const automationProgramSaveResultSchema = automationProgramViewResultSchema.extend({ saved: automationVersionSchema });
 export const automationProgramListResultSchema = z.strictObject({
-  automations: z.array(automationProgramViewSchema.pick({ id: true, project: true, name: true, hash: true, enabled: true,
+  automations: z.array(automationProgramViewSchema.pick({ id: true, project: true, name: true, hash: true, enabled: true, disabledReason: true,
     awaitingEnable: true, everEnabled: true, nextAt: true, week: true, lastRun: true, attention: true }).extend({ latest: automationVersionSchema.pick({ facts: true, docs: true, review: true, missingDestinations: true }) })),
   counts: z.strictObject({ enabled: count, draft: count, stopped: count }),
   today: z.strictObject({ aiCalls: count, outside: count }),

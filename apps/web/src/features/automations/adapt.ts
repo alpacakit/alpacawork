@@ -56,8 +56,21 @@ export function toVersion(version: AutomationVersion): Version {
 function toOperation(operation: { name: string; target: unknown; input: unknown; replaced: boolean; result: unknown; code: string | null;
   usage: { model: string | null; costUsd: number | null } | null; durationMs?: number | null; outcome?: string }): Operation {
   const result = operation.durationMs != null && record(operation.result) === operation.result ? { ...record(operation.result), durationMs: operation.durationMs } : operation.result;
-  return { name: operation.name, target: operation.target === null ? null : plain(operation.target), input: operation.input, replaced: operation.replaced,
+  return { name: operation.name, target: targetWords(operation.target), input: operation.input, replaced: operation.replaced,
     result: result ?? null, code: operation.code, failed: operation.outcome === "failed" || operation.code !== null, usage: operation.usage ? { model: operation.usage.model ?? "", costUsd: operation.usage.costUsd } : null };
+}
+
+/**
+ * What an operation was done to, as a person reads it: a destination by its name and host, a task by its number. A task
+ * a showing would make has no number yet (`preview-1`): it is none here, said as the task it would make.
+ */
+function targetWords(target: unknown): string | null {
+  if (target === null || target === undefined) return null;
+  if (typeof target === "string") return target.startsWith("preview-") ? null : target;
+  const named = record(target);
+  if (typeof named.task === "string") return named.task.startsWith("preview-") ? null : named.task;
+  if (typeof named.name === "string") return typeof named.host === "string" && named.host !== named.name ? `${named.name} (${named.host})` : named.name;
+  return plain(target);
 }
 
 /** An event's line and what arrived with it, by its kind: a task's title, a signal's newest data, the pressure's kinds. */
@@ -75,8 +88,15 @@ export function toRun(automationId: string, run: ServerRun): Run {
   });
   return { automationId, number: run.number, version: run.version, at: run.at, kind: run.mode === "live" ? "real" : "trial", state: run.state, phase: run.phase,
     event: run.event, digest: run.digest, trigger: run.trigger, summary: run.summary, notify: run.notify,
-    reasonKind: run.reasonKind, reasonText: run.reason, error: run.error, startedAt: run.startedAt, endedAt: run.finishedAt, tasks,
+    reasonKind: run.reasonKind, reasonText: run.reason, error: run.error, startedAt: run.startedAt, endedAt: run.finishedAt, tasks, httpStatus: answeredStatus(run.operations),
     ...run.count > 1 ? { folded: run.count - 1 } : {} };
+}
+
+/** The status a destination answered with on the last send or read that did not go through (none when none answered). */
+function answeredStatus(operations: readonly { name: string; outcome: string; result: unknown }[]): number | null {
+  const failed = operations.filter(operation => (operation.name === "send" || operation.name === "fetch") && operation.outcome === "failed").at(-1);
+  const status = record(failed?.result).status;
+  return typeof status === "number" ? status : null;
 }
 
 export function toRunDetail(automationId: string, run: ServerRun, event: ProgramAutomationEvent | null): RunDetail {
@@ -109,9 +129,9 @@ export function toAutomation(view: AutomationProgramView): Automation {
  */
 function fromListItem(item: ListItem): Automation {
   const latest: Version = { digest: "", contractVersion: 0, savedAt: "", savedBy: { kind: "person", name: null, request: null }, files: [],
-    facts: toFacts(item.latest.facts), docs: item.latest.docs, parts: [], direct: null,
+    facts: toFacts(item.latest.facts), docs: item.latest.docs, parts: [], missingDestinations: item.latest.missingDestinations, direct: null,
     review: item.latest.review as Version["review"], preview: null };
-  return { id: item.id, project: item.project, name: item.name, enabled: item.enabled, disabledReason: null, hash: item.hash, latest, live: null,
+  return { id: item.id, project: item.project, name: item.name, enabled: item.enabled, disabledReason: item.disabledReason, hash: item.hash, latest, live: null,
     awaitingEnable: item.awaitingEnable, everEnabled: item.everEnabled, hook: { exists: false }, pendingSignal: null,
     lastRun: item.lastRun ? toRun(item.id, item.lastRun) : null, next: item.nextAt ? [item.nextAt] : [], attention: attentionOf(item.attention), week: toWeek(item.week), listed: true };
 }

@@ -138,12 +138,16 @@ export function aiCostText(t: T, facts: Facts): string | null {
 export const usd = (value: number) => value >= 1 ? value.toFixed(2).replace(/\.00$/, "") : value >= 0.01 ? value.toFixed(2) : value.toPrecision(1);
 
 /** Where it may reach out of this PC, and how many tasks one run may make: "Sends to hooks.slack.com · up to 1 task a run". */
-export function outsideText(t: T, facts: Facts): string {
-  const hosts = facts.outside.map(destination => destination.host ?? t("outside.notEntered", { name: destination.name }));
+export function outsideText(t: T, facts: Facts, direct: readonly { kind: string }[] | null = null, withHosts = true): string {
+  const hosts = withHosts ? facts.outside.map(destination => destination.host ?? t("outside.notEntered", { name: destination.name })) : [];
+  const files = !!direct?.some(effect => effect.kind === "file"), processes = !!direct?.some(effect => effect.kind === "process");
   // A program that reaches the network itself does so whatever it names to send to: said beside it.
   const reaches = !!facts.directNetwork;
-  return [hosts.length ? t("outside.sends", { hosts: hosts.join(t("trigger.or")) }) : reaches ? null : t("outside.none"),
+  // Its destinations listed apart (with their hosts), the line says only what else it does.
+  const listedApart = !withHosts && facts.outside.length > 0;
+  return [hosts.length ? t("outside.sends", { hosts: hosts.join(t("trigger.or")) }) : reaches || files || processes || listedApart ? null : t("outside.none"),
     reaches ? hosts.length ? t("outside.direct") : t("outside.directFirst") : null,
+    files ? t("outside.directFiles") : null, processes ? t("outside.directProcesses") : null,
     facts.limits.tasksPerRun ? t("outside.tasks", { count: facts.limits.tasksPerRun }) : t("outside.noTasks")].filter(Boolean).join(t("join"));
 }
 
@@ -170,7 +174,9 @@ export function runLine(t: T, run: Pick<Run, "state" | "summary" | "trigger" | "
 }
 
 /** Why a run did not go through, in words the screen has for the server's kind, else the server's own sentence. */
-export function reasonText(t: T, run: Pick<Run, "reasonKind" | "reasonText"> & { error?: Run["error"] }): string | null {
+export function reasonText(t: T, run: Pick<Run, "reasonKind" | "reasonText"> & { error?: Run["error"]; httpStatus?: number | null }): string | null {
+  if (run.httpStatus && (run.reasonKind === "temporary" || run.reasonKind === "unknown_result" || run.error?.code === "temporary"))
+    return t("runs.reason.answered", { status: run.httpStatus });
   // That the program failed says nothing a person can act on: what it wrote itself says why (the server keeps it as
   // the run's reason); a failure the server names (the AI unavailable, the time limit) is said in the screen's words.
   if (run.reasonKind && GENERAL_FAILURES.has(run.reasonKind)) return run.error?.message || run.reasonText || t("runs.reason.other");
@@ -206,9 +212,11 @@ export function dayCounts(runs: readonly Pick<Run, "state" | "kind" | "folded">[
 export function operationText(t: T, operation: Operation, facts?: Facts): string {
   const input = (operation.input ?? {}) as Record<string, unknown>;
   if (operation.failed) {
-    const why = operation.code ? reasonWords(t, operation.code) ?? operation.code : null;
+    const status = (operation.result as { status?: unknown } | null)?.status;
+    const why = typeof status === "number" ? t("runs.reason.answered", { status }) : operation.code ? reasonWords(t, operation.code) ?? operation.code : null;
     const what = operation.name === "tasks.create" ? t("operation.createFailed", { title: typeof input.title === "string" ? input.title : "" })
-      : operation.name === "send" || operation.name === "fetch" ? t("operation.sendFailed", { host: operation.target ?? "" })
+      : operation.name === "send" ? t("operation.sendFailed", { host: operation.target ?? "" })
+      : operation.name === "fetch" ? t("operation.readFailed", { host: operation.target ?? "" })
       : t("operation.otherFailed", { name: operation.name });
     return why ? `${what}${t("colon")}${why}` : what;
   }
@@ -223,9 +231,12 @@ export function operationText(t: T, operation: Operation, facts?: Facts): string
     const answer = typeof result.reason === "string" ? result.reason : typeof result.answer === "string" ? result.answer : "";
     return t("operation.ask", { model: operation.usage?.model ?? input.ai ?? "", answer });
   }
-  if (operation.name === "send" || operation.name === "fetch")
+  if (operation.name === "send")
     return operation.replaced ? t("operation.wouldSend", { host: operation.target ?? "" }) : t("operation.sent", { host: operation.target ?? "" });
-  if (operation.name === "tasks.comment") return operation.replaced ? t("operation.wouldComment", { task: operation.target ?? "" }) : t("operation.comment", { task: operation.target ?? "" });
+  // A read leaves nothing outside: it is a read, shown or done.
+  if (operation.name === "fetch") return t("operation.read", { host: operation.target ?? "" });
+  if (operation.name === "tasks.comment") return operation.target === null ? t("operation.commentNew")
+    : operation.replaced ? t("operation.wouldComment", { task: operation.target }) : t("operation.comment", { task: operation.target });
   if (operation.name === "disable") return t("operation.disable");
   return t("operation.other", { name: operation.name });
 }

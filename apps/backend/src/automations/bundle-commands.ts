@@ -188,7 +188,7 @@ export const bundleCommands = {
         FROM automation_operations o JOIN tasks p ON p.id=o.project_task_id
         WHERE o.workspace_day=? AND (? IS NULL OR p.external_id=?)`).get(day, project, project) : undefined;
       return { automations: views.map(v => ({
-        id: v.id, project: v.project, name: v.name, hash: v.hash, enabled: v.enabled, awaitingEnable: v.awaitingEnable,
+        id: v.id, project: v.project, name: v.name, hash: v.hash, enabled: v.enabled, disabledReason: v.disabledReason, awaitingEnable: v.awaitingEnable,
         latest: { facts: v.latest.facts, docs: v.latest.docs, review: v.latest.review, missingDestinations: v.latest.missingDestinations }, lastRun: v.lastRun, attention: v.attention,
         week: v.week, nextAt: v.nextAt, everEnabled: v.everEnabled,
       })), counts: { enabled: views.filter(v => v.enabled).length,

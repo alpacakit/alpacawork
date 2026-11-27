@@ -108,7 +108,7 @@ test('weekly counts use local days and count runs independently of trials and fo
     settleBundleRun(db, a, trial.number, when('2026-01-08T05:00:02Z'), { state: 'failed' });
     return bundleAutomationView(db, root, a, now).week;
   });
-  assert.deepEqual(week, { matched: 5, started: 3, done: 1, skipped: 2, failed: 1, busiestDay: 2,
+  assert.deepEqual(week, { matched: 5, started: 3, done: 1, skipped: 2, failed: 1, stopped: 1, busiestDay: 2,
     skippedBy: [{ reason: 'daily_limit', count: 2 }] });
 });
 

@@ -289,7 +289,7 @@ function recentBundleWeek(db: DatabaseSync, automation: BundleAutomation, timezo
     const local = day.format(new Date(value));
     return local >= first && local <= today ? local : null;
   };
-  let matched = 0, started = 0, done = 0, skipped = 0, failed = 0, busiestDay = 0;
+  let matched = 0, started = 0, done = 0, skipped = 0, failed = 0, stopped = 0, busiestDay = 0;
   const startsByDay = new Map<string, number>(), skippedBy = new Map<string, number>();
   for (const row of rows) {
     const startedDay = inWeek(row.run_started_at);
@@ -309,6 +309,7 @@ function recentBundleWeek(db: DatabaseSync, automation: BundleAutomation, timezo
     if (ownMatch && finishedDay) {
       if (row.state === 'done') done++;
       if (row.state === 'failed') failed++;
+      if (row.state === 'stopped') stopped++;
     }
     if (matches && row.state === 'skipped' && finishedDay) {
       skipped += matches;
@@ -316,7 +317,7 @@ function recentBundleWeek(db: DatabaseSync, automation: BundleAutomation, timezo
       skippedBy.set(reason, (skippedBy.get(reason) ?? 0) + matches);
     }
   }
-  return { matched, started, done, skipped, failed, busiestDay,
+  return { matched, started, done, skipped, failed, stopped, busiestDay,
     skippedBy: [...skippedBy].map(([reason, count]) => ({ reason, count })).sort((a, b) => b.count - a.count || a.reason.localeCompare(b.reason)) };
 }
 

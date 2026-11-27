@@ -97,7 +97,10 @@ test("a new version waits beside the one running, what differs marked; dropping 
   seedAutomations(data, listOf([unworded]));
   windowOn(data, "A3");
   expect(text('[data-automation-band="awaiting"]')).toMatch(/Made by the coordinator at \S/);
+  // Asked once before it goes: nothing is sent until the dialog says so.
   fireEvent.click(document.querySelector("[data-automation-discard]")!);
+  expect(sent.some(call => call.path.includes("automation/restore"))).toBe(false);
+  fireEvent.click(document.querySelector("[data-automation-discard-yes]")!);
   await waitFor(() => expect(sent.find(call => call.path.includes("automation/restore"))?.body).toEqual({ automation: "A3", expectedHash: waiting.hash, version: live.digest }));
 });
 

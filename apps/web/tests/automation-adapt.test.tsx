@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import type { AutomationVersion } from "@alpacawork/contract/automation-program";
-import { toPreview, toVersion } from "../src/features/automations/adapt";
+import { toPreview, toRunDetail, toVersion } from "../src/features/automations/adapt";
 import { writtenEvent } from "../src/features/automations/data";
 import { serverPreview } from "./automation-fixture";
 
@@ -54,4 +54,24 @@ test("the server's reason kinds are said in words, a limit naming the operation 
   const { reasonText } = await import("../src/features/automations/words");
   expect([reasonText(t, { reasonKind: "limit:tasks.create", reasonText: null }), reasonText(t, { reasonKind: "limit:send", reasonText: null }), reasonText(t, { reasonKind: "timeout", reasonText: "The automation exceeded its time limit" })])
     .toEqual(["Reached the limit of tasks one run may make", "Reached the limit of send", "Stopped at its time limit"]);
+});
+
+test("an operation's target is said in the person's words: a destination by name and host, never a showing's own task number; a read is a read", async () => {
+  const { i18n, startI18n } = await import("@alpacawork/i18n");
+  startI18n(); await i18n.changeLanguage("en");
+  const t = i18n.getFixedT("en", "automations") as never;
+  const { operationText } = await import("../src/features/automations/words");
+  const run = toRunDetail("A6", {
+    number: 1, version: 1, digest: "sha256:" + "a".repeat(64), activationRevision: null, event: { kind: "signal", ref: "s1", manual: false }, mode: "live", state: "failed",
+    phase: null, at: "2026-11-27T00:00:00.000Z", lastAt: "2026-11-27T00:00:00.000Z", startedAt: null, phaseStartedAt: null, runStartedAt: null, finishedAt: null, count: 1,
+    reasonKind: "temporary", reason: null, trigger: null, summary: null, report: null, notify: false, error: { code: "temporary", message: null, file: null, line: null }, output: [],
+    operations: [
+      { ordinal: 1, at: "2026-11-27T00:00:00.000Z", durationMs: 1, taskState: null, outcome: "done", name: "fetch", target: { name: "status", host: "status.example.com" }, input: {}, replaced: false, result: { status: 200 }, code: null, usage: null },
+      { ordinal: 2, at: "2026-11-27T00:00:00.000Z", durationMs: 1, taskState: null, outcome: "done", name: "tasks.comment", target: { task: "preview-1" }, input: {}, replaced: true, result: null, code: null, usage: null },
+      { ordinal: 3, at: "2026-11-27T00:00:00.000Z", durationMs: 1, taskState: null, outcome: "failed", name: "send", target: { name: "ledger", host: "hooks.receiver.test" }, input: {}, replaced: false, result: { status: 500 }, code: "temporary", usage: null },
+    ] } as never, null);
+  expect(run.operations.map(operation => operationText(t, operation))).toEqual(["Read status (status.example.com)", "Write a note on the task it makes",
+    "Could not send to ledger (hooks.receiver.test): The destination answered 500"]);
+  const { reasonText } = await import("../src/features/automations/words");
+  expect(reasonText(t, run)).toBe("The destination answered 500");
 });
