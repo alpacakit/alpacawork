@@ -228,7 +228,7 @@ export function createHostSource(dataDirectory: string, factory: (directory: str
   let initialFailure: { error: unknown } | null = null;
   try {
     const measurement = initialize();
-    if (!measurement.supported) return measurement;
+    if (measurement.supported === false) return measurement;
   } catch (error) { initialFailure = { error }; }
   return {
     supported: true, get facts() { return facts; },

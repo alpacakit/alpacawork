@@ -1,3 +1,4 @@
+import { automationEventMatches, automationEvents } from '@alpacawork/contract/automation-program';
 import { createHash, randomUUID } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
 import {
@@ -9,6 +10,7 @@ import { touch } from '@alpacawork/db';
 import { taskOrigin } from '@alpacawork/raw/task-log-schema';
 import type { Caller } from '../control/authorize.js';
 import { readTask } from '../control/task-store.js';
+import { signalFilterMiss } from './bundle-events.js';
 import { appendBundleSignal, bundleLimit, enqueueBundleRun } from './bundle-runs.js';
 import { bundleVersion, readBundleAutomation, type BundleAutomation } from './bundle-store.js';
 
@@ -137,19 +139,24 @@ export function acceptSignal(db: DatabaseSync, automation: BundleAutomation, dat
   if (!automation.live || automation.deleted)
     throw new Problem(PROBLEM_CODE.conflict, 'Only an enabled signal automation accepts signals');
   const version = bundleVersion(db, automation.uuid, automation.live);
-  if (version.config.on.event !== 'signal')
+  const kind = version.config.on.event, event = automationEvents[kind];
+  if (event.source !== 'signal')
     throw new Problem(PROBLEM_CODE.conflict, 'Only an enabled signal automation accepts signals');
   assertSignalReceiptCapacity(db, automation);
   const at = now.toISOString(), id = randomUUID();
-  const refusal = bundleLimit(db, automation, version.config, now);
   const item = { at, by, key: publicKey, data };
-  const skip = refusal?.kind === 'automation_expired' || refusal?.kind === 'daily_limit';
-  const receipt = skip ? { status: 'skipped' as const, number: enqueueBundleRun(db, automation, version.digest,
-    { kind: 'signal', ref: id, at, manual: false, count: 1, firstAt: at, lastAt: at, items: [item] },
-    'live', now, refusal).number } : appendBundleSignal(db, automation, id, item, now);
-  const reasonKind = (skip ? refusal.kind : null) as AutomationSignalResult['receipt']['reasonKind'];
+  const signal = event.event.parse({ kind, ref: id, at, manual: false, count: 1, firstAt: at, lastAt: at, items: [item] });
+  const limit = bundleLimit(db, automation, version.config, now);
+  // A coalesced receipt may wait out the cooldown or the previous task; a single event is decided now.
+  const refusal = !event.coalesce
+    ? automationEventMatches(version.config.on, signal) ? limit : signalFilterMiss
+    : limit?.kind === 'automation_expired' || limit?.kind === 'daily_limit' ? limit : null;
+  const receipt = event.coalesce && !refusal ? appendBundleSignal(db, automation, kind, id, item, now)
+    : { status: refusal ? 'skipped' as const : 'accepted' as const,
+        number: enqueueBundleRun(db, automation, version.digest, signal, 'live', now, refusal).number };
+  const reasonKind = refusal?.kind ?? null;
   db.prepare(`INSERT INTO automation_signal_receipts(automation_id,key,id,fingerprint,run_number,at,status,reason_kind,settled_at)
-    VALUES (?,?,?,?,?,?,?,?,?)`).run(automation.uuid, delivery, id, fingerprint, receipt.number, at, receipt.status, reasonKind, skip ? at : null);
-  if (!skip) touch(db, { kind: 'automation_signal', id });
+    VALUES (?,?,?,?,?,?,?,?,?)`).run(automation.uuid, delivery, id, fingerprint, receipt.number, at, receipt.status, reasonKind, refusal ? at : null);
+  if (!refusal) touch(db, { kind: 'automation_signal', id });
   return { automation: reference, receipt: { id, at, status: receipt.status, reasonKind }, duplicate: false };
 }

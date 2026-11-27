@@ -1,5 +1,4 @@
 import type { HostKind } from '@alpacawork/contract';
-import type { AutomationConfig } from '@alpacawork/contract/automation-program';
 import type { HostPressureObservation } from '../host/monitor.js';
 import type { BundleAutomation } from './bundle-store.js';
 
@@ -22,7 +21,7 @@ type HostPressureMatch = {
 };
 
 type PressureSubscription = Pick<BundleAutomation, 'enabled' | 'hostPressureAfter' | 'hostPressureCursor'>;
-export function matchHostPressure(automation: PressureSubscription, on: Extract<AutomationConfig['on'], { event: 'host.pressure' }>,
+export function matchHostPressure(automation: PressureSubscription, subscription: readonly HostKind[],
   window: HostPressureWindow | null,
   now: Date): HostPressureMatch | null {
   if (!automation.enabled || automation.hostPressureAfter === null || !window) return null;
@@ -33,7 +32,7 @@ export function matchHostPressure(automation: PressureSubscription, on: Extract<
   if (episodeStart === null || at <= after || age < 0 || age > FRESH_MS) return null;
   const previous = automation.hostPressureCursor?.episodeStart === episodeStart ? automation.hostPressureCursor : null;
   if (previous && at < previous.observedAt) return null;
-  const kinds = observation.kinds.filter(kind => on.where.kinds.includes(kind));
+  const kinds = observation.kinds.filter(kind => subscription.includes(kind));
   if (!kinds.length) return null;
 
   // A sample can add multiple measures; they are one trigger for each subscribed automation.

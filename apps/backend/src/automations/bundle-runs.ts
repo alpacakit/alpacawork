@@ -1,6 +1,6 @@
 import type { DatabaseSync, SQLOutputValue } from 'node:sqlite';
 import {
-  automationProgramRunCursorSchema, automationProgramRunSchema, type AutomationProgramRun, type ProgramAutomationEvent, type AutomationConfig, type AutomationProgramView,
+  automationEventKindSchema, automationEvents, automationProgramRunCursorSchema, automationProgramRunSchema, type AutomationEventKind, type AutomationProgramRun, type ProgramAutomationEvent, type AutomationConfig, type AutomationProgramView,
 } from '@alpacawork/contract/automation-program';
 import { Problem, PROBLEM_CODE, redactSecrets } from '@alpacawork/core';
 import { effectiveTaskState, type TaskBaseState } from '@alpacawork/raw';
@@ -45,6 +45,15 @@ export function touchBundleRun(db: DatabaseSync, automation: BundleAutomation, n
   touch(db, { kind: 'automation_run', id: JSON.stringify([automation.id, number]) });
 }
 
+/** Revoke the current attempt once, recording when the stop took effect for outcome ordering. */
+export function requestBundleStop(db: DatabaseSync, automation: BundleAutomation, now: Date, number?: number): void {
+  const rows = db.prepare(`UPDATE automation_runs SET phase='stopping',version=version+1,reason_kind='cancelled',
+    attempt=json_set(attempt,'$.cancelledAt',?)
+    WHERE automation_id=? AND state='running' AND phase<>'stopping' AND attempt IS NOT NULL
+      AND json_type(attempt,'$.settlement') IS NULL AND (? IS NULL OR number=?) RETURNING number`).all(now.getTime(), automation.uuid, number ?? null, number ?? null);
+  for (const row of rows) touchBundleRun(db, automation, Number(row.number));
+}
+
 function nextRunNumber(db: DatabaseSync, automation: BundleAutomation): number {
   return Number(db.prepare('UPDATE automations SET next_run_number=next_run_number+1 WHERE id=? RETURNING next_run_number')
     .get(automation.uuid)!.next_run_number) - 1;
@@ -60,16 +69,19 @@ export function readBundleEvent(db: DatabaseSync, key: RunKey): ProgramAutomatio
   const saved = db.prepare('SELECT event FROM automation_run_data WHERE automation_id=? AND run_number=?').get(key.uuid, key.number);
   const event = json<ProgramAutomationEvent | null>(saved?.event, null);
   if (event) return event;
-  if (row.trigger_kind !== 'signal') return null;
+  const kind = automationEventKindSchema.safeParse(row.trigger_kind);
+  if (!kind.success || !automationEvents[kind.data].coalesce) return null;
   const items = db.prepare('SELECT item FROM automation_signal_items WHERE automation_id=? AND run_number=? ORDER BY sequence DESC')
     .all(key.uuid, key.number).map(row => JSON.parse(String(row.item)));
-  return items.length ? { kind: 'signal', ref: String(row.trigger_ref), at: String(row.last_at), manual: false, count: Number(row.count),
-    firstAt: String(row.at), lastAt: String(row.last_at), items } : null;
+  return items.length ? automationEvents[kind.data].event.parse({
+    kind: kind.data, ref: String(row.trigger_ref), at: String(row.last_at), manual: false, count: Number(row.count),
+    firstAt: String(row.at), lastAt: String(row.last_at), items,
+  }) : null;
 }
 
 function persistEvent(db: DatabaseSync, key: RunKey, event: ProgramAutomationEvent, at: string): void {
   // Signal members are stored individually. Keeping both would double the size of the reference data.
-  if (event.kind === 'signal' && !event.manual) return;
+  if (automationEvents[event.kind].coalesce && !event.manual) return;
   db.prepare(`INSERT INTO automation_run_data(automation_id,run_number,event,saved_at) VALUES (?,?,?,?)
     ON CONFLICT(automation_id,run_number) DO UPDATE SET event=excluded.event,saved_at=excluded.saved_at`)
     .run(key.uuid, key.number, JSON.stringify(event), at);
@@ -87,7 +99,7 @@ export function enqueueBundleRun(db: DatabaseSync, automation: BundleAutomation,
   return readBundleRun(db, automation, number);
 }
 
-export function appendBundleSignal(db: DatabaseSync, automation: BundleAutomation, id: string, item:
+export function appendBundleSignal(db: DatabaseSync, automation: BundleAutomation, kind: AutomationEventKind, id: string, item:
   Extract<ProgramAutomationEvent, { kind: 'signal' }>['items'][number], now: Date) {
   const at = now.toISOString();
   let row = db.prepare("SELECT number,count,trigger_ref,expires_at FROM automation_runs WHERE automation_id=? AND state='waiting'")
@@ -101,8 +113,8 @@ export function appendBundleSignal(db: DatabaseSync, automation: BundleAutomatio
   if (row) db.prepare('UPDATE automation_runs SET last_at=?,count=?,version=version+1 WHERE automation_id=? AND number=?')
     .run(at, count, automation.uuid, number);
   else db.prepare(`INSERT INTO automation_runs(automation_id,number,digest,activation_revision,activation_epoch,mode,trigger_kind,trigger_ref,state,at,last_at,expires_at)
-    VALUES (?,?,?,?,?,'live','signal',?,'waiting',?,?,?)`)
-    .run(automation.uuid, number, automation.live!, automation.activationRevision, automation.activationEpoch, id, at, at, new Date(now.getTime() + WEEK_MS).toISOString());
+    VALUES (?,?,?,?,?,'live',?,?,'waiting',?,?,?)`)
+    .run(automation.uuid, number, automation.live!, automation.activationRevision, automation.activationEpoch, kind, id, at, at, new Date(now.getTime() + WEEK_MS).toISOString());
   db.prepare('INSERT INTO automation_signal_items(automation_id,run_number,sequence,item) VALUES (?,?,?,?)')
     .run(automation.uuid, number, count, JSON.stringify(item));
   db.prepare('DELETE FROM automation_signal_items WHERE automation_id=? AND run_number=? AND sequence<=?')
@@ -111,20 +123,32 @@ export function appendBundleSignal(db: DatabaseSync, automation: BundleAutomatio
   return { number, status: row ? 'coalesced' as const : 'accepted' as const };
 }
 
-type Settlement = {
+export type BundleSettlement = {
   state: 'done' | 'skipped' | 'failed' | 'stopped';
   kind?: string; reason?: string; trigger?: AutomationProgramRun['trigger']; summary?: string; report?: string; notify?: true;
   error?: AutomationProgramRun['error']; output?: AutomationProgramRun['output']; failedPhase?: 'trigger' | 'run'; resolveTrigger?: boolean;
 };
+
+export function safeBundleSettlement(outcome: BundleSettlement): BundleSettlement {
+  return {
+    ...outcome,
+    reason: outcome.reason && redactSecrets(outcome.reason),
+    trigger: outcome.trigger && { ...outcome.trigger, reason: redactSecrets(outcome.trigger.reason) },
+    error: outcome.error && { ...outcome.error, message: redactSecrets(outcome.error.message).slice(0, 1024) },
+    summary: outcome.summary && redactSecrets(outcome.summary),
+    report: outcome.report && redactSecrets(outcome.report),
+    output: outcome.output?.map(row => ({ ...row, text: redactSecrets(row.text) })),
+  };
+}
+
 export function settleBundleRun(db: DatabaseSync, automation: BundleAutomation, number: number, now: Date,
-  outcome: Settlement, root?: string): AutomationProgramRun {
+  result: BundleSettlement, root?: string): AutomationProgramRun {
   const key = { uuid: automation.uuid, number }, row = bundleRunRow(db, key);
   if (!row) throw new Problem(PROBLEM_CODE.notFound, 'Automation run does not exist');
   if (row.finished_at !== null) return readBundleRun(db, automation, number);
   const at = now.toISOString(), live = row.mode === 'live';
-  const reason = outcome.reason ? redactSecrets(outcome.reason) : null;
-  const trigger = outcome.trigger ? { ...outcome.trigger, reason: redactSecrets(outcome.trigger.reason) } : null;
-  const error = outcome.error ? { ...outcome.error, message: redactSecrets(outcome.error.message).slice(0, 1024) } : null;
+  const outcome = safeBundleSettlement(result);
+  const reason = outcome.reason || null, trigger = outcome.trigger ?? null, error = outcome.error ?? null;
   const day = outcome.state === 'skipped' && live
     ? automationLocalDay(bundleVersion(db, automation.uuid, String(row.digest)).config.timezone, now) : null;
   if (live && automation.activationEpoch === row.activation_epoch) {
@@ -150,13 +174,12 @@ export function settleBundleRun(db: DatabaseSync, automation: BundleAutomation, 
     db.prepare(`UPDATE automation_runs SET version=version+1,state=?,phase=NULL,finished_at=?,reason_kind=?,reason=?,trigger_result=?,
       summary=?,notify=?,error=?,failed_phase=?,skip_day=?,expires_at=NULL,attempt=NULL WHERE automation_id=? AND number=?`)
       .run(outcome.state, at, outcome.kind ?? (outcome.state === 'skipped' ? 'skipped' : null), reason, trigger && JSON.stringify(trigger),
-        outcome.summary ? redactSecrets(outcome.summary) : null, +(live && !!outcome.notify), error && JSON.stringify(error),
+        outcome.summary || null, +(live && !!outcome.notify), error && JSON.stringify(error),
         outcome.failedPhase ?? null, day, automation.uuid, number);
     if (outcome.report !== undefined || outcome.output?.length) {
-      const output = outcome.output?.map(row => ({ ...row, text: redactSecrets(row.text) }));
       db.prepare(`INSERT INTO automation_run_data(automation_id,run_number,report,output,saved_at) VALUES (?,?,?,?,?)
         ON CONFLICT(automation_id,run_number) DO UPDATE SET report=excluded.report,output=excluded.output,saved_at=excluded.saved_at`)
-        .run(automation.uuid, number, outcome.report ? redactSecrets(outcome.report) : null, output ? JSON.stringify(output) : null, at);
+        .run(automation.uuid, number, outcome.report || null, outcome.output ? JSON.stringify(outcome.output) : null, at);
     }
   }
   db.prepare(`UPDATE automation_operations SET outcome='failed',
@@ -229,7 +252,10 @@ export function bundleRunsPage(db: DatabaseSync, { automation, scope, limit, bef
   if (automation) filters.push(['r.automation_id=?', automation.uuid]);
   if (scope !== null) filters.push(['p.external_id=?', scope]);
   if (before !== undefined) filters.push(['r.number<?', before]);
-  if (after) filters.push(['(r.at,a.number,r.number)<(?,?,?)', ...after]);
+  if (after) {
+    const [at, automationNumber, runNumber] = after;
+    filters.push(['(r.at,a.number,r.number)<(?,?,?)', at, automationNumber, runNumber]);
+  }
   const conditions = filters.length ? 'WHERE ' + filters.map(([sql]) => sql).join(' AND ') : '';
   const order = automation ? 'r.at DESC,r.number DESC' : 'r.at DESC,a.number DESC,r.number DESC';
   const rows = db.prepare(`SELECT r.*,a.external_id AS automation_external_id,a.number AS automation_number

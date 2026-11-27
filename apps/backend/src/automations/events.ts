@@ -1,6 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { questionText, type FieldItem } from '@alpacawork/contract';
-import { type automationMessages } from '@alpacawork/contract/automation';
+import { type automationMessages } from '@alpacawork/contract/automation-program';
 import { speaksForUser, type TaskLog } from '@alpacawork/raw/task-log-schema';
 import type { TaskBaseState } from '@alpacawork/raw';
 import { TASK_RECORD_COLUMNS, TASK_RECORD_JOINS, taskEvent } from '../control/task-history.js';
@@ -110,26 +110,4 @@ export function* recentTaskEvents(db: DatabaseSync, project: string, since: stri
     WHERE p.external_id=? AND ${recordedAt}>=julianday(?) AND ${recordedAt}<=julianday(?) AND ${relevantRecords}
     ORDER BY ${recordedAt} DESC,l.event_sequence DESC`).iterate(project, since, until))
     yield* decodeEvent(db, row);
-}
-
-/** Awaiting a decision does not admit a run or advance this automation's position. */
-export function deferTaskEvent(db: DatabaseSync, automation: string, sequence: number): void {
-  db.prepare('INSERT INTO automation_pending_skill_events(automation_id,event_sequence) VALUES (?,?)')
-    .run(automation, sequence);
-}
-
-export function deferredTaskAutomations(db: DatabaseSync): string[] {
-  return db.prepare(`SELECT DISTINCT a.external_id FROM automation_pending_skill_events d
-    JOIN automations a ON a.id=d.automation_id ORDER BY a.number`).all().map(row => String(row.external_id));
-}
-
-export function firstDeferredTaskEvent(db: DatabaseSync, automation: string): number | null {
-  const row = db.prepare('SELECT event_sequence FROM automation_pending_skill_events WHERE automation_id=? ORDER BY event_sequence LIMIT 1')
-    .get(automation);
-  return row ? Number(row.event_sequence) : null;
-}
-
-export function clearDeferredTaskEvents(db: DatabaseSync, automation: string, sequence: number | null = null): void {
-  db.prepare('DELETE FROM automation_pending_skill_events WHERE automation_id=? AND (? IS NULL OR event_sequence=?)')
-    .run(automation, sequence, sequence);
 }

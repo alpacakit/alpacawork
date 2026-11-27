@@ -27,9 +27,13 @@ export type BundleCallbacks = {
   beforeImport(): Awaitable<boolean>;
   beforeRun(trigger: TriggerResult | null): Awaitable<RunPermission>;
   operate(phase: BundlePhase, name: AutomationOperation, input: unknown, signal: AbortSignal, number: number): Awaitable<unknown>;
+  beforeStopping?: (result: ObservedBundleResult) => Promise<void>;
 };
+export type ObservedBundleResult = Pick<BundleCompletion, 'abortedBySignal' | 'completedAt' | 'timedOut' | 'outcome' | 'outputTail'>;
 export type BundleCompletion = {
   stopped: boolean;
+  abortedBySignal: boolean;
+  completedAt: number;
   timedOut: boolean;
   phase: BundlePhase;
   exitCode: number | null;
@@ -64,6 +68,10 @@ class OutputTail {
 
   result(): BundleOutput[] {
     for (const stream of ['stdout', 'stderr'] as const) this.appendText(stream, this.decoders[stream].end());
+    return this.snapshot();
+  }
+
+  snapshot(): BundleOutput[] {
     const parts: BundleOutput[] = [];
     let bytes: Buffer[] = [];
     let stream: BundleOutput['stream'] | undefined;
@@ -102,8 +110,9 @@ export async function recoverAutomationBundle(identity: BundleIdentity): Promise
 /** The callback records the child's identity before any user module can be imported. */
 export async function runAutomationBundle(launch: BundleLaunch, callbacks: BundleCallbacks, signal?: AbortSignal,
   runner = backendEntry('automation-bundle')): Promise<BundleCompletion> {
-  const empty: BundleCompletion = { stopped: true, timedOut: false, phase: 'trigger', exitCode: null, signal: null, outputTail: [], outcome: null };
-  if (signal?.aborted) return empty;
+  if (signal?.aborted) return {
+    stopped: true, abortedBySignal: true, completedAt: Date.now(), timedOut: false, phase: 'trigger', exitCode: null, signal: null, outputTail: [], outcome: null,
+  };
 
   const child = platform.run.spawnDetached(process.execPath, [runner], {
     cwd: launch.cwd,
@@ -121,11 +130,12 @@ export async function runAutomationBundle(launch: BundleLaunch, callbacks: Bundl
 
   let identity: BundleIdentity | undefined;
   let phase: BundlePhase = 'trigger';
+  let abortedBySignal = false;
   let timedOut = false;
   let ready = false;
   let admitted = false;
   let advancing = false;
-  let closing = false;
+  let completedAt: number | null = null;
   let sequence = 0;
   let outcome: BundleOutcome | null = null;
   const operations = new AbortController();
@@ -133,15 +143,17 @@ export async function runAutomationBundle(launch: BundleLaunch, callbacks: Bundl
   const closed = bundleReply<void>();
   const recorded = bundleReply<boolean>();
   const done = () => {
-    closing = true;
+    if (completedAt !== null) return;
+    completedAt = Date.now();
     operations.abort();
     finished.resolve();
   };
   const abort = () => { send(child, { type: 'abort' }); done(); };
-  const expire = () => { timedOut = true; abort(); };
+  const expire = () => { if (completedAt === null) { timedOut = true; abort(); } };
+  const cancel = () => { if (completedAt === null) { abortedBySignal = true; abort(); } };
   let deadline = setTimeout(expire, BUNDLE_TRIGGER_MS);
-  signal?.addEventListener('abort', abort, { once: true });
-  if (signal?.aborted) abort();
+  signal?.addEventListener('abort', cancel, { once: true });
+  if (signal?.aborted) cancel();
 
   child.once('spawn', () => {
     void Promise.resolve().then(async () => {
@@ -151,25 +163,25 @@ export async function runAutomationBundle(launch: BundleLaunch, callbacks: Bundl
       recorded.resolve(true);
     }).catch(() => {
       recorded.resolve(false);
-      if (!closing) { outcome = refusal('failed', 'Could not record the identity of the automation runner'); done(); }
+      if (completedAt === null) { outcome = refusal('failed', 'Could not record the identity of the automation runner'); done(); }
     });
   });
   child.once('error', () => {
     recorded.resolve(false);
-    if (!closing) { outcome = refusal('failed', 'Could not start the automation runner'); done(); }
+    if (completedAt === null) { outcome = refusal('failed', 'Could not start the automation runner'); done(); }
   });
   child.once('exit', done);
   child.once('close', () => closed.resolve());
 
   async function onMessage(message: BundleMessage): Promise<void> {
-    if (closing) return;
+    if (completedAt !== null) return;
     switch (message.type) {
       case 'ready': {
         if (ready) return;
         ready = true;
-        if (!await recorded.promise || closing) return;
+        if (!await recorded.promise || completedAt !== null) return;
         const allowed = await callbacks.beforeImport();
-        if (closing) return;
+        if (completedAt !== null) return;
         if (!allowed) { outcome = refusal('skipped', 'The automation stopped before it could start'); done(); }
         else {
           admitted = true;
@@ -181,7 +193,7 @@ export async function runAutomationBundle(launch: BundleLaunch, callbacks: Bundl
         if (!admitted || advancing || phase !== 'trigger') return;
         advancing = true;
         const permission = await callbacks.beforeRun(message.trigger);
-        if (closing) return;
+        if (completedAt !== null) return;
         if (permission.allowed) {
           phase = 'run';
           clearTimeout(deadline);
@@ -198,9 +210,9 @@ export async function runAutomationBundle(launch: BundleLaunch, callbacks: Bundl
           if (phase !== message.phase)
             throw new AlpacaworkError('forbidden', name, 'This operation is unavailable in the current phase');
           const value = await callbacks.operate(phase, name, message.input, operations.signal, id);
-          if (!closing) send(child, { type: 'operate-result', id, value });
+          if (completedAt === null) send(child, { type: 'operate-result', id, value });
         } catch (error) {
-          if (!closing) send(child, { type: 'operate-error', id, error: failure(name, error) });
+          if (completedAt === null) send(child, { type: 'operate-error', id, error: failure(name, error) });
         }
         return;
       }
@@ -216,14 +228,19 @@ export async function runAutomationBundle(launch: BundleLaunch, callbacks: Bundl
   child.on('message', message => {
     if (!message || typeof message !== 'object' || !('type' in message)) return;
     const work = onMessage(message as BundleMessage).catch(() => {
-      if (!closing) { outcome = refusal('failed', 'The automation runner could not be admitted'); done(); }
+      if (completedAt === null) { outcome = refusal('failed', 'The automation runner could not be admitted'); done(); }
     }).finally(() => handling.delete(work));
     handling.add(work);
   });
 
   await finished.promise;
   clearTimeout(deadline);
-  signal?.removeEventListener('abort', abort);
+  signal?.removeEventListener('abort', cancel);
+  try {
+    await callbacks.beforeStopping?.({ abortedBySignal, completedAt: completedAt!, timedOut, outcome, outputTail: output.snapshot() });
+  } catch (error) {
+    console.error('Could not save the automation outcome before stopping', error);
+  }
   let stopped = true;
   if (identity?.started) stopped = await recoverAutomationBundle(identity);
   else if (child.pid !== undefined && child.exitCode === null && child.signalCode === null) {
@@ -238,5 +255,5 @@ export async function runAutomationBundle(launch: BundleLaunch, callbacks: Bundl
   if (child.connected) child.disconnect();
   child.stdout?.destroy();
   child.stderr?.destroy();
-  return { stopped, timedOut, phase, exitCode: child.exitCode, signal: child.signalCode, outcome, outputTail: output.result() };
+  return { stopped, abortedBySignal, completedAt: completedAt!, timedOut, phase, exitCode: child.exitCode, signal: child.signalCode, outcome, outputTail: output.result() };
 }

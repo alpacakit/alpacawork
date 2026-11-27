@@ -1,5 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
-import { automationEventSchema, automationEvents, type AutomationConfig, type ProgramAutomationEvent } from '@alpacawork/contract/automation-program';
+import { automationEventMatches, automationEventSchema, automationEvents, type AutomationConfig, type ProgramAutomationEvent, type ProgramAutomationOn } from '@alpacawork/contract/automation-program';
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 import { matchTaskSkills } from '../analysis/run-skills.js';
 import { readTallyScope } from '../analysis/tally-scope.js';
@@ -8,7 +8,8 @@ import { nextAutomationTimes } from './schedule.js';
 import { readBundleEvent } from './bundle-runs.js';
 import type { BundleAutomation } from './bundle-store.js';
 
-type TaskProgramEvent = Extract<ProgramAutomationEvent, { kind: 'task.state_changed' | 'task.message' }>;
+type TaskProgramEvent = Extract<ProgramAutomationEvent, { task: unknown }>;
+const WEEK_MS = 7 * 86_400_000;
 
 export function wordsPrefix(value: string, bytes: number) {
   const encoded = Buffer.from(value);
@@ -18,7 +19,10 @@ export function wordsPrefix(value: string, bytes: number) {
   return { text: encoded.subarray(0, end).toString('utf8'), truncated: true };
 }
 
-export function programTaskEvent(db: DatabaseSync, source: TaskEvent): TaskProgramEvent {
+export function programTaskEvent(db: DatabaseSync, on: ProgramAutomationOn, source: TaskEvent): TaskProgramEvent | null {
+  const reader = automationEvents[on.event];
+  if (reader.taskRecord?.event !== source.event) return null;
+  const fields = Object.fromEntries(reader.taskRecord.fields.map(field => [field, source[field as keyof TaskEvent]]));
   const entry = db.prepare(`SELECT json_extract(l.entry,'$.origin') AS origin,t.base_state
     FROM tasks t LEFT JOIN task_log l ON l.task_id=t.id AND l.ordinal=0 WHERE t.external_id=?`).get(source.fields['task.id']!);
   const origin = typeof entry?.origin === 'string' ? JSON.parse(entry.origin) : null;
@@ -29,23 +33,22 @@ export function programTaskEvent(db: DatabaseSync, source: TaskEvent): TaskProgr
     task: { id: source.fields['task.id']!, title: source.fields['task.title']!, state: source.fields['task.state'] || entry?.base_state,
       userRequested: source.userRequested, origin: origin && { automationId: origin.automationId, name: origin.name, runNumber: origin.runNumber } },
   };
-  return automationEventSchema.parse(source.event === 'state_changed'
-    ? { ...common, kind: 'task.state_changed', from: source.from, to: source.to }
-    : { ...common, kind: 'task.message', by: source.by, type: source.type }) as TaskProgramEvent;
+  const event = reader.event.parse({ ...common, ...fields, kind: on.event });
+  return 'task' in event ? event : null;
 }
 
 export function bundleTaskMatch(db: DatabaseSync, config: AutomationConfig, event: TaskProgramEvent, row: TaskEvent,
   tallySince: number | null, now: Date): 'match' | 'miss' | 'pending' | 'unavailable' {
   const { on } = config;
-  if (row.automated && !(on.where && 'includeAutomated' in on.where && on.where.includeAutomated)) return 'miss';
-  if (on.event === 'task.message' && event.kind === on.event)
-    return automationEvents[on.event].matches(on.where, { ...event, description: row.description }) ? 'match' : 'miss';
-  if (on.event !== 'task.state_changed' || event.kind !== on.event || !automationEvents[on.event].matches(on.where, event)) return 'miss';
-  if (!on.where.skills) return 'match';
+  if (!automationEventMatches(on, event, row)) return 'miss';
+  const skills = on.where && 'skills' in on.where ? on.where.skills : undefined;
+  if (!skills) return 'match';
   const deadline = Date.parse(event.at) + 60_000;
-  const result = matchTaskSkills(db, event.task.id, event.at, tallySince, on.where.skills, deadline);
+  const result = matchTaskSkills(db, event.task.id, event.at, tallySince, skills, deadline);
   return result === 'match' || result === 'miss' ? result : result === 'pending' && now.getTime() < deadline ? 'pending' : 'unavailable';
 }
+
+export const signalFilterMiss = { kind: 'event_not_matched', reason: 'The signal did not match the event filter' } as const;
 
 type EventSource = { event?: string; syntheticEvent?: unknown };
 export function bundleEventChoice(db: DatabaseSync, root: string, config: AutomationConfig, project: string,
@@ -62,56 +65,59 @@ export function bundleEventChoice(db: DatabaseSync, root: string, config: Automa
     }
     return parsed;
   }
-  if (choice.event !== undefined) {
-    const chosen = choice.event;
-    if (automationEvents[on.event].candidates === 'task') {
-      const tallySince = readTallyScope(root);
-      for (const row of readTaskEventReference(db, project, chosen)) {
-        if (Date.parse(row.at) < now.getTime() - 7 * 86_400_000) continue;
-        const event = programTaskEvent(db, row);
-        if (bundleTaskMatch(db, config, event, row, tallySince, now) === 'match') return { ...event, manual: true };
+  if (choice.event === undefined) return automationEvents[on.event].manual?.(now.toISOString()) ?? null;
+  for (const event of candidateEvents(db, root, config, project, automation, now, choice.event)) return event;
+  throw new Problem(PROBLEM_CODE.notFound, 'Choose a recent matching event');
+}
+
+export function bundleScheduleTimes(config: AutomationConfig, now: Date) {
+  const { where } = config.on;
+  if (!where || !('cron' in where)) throw new Error('A schedule reader requires a cron expression');
+  return nextAutomationTimes(where.cron, config.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone, now);
+}
+
+function* candidateEvents(db: DatabaseSync, root: string, config: AutomationConfig, project: string,
+  automation: BundleAutomation | null, now: Date, ref?: string): Iterable<ProgramAutomationEvent> {
+  const { on } = config, row = automationEvents[on.event];
+  const since = new Date(now.getTime() - WEEK_MS).toISOString();
+  switch (row.candidates) {
+    case 'next': {
+      const time = ref === undefined ? bundleScheduleTimes(config, now)[0] : ref;
+      if (time && Number.isFinite(Date.parse(time))) {
+        const event = row.manual?.(new Date(time).toISOString());
+        if (event && automationEventMatches(on, event)) yield event;
       }
-    } else if (automation && automationEvents[on.event].candidates === 'retained') {
-      const row = db.prepare(`SELECT number FROM automation_runs WHERE automation_id=? AND mode='live' AND trigger_kind=?
-        AND (trigger_ref=? OR 'run:' || number=?) AND last_at>=? ORDER BY number DESC LIMIT 1`)
-        .get(automation.uuid, on.event, chosen, chosen, new Date(now.getTime() - 7 * 86_400_000).toISOString());
-      const event = row && readBundleEvent(db, { uuid: automation.uuid, number: Number(row.number) });
-      if (event && (on.event !== 'host.pressure' || event.kind === on.event && automationEvents[on.event].matches(on.where, event)))
-        return { ...event, manual: true };
-    } else if (on.event === 'schedule') {
-      const at = Date.parse(chosen);
-      if (Number.isFinite(at)) return automationEvents.schedule.manual(new Date(at).toISOString());
+      break;
     }
-    throw new Problem(PROBLEM_CODE.notFound, 'Choose a recent matching event');
+    case 'task': {
+      const tallySince = readTallyScope(root);
+      const rows = ref === undefined ? recentTaskEvents(db, project, since, now.toISOString()) : readTaskEventReference(db, project, ref);
+      for (const source of rows) {
+        if (source.at < since) continue;
+        const event = programTaskEvent(db, on, source);
+        if (event && bundleTaskMatch(db, config, event, source, tallySince, now) === 'match') yield { ...event, manual: true };
+      }
+      break;
+    }
+    case 'retained': {
+      if (!automation) break;
+      for (const run of db.prepare(`SELECT number FROM automation_runs WHERE automation_id=? AND trigger_kind=? AND mode='live'
+        AND last_at>=? AND (? IS NULL OR trigger_ref=? OR 'run:' || number=?) ORDER BY number DESC`)
+        .iterate(automation.uuid, on.event, since, ref ?? null, ref ?? null, ref ?? null)) {
+        const event = readBundleEvent(db, { uuid: automation.uuid, number: Number(run.number) });
+        if (event && automationEventMatches(on, event)) yield { ...event, manual: true };
+      }
+      break;
+    }
   }
-  return on.event === 'schedule' ? automationEvents.schedule.manual(now.toISOString()) : null;
 }
 
 export function bundleEventCandidates(db: DatabaseSync, root: string, config: AutomationConfig, project: string,
   automation: BundleAutomation | null, now: Date): ProgramAutomationEvent[] {
-  const { on } = config;
-  const since = new Date(now.getTime() - 7 * 86_400_000).toISOString();
-  if (on.event === 'schedule') {
-    const at = nextAutomationTimes(on.where.cron, config.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone, now)[0];
-    return at ? [automationEvents.schedule.manual(at)] : [];
-  }
   const events: ProgramAutomationEvent[] = [];
-  if (automationEvents[on.event].candidates === 'task') {
-    const tallySince = readTallyScope(root);
-    for (const row of recentTaskEvents(db, project, since, now.toISOString())) {
-      const event = programTaskEvent(db, row);
-      if (bundleTaskMatch(db, config, event, row, tallySince, now) !== 'match') continue;
-      events.push({ ...event, manual: true });
-      if (events.length === 5) break;
-    }
-  } else if (automation) {
-    for (const row of db.prepare(`SELECT number FROM automation_runs WHERE automation_id=? AND trigger_kind=? AND mode='live'
-      AND last_at>=? ORDER BY number DESC`).iterate(automation.uuid, on.event, since)) {
-      const event = readBundleEvent(db, { uuid: automation.uuid, number: Number(row.number) });
-      if (!event || on.event === 'host.pressure' && (event.kind !== on.event || !automationEvents[on.event].matches(on.where, event))) continue;
-      events.push({ ...event, manual: true });
-      if (events.length === 5) break;
-    }
+  for (const event of candidateEvents(db, root, config, project, automation, now)) {
+    events.push(event);
+    if (events.length === 5) break;
   }
   return events;
 }

@@ -56,10 +56,10 @@ test('weekly counts use local days and count runs independently of trials and fo
     start(failed.number, '2026-01-01T17:02:00Z');
     settleBundleRun(db, a, failed.number, when('2026-01-01T17:03:00Z'), { state: 'failed', reason: 'Synthetic failure' });
 
-    const rejected = appendBundleSignal(db, a, 'folded-deliveries', {
+    const rejected = appendBundleSignal(db, a, 'signal', 'folded-deliveries', {
       at: '2026-01-08T01:00:00.000Z', by: human, key: 'first', data: null,
     }, when('2026-01-08T01:00:00Z'));
-    appendBundleSignal(db, a, 'coalesced-delivery', {
+    appendBundleSignal(db, a, 'signal', 'coalesced-delivery', {
       at: '2026-01-08T01:01:00.000Z', by: human, key: 'second', data: null,
     }, when('2026-01-08T01:01:00Z'));
     const skip = { state: 'skipped', kind: 'daily_limit', reason: 'Daily limit' } as const;

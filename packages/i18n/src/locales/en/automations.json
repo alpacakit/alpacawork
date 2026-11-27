@@ -377,6 +377,7 @@
   "toggle": "Turn {{name}} on or off",
   "trigger": {
     "contains": "Containing “{{text}}”",
+    "hostPressure": "When the PC is under pressure ({{kinds}})",
     "includeAutomated": "Tasks automations made included",
     "kind": {
       "accept": "acceptance",
@@ -393,23 +394,23 @@
         "report": "When an AI reports",
         "send_back": "When an AI sends it back"
       },
+      "any": "When words from {{who}} arrive",
       "human": {
         "accept": "When I accept",
         "answer": "When I answer a question",
         "question": "When I ask a question",
         "report": "When I report",
         "send_back": "When I send it back"
-      }
+      },
+      "many": "When words from {{who}} ({{kinds}}) arrive"
     },
-    "messageAny": "When words from {{who}} arrive",
-    "messageKinds": "When words from {{who}} ({{kinds}}) arrive",
     "mine": "Only tasks I asked for",
     "or": " or ",
     "other": "When {{event}} happens",
-    "pressure": "When the PC is under pressure ({{kinds}})",
+    "schedule": "{{text}}",
     "signal": "When a signal arrives",
+    "state": "When it becomes {{to}}",
     "stateFromTo": "When {{from}} → {{to}}",
-    "stateTo": "When it becomes {{to}}",
     "usedAny": "this task used any of {{skills}}",
     "usedOne": "this task used {{skill}}",
     "viaCli": "Sent with the CLI",

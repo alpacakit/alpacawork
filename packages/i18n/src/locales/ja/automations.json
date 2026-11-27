@@ -358,6 +358,7 @@
   "toggle": "{{name}} のオン・オフ",
   "trigger": {
     "contains": "「{{text}}」を含む",
+    "hostPressure": "PC が逼迫したとき（{{kinds}}）",
     "includeAutomated": "自動実行が作ったタスクも含む",
     "kind": {
       "accept": "受け入れ",
@@ -374,23 +375,23 @@
         "report": "AI が報告したとき",
         "send_back": "AI が差し戻したとき"
       },
+      "any": "{{who}}言葉が届いたとき",
       "human": {
         "accept": "私が受け入れたとき",
         "answer": "私が質問に答えたとき",
         "question": "私が質問したとき",
         "report": "私が報告したとき",
         "send_back": "私が差し戻したとき"
-      }
+      },
+      "many": "{{who}}言葉（{{kinds}}）が届いたとき"
     },
-    "messageAny": "{{who}}言葉が届いたとき",
-    "messageKinds": "{{who}}言葉（{{kinds}}）が届いたとき",
     "mine": "私が頼んだタスクだけ",
     "or": "・",
     "other": "{{event}} が起きたとき",
-    "pressure": "PC が逼迫したとき（{{kinds}}）",
+    "schedule": "{{text}}",
     "signal": "合図が届いたとき",
+    "state": "{{to}} になったとき",
     "stateFromTo": "{{from}} → {{to}} になったとき",
-    "stateTo": "{{to}} になったとき",
     "usedAny": "このタスクで {{skills}} のどれかを使った",
     "usedOne": "このタスクで {{skill}} を使った",
     "viaCli": "CLI で送れる",

@@ -150,7 +150,7 @@ export class HostMonitor {
   }
 
   async status(now = Date.now()): Promise<HostStatus> {
-    if (!this.source.supported) return this.source;
+    if (this.source.supported === false) return this.source;
     const gpus = this.latest && this.readGpuStatus ? await this.readGpuStatus() : undefined;
     const sample = this.latest && gpus !== undefined ? { ...this.latest, gpus } : this.latest;
     const current = this.pressure.current;

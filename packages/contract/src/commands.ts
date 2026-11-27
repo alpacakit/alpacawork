@@ -25,13 +25,14 @@ import { attachmentResultSchema, taskGetPlacementSchema, startOrderSchema, taskL
 import { serverSettingsSchema } from './server-settings.js';
 import {
   automationIdSchema, automationListInput,
-  AUTOMATION_SIGNAL_DATA_BYTES, automationHookResultSchema, automationInputInput, automationRunStopInput,
+  AUTOMATION_SIGNAL_DATA_BYTES, automationHookResultSchema, automationInputInput, automationInputResultSchema, automationRunStopInput,
   automationSignalResultSchema, automationRunInput, automationTargetInput,
 } from './automation.js';
 import {
   automationBundleSchema, automationDestinationListSchema, automationJson, automationProgramInputs, automationProgramListResultSchema,
   automationProgramPreviewResultSchema, automationProgramRunReceiptSchema, automationProgramRunViewSchema,
   automationProgramRunsViewSchema, automationProgramViewResultSchema, automationProgramSaveResultSchema, automationReviewResultSchema, automationVersionSchema,
+  AUTOMATION_DESTINATION_MAX_CHARS,
 } from './automation-program.js';
 import { z } from 'zod';
 import { COORDINATOR_MEMO_LIMIT, coordinatorMemoSchema, coordinatorMemoSetInputSchema, coordinatorReplyGetInput } from './coordinator-contract.js';
@@ -58,6 +59,8 @@ export type CommandOption = {
   cliKey?: string;
   kind: 'text' | 'boolean' | 'number' | 'list' | 'file' | 'json';
   max?: number;
+  /** Read the same parameter from a file or stdin, bounded by this many bytes. */
+  fileAlternative?: number;
   jsonFile?: true;
   nullable?: true;
   jsonScalar?: true;
@@ -100,13 +103,18 @@ const groups: Readonly<Record<string, string>> = {
 export const cliWriteHelp = 'Writes use a fresh operation ID unless you supply --op-id. After an unknown result the CLI tries the same request up to 3 times total within 65 seconds. Specify --op-id to check after process loss. Automatic IDs are not saved. An unknown-result error includes the ID and check command.';
 
 const option = (kind: CommandOption['kind']) =>
-  (key: string, description: string, extra: Pick<CommandOption, 'nullable' | 'local' | 'jsonScalar' | 'queryCount' | 'cliDetail'> = {}): CommandOption =>
+  (key: string, description: string, extra: Pick<CommandOption, 'nullable' | 'local' | 'jsonScalar' | 'queryCount' | 'cliDetail' | 'fileAlternative'> = {}): CommandOption =>
     ({ key, description, kind, ...extra });
 const text = option('text'), number = option('number'), boolean = option('boolean'), json = option('json');
 const list = (key: string, description: string) =>
   option('list')(key, description, { cliDetail: 'Repeatable or comma-separated.' });
 const file = (key: string, max: number, description: string, jsonFile?: true): CommandOption =>
   ({ key, description, cliDetail: 'Use an absolute path to a regular UTF-8 file (a pipe such as /dev/fd/N is refused), or - for stdin (one option per command).', kind: 'file', max, jsonFile });
+export function commandCliOptions(command: Pick<Command, 'options'>): CommandOption[] {
+  return command.options.flatMap(option => option.fileAlternative === undefined ? [option] : [
+    option, { ...file(option.key, option.fileAlternative, option.description), cliKey: option.cliKey },
+  ]);
+}
 const help = (...lines: string[]) => `\n${lines.join('\n')}`;
 /** What one compaction costs, wherever a command can ask for it. */
 const COMPACTION_COST = 'Each compaction spends tokens: the model reads the conversation (about its current size, up to the context ' +
@@ -214,6 +222,8 @@ const automationEventFile = { ...file('syntheticEvent', 2 * 1024 * 1024, 'Synthe
 const automationId = text('automation', 'Automation ID (A<number>)');
 const automationUnder = text('under', 'Project ID (P<number>)');
 const automationName = text('name', 'Automation name');
+const destinationSecret = (key: 'url' | 'header', description: string) =>
+  text(key, description, { fileAlternative: AUTOMATION_DESTINATION_MAX_CHARS * 4 });
 
 const taskReasonViewSchema = z.strictObject({
   log: z.string(), at: z.string(), by: z.enum(['human', 'main', 'placement']),
@@ -440,7 +450,8 @@ const definitions = {
   'automation/delete': command('write', 'Delete an automation', automationProgramInputs.version,
     [automationId, text('expectedHash', 'Current hash returned by automation get')], { output: automationProgramViewResultSchema }),
   'automation/destination-set': command('write', 'Set a named private HTTPS destination in one project', automationProgramInputs.destination,
-    [automationUnder, automationName, text('url', 'Private HTTPS URL (person only)'), text('header', 'Optional private authentication header'),
+    [automationUnder, automationName, destinationSecret('url', 'Private HTTPS URL (person only)'),
+      destinationSecret('header', 'Optional private authentication header'),
       text('signingKey', 'Optional Standard Webhooks signing key'), sourceRequest], { output: automationDestinationListSchema }),
   'automation/destination-list': command('read', 'Read named destinations and their public hosts', automationProgramInputs.destinations,
     [automationUnder], { output: automationDestinationListSchema }),
@@ -459,7 +470,7 @@ const definitions = {
       json('data', 'JSON reference data (up to 64 KiB, depth 8)')],
     { output: automationSignalResultSchema }),
   'automation/input': command('read', 'Read reference data for the automation run that created this task', automationInputInput,
-    [taskId], { output: z.strictObject({ automation: automationIdSchema, run: z.number().int().positive(), data: automationJson }) }),
+    [taskId], { output: automationInputResultSchema }),
   'automation/run-stop': command('write', 'Stop an automation while its condition is pending or running', automationRunStopInput,
     [automationId, number('number', 'Run number within the automation'), number('expectedRunVersion', 'Current run version')],
     { output: automationProgramRunReceiptSchema }),

@@ -11,7 +11,7 @@ import { realpathSync } from 'node:fs';
 import { appRoot } from '../../../scripts/app-root.mjs';
 import { Command, CommanderError } from 'commander';
 import {
-  byteRequest, commandFlag, commandRuleHelp, commandTree, cliWriteHelp, type Command as RemoteCommand, type CommandOption,
+  byteRequest, commandCliOptions, commandFlag, commandRuleHelp, commandTree, cliWriteHelp, type Command as RemoteCommand, type CommandOption,
 } from '@alpacawork/contract/commands';
 import { commandPath } from '@alpacawork/contract/command-path';
 import { RESTORE_HEADER, recoveryIdentitySchema } from '@alpacawork/contract/recovery';
@@ -71,10 +71,17 @@ async function readStdin(max: number, name: string): Promise<Uint8Array> {
 }
 
 const optionKey = (option: CommandOption) => option.kind === 'file' ? (option.cliKey ?? option.key) + 'File' : (option.cliKey ?? option.key);
-async function inputFor(spec: RemoteCommand, values: Record<string, unknown>): Promise<Record<string, unknown>> {
-  const given = spec.options.filter(option => !option.local && values[optionKey(option)] !== undefined);
+async function inputFor(options: readonly CommandOption[], values: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const given = options.filter(option => !option.local && values[optionKey(option)] !== undefined);
   if (given.filter(option => option.kind === 'file' && values[optionKey(option)] === '-').length > 1)
     throw new Problem(PROBLEM_CODE.invalidInput, 'Only one option can read stdin');
+  const sources = new Map<string, CommandOption>();
+  for (const option of given) {
+    const previous = sources.get(option.key);
+    if (previous)
+      throw new Problem(PROBLEM_CODE.invalidInput, `${commandFlag(previous)} and ${commandFlag(option)} cannot be used together`);
+    sources.set(option.key, option);
+  }
   const input: Record<string, unknown> = {};
   for (const option of given) {
     const value = values[optionKey(option)];
@@ -289,7 +296,8 @@ async function runMain(args: string[], installedServer?: string): Promise<number
     if (spec.rules?.length) command.addHelpText('after', '\n' + commandRuleHelp(spec, true).join('\n'));
     if (spec.help) command.addHelpText('after', spec.help);
     if (spec.cliHelp) command.addHelpText('after', spec.cliHelp);
-    for (const option of spec.options) {
+    const cliOptions = commandCliOptions(spec);
+    for (const option of cliOptions) {
       const syntax = commandFlag(option);
       const ending = /[.!?]$/.test(option.description) ? ' ' : '. ';
       const description = option.cliDetail ? option.description + ending + option.cliDetail : option.description;
@@ -324,7 +332,7 @@ async function runMain(args: string[], installedServer?: string): Promise<number
         process.stdout.write(JSON.stringify(await writeAutomationTypes(options.dir)) + '\n');
         return;
       }
-      const values = await inputFor(spec, options);
+      const values = await inputFor(cliOptions, options);
       if (typeof options.dir === 'string' && (spec.id === 'automation/new' || spec.id === 'automation/save' || spec.id === 'automation/preview'))
         values.files = await readAutomationBundle(options.dir);
       const input = spec.parse(values);

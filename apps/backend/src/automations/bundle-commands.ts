@@ -5,7 +5,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import type { CommandInput } from '@alpacawork/contract/commands';
 import type { Caller } from '@alpacawork/contract/command-access';
 import { automationTypeDeclaration, automationExamples } from '@alpacawork/contract/automation-program-assets';
-import { automationProgramPreviewSchema } from '@alpacawork/contract/automation-program';
+import { automationEvents, automationProgramPreviewSchema } from '@alpacawork/contract/automation-program';
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 import { touch } from '@alpacawork/db';
 import { taskOrigin } from '@alpacawork/raw/task-log-schema';
@@ -189,7 +189,7 @@ export const bundleCommands = {
         WHERE o.workspace_day=? AND (? IS NULL OR p.external_id=?)`).get(day, project, project) : undefined;
       return { automations: views.map(v => ({
         id: v.id, project: v.project, name: v.name, hash: v.hash, enabled: v.enabled, awaitingEnable: v.awaitingEnable,
-        latest: { facts: v.latest.facts, docs: v.latest.docs }, lastRun: v.lastRun, attention: v.attention,
+        latest: { facts: v.latest.facts, docs: v.latest.docs, review: v.latest.review }, lastRun: v.lastRun, attention: v.attention,
         week: v.week, nextAt: v.nextAt, everEnabled: v.everEnabled,
       })), counts: { enabled: views.filter(v => v.enabled).length,
         draft: views.filter(v => !v.everEnabled).length, stopped: views.filter(v => !v.enabled && v.everEnabled).length },
@@ -228,7 +228,7 @@ export const bundleCommands = {
         const version = prepared || bundleVersion(db, automation!.uuid, automation!.latest);
         const now = new Date();
         const events = bundleEventCandidates(db, root, version.config, project, automation, now);
-        const event = input.event === undefined && input.syntheticEvent === undefined && version.config.on.event === 'schedule' && events.length
+        const event = input.event === undefined && input.syntheticEvent === undefined && automationEvents[version.config.on.event].candidates === 'next' && events.length
           ? events[0]! : bundleEventChoice(db, root, version.config, project, automation, input, now);
         return { automation, project, version, event, events };
       });

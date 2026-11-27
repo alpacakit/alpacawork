@@ -1,3 +1,4 @@
+import { automationEventSource } from "@alpacawork/contract/automation-program";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -336,7 +337,7 @@ function AboutPane({ automation }: { automation: Automation }) {
       <Row name={t("about.when")}>
         <p className="m-0">{whenText(t, facts.when, facts.limits.timezone)}{facts.when.filter && <> — {facts.when.filter}</>}</p>
         {notes.length > 0 && <p className="m-0 text-xs text-muted">
-          {facts.when.event === "signal" ? <Button variant="ref" data-automation-senders aria-expanded={senders} className="text-xs" onClick={() => setSenders(!senders)}>{notes.join(t("join"))}</Button>
+          {automationEventSource(facts.when.event) === "signal" ? <Button variant="ref" data-automation-senders aria-expanded={senders} className="text-xs" onClick={() => setSenders(!senders)}>{notes.join(t("join"))}</Button>
             : notes.join(t("join"))}</p>}
         {senders && <div className="mt-2"><Sender automation={automation} /></div>}
       </Row>

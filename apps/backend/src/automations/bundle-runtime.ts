@@ -13,12 +13,16 @@ import {
   bundleLifecycle, bundleProject, bundleVersion, readBundleAutomation,
   type BundleAutomation, type PreparedAutomationVersion,
 } from './bundle-store.js';
-import { bundleLimit, bundleRunRow, operationViews, readBundleEvent, settleBundleRun, touchBundleRun, type RunKey } from './bundle-runs.js';
-import { recoverAutomationBundle, runAutomationBundle, type BundleCallbacks, type BundleCompletion, type BundleIdentity, type BundlePhase } from './bundle-process.js';
+import {
+  bundleLimit, bundleRunRow, operationViews, readBundleEvent, requestBundleStop, safeBundleSettlement, settleBundleRun, touchBundleRun,
+  type BundleSettlement, type RunKey,
+} from './bundle-runs.js';
+import { recoverAutomationBundle, runAutomationBundle, type BundleCallbacks, type BundleCompletion, type BundleIdentity, type BundlePhase, type ObservedBundleResult } from './bundle-process.js';
 import { createBundleOperator, type BundleOperationContext } from './bundle-operations.js';
 
 const START_MS = 60_000;
-type RunIdentity = { id: string; tokenDigest: string; generation: string; identity?: BundleIdentity };
+const SERVER_SHUTDOWN = Symbol('server shutdown');
+type RunIdentity = { id: string; tokenDigest: string; generation: string; identity?: BundleIdentity; settlement?: BundleSettlement; cancelledAt?: number };
 type ClaimedRun = { key: RunKey; automation: BundleAutomation; version: ReturnType<typeof bundleVersion>;
   event: ProgramAutomationEvent; identity: RunIdentity; token: string; revision: number; trial: boolean };
 
@@ -36,6 +40,21 @@ export function bundleNowRead<T>(root: string, work: (db: DatabaseSync) => T): T
 }
 const parseAttempt = (value: unknown): RunIdentity | null => typeof value === 'string' ? JSON.parse(value) : null;
 const digest = (token: string) => createHash('sha256').update(token).digest('hex');
+
+function writeRunAttempt(db: DatabaseSync, key: RunKey, attempt: RunIdentity) {
+  db.prepare('UPDATE automation_runs SET attempt=? WHERE automation_id=? AND number=?')
+    .run(JSON.stringify(attempt), key.uuid, key.number);
+}
+
+function interruptedRun(started: boolean): BundleSettlement {
+  const reason = 'The server stopped while the automation was running';
+  return { state: 'failed', kind: 'interrupted', reason, failedPhase: started ? 'run' : 'trigger',
+    error: { message: reason, file: null, line: null } };
+}
+
+function cancelledRun(started: boolean): BundleSettlement {
+  return { state: started ? 'stopped' : 'skipped', kind: 'cancelled', reason: 'The automation was stopped' };
+}
 
 /** Each content address is immutable. Publish the ESM tree only after every file is written. */
 export async function materializeBundle(root: string, version: PreparedAutomationVersion): Promise<string> {
@@ -103,7 +122,7 @@ export class BundleRuntime {
     return this.closing ??= (async () => {
       this.stopping = true;
       clearInterval(this.loop);
-      for (const item of this.active.values()) item.stop.abort();
+      for (const item of this.active.values()) item.stop.abort(SERVER_SHUTDOWN);
       for (const { stop } of this.previewAbort.values()) stop.abort();
       await this.pumping;
       await Promise.allSettled([...this.active.values()].map(item => item.work));
@@ -118,11 +137,26 @@ export class BundleRuntime {
   private isCurrent(db: DatabaseSync, run: ClaimedRun, phase?: BundlePhase): boolean {
     const row = bundleRunRow(db, run.key);
     const automation = readBundleAutomation(db, run.automation.id);
+    const attempt = parseAttempt(row?.attempt);
     return row?.state === 'running' && row.phase !== 'stopping' && (!phase || phase === row.phase)
       && !automation.deleted && run.identity.generation === restoreId(this.root)
-      && parseAttempt(row.attempt)?.id === run.identity.id
+      && attempt?.id === run.identity.id && !attempt.settlement
       && (run.trial ? row.activation_epoch === automation.activationEpoch
         : automation.live !== null && row.activation_epoch === automation.activationEpoch);
+  }
+
+  private recordOutcome(db: DatabaseSync, automation: BundleAutomation, key: RunKey, attempt: RunIdentity,
+    stopped: boolean, outcome: BundleSettlement): void {
+    if (stopped) {
+      settleBundleRun(db, automation, key.number, new Date(), outcome, this.root);
+    } else {
+      const row = bundleRunRow(db, key);
+      if (attempt.settlement && row?.phase === 'stopping' && row.reason_kind === (outcome.kind ?? null)) return;
+      const settlement = attempt.settlement ?? safeBundleSettlement(outcome);
+      db.prepare(`UPDATE automation_runs SET phase='stopping',reason_kind=?,attempt=?,version=version+1
+        WHERE automation_id=? AND number=?`).run(settlement.kind ?? null, JSON.stringify({ ...attempt, settlement }), key.uuid, key.number);
+      touchBundleRun(db, automation, key.number);
+    }
   }
 
   private async pump(recoveryOnly = false) {
@@ -143,7 +177,7 @@ export class BundleRuntime {
           WHERE preview_id=? AND outcome='running'`).run(row.id!);
       });
     }
-    const stale = bundleNowRead(this.root, db => db.prepare(`SELECT a.external_id,r.automation_id,r.number,r.attempt,r.phase
+    const stale = bundleNowRead(this.root, db => db.prepare(`SELECT a.external_id,r.automation_id,r.number,r.attempt
       FROM automation_runs r JOIN automations a ON r.automation_id=a.id
       WHERE r.state='running' AND r.attempt IS NOT NULL ORDER BY r.at LIMIT 128`).all());
     for (const row of stale) {
@@ -160,22 +194,16 @@ export class BundleRuntime {
         });
         if (!valid) active.stop.abort();
       } else {
-        if (marker.identity && !await recoverAutomationBundle(marker.identity)) {
-          unknownStops++;
-          if (row.phase !== 'stopping') await this.write(db => {
-            db.prepare(`UPDATE automation_runs SET phase='stopping',reason_kind='interrupted',version=version+1
-              WHERE automation_id=? AND number=? AND state='running'`).run(key.uuid, key.number);
-            touchBundleRun(db, readBundleAutomation(db, String(row.external_id)), key.number);
-          });
-          continue;
-        }
+        const stopped = !marker.identity || await recoverAutomationBundle(marker.identity);
+        if (!stopped) unknownStops++;
         await this.write(db => {
           const current = bundleRunRow(db, key);
-          if (current?.state !== 'running' || parseAttempt(current.attempt)?.id !== marker.id) return;
+          const attempt = parseAttempt(current?.attempt);
+          if (current?.state !== 'running' || attempt?.id !== marker.id) return;
           const automation = readBundleAutomation(db, String(row.external_id));
-          settleBundleRun(db, automation, key.number, new Date(), { state: 'failed', kind: 'interrupted',
-            reason: 'The server stopped while the automation was running', failedPhase: current.run_started_at ? 'run' : 'trigger',
-            error: { message: 'The server stopped while the automation was running', file: null, line: null } }, this.root);
+          const started = current.run_started_at !== null;
+          const outcome = attempt.settlement ?? (current.reason_kind === 'cancelled' ? cancelledRun(started) : interruptedRun(started));
+          this.recordOutcome(db, automation, key, attempt, stopped, outcome);
         });
       }
     }
@@ -241,15 +269,48 @@ export class BundleRuntime {
       permit: (db, phase) => this.isCurrent(db, run, phase),
     }, this.operations);
     this.openGrant(run.identity.id, operate, stop);
+    const saveCompletion = async (observed: ObservedBundleResult, stopped: boolean) => {
+      await this.write(db => {
+        const row = bundleRunRow(db, run.key), attempt = parseAttempt(row?.attempt);
+        if (row?.state !== 'running' || attempt?.id !== run.identity.id) return;
+        const automation = readBundleAutomation(db, run.automation.id), started = row.run_started_at !== null;
+        if (attempt.settlement) {
+          this.recordOutcome(db, automation, run.key, attempt, stopped, { ...attempt.settlement, output: observed.outputTail });
+          return;
+        }
+        const { outcome } = observed;
+        const trigger = outcome?.trigger ? { run: outcome.trigger.run, reason: redactSecrets(outcome.trigger.reason) } : null;
+        const finish = (value: BundleSettlement) =>
+          this.recordOutcome(db, automation, run.key, attempt, stopped, { ...value, output: observed.outputTail, trigger });
+        // A user stop recorded before the process completed owns the outcome even if polling delivered it later.
+        if (attempt.cancelledAt !== undefined && attempt.cancelledAt <= observed.completedAt) return finish(cancelledRun(started));
+        if (observed.timedOut) {
+          const reason = 'The automation exceeded its time limit';
+          return finish({ state: 'failed', kind: 'timeout', reason, failedPhase: started ? 'run' : 'trigger',
+            resolveTrigger: started, error: { message: reason, file: null, line: null } });
+        }
+        if (observed.abortedBySignal)
+          return finish(stop.reason === SERVER_SHUTDOWN ? interruptedRun(started) : cancelledRun(started));
+        if (refusal) return finish({ state: 'skipped', ...refusal, resolveTrigger: true });
+        if (outcome?.limit) return finish({ state: started ? 'stopped' : 'skipped', kind: 'limit:' + outcome.limit, reason: outcome.reason ?? 'Operation limit reached' });
+        if (outcome?.state === 'skipped') return finish({ state: 'skipped', kind: 'trigger_rejected', reason: outcome.reason ?? trigger?.reason ?? 'Trigger did not match', resolveTrigger: true });
+        if (outcome?.state === 'done') return finish({ state: 'done', resolveTrigger: true, ...outcome.result });
+        const reason = outcome?.error?.message ?? 'The automation exited without a result';
+        return finish({ state: 'failed', kind: 'program_failed', reason, failedPhase: started ? 'run' : 'trigger',
+          resolveTrigger: started, error: outcome?.error ?? { message: reason, file: null, line: null } });
+      });
+    };
     try {
       cwd = await mkdtemp(join(this.root, '.automation-run-'));
       const entry = await materializeBundle(this.root, run.version);
       result = await runAutomationBundle({ entry, cwd, event: run.event, preview: false,
         timeoutMinutes: run.version.config.limits.timeoutMinutes ?? 10, token: run.token, server: this.server, restoreId: run.identity.generation }, {
         recordIdentity: identity => this.write(db => {
-          if (!this.isCurrent(db, run)) throw new Error('Automation no longer active');
-          db.prepare('UPDATE automation_runs SET attempt=? WHERE automation_id=? AND number=?')
-            .run(JSON.stringify({ ...run.identity, identity }), run.key.uuid, run.key.number);
+          const current = bundleRunRow(db, run.key);
+          const attempt = parseAttempt(current?.attempt);
+          if (current?.state !== 'running' || attempt?.id !== run.identity.id) throw new Error('Automation no longer active');
+          // A stop can precede identification. Recovery still needs the identity of that process.
+          writeRunAttempt(db, run.key, { ...attempt, identity });
         }),
         beforeImport: () => !stop.aborted && bundleNowRead(this.root, db => this.isCurrent(db, run, 'trigger')),
         beforeRun: trigger => this.write(db => {
@@ -264,40 +325,17 @@ export class BundleRuntime {
           touchBundleRun(db, current, run.key.number);
           return { allowed: true };
         }),
-        operate,
+        operate, beforeStopping: outcome => saveCompletion(outcome, false),
       }, stop);
     } catch {
-      result = { stopped: true, timedOut: false, phase: 'trigger', exitCode: null, signal: null, outputTail: [],
+      result = { stopped: true, abortedBySignal: stop.aborted, completedAt: Date.now(), timedOut: false, phase: 'trigger', exitCode: null, signal: null, outputTail: [],
         outcome: { state: 'failed', trigger: null, result: null, error: { message: 'Could not start the automation', file: null, line: null } } };
     } finally {
       await this.closeGrant(run.identity.id);
       if (cwd) await rm(cwd, { force: true, recursive: true }).catch(() => {});
     }
 
-    await this.write(db => {
-      const row = bundleRunRow(db, run.key);
-      if (row?.state !== 'running' || parseAttempt(row.attempt)?.id !== run.identity.id) return;
-      const automation = readBundleAutomation(db, run.automation.id), now = new Date();
-      if (!result.stopped) {
-        db.prepare(`UPDATE automation_runs SET phase='stopping',version=version+1 WHERE automation_id=? AND number=?`).run(run.key.uuid, run.key.number);
-        touchBundleRun(db, automation, run.key.number);
-        return;
-      }
-      const { outcome } = result, started = row.run_started_at !== null;
-      const cancelled = stop.aborted || row.phase === 'stopping' || row.activation_epoch !== automation.activationEpoch;
-      const output = result.outputTail;
-      const trigger = outcome?.trigger ? { run: outcome.trigger.run, reason: outcome.trigger.reason } : null;
-      const record = (value: Parameters<typeof settleBundleRun>[4]) =>
-        settleBundleRun(db, automation, run.key.number, now, { ...value, output, trigger }, this.root);
-      if (cancelled) return record({ state: started ? 'stopped' : 'skipped', kind: 'cancelled', reason: 'The automation was stopped' });
-      if (refusal) return record({ state: 'skipped', ...refusal, resolveTrigger: true });
-      if (outcome?.limit) return record({ state: started ? 'stopped' : 'skipped', kind: 'limit:' + outcome.limit, reason: outcome.reason ?? 'Operation limit reached' });
-      if (outcome?.state === 'skipped') return record({ state: 'skipped', kind: 'trigger_rejected', reason: outcome.reason ?? trigger?.reason ?? 'Trigger did not match', resolveTrigger: true });
-      if (outcome?.state === 'done' && !result.timedOut) return record({ state: 'done', resolveTrigger: true, ...outcome.result });
-      const reason = result.timedOut ? 'The automation exceeded its time limit' : outcome?.error?.message ?? 'The automation exited without a result';
-      return record({ state: 'failed', kind: result.timedOut ? 'timeout' : 'program_failed', reason, failedPhase: started ? 'run' : 'trigger',
-        resolveTrigger: started, error: outcome?.error ?? { message: reason, file: null, line: null } });
-    });
+    await saveCompletion(result, result.stopped);
   }
 
   private openGrant(id: string, operate: BundleCallbacks['operate'], stop: AbortSignal) {
@@ -377,7 +415,7 @@ export class BundleRuntime {
         beforeImport: () => bundleNowRead(this.root, db => permit(db, 'trigger')),
         beforeRun: () => this.write(db => {
           if (!executeRun || !permit(db, 'trigger')) return { allowed: false };
-          db.prepare("UPDATE automation_previews SET attempt=json_set(attempt,'$.phase','run') WHERE id=?").run(uuid);
+          db.prepare("UPDATE automation_previews SET attempt=json_set(attempt,'$.phase','run','$.ran',1) WHERE id=?").run(uuid);
           return { allowed: true };
         }),
         operate,
@@ -391,6 +429,7 @@ export class BundleRuntime {
         const preview = automationProgramPreviewSchema.parse({
           hash: digest(JSON.stringify([uuid, projectUuid, version.digest, event])),
           at, by, event: { kind: event.kind, ref: event.ref, manual: event.manual },
+          ran: db.prepare("SELECT json_extract(attempt,'$.ran') AS ran FROM automation_previews WHERE id=?").get(uuid)?.ran === 1,
           trigger: trigger && { run: trigger.run, reason: redactSecrets(trigger.reason) }, operations,
           outcome: { state: result.stopped ? outcome?.state ?? 'failed' : 'failed', summary: outcome?.result?.summary ?? null,
             report: outcome?.result?.report ?? null, notify: !!outcome?.result?.notify,
@@ -416,9 +455,8 @@ export function stopBundleRun(db: DatabaseSync, automation: BundleAutomation, nu
   const row = bundleRunRow(db, { uuid: automation.uuid, number });
   if (!row) throw new Problem(PROBLEM_CODE.notFound, 'Automation run does not exist');
   if (row.version !== version || row.finished_at !== null) throw new Problem(PROBLEM_CODE.conflict, 'The run changed; read it again');
-  if (!row.attempt) return settleBundleRun(db, automation, number, now, { state: 'skipped', kind: 'cancelled', reason: 'The automation was stopped' });
-  db.prepare(`UPDATE automation_runs SET phase='stopping',version=version+1,reason_kind='cancelled' WHERE automation_id=? AND number=?`)
-    .run(automation.uuid, number);
-  touchBundleRun(db, automation, number);
+  if (row.phase === 'stopping') return null;
+  if (!row.attempt) return settleBundleRun(db, automation, number, now, cancelledRun(false));
+  requestBundleStop(db, automation, now, number);
   return null;
 }

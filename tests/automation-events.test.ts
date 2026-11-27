@@ -13,8 +13,10 @@ import { taskFlow } from './task-flow.fixture.ts';
 
 const human = { kind: 'human' } as const;
 const matches = (db: Parameters<typeof bundleTaskMatch>[0], on: AutomationConfig['on'],
-  event: Parameters<typeof programTaskEvent>[1]) => bundleTaskMatch(db, { on, limits: { perDay: 1 } },
-    programTaskEvent(db, event), event, null, new Date()) === 'match';
+  source: Parameters<typeof programTaskEvent>[2]) => {
+  const event = programTaskEvent(db, on, source);
+  return event !== null && bundleTaskMatch(db, { on, limits: { perDay: 1 } }, event, source, null, new Date()) === 'match';
+};
 
 test('one review acceptance supplies its words and immutable base-state transition', async t => {
   const flow = await taskFlow(t);

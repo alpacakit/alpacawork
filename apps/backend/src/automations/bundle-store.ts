@@ -12,10 +12,12 @@ import { Problem, PROBLEM_CODE, redactSecrets } from '@alpacawork/core';
 import { touch } from '@alpacawork/db';
 import type { TaskActor } from '@alpacawork/raw';
 import { launchSnapshot, readAgentsSettings } from '../agents-settings.js';
-import { taskEventTail } from '../control/task-history.js';
 import { restoreId } from '../release/journal.js';
 import { analyzeAutomationBundle } from './bundle-source.js';
-import { checkAutomationTimezone, nextAutomationTimes } from './schedule.js';
+import { checkAutomationTimezone } from './schedule.js';
+import { bundleScheduleTimes } from './bundle-events.js';
+import { bundleEventReader, startingBundlePosition } from './bundle-readers.js';
+import { requestBundleStop } from './bundle-runs.js';
 
 export type BundleReviewer = TaskActor | { kind: 'system' };
 type Row = Record<string, SQLOutputValue>;
@@ -74,9 +76,9 @@ export function prepareAutomationVersion(root: string, input: AutomationBundle, 
     const timezone = value.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
     try { checkAutomationTimezone(timezone); }
     catch (error) { issue(['timezone'], (error as Error).message); }
-    if (value.on.event === 'schedule' && !issues.length) {
+    if (automationEvents[value.on.event].candidates === 'next' && !issues.length) {
       try {
-        if (!nextAutomationTimes(value.on.where.cron, timezone, now).length)
+        if (!bundleScheduleTimes({ ...value, timezone }, now).length)
           throw new Error('The schedule has no upcoming occurrence');
       } catch (error) { issue(['on', 'where', 'cron'], (error as Error).message); }
     }
@@ -285,15 +287,11 @@ export function bundleLifecycle(db: DatabaseSync, root: string, automation: Bund
         updateBundleReview(db, automation, automation.latest, { ...version.review, acknowledged: { by: actor, at } });
       }
       if (automation.latest === automation.live) return automation;
-      const on = version.config.on;
       values.live = automation.latest;
       values.activation = automation.revision + 1;
       values.epoch = automation.activationEpoch ?? values.activation;
       values.disabled = null;
-      values.next = on.event === 'schedule' ? nextAutomationTimes(on.where.cron, version.config.timezone, now)[0] ?? null : null;
-      values.after = automationEvents[on.event].source === 'task_event' ? taskEventTail(db) : null;
-      values.hostAfter = on.event === 'host.pressure' ? at : null;
-      values.hostCursor = null;
+      Object.assign(values, startingBundlePosition(bundleEventReader(version.config.on), db, version.config, now));
       break;
     }
     case 'deleted': values.deleted = true;
@@ -330,9 +328,7 @@ export function bundleLifecycle(db: DatabaseSync, root: string, automation: Bund
     db.prepare('DELETE FROM automation_pending_skill_events WHERE automation_id=?').run(automation.uuid);
   }
   if (turningOff) {
-    for (const row of db.prepare(`UPDATE automation_runs SET phase='stopping',version=version+1,reason_kind='cancelled'
-      WHERE automation_id=? AND state='running' AND attempt IS NOT NULL RETURNING number`).all(automation.uuid))
-      touch(db, { kind: 'automation_run', id: JSON.stringify([automation.id, row.number]) });
+    requestBundleStop(db, automation, now);
     db.prepare(`UPDATE automation_previews SET attempt=json_set(attempt,'$.phase','stopping')
       WHERE automation_id=? AND result IS NULL AND attempt IS NOT NULL`).run(automation.uuid);
   }
@@ -349,7 +345,7 @@ export function bundleHookChange(db: DatabaseSync, automation: BundleAutomation,
   if (operation === 'delete') db.prepare('DELETE FROM automation_secrets WHERE automation_id=?').run(automation.uuid);
   else {
     const version = bundleVersion(db, automation.uuid, automation.latest);
-    if (version.config.on.event !== 'signal') throw new Problem(PROBLEM_CODE.conflict, 'Only a signal automation can have an HTTP hook');
+    if (automationEvents[version.config.on.event].source !== 'signal') throw new Problem(PROBLEM_CODE.conflict, 'Only a signal automation can have an HTTP hook');
     db.prepare(`INSERT INTO automation_secrets VALUES (?,?) ON CONFLICT(automation_id) DO UPDATE SET hook_token=excluded.hook_token`)
       .run(automation.uuid, seed);
   }

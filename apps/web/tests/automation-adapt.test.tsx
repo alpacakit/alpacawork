@@ -19,7 +19,7 @@ test("a version the coordinator saved says so, with the person's words it was as
 });
 
 test("a showing whose run failed after trigger let it through is one where run was shown, with its error", () => {
-  const failed = { ...serverPreview("s1", "passes"), outcome: { state: "failed", summary: null, report: null, notify: false, error: { message: "boom", file: "main.ts", line: 3 } } };
+  const failed = { ...serverPreview("s1", "passes", [], null, true), outcome: { state: "failed", summary: null, report: null, notify: false, error: { message: "boom", file: "main.ts", line: 3 } } };
   const shown = toPreview(failed as Parameters<typeof toPreview>[0]);
   expect([shown.ran, shown.outcome?.error?.message]).toEqual([true, "boom"]);
 });

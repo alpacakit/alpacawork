@@ -247,6 +247,37 @@ test('saving changes the draft and an in-flight run finishes on its original ver
   assert.equal(rows[0]?.summary, 'Second version');
 });
 
+test('a graceful restart records an interrupted automation and exposes its failure', { timeout: 20_000 }, async t => {
+  const f = await fixture(t);
+  const started = join(f.root, 'interrupted-program-started');
+  const automation = await f.enable(await f.create('Interrupted report', bundle(schedule, `
+    import { writeFile } from 'node:fs/promises';
+    import { setTimeout as delay } from 'node:timers/promises';
+    /** Wait for the server to close. */
+    export async function run({ signal }) {
+      await writeFile(${JSON.stringify(started)}, '');
+      await delay(60_000, undefined, { signal });
+      return { summary: 'Completed' };
+    }
+  `)));
+  const admitted = await f.runNow(automation.id);
+  await eventually(() => existsSync(started), Boolean);
+
+  await f.restart();
+
+  const runs = await f.runs(automation.id);
+  assert.equal(runs.length, 1);
+  assert.equal(runs[0]?.number, admitted.number);
+  assert.equal(runs[0]?.state, 'failed');
+  assert.equal(runs[0]?.reasonKind, 'interrupted');
+  assert.ok(runs[0]?.finishedAt);
+  const view = automationProgramViewSchema.parse(
+    (await f.request('get', undefined, { automation: automation.id }) as { automation: unknown }).automation);
+  const failure = view.attention.find(item => item.kind === 'failed');
+  assert.equal(failure?.run, admitted.number);
+  assert.equal(failure?.reasonKind, 'interrupted');
+});
+
 test('two-stage previews substitute task creation and follow the exact inspected files into the saved version',
   { timeout: 20_000 }, async t => {
     const f = await fixture(t);

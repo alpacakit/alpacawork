@@ -1,6 +1,6 @@
 import { commandRoute } from "@alpacawork/contract/command-path";
 import { automationHookResultSchema, automationInputResultSchema } from "@alpacawork/contract/automation";
-import { automationProgramListResultSchema, automationProgramPreviewResultSchema, automationProgramRunReceiptSchema, automationProgramRunViewSchema,
+import { automationEventKindSchema, automationEvents, automationWrittenEvent, automationProgramListResultSchema, automationProgramPreviewResultSchema, automationProgramRunReceiptSchema, automationProgramRunViewSchema,
   automationProgramRunsViewSchema, automationProgramViewResultSchema } from "@alpacawork/contract/automation-program";
 import { z } from "zod";
 import { useEffect } from "react";
@@ -225,30 +225,20 @@ export function usePreview(automation: Pick<Automation, "id" | "latest">, event:
 export function writtenEvent(kind: string, written: string): unknown {
   let value: unknown;
   try { value = JSON.parse(written); } catch { value = written; }
-  const at = new Date().toISOString(), base = { kind, ref: `written-${at}`, at, manual: true };
-  if (kind === "signal") return { ...base, count: 1, firstAt: at, lastAt: at, items: [{ at, by: { kind: "human" }, key: null, data: value }] };
-  return { ...base, ...value && typeof value === "object" && !Array.isArray(value) ? value : {} };
+  return automationWrittenEvent(automationEventKindSchema.parse(kind), new Date().toISOString(), value);
 }
 
 /** What a person starts from when writing an event of a kind: the fields its event has, to fill in. */
 export function eventTemplate(kind: string): string {
-  const task = { id: "T1", title: "", state: "waiting", userRequested: true, origin: null };
-  const fields: Record<string, unknown> = kind === "signal" ? {}
-    : kind === "task.state_changed" ? { task, title: "", description: "", from: "doing", to: "waiting" }
-    : kind === "task.message" ? { task, title: "", description: "", by: "human", type: "send_back" }
-    : kind === "host.pressure" ? { kinds: ["disk"], phase: "entered", episodeStartedAt: new Date().toISOString() }
-    : { scheduledAt: new Date().toISOString() };
-  return JSON.stringify(fields, null, 2);
+  return JSON.stringify(automationEvents[automationEventKindSchema.parse(kind)].example(new Date().toISOString()), null, 2);
 }
 
 /** Showing it, second step: `run` too, its writes replaced by what it would do. It may call an AI, so only on a press. */
 export function usePreviewRun() {
-  // Its answer is `run` shown, whatever it came to (done, failed): it was asked here.
   return useMutation({ meta: { errorToast: false }, mutationFn: async ({ automation, preview, written }: { automation: Pick<Automation, "id" | "latest">; preview: Preview; written: string | null }) => {
-    const shown = toPreviewResult(await api.request(commandRoute("automation/preview"), automationProgramPreviewResultSchema, undefined,
+    return toPreviewResult(await api.request(commandRoute("automation/preview"), automationProgramPreviewResultSchema, undefined,
       { automation: automation.id, run: true, ...written !== null ? { syntheticEvent: writtenEvent(automation.latest.facts.when.event, written) } : { event: preview.event.ref } },
       crypto.randomUUID(), workspaceWriteBasis())).preview;
-    return shown && { ...shown, ran: true };
   } });
 }
 

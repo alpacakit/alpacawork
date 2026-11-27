@@ -1,3 +1,4 @@
+import { automationEventKindSchema, automationEventSource, automationEvents } from "@alpacawork/contract/automation-program";
 import type { TFunction } from "i18next";
 import { clockText, dayFrom, scheduleShape } from "@/domain/automations";
 import { launchName } from "@/domain/agent-label";
@@ -42,35 +43,40 @@ const listOf = (value: unknown): string[] => typeof value === "string" ? [value]
  * its schedule, a task's state changing, words arriving on a task, a signal, or the PC's pressure.
  */
 export function whenText(t: T, when: Facts["when"], timezone: string): string {
-  const where = when.where;
-  if (when.event === "schedule") return scheduleText(t, typeof where.cron === "string" ? where.cron : "", timezone);
-  // A signal is a signal however it comes (a receiving point, the CLI): how it comes is said under it (`whenNotes`).
-  if (when.event === "signal") return t("trigger.signal");
-  if (when.event === "host.pressure") return t("trigger.pressure", { kinds: pressureText(t, listOf(where.kinds)) });
+  const { where, textKey } = when;
+  const kind = automationEventKindSchema.safeParse(when.event);
+  if (!kind.success) return t("trigger.other", { event: when.event });
+  const format = automationEvents[kind.data].textFormat;
   const join = t("trigger.or");
-  if (when.event === "task.state_changed") {
-    const to = listOf(where.to).map(state => say(t, `event.${state}`)).join(join);
-    const from = listOf(where.from).map(state => say(t, `event.${state}`)).join(join);
-    const text = from ? t("trigger.stateFromTo", { from, to }) : t("trigger.stateTo", { to });
-    // Narrowed by the skills the task used: any one of them sets it off.
-    const skills = listOf(where.skills);
-    if (!skills.length) return text;
-    return t("trigger.withSkills", { text, skills: skills.length === 1 ? t("trigger.usedOne", { skill: skills[0] }) : t("trigger.usedAny", { skills: skills.join(join) }) });
+  switch (format) {
+    case "schedule":
+      return say(t, textKey, { text: scheduleText(t, typeof where.cron === "string" ? where.cron : "", timezone) });
+    case "pressure":
+      return say(t, textKey, { kinds: pressureText(t, listOf(where.kinds)) });
+    case "state": {
+      const to = listOf(where.to).map(state => say(t, `event.${state}`)).join(join);
+      const from = listOf(where.from).map(state => say(t, `event.${state}`)).join(join);
+      const text = from ? say(t, `${textKey}FromTo`, { from, to }) : say(t, textKey, { to });
+      const skills = listOf(where.skills);
+      return skills.length ? t("trigger.withSkills", { text, skills: skills.length === 1
+        ? t("trigger.usedOne", { skill: skills[0] }) : t("trigger.usedAny", { skills: skills.join(join) }) }) : text;
+    }
+    case "message": {
+      const by = where.by === "ai" ? "ai" : "human";
+      const types = listOf(where.type);
+      if (types.length === 1) return say(t, `${textKey}.${by}.${types[0]}`);
+      const who = say(t, `trigger.who.${by}`);
+      return types.length ? say(t, `${textKey}.many`, { who, kinds: types.map(type => say(t, `trigger.kind.${type}`)).join(join) })
+        : say(t, `${textKey}.any`, { who });
+    }
+    default: return say(t, textKey);
   }
-  if (when.event === "task.message") {
-    const by = where.by === "ai" ? "ai" : "human";
-    const types = listOf(where.type);
-    if (types.length === 1) return say(t, `trigger.message.${by}.${types[0]}`);
-    return types.length ? t("trigger.messageKinds", { who: say(t, `trigger.who.${by}`), kinds: types.map(type => say(t, `trigger.kind.${type}`)).join(join) })
-      : t("trigger.messageAny", { who: say(t, `trigger.who.${by}`) });
-  }
-  return t("trigger.other", { event: when.event });
 }
 
 /** What narrows it further, a line under it: only tasks I asked for; only words that hold a text; how a signal comes. */
 export function whenNotes(t: T, when: Facts["when"], hook: boolean): string[] {
   const where = when.where;
-  if (when.event === "signal") return [hook ? t("trigger.viaHook") : t("trigger.viaCli")];
+  if (automationEventSource(when.event) === "signal") return [hook ? t("trigger.viaHook") : t("trigger.viaCli")];
   return [where.userRequestedOnly === true ? t("trigger.mine") : null,
     typeof where.contains === "string" ? t("trigger.contains", { text: where.contains }) : null,
     where.includeAutomated === true ? t("trigger.includeAutomated") : null].filter(line => line !== null);
@@ -95,9 +101,10 @@ function minutesText(t: T, minutes: number): string {
  * that come meanwhile run once together); anything else is skipped while the previous run's task goes on.
  */
 export function limitsText(t: T, limits: Facts["limits"], event: string): string {
+  const kind = automationEventKindSchema.safeParse(event);
   return [t("limits.perDay", { count: limits.perDay }),
     limits.cooldownMinutes ? t("limits.cooldown", { span: minutesText(t, limits.cooldownMinutes) }) : null,
-    !limits.waitForPrevious ? null : event === "signal" ? t("limits.waitsForPrevious") : t("limits.waitForPrevious"),
+    !limits.waitForPrevious ? null : kind.success && automationEvents[kind.data].coalesce ? t("limits.waitsForPrevious") : t("limits.waitForPrevious"),
     limits.until ? t("limits.until", { date: limits.until }) : null]
     .filter(Boolean).join(t("join"));
 }

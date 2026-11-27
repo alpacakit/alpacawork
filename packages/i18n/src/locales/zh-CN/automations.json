@@ -358,6 +358,7 @@
   "toggle": "开启或关闭 {{name}}",
   "trigger": {
     "contains": "包含「{{text}}」",
+    "hostPressure": "电脑资源紧张时（{{kinds}}）",
     "includeAutomated": "包括自动执行创建的任务",
     "kind": {
       "accept": "接受",
@@ -374,23 +375,23 @@
         "report": "AI 报告时",
         "send_back": "AI 退回时"
       },
+      "any": "收到{{who}}的话时",
       "human": {
         "accept": "我接受时",
         "answer": "我回答问题时",
         "question": "我提问时",
         "report": "我报告时",
         "send_back": "我退回时"
-      }
+      },
+      "many": "收到{{who}}的话（{{kinds}}）时"
     },
-    "messageAny": "收到{{who}}的话时",
-    "messageKinds": "收到{{who}}的话（{{kinds}}）时",
     "mine": "仅限我委托的任务",
     "or": "、",
     "other": "发生 {{event}} 时",
-    "pressure": "电脑资源紧张时（{{kinds}}）",
+    "schedule": "{{text}}",
     "signal": "收到信号时",
+    "state": "变为{{to}}时",
     "stateFromTo": "从{{from}}变为{{to}}时",
-    "stateTo": "变为{{to}}时",
     "usedAny": "此任务用了 {{skills}} 中任一个",
     "usedOne": "此任务用了 {{skill}}",
     "viaCli": "可用 CLI 发送",

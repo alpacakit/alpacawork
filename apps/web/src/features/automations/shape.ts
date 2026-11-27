@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { automationEventReferenceSchema } from "@alpacawork/contract/automation-program";
 
 /**
  * What the server hands the screen about automations, as the screen reads it. An automation is a program an AI wrote:
@@ -51,7 +52,7 @@ export const operationSchema = z.object({
 export type Operation = z.infer<typeof operationSchema>;
 
 /** The event a run or a preview went by. `title` is its line in words; `fields` what arrived, as names and values. */
-export const eventSchema = z.object({ kind: z.string(), ref: z.string(), manual: z.boolean(), at: at.optional(),
+export const eventSchema = automationEventReferenceSchema.extend({ at: at.optional(),
   title: z.string().nullable().optional(), fields: z.array(z.tuple([z.string(), z.string()])).optional() });
 export type RunEvent = z.infer<typeof eventSchema>;
 

@@ -42,7 +42,7 @@ type OperatorDependencies = { prepareHttp?: PrepareHttp; runClaude?: AutomationJ
 type Input<Name extends AutomationOperation> = AutomationOperationInput<Name>;
 type TaskView = z.infer<typeof automationOperations['tasks.get']['output']>;
 type Destination = { url: URL; host: string; signingKey: string; header: { name: string; value: string } | null; version: number };
-type Evidence = { target: unknown; input: unknown; replaced: boolean };
+type Evidence = { target: Record<string, unknown> | null; input: unknown; replaced: boolean };
 type OperationRecord = Evidence & { id: string; name: AutomationOperation; ordinal: number; at: Date };
 type OperationResult = {
   value: unknown; evidence?: unknown; task?: string; request?: string; urgent?: boolean;
@@ -67,16 +67,6 @@ function safeRecord(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(safeRecord);
   if (value === null || typeof value !== 'object') return value;
   return Object.fromEntries(Object.entries(value).map(([key, part]) => [redactSecrets(key), safeRecord(part)]));
-}
-
-function detailFor(ctx: BundleOperationContext, name: AutomationOperation, raw: unknown): Evidence {
-  const { write } = automationOperations[name];
-  const candidate = typeof raw === 'object' && raw !== null ? raw as Record<string, unknown> : {};
-  const input = name === 'ai.ask' ? { ai: candidate.ai ?? null }
-    : name === 'send' ? { to: candidate.to ?? null, method: candidate.method ?? 'POST', body: candidate.body ?? null }
-      : name === 'fetch' ? { to: candidate.to ?? null }
-        : name === 'tasks.create' ? Object.fromEntries(Object.entries(candidate).filter(([key]) => key !== 'data')) : raw;
-  return { target: typeof candidate.task === 'string' ? { task: candidate.task } : null, input, replaced: write && hasPreview(ctx) };
 }
 
 function operationRows(db: DatabaseSync, ctx: BundleOperationContext) {
@@ -399,7 +389,7 @@ function schemaAnswer(answer: string, schema: z.ZodType): { valid: true; value: 
   return { valid: false, fields: checked.error.issues.slice(0, 30).map(issue => issue.path.map(String).join('.') || 'JSON') };
 }
 
-async function askAi(root: string, ctx: BundleOperationContext, phase: BundlePhase, input: Input<'ai.ask'>,
+async function askAi(root: string, ctx: BundleOperationContext, phase: BundlePhase, input: Input<'ai.ask'>, evidence: Evidence,
   dependencies: OperatorDependencies, signal: AbortSignal, failedBeforeReserve: { value: boolean }): Promise<unknown> {
   const name = 'ai.ask', settings = registeredAi(ctx, name, input.ai);
   const answerSchema = decodeQuestion(name, input.schema);
@@ -417,8 +407,7 @@ async function askAi(root: string, ctx: BundleOperationContext, phase: BundlePha
   const transport = dependencies.runClaude ?? runClaudeJudge;
   const deadline = AbortSignal.any([signal, AbortSignal.timeout(30_000)]);
   const release = await acquireAi(root, deadline);
-  const call = randomUUID(), target = { name: input.ai, ...settings };
-  const evidence = { target, input: { ai: input.ai }, replaced: false };
+  const call = randomUUID(), target = { ...evidence.target, ...settings };
   let expectedModel: string | undefined;
   let validationIssues: string[] | undefined;
   try {
@@ -427,7 +416,7 @@ async function askAi(root: string, ctx: BundleOperationContext, phase: BundlePha
       const record = withControlWrite(root, (_tx, db) => {
         permit(ctx, db, phase, name, signal);
         questionBudget(db, ctx, new Date());
-        const record: OperationRecord = { ...evidence, name, id: randomUUID(), ordinal: nextOrdinal(db, ctx), at: new Date() };
+        const record: OperationRecord = { ...evidence, target, name, id: randomUUID(), ordinal: nextOrdinal(db, ctx), at: new Date() };
         reserveOperation(db, ctx, record, call);
         return record;
       });
@@ -499,7 +488,7 @@ function retryDelay(retryAfter: number | undefined, attempt: number) {
 }
 
 async function askDestination(root: string, ctx: BundleOperationContext, phase: BundlePhase, name: 'fetch' | 'send',
-  input: Input<'fetch'> | Input<'send'>, deps: OperatorDependencies, signal: AbortSignal,
+  input: Input<'fetch'> | Input<'send'>, evidence: Evidence, deps: OperatorDependencies, signal: AbortSignal,
   failedBeforeReserve: { value: boolean }): Promise<unknown> {
   if (!ctx.config.uses?.send?.includes(input.to))
     throw new AlpacaworkError('forbidden', name, 'Use a destination declared by this automation');
@@ -511,9 +500,8 @@ async function askDestination(root: string, ctx: BundleOperationContext, phase: 
       if (!(error instanceof AlpacaworkError) || name !== 'send' || !hasPreview(ctx)) throw error;
     }
     const url = destinationPath(destination?.url ?? new URL('https://preview.invalid/'), input.path, name);
-    const evidence = detailFor(ctx, name, input);
     const record = { ...evidence, name, id: randomUUID(), at: new Date(), ordinal: nextOrdinal(db, ctx),
-      target: { name: input.to, host: destination?.host ?? null },
+      target: { ...evidence.target, host: destination?.host ?? null },
       input: destination ? destinationEvidence(evidence.input, destination, url) : evidence.input };
     reserveOperation(db, ctx, record);
     return { record, destination, url };
@@ -583,13 +571,13 @@ export function createBundleOperator(root: string, ctx: BundleOperationContext, 
       if (!input.success)
         throw new AlpacaworkError('invalid', name, 'The operation input did not match its schema');
       const parsed = input.data;
-      evidence = detailFor(ctx, name, parsed);
+      evidence = { ...contract.record(parsed), replaced: contract.write && hasPreview(ctx) };
       let result: unknown;
       if (contract.grant === 'ai') {
-        result = await askAi(root, ctx, phase, parsed as Input<'ai.ask'>, deps, signal, failedBeforeReserve);
+        result = await askAi(root, ctx, phase, parsed as Input<'ai.ask'>, evidence, deps, signal, failedBeforeReserve);
       } else if (contract.grant === 'send') {
         result = await askDestination(root, ctx, phase, name as 'fetch' | 'send', parsed as Input<'fetch'> | Input<'send'>,
-          deps, signal, failedBeforeReserve);
+          evidence, deps, signal, failedBeforeReserve);
       } else {
         result = withControlWrite(root, (tx, db) => {
           permit(ctx, db, phase, name, signal);
@@ -608,7 +596,12 @@ export function createBundleOperator(root: string, ctx: BundleOperationContext, 
         if (!ctx.permit(db, phase)) return;
         const started = { ...(evidence ?? { target: null, input: null, replaced: false }), name, id: randomUUID(),
           at: new Date(), ordinal: nextOrdinal(db, ctx) };
-        if (name === 'fetch' || name === 'send') started.input = null;
+        if (contract.grant === 'send') {
+          started.input = null;
+          const destination = started.target?.name;
+          // An unrecognized destination argument may contain a private URL rather than a saved name.
+          if (typeof destination !== 'string' || !ctx.config.uses?.send?.includes(destination)) started.target = null;
+        }
         reserveOperation(db, ctx, started);
         finishOperation(db, ctx, started, null, fault.code);
       });

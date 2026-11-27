@@ -10,7 +10,7 @@ export const version = (extra: Partial<Version> = {}): Version => ({
   digest: "sha256:" + "a".repeat(64), contractVersion: 1, savedAt: "2026-11-27T05:00:00.000Z",
   savedBy: { kind: "coordinator", name: null, request: "only from 3 on" },
   files: [{ path: "main.ts", bytes: 400 }],
-  facts: { when: { event: "signal", where: {}, textKey: "signal", filter: null },
+  facts: { when: { event: "signal", where: {}, textKey: "trigger.signal", filter: null },
     limits: { perDay: 10, cooldownMinutes: 0, waitForPrevious: true, until: null, timeoutMinutes: 10, aiCallsPerDay: 20, tasksPerRun: 1, timezone: "UTC" },
     ai: [{ name: "worker", agent: "claude", model: "opus", effort: "high", use: "task", costHint: null }], outside: [] },
   docs: { run: doc("Counts the waiting tasks and asks for one summary task"), trigger: null },
@@ -54,9 +54,9 @@ export const serverSignal = (ref: string, data: Record<string, unknown> = {}) =>
   firstAt: "2026-11-27T00:37:00.000Z", lastAt: "2026-11-27T00:37:00.000Z", items: [{ at: "2026-11-27T00:37:00.000Z", by: { kind: "human" }, key: null, data }] });
 
 /** A showing as the server answers it: `trigger` alone, or with what `run` would do. */
-export const serverPreview = (ref: string, reason: string, operations: unknown[] = [], summary: string | null = null) => ({
+export const serverPreview = (ref: string, reason: string, operations: unknown[] = [], summary: string | null = null, ran = summary !== null) => ({
   hash: `p-${ref}${operations.length ? "-run" : ""}`, at: "2026-11-27T01:00:00.000Z", by: "you", event: { kind: "signal", ref, manual: false },
-  trigger: { run: true, reason }, operations, outcome: { state: "done", summary, report: null, notify: false, error: null } });
+  trigger: { run: true, reason }, ran, operations, outcome: { state: "done", summary, report: null, notify: false, error: null } });
 
 /** A run as the server answers it. */
 export const serverRun = (number: number, mode: "live" | "trial" = "live") => ({ number, version: 1, digest: "sha256:" + "a".repeat(64), activationRevision: null,

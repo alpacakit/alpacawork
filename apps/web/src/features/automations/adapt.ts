@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import { automationEventDisplay } from "@alpacawork/contract/automation-program";
 import type { automationProgramListResultSchema, automationProgramPreviewResultSchema, automationProgramRunSchema, AutomationProgramView,
   AutomationVersion, ProgramAutomationEvent } from "@alpacawork/contract/automation-program";
 import type { Automation, AutomationList, Operation, Preview, PreviewResult, Run, RunDetail, RunEvent, Version } from "./shape";
@@ -31,9 +32,7 @@ export function toPreview(preview: NonNullable<AutomationVersion["preview"]>): P
   const operations = preview.operations.map(toOperation);
   return { hash: preview.hash, at: preview.at, by: typeof preview.by === "string" ? preview.by : "", event: { kind: preview.event.kind, ref: preview.event.ref, manual: preview.event.manual },
     trigger: preview.trigger, operations,
-    // Whether `run` was shown too is not said: it was when it reported what it did, would have written something, or
-    // failed after `trigger` let it through. A showing the screen asked `run` of is marked so where it is asked (data.ts).
-    ran: preview.outcome.summary !== null || operations.some(operation => operation.replaced) || preview.outcome.state === "failed" && !!preview.trigger?.run,
+    ran: preview.ran,
     durationMs: null, outcome: preview.outcome };
 }
 
@@ -63,18 +62,8 @@ function toOperation(operation: { name: string; target: unknown; input: unknown;
 
 /** An event's line and what arrived with it, by its kind: a task's title, a signal's newest data, the pressure's kinds. */
 export function toEvent(event: ProgramAutomationEvent): RunEvent {
-  const base = { kind: event.kind, ref: event.ref, manual: event.manual, at: event.at };
-  if (event.kind === "task.state_changed" || event.kind === "task.message")
-    return { ...base, title: `${event.task.id} ${event.title}`, fields: [["task", event.task.id], ...event.kind === "task.state_changed" ? [["from", event.from], ["to", event.to]] as [string, string][] : [["by", event.by], ["type", event.type]] as [string, string][]] };
-  if (event.kind === "signal") {
-    const data = record(event.items[0]?.data);
-    const fields = Object.entries(data).map(([name, value]) => [name, plain(value)] as [string, string]);
-    const title = ["text", "message", "title", "summary", "name"].map(name => data[name]).find(value => typeof value === "string") as string | undefined;
-    // Without a field that says it in words, the first field names it (all of them are listed under it).
-    return { ...base, title: title ?? (fields[0] ? `${fields[0][0]}: ${fields[0][1]}` : null), fields };
-  }
-  if (event.kind === "host.pressure") return { ...base, title: event.kinds.join(" · "), fields: [["kinds", event.kinds.join(", ")], ["phase", event.phase]] };
-  return { ...base, title: null, fields: [["scheduledAt", event.scheduledAt]] };
+  const { kind, ref, manual, at } = event;
+  return { kind, ref, manual, at, ...automationEventDisplay(event) };
 }
 
 /** A run, with the tasks it made (from its operations) and the skipped runs folded into it. */
@@ -121,7 +110,7 @@ export function toAutomation(view: AutomationProgramView): Automation {
 function fromListItem(item: ListItem): Automation {
   const latest: Version = { digest: "", contractVersion: 0, savedAt: "", savedBy: { kind: "person", name: null, request: null }, files: [],
     facts: toFacts(item.latest.facts), docs: item.latest.docs, parts: [], direct: null,
-    review: { state: "ok", findings: [], summary: "", model: null, at: null, acknowledged: null }, preview: null };
+    review: item.latest.review as Version["review"], preview: null };
   return { id: item.id, project: item.project, name: item.name, enabled: item.enabled, disabledReason: null, hash: item.hash, latest, live: null,
     awaitingEnable: item.awaitingEnable, everEnabled: item.everEnabled, hook: { exists: false }, pendingSignal: null,
     lastRun: item.lastRun ? toRun(item.id, item.lastRun) : null, next: item.nextAt ? [item.nextAt] : [], attention: attentionOf(item.attention), week: toWeek(item.week), listed: true };

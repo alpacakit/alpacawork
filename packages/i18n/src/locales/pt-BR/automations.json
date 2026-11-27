@@ -396,6 +396,7 @@
   "toggle": "Ativar ou desativar {{name}}",
   "trigger": {
     "contains": "Contendo “{{text}}”",
+    "hostPressure": "Quando o PC está sobrecarregado ({{kinds}})",
     "includeAutomated": "Inclui tarefas criadas por automações",
     "kind": {
       "accept": "aceite",
@@ -412,23 +413,23 @@
         "report": "Quando uma IA informa",
         "send_back": "Quando uma IA devolve"
       },
+      "any": "Quando chegam palavras de {{who}}",
       "human": {
         "accept": "Quando eu aceito",
         "answer": "Quando eu respondo uma pergunta",
         "question": "Quando eu pergunto",
         "report": "Quando eu informo",
         "send_back": "Quando eu devolvo"
-      }
+      },
+      "many": "Quando chegam palavras de {{who}} ({{kinds}})"
     },
-    "messageAny": "Quando chegam palavras de {{who}}",
-    "messageKinds": "Quando chegam palavras de {{who}} ({{kinds}})",
     "mine": "Só tarefas que eu pedi",
     "or": " ou ",
     "other": "Quando ocorre {{event}}",
-    "pressure": "Quando o PC está sobrecarregado ({{kinds}})",
+    "schedule": "{{text}}",
     "signal": "Quando chega um sinal",
+    "state": "Quando passa para {{to}}",
     "stateFromTo": "Quando passa de {{from}} para {{to}}",
-    "stateTo": "Quando passa para {{to}}",
     "usedAny": "esta tarefa usou alguma de {{skills}}",
     "usedOne": "esta tarefa usou {{skill}}",
     "viaCli": "Enviado pela CLI",

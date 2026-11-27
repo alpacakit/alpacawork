@@ -50,7 +50,7 @@ export default defineConfig({
       // An automation said in words, by its fields' values and the server's codes (features/automations/words.ts).
       "automations:schedule.*", "automations:weekday.*", "automations:event.*", "automations:next.*",
       "automations:reason.*", "automations:runs.reason.*", "automations:duration.*", "automations:pressure.*",
-      "automations:trigger.message.*", "automations:trigger.who.*", "automations:trigger.kind.*", "automations:runs.state.*",
+      "automations:trigger.*", "automations:runs.state.*",
       "automations:attention.*", "automations:phase.*", "automations:group.*", "automations:mark.*", "automations:dot.*", "automations:pane.*", "automations:effect.*",
       "panels:update.card.failedBody.*", // A failed update said by its category (features/update/UpdateView.tsx).
       "panels:telemetry.outcome.*", // What became of a request sent, by its outcome (features/telemetry/Telemetry.tsx).

@@ -52,17 +52,15 @@ export const protocolOnly = (site: WriteSite) => {
   const columns = [...set.matchAll(/(?:^|,)\s*(\w+)\s*=/g)].map(match => match[1]!);
   return columns.length > 0 && columns.every(column => unobservedColumns[site.table]!.includes(column));
 };
-// These writes require a full storage budget or an unavailable process census. The fixture covers their normal paths.
+// These writes require a full storage budget. The fixture covers ordinary retention.
 const storageCapSite = (site: WriteSite) => site.file === 'apps/backend/src/automations/bundle-runs.ts'
   && /^DELETE FROM automation_(?:run_data|signal_items|operation_data|previews|task_inputs) WHERE rowid IN \(SELECT value FROM json_each\(\?\)\)/.test(site.sql);
-const processFaultSite = (site: WriteSite) => site.file === 'apps/backend/src/automations/bundle-runtime.ts'
-  && /^UPDATE automation_runs SET phase='stopping',(?:reason_kind='interrupted',)?version=version\+1 WHERE automation_id=\? AND number=\?(?: AND state='running')?$/.test(site.sql);
 // An interrupted, unfinished preview has no public operation history to invalidate.
 const previewProtocolSite = (site: WriteSite) => site.file === 'apps/backend/src/automations/bundle-runtime.ts'
   && site.table === 'automation_operations' && site.sql.endsWith("WHERE preview_id=? AND outcome='running'");
 export const writeSiteStatus = (site: WriteSite) => maintenanceFiles.has(site.file) ? 'maintenance'
   : unobservedTables.has(site.table) || protocolOnly(site) || previewProtocolSite(site) ? 'unobserved'
-    : storageCapSite(site) ? 'storage-cap' : processFaultSite(site) ? 'process-fault'
+    : storageCapSite(site) ? 'storage-cap'
       : routingFiles.has(site.file) ? 'pending-routing' : 'touch';
 export const trackedSite = (site: WriteSite) => {
   const status = writeSiteStatus(site);

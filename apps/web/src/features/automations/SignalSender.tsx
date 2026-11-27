@@ -1,3 +1,4 @@
+import { automationEventSource } from "@alpacawork/contract/automation-program";
 import { useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import type { Automation } from "./shape";
@@ -86,7 +87,7 @@ function HookWay({ automation }: { automation: Automation }) {
 function RemakeDialog({ automation, onClose, onRemade }: { automation: Automation; onClose: () => void; onRemade: () => void }) {
   const { t, i18n } = useTranslation("automations");
   const act = useAutomationAct({ errorToast: false });
-  const last = automation.lastRun?.event.kind === "signal" && !automation.lastRun.event.manual ? automation.lastRun.at : null;
+  const last = automation.lastRun && automationEventSource(automation.lastRun.event.kind) === "signal" && !automation.lastRun.event.manual ? automation.lastRun.at : null;
   return <Dialog open onOpenChange={open => { if (!open) onClose(); }}>
     <DialogContent data-automation-hook-rotate-dialog>
       <DialogHeading title={t("hook.remakeTitle")} />
