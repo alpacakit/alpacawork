@@ -21,7 +21,6 @@
       },
       "lead": "Solo si la IA principal se detiene por un límite de uso o de capacidad, las alternativas toman el relevo, de arriba abajo. Si se detienen todas, el trabajo se detiene y se te avisa.",
       "namedOnly": "Una IA que no está aquí solo se usa cuando una solicitud la nombra.",
-      "notOffered": "{{value}} (no es un valor)",
       "remove": "Quitar {{role}}",
       "repeated": "Igual que {{role}}, así que esta fila nunca se usa.",
       "saveRefused": "No se guardó: “{{list}}” tiene algo que corregir. Corrige lo marcado en rojo y vuelve a guardar.",
