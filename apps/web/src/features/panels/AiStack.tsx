@@ -44,14 +44,15 @@ export function AiStack({ kind, rows, agents, onChange, refusedRows, refused }: 
   }, [focusRow]);
   return <div className="flex flex-col gap-2">
     {/* Brought into view with room above it, so its edge stands clear of the tabs' rule. */}
-    <section aria-labelledby={stackHeadingId(kind)} data-ai-stack={kind} className="min-w-0 scroll-mt-4 rounded-lg border border-line bg-raised">
+    <section aria-labelledby={stackHeadingId(kind)} data-ai-stack={kind} className="@container/ai-stack min-w-0 scroll-mt-4 rounded-lg border border-line bg-raised">
       <div className="px-4 pt-4 pb-3 narrow:px-3">
         {/* Focusable by the screen alone: the input's AI opens the settings onto it. */}
         <h3 id={stackHeadingId(kind)} tabIndex={-1} className="text-base font-semibold">{t(stackTitleKey(kind))}</h3>
         <p className="mt-1 text-sm text-pretty text-muted [word-break:auto-phrase]">{t(kind === 'tasks' ? 'agentSettings.aiStack.lead' : 'agentSettings.coordinatorStack.lead')}</p>
       </div>
       {/* On a PC the rows share their columns, so each one's role is as wide as the longest, and the agents as the longest
-          name they offer (up to a limit), and every agent and value starts on one line. */}
+          name they offer (up to a limit), and every agent and value starts on one line; where the list is too narrow for
+          that, each row's choices go on the line under its agent. */}
       <ol ref={list} aria-labelledby={stackHeadingId(kind)} className="m-0 grid list-none grid-cols-[max-content_fit-content(12rem)_minmax(0,1fr)_auto] p-0 narrow:block">
         {rows.map((row, index) => <StackRow key={row.id} row={row} index={index} count={rows.length} agents={agents} enabled={enabled}
           issues={issues.filter(issue => issue.rowId === row.id)} refused={refusedRows?.[index]} repeats={repeatedRow(rows, index, agents)}
@@ -89,7 +90,7 @@ function StackRow({ row, index, count, agents, enabled, issues, refused, repeats
     : issue.kind === 'disabled' ? t('agentSettings.aiStack.issue.disabled', { agent: row.agent })
     : issue.kind === 'value' ? t('agentSettings.aiStack.issue.value', { row: text.row(issue.key), value: shown(issue.value), agent: row.agent }) : '';
   // One line on a PC: its role (the primary, or which fallback), its agent, two choices to a line in columns, and its
-  // controls. On a phone the role and controls head the row, the agent and its choices go under them, one to a line.
+  // controls; in a narrower list the choices start on the next line, under the agent. On a phone the role and controls head the row, the agent and its choices go under them, one to a line.
   return <li data-ai-stack-row={row.agent} data-ai-stack-row-id={row.id} data-invalid={issues.length || refused ? '' : undefined} data-repeats={repeats === null ? undefined : repeats + 1}
     className="col-span-4 grid grid-cols-subgrid items-baseline gap-x-2 border-t border-line px-4 py-3 narrow:grid-cols-[minmax(0,1fr)_auto] narrow:gap-x-2 narrow:px-3">
     <span aria-hidden className={cn('whitespace-nowrap narrow:self-center', index === 0 ? 'font-semibold' : 'text-muted')}>{name}</span>
@@ -103,7 +104,7 @@ function StackRow({ row, index, count, agents, enabled, issues, refused, repeats
       {enabled.map(each => <option key={each.id} value={each.name}>{each.name}</option>)}
     </NativeSelect>
     </div>
-    {choices.length > 0 && <div className="grid min-w-0 grid-cols-[max-content_minmax(0,9rem)_max-content_minmax(0,9rem)] items-baseline gap-x-2 gap-y-2 narrow:col-span-2 narrow:row-start-3 narrow:mt-2 narrow:grid-cols-[4.5rem_minmax(0,1fr)] narrow:gap-x-2">
+    {choices.length > 0 && <div className="grid min-w-0 grid-cols-[max-content_minmax(0,9rem)_max-content_minmax(0,9rem)] items-baseline gap-x-2 gap-y-2 stackwrap:col-span-2 stackwrap:col-start-2 stackwrap:row-start-2 stackwrap:mt-2 stackwrap:grid-cols-[max-content_minmax(0,1fr)_max-content_minmax(0,1fr)] narrow:col-span-2 narrow:row-start-3 narrow:mt-2 narrow:grid-cols-[4.5rem_minmax(0,1fr)] narrow:gap-x-2">
       {choices.map((choice, at) => {
         const { value, refused } = choice;
         return <label key={choice.key} data-ai-stack-choice={choice.key} className="contents">
