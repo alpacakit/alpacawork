@@ -100,6 +100,7 @@
       "attachment_request_belongs_another_task": "The attachment's request belongs to another task",
       "attachment_request_ids_must_differ": "The source and destination request IDs must be different",
       "automatic_requests_reached_placement_limit": "Automatic requests to the agent have reached the limit",
+      "automation_destination_missing": "Enter the missing destinations ({{names}}).",
       "awaits_user_s_review_confirm_it_or_send_it_back_first": "{{task}} is awaiting the user's review. Accept it or send it back first",
       "build_browser_application_with_pnpm_build": "Build the browser application with pnpm build",
       "busy_timeout_must_nonnegative_32_bit_integer": "The wait time must be a non-negative 32-bit integer",

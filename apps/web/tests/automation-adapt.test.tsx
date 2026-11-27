@@ -8,10 +8,10 @@ import { serverPreview } from "./automation-fixture";
 
 test("a version the coordinator saved says so, with the person's words it was asked in", () => {
   const facts = { when: { event: "signal", where: null, textKey: "trigger.signal", filter: null },
-    limits: { perDay: 1, cooldownMinutes: 0, waitForPrevious: true, until: null, timeoutMinutes: 10, aiCallsPerDay: 20, tasksPerRun: 0, timezone: "UTC" }, ai: [], outside: [] };
+    limits: { perDay: 1, cooldownMinutes: 0, waitForPrevious: true, until: null, timeoutMinutes: 10, aiCallsPerDay: 20, tasksPerRun: 0, timezone: "UTC" }, ai: [], outside: [], directNetwork: false };
   const version = (savedBy: unknown) => toVersion({ digest: "sha256:" + "a".repeat(64), contractVersion: 1, savedAt: "2026-11-27T00:00:00.000Z", savedBy, files: [],
-    facts, docs: { run: { summary: "s", body: "", params: [], returns: null, throws: [] }, trigger: null }, parts: [], outsideEffects: [], sourceRequest: null,
-    review: { state: "ok", findings: [], summary: "", model: null, at: "2026-11-27T00:00:00.000Z", acknowledged: null }, preview: null });
+    facts, docs: { run: { summary: "s", body: "", params: [], returns: null, throws: [] }, trigger: null }, parts: [], outsideEffects: [], sourceRequest: null, missingDestinations: [],
+    review: { state: "ok", findings: [], summary: "", reasonKind: null, model: null, at: "2026-11-27T00:00:00.000Z", acknowledged: null }, preview: null });
   expect(version({ kind: "main", provider: "claude", conversationId: "c1", quote: "only from 3 on" }).savedBy).toEqual({ kind: "coordinator", name: null, request: "only from 3 on" });
   expect(version({ kind: "main", provider: "claude", conversationId: "c1" }).savedBy).toEqual({ kind: "coordinator", name: null, request: null });
   expect(version({ kind: "human" }).savedBy.kind).toBe("person");
@@ -19,7 +19,7 @@ test("a version the coordinator saved says so, with the person's words it was as
 });
 
 test("a showing whose run failed after trigger let it through is one where run was shown, with its error", () => {
-  const failed = { ...serverPreview("s1", "passes", [], null, true), outcome: { state: "failed", summary: null, report: null, notify: false, error: { message: "boom", file: "main.ts", line: 3 } } };
+  const failed = { ...serverPreview("s1", "passes", [], null, true), outcome: { state: "failed", summary: null, report: null, notify: false, error: { code: null, message: "boom", file: "main.ts", line: 3 } } };
   const shown = toPreview(failed as Parameters<typeof toPreview>[0]);
   expect([shown.ran, shown.outcome?.error?.message]).toEqual([true, "boom"]);
 });
@@ -33,15 +33,15 @@ test("what a person writes for a signal goes to the server as one signal holding
 
 test("an AI row is said as a short judgement or as whom a task goes to only when the server read it used one way alone", () => {
   const facts = { when: { event: "signal", where: null, textKey: "trigger.signal", filter: null },
-    limits: { perDay: 1, cooldownMinutes: 0, waitForPrevious: true, until: null, timeoutMinutes: 10, aiCallsPerDay: 20, tasksPerRun: 1, timezone: "UTC" }, outside: [],
+    limits: { perDay: 1, cooldownMinutes: 0, waitForPrevious: true, until: null, timeoutMinutes: 10, aiCallsPerDay: 20, tasksPerRun: 1, timezone: "UTC" }, outside: [], directNetwork: false,
     ai: [{ name: "judge", agent: "claude", model: "haiku", effort: "low", uses: ["ai.ask"], costHint: null },
       { name: "worker", agent: "codex", model: "sol", effort: "high", uses: ["tasks.create"], costHint: null },
       { name: "both", agent: "codex", model: "sol", effort: "high", uses: ["ai.ask", "tasks.create"], costHint: null },
       { name: "unread", agent: "codex", model: "sol", effort: "high", uses: null, costHint: null }] };
   const shown = toVersion({ digest: "sha256:" + "a".repeat(64), contractVersion: 1, savedAt: "2026-11-27T00:00:00.000Z", savedBy: { kind: "main", provider: "claude", conversationId: "c1" },
-    files: [], facts, docs: { run: { summary: "s", body: "", params: [], returns: null, throws: [] }, trigger: null }, parts: [],
+    files: [], facts, docs: { run: { summary: "s", body: "", params: [], returns: null, throws: [] }, trigger: null }, parts: [], missingDestinations: [],
     outsideEffects: [{ kind: "file", text: "Reads ~/.agents/skills" }], sourceRequest: { id: "m1", text: "only from 3 on" },
-    review: { state: "ok", findings: [], summary: "", model: null, at: "2026-11-27T00:00:00.000Z", acknowledged: null }, preview: null } as AutomationVersion);
+    review: { state: "ok", findings: [], summary: "", reasonKind: null, model: null, at: "2026-11-27T00:00:00.000Z", acknowledged: null }, preview: null } as AutomationVersion);
   expect(shown.facts.ai.map(row => row.use ?? null)).toEqual(["ask", "task", null, null]);
   // The person's words the coordinator was given, and what it does outside alpacawork.
   expect([shown.savedBy.request, shown.direct]).toEqual(["only from 3 on", [{ kind: "file", text: "Reads ~/.agents/skills" }]]);

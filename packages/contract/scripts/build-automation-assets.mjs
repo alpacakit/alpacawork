@@ -2,7 +2,7 @@ import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { posix } from 'node:path';
 import { z } from 'zod';
 import {
-  automationConfigSchema, automationEvents, automationJson, automationOperationErrorCodes,
+  AUTOMATION_DECLARATION_PATHS, automationConfigSchema, automationEvents, automationJson, automationOperationErrorCodes,
   automationOperations, automationRunResultSchema, automationTriggerResultSchema,
 } from '../dist/automation-program.js';
 
@@ -160,10 +160,15 @@ const examples = readdirSync(root, { withFileTypes: true }).filter(entry => entr
   const folder = new URL(name + '/', root);
   return { name, files: readdirSync(folder).sort().map(path => ({ path, source: readFileSync(new URL(path, folder), 'utf8') })) };
 });
-const declaration = '// Generated from the alpacawork automation contract.\n' + bundledZod() + '\n\n' + sdkDeclaration();
+const [sdkPath, zodPath] = AUTOMATION_DECLARATION_PATHS;
+const declarations = [
+  { path: sdkPath, source: '/// <reference path="./' + zodPath + '" />\n' +
+    '// Generated from the alpacawork automation contract.\n' + sdkDeclaration() },
+  { path: zodPath, source: bundledZod() + '\n' },
+];
 writeFileSync(new URL('../dist/automation-program-assets.js', import.meta.url),
-  'export const automationTypeDeclaration = ' + JSON.stringify(declaration) + ';\n' +
+  'export const automationDeclarations = ' + JSON.stringify(declarations) + ';\n' +
   'export const automationExamples = ' + JSON.stringify(examples) + ';\n');
 writeFileSync(new URL('../dist/automation-program-assets.d.ts', import.meta.url),
-  'export declare const automationTypeDeclaration: string;\n' +
+  'export declare const automationDeclarations: import("./automation-program.js").AutomationDeclarations;\n' +
   'export declare const automationExamples: readonly {name: string; files: readonly {path: string; source: string}[]}[];\n');

@@ -3,14 +3,14 @@ import { lstat, mkdir, open, readdir, realpath, rmdir, unlink } from 'node:fs/pr
 import { dirname, join, resolve } from 'node:path';
 import { Problem, PROBLEM_CODE, parseInput } from '@alpacawork/core';
 import {
-  AUTOMATION_BUNDLE_LIMITS, automationBundleSchema, isAutomationBundlePath, type AutomationBundle,
+  AUTOMATION_BUNDLE_LIMITS, automationBundleSchema, isAutomationBundlePath, isAutomationDeclarationPath,
+  type AutomationBundle, type AutomationDeclarations,
 } from '@alpacawork/contract/automation-program';
-const declaration = 'alpacawork.d.ts';
 
 async function distributedFiles() {
-  const { automationExamples, automationTypeDeclaration } = await import('@alpacawork/contract/automation-program-assets');
+  const { automationExamples, automationDeclarations } = await import('@alpacawork/contract/automation-program-assets');
   return {
-    types: { path: declaration, source: automationTypeDeclaration },
+    declarations: automationDeclarations,
     examples: automationExamples.flatMap(example => example.files.map(file => ({
       path: 'examples/' + example.name + '/' + file.path, source: file.source,
     }))),
@@ -75,7 +75,7 @@ export async function readAutomationBundle(directory: string): Promise<Automatio
     const entries = await readdir(folder, { withFileTypes: true });
     for (const entry of entries.sort((a, b) => a.name < b.name ? -1 : a.name === b.name ? 0 : 1)) {
       const path = relative ? relative + '/' + entry.name : entry.name;
-      if (path === declaration) continue;
+      if (isAutomationDeclarationPath(path)) continue;
       const absolute = join(root, path);
       if (entry.isDirectory()) { await walk(path); continue; }
       if (!entry.isFile() || !isAutomationBundlePath(path)) invalid('Unsupported automation file: ' + path);
@@ -150,9 +150,9 @@ async function writeFiles(directory: string, files: readonly OutputFile[]): Prom
   return { directory: root, files: paths };
 }
 
-/** Unpack one server version together with the local SDK declaration. */
+/** Unpack one server version together with its SDK declarations. */
 export async function writeAutomationBundle(directory: string, files: readonly OutputFile[],
-  sdkDeclaration?: string): Promise<ExportReceipt> {
+  declarations: AutomationDeclarations): Promise<ExportReceipt> {
   const bundle = parseInput(automationBundleSchema, files);
   let totalBytes = 0;
   for (const file of bundle) {
@@ -165,12 +165,11 @@ export async function writeAutomationBundle(directory: string, files: readonly O
     if (totalBytes > AUTOMATION_BUNDLE_LIMITS.totalBytes)
       throw new Problem(PROBLEM_CODE.tooLarge, 'An automation bundle cannot exceed 256 KiB');
   }
-  const types = sdkDeclaration === undefined ? (await distributedFiles()).types : { path: declaration, source: sdkDeclaration };
-  return writeFiles(directory, [types, ...bundle]);
+  return writeFiles(directory, [...declarations, ...bundle]);
 }
 
-/** Write the SDK declaration and the example bundles from this installed client. */
+/** Write the SDK declarations and example bundles from this installed client. */
 export async function writeAutomationTypes(directory: string): Promise<ExportReceipt> {
-  const { types, examples } = await distributedFiles();
-  return writeFiles(directory, [types, ...examples]);
+  const { declarations, examples } = await distributedFiles();
+  return writeFiles(directory, [...declarations, ...examples]);
 }

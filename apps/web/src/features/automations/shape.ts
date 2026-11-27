@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { automationEventReferenceSchema } from "@alpacawork/contract/automation-program";
+import { automationEventReferenceSchema, automationProgramErrorSchema } from "@alpacawork/contract/automation-program";
 
 /**
  * What the server hands the screen about automations, as the screen reads it. An automation is a program an AI wrote:
@@ -65,7 +65,7 @@ export const previewSchema = z.object({
   durationMs: z.number().nullable().optional(),
   operations: z.array(operationSchema),
   outcome: z.object({ state: z.enum(["done", "skipped", "stopped", "failed"]), summary: z.string().nullable(), report: z.string().nullable(),
-    notify: z.boolean(), error: z.object({ message: z.string(), file: z.string().nullable(), line: z.number().nullable() }).nullable() }).nullable(),
+    notify: z.boolean(), error: automationProgramErrorSchema.nullable() }).nullable(),
 });
 export type Preview = z.infer<typeof previewSchema>;
 
@@ -95,7 +95,7 @@ export const runSchema = z.object({
   summary: z.string().nullable(), notify: z.boolean(),
   /** Why it was skipped or failed: a kind the screen has words for, and the server's own sentence. */
   reasonKind: z.string().nullable(), reasonText: z.string().nullable(),
-  error: z.object({ message: z.string(), file: z.string().nullable(), line: z.number().nullable() }).nullable(),
+  error: automationProgramErrorSchema.nullable(),
   startedAt: at.nullable(), endedAt: at.nullable(),
   /** The tasks it made (from their origin), each with its state as the run last read it. */
   tasks: z.array(z.object({ id: z.string(), title: z.string(), state: z.string().nullable() })),

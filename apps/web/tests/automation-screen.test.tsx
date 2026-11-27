@@ -105,7 +105,7 @@ test("trying runs trigger first, shows what run would do only when asked, and do
   vi.spyOn(api, "request").mockImplementation(async (path: string, _schema: unknown, _signal: unknown, body?: unknown) => {
     sent.push({ path, body });
     if (path.includes("automation/preview")) return { events: [serverSignal("s1", { service: "api" })], preview: (body as { run?: boolean }).run
-      ? serverPreview("s1", "service is api", [{ name: "tasks.create", target: null, input: { title: "Check the API", ai: "worker" }, replaced: true, result: null, code: null, usage: null }], "asked")
+      ? serverPreview("s1", "service is api", [{ name: "tasks.create", target: null, input: { title: "Check the API", ai: "worker" }, replaced: true, result: null, code: null, usage: null, outcome: "done" }], "asked")
       : serverPreview("s1", "service is api") };
     if (path.includes("automation/try")) return { automation: { id: "A2", project: "P1" }, run: serverRun(9, "trial") };
     return new Promise(() => {});

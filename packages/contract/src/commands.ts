@@ -29,10 +29,10 @@ import {
   automationSignalResultSchema, automationRunInput, automationTargetInput,
 } from './automation.js';
 import {
-  automationBundleSchema, automationDestinationListSchema, automationJson, automationProgramInputs, automationProgramListResultSchema,
+  automationBundleSchema, automationDeclarationsSchema, automationDestinationListSchema, automationJson, automationProgramInputs, automationProgramListResultSchema,
   automationProgramPreviewResultSchema, automationProgramRunReceiptSchema, automationProgramRunViewSchema,
   automationProgramRunsViewSchema, automationProgramViewResultSchema, automationProgramSaveResultSchema, automationReviewResultSchema, automationVersionSchema,
-  AUTOMATION_DESTINATION_MAX_CHARS,
+  AUTOMATION_DESTINATION_MAX_CHARS, automationPullResultSchema,
 } from './automation-program.js';
 import { z } from 'zod';
 import { COORDINATOR_MEMO_LIMIT, coordinatorMemoSchema, coordinatorMemoSetInputSchema, coordinatorReplyGetInput } from './coordinator-contract.js';
@@ -62,6 +62,7 @@ export type CommandOption = {
   /** Read the same parameter from a file or stdin, bounded by this many bytes. */
   fileAlternative?: number;
   jsonFile?: true;
+  relativePath?: true;
   nullable?: true;
   jsonScalar?: true;
   queryCount?: true;
@@ -108,8 +109,12 @@ const option = (kind: CommandOption['kind']) =>
 const text = option('text'), number = option('number'), boolean = option('boolean'), json = option('json');
 const list = (key: string, description: string) =>
   option('list')(key, description, { cliDetail: 'Repeatable or comma-separated.' });
-const file = (key: string, max: number, description: string, jsonFile?: true): CommandOption =>
-  ({ key, description, cliDetail: 'Use an absolute path to a regular UTF-8 file (a pipe such as /dev/fd/N is refused), or - for stdin (one option per command).', kind: 'file', max, jsonFile });
+const file = (key: string, max: number, description: string,
+  options: Pick<CommandOption, 'jsonFile' | 'relativePath'> = {}): CommandOption => ({
+  key, description, kind: 'file', max, ...options,
+  cliDetail: 'Use ' + (options.relativePath ? 'a relative or absolute path' : 'an absolute path') +
+    ' to a regular UTF-8 file (a pipe such as /dev/fd/N is refused), or - for stdin (one option per command).',
+});
 export function commandCliOptions(command: Pick<Command, 'options'>): CommandOption[] {
   return command.options.flatMap(option => option.fileAlternative === undefined ? [option] : [
     option, { ...file(option.key, option.fileAlternative, option.description), cliKey: option.cliKey },
@@ -211,14 +216,16 @@ const TASK_VALUES_GUIDE = 'field get';
 const PROJECT_VALUES_GUIDE = `${TASK_VALUES_GUIDE}; a project's own values, ${PROJECT_SCHEMA.join(' and ')}: field list`;
 /** A write's values: only the fields it changes, as `guide` describes them. */
 const valuesFile = (description: string, guide = TASK_VALUES_GUIDE) => file('values', MAX_CONTROL_BODY, `${description}: JSON from field IDs to values. ` +
-  `Omit to keep or use null to clear. Lists replace (${guide})`, true);
+  `Omit to keep or use null to clear. Lists replace (${guide})`, { jsonFile: true });
 const subjectOption = 'Analysis or improvement subject as JSON: {"kind":"cause","key":"long-wait"}, ' +
   '{"kind":"task","task":"T12"}, or {"kind":"period","from":"2026-11-01","to":"2026-11-07"}';
 const urgent = (what: string) => text('urgent', `Why the requester must read ${what} now (one line)`);
 const schemaTask = text('task', 'Task ID. Omit for the Run’s own Task, the resolved project or the default schema.',
   { cliDetail: 'See the cwd rule in alpacawork -h.' });
 
-const automationEventFile = { ...file('syntheticEvent', 2 * 1024 * 1024, 'Synthetic event JSON file', true), cliKey: 'event' };
+const automationEventFile = {
+  ...file('syntheticEvent', 2 * 1024 * 1024, 'Synthetic event JSON file', { jsonFile: true, relativePath: true }), cliKey: 'event',
+};
 const automationId = text('automation', 'Automation ID (A<number>)');
 const automationUnder = text('under', 'Project ID (P<number>)');
 const automationName = text('name', 'Automation name');
@@ -407,7 +414,7 @@ const definitions = {
   'automation/operate': command('write', 'Use this run’s automation SDK grant', automationProgramInputs.operate,
     [text('operation', 'SDK operation name'), json('input', 'Operation input as JSON')], { output: automationJson }),
   'automation/types': command('read', 'Write SDK types and complete examples to a directory', emptyInput,
-    [text('dir', 'Local destination directory', { local: true })], { output: z.strictObject({ declaration: z.string(),
+    [text('dir', 'Local destination directory', { local: true })], { output: z.strictObject({ declarations: automationDeclarationsSchema,
       examples: z.array(z.strictObject({ name: z.string(), files: automationBundleSchema })) }) }),
   'automation/get': command('read', 'Read an automation and its saved versions', automationTargetInput, [automationId],
     { output: automationProgramViewResultSchema }),
@@ -435,7 +442,7 @@ const definitions = {
     { output: automationProgramSaveResultSchema }),
   'automation/pull': command('read', 'Read source files of an automation version', automationProgramInputs.pull,
     [automationId, text('version', 'Version digest, or latest when omitted'), text('dir', 'Local destination directory', { local: true })],
-    { output: z.strictObject({ digest: digestSchema, files: automationBundleSchema, declaration: z.string() }) }),
+    { output: automationPullResultSchema }),
   'automation/review': command('write', 'Review one saved automation version', automationProgramInputs.review,
     [automationId, text('version', 'Version digest')], { output: z.strictObject({ review: automationReviewResultSchema }) }),
   'automation/enable': command('write', 'Enable the latest version of an automation', automationProgramInputs.enable,
@@ -498,7 +505,7 @@ const definitions = {
       text('expectedParentHash', 'Current parent Task SHA-256 hash'),
       valuesFile('Field values', PROJECT_VALUES_GUIDE),
       file('plan', MAX_CONTROL_BODY, 'Sibling Tasks made at once under the parent, with one mark: ' +
-        'a JSON array of {"title", "values"?, "analysisSubject"?}', true),
+        'a JSON array of {"title", "values"?, "analysisSubject"?}', { jsonFile: true }),
       json('analysisSubject', subjectOption),
       fromUser, quote, sourceRequest,
     ], { rules: taskCreateRules, output: z.union([taskWriteResultSchema, taskPlanResultSchema]), help: help(

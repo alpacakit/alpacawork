@@ -171,7 +171,7 @@
     "file": "apps/backend/src/automations/bundle-operations.ts",
     "sql": "INSERT INTO automation_task_inputs(task_id,data,saved_at) VALUES (?,?,?)",
     "table": "automation_task_inputs",
-    "line": 266,
+    "line": 270,
     "status": "touch"
   },
   {
@@ -283,229 +283,229 @@
     "file": "apps/backend/src/automations/bundle-runs.ts",
     "sql": "UPDATE automation_runs SET resolved_at=?,version=version+1 WHERE automation_id=? AND activation_epoch=? AND failed_phase=? AND resolved_at IS NULL RETURNING number",
     "table": "automation_runs",
-    "line": 156,
+    "line": 157,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/automations/bundle-runs.ts",
     "sql": "UPDATE automation_runs SET version=version+1,count=count+?,last_at=?,finished_at=?,reason=?,trigger_result=?, folded_matches=json_set(folded_matches,?,coalesce(json_extract(folded_matches,?),0)+1) WHERE automation_id=? AND number=?",
     "table": "automation_runs",
-    "line": 167,
+    "line": 168,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/automations/bundle-runs.ts",
     "sql": "DELETE FROM automation_runs WHERE automation_id=? AND number=?",
     "table": "automation_runs",
-    "line": 171,
+    "line": 172,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/automations/bundle-runs.ts",
     "sql": "UPDATE automation_runs SET version=version+1,state=?,phase=NULL,finished_at=?,reason_kind=?,reason=?,trigger_result=?, summary=?,notify=?,error=?,failed_phase=?,skip_day=?,expires_at=NULL,attempt=NULL WHERE automation_id=? AND number=?",
     "table": "automation_runs",
-    "line": 174,
+    "line": 175,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/automations/bundle-runs.ts",
     "sql": "INSERT INTO automation_run_data(automation_id,run_number,report,output,saved_at) VALUES (?,?,?,?,?) ON CONFLICT(automation_id,run_number) DO UPDATE SET report=excluded.report,output=excluded.output,saved_at=excluded.saved_at",
     "table": "automation_run_data",
-    "line": 180,
+    "line": 181,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/automations/bundle-runs.ts",
     "sql": "UPDATE automation_operations SET outcome='failed', code=CASE WHEN name='send' THEN 'unknown_result' ELSE 'temporary' END WHERE automation_id=? AND run_number=? AND outcome='running'",
     "table": "automation_operations",
-    "line": 185,
+    "line": 186,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/automations/bundle-runs.ts",
     "sql": "UPDATE automation_signal_receipts SET settled_at=?,run_number=? WHERE automation_id=? AND run_number=? AND settled_at IS NULL",
     "table": "automation_signal_receipts",
-    "line": 188,
+    "line": 189,
     "status": "unobserved"
   },
   {
     "file": "apps/backend/src/automations/bundle-runs.ts",
     "sql": "DELETE FROM automation_previews WHERE at<? AND attempt IS NULL RETURNING automation_id",
     "table": "automation_previews",
-    "line": 357,
+    "line": 362,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/automations/bundle-runs.ts",
     "sql": "DELETE FROM automation_signal_receipts WHERE settled_at<?",
     "table": "automation_signal_receipts",
-    "line": 358,
+    "line": 363,
     "status": "unobserved"
   },
   {
     "file": "apps/backend/src/automations/bundle-runs.ts",
     "sql": "DELETE FROM cli_operations WHERE operation IN ('automation/signal','automation/run-now','automation/try') AND committed_at<?",
     "table": "cli_operations",
-    "line": 359,
+    "line": 364,
     "status": "unobserved"
   },
   {
     "file": "apps/backend/src/automations/bundle-runs.ts",
     "sql": "DELETE FROM automation_runs AS r WHERE r.finished_at IS NOT NULL AND (r.state<>'failed' OR r.resolved_at IS NOT NULL) AND ((r.state='skipped' AND r.finished_at<?) OR (r.finished_at<? AND NOT EXISTS( SELECT 1 FROM automation_operations o JOIN tasks t ON t.external_id=o.requested_task_id WHERE o.automation_id=r.automation_id AND o.run_number=r.number AND t.lifecycle='active' AND t.base_state NOT IN ('done','stopped')))) RETURNING automation_id,number",
     "table": "automation_runs",
-    "line": 360,
+    "line": 365,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/automations/bundle-runs.ts",
     "sql": "DELETE FROM automation_runs WHERE (automation_id,number) IN (SELECT automation_id,number FROM ( SELECT automation_id,number,row_number() OVER (PARTITION BY automation_id ORDER BY finished_at DESC,number DESC) AS ordinal FROM automation_runs WHERE state='skipped') WHERE ordinal>1000) RETURNING automation_id,number",
     "table": "automation_runs",
-    "line": 365,
+    "line": 370,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/automations/bundle-runs.ts",
     "sql": "DELETE FROM automation_operations AS o WHERE o.at<? AND NOT EXISTS(SELECT 1 FROM automation_runs r WHERE r.automation_id=o.automation_id AND r.number=o.run_number) AND NOT EXISTS(SELECT 1 FROM automation_previews p WHERE p.id=o.preview_id)",
     "table": "automation_operations",
-    "line": 368,
+    "line": 373,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/automations/bundle-runs.ts",
     "sql": "DELETE FROM automation_operation_data WHERE operation_id IN ( SELECT id FROM automation_operations WHERE at<? AND outcome<>'running')",
     "table": "automation_operation_data",
-    "line": 373,
+    "line": 378,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/automations/bundle-runs.ts",
     "sql": "DELETE FROM automation_run_data AS d WHERE d.saved_at<? AND EXISTS( SELECT 1 FROM automation_runs r WHERE r.automation_id=d.automation_id AND r.number=d.run_number AND r.finished_at IS NOT NULL) RETURNING automation_id,run_number",
     "table": "automation_run_data",
-    "line": 376,
+    "line": 381,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/automations/bundle-runs.ts",
     "sql": "DELETE FROM automation_signal_items AS i WHERE EXISTS( SELECT 1 FROM automation_runs r WHERE r.automation_id=i.automation_id AND r.number=i.run_number AND r.finished_at<?) RETURNING automation_id,run_number",
     "table": "automation_signal_items",
-    "line": 379,
+    "line": 384,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/automations/bundle-runs.ts",
     "sql": "DELETE FROM automation_task_inputs WHERE saved_at<? RETURNING task_id",
     "table": "automation_task_inputs",
-    "line": 382,
+    "line": 387,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/automations/bundle-runs.ts",
     "sql": "DELETE FROM automation_run_data WHERE rowid IN (SELECT value FROM json_each(?)) RETURNING automation_id,run_number",
     "table": "automation_run_data",
-    "line": 406,
+    "line": 411,
     "status": "storage-cap"
   },
   {
     "file": "apps/backend/src/automations/bundle-runs.ts",
     "sql": "DELETE FROM automation_signal_items WHERE rowid IN (SELECT value FROM json_each(?)) RETURNING automation_id,run_number",
     "table": "automation_signal_items",
-    "line": 408,
+    "line": 413,
     "status": "storage-cap"
   },
   {
     "file": "apps/backend/src/automations/bundle-runs.ts",
     "sql": "DELETE FROM automation_operation_data WHERE rowid IN (SELECT value FROM json_each(?))",
     "table": "automation_operation_data",
-    "line": 412,
+    "line": 417,
     "status": "storage-cap"
   },
   {
     "file": "apps/backend/src/automations/bundle-runs.ts",
     "sql": "DELETE FROM automation_previews WHERE rowid IN (SELECT value FROM json_each(?)) RETURNING automation_id",
     "table": "automation_previews",
-    "line": 414,
+    "line": 419,
     "status": "storage-cap"
   },
   {
     "file": "apps/backend/src/automations/bundle-runs.ts",
     "sql": "DELETE FROM automation_task_inputs WHERE rowid IN (SELECT value FROM json_each(?)) RETURNING task_id",
     "table": "automation_task_inputs",
-    "line": 416,
+    "line": 421,
     "status": "storage-cap"
   },
   {
     "file": "apps/backend/src/automations/bundle-runtime.ts",
     "sql": "UPDATE automation_runs SET attempt=? WHERE automation_id=? AND number=?",
     "table": "automation_runs",
-    "line": 45,
+    "line": 46,
     "status": "unobserved"
   },
   {
     "file": "apps/backend/src/automations/bundle-runtime.ts",
     "sql": "UPDATE automation_runs SET phase='stopping',reason_kind=?,attempt=?,version=version+1 WHERE automation_id=? AND number=?",
     "table": "automation_runs",
-    "line": 156,
+    "line": 173,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/automations/bundle-runtime.ts",
     "sql": "UPDATE automation_previews SET attempt=NULL WHERE id=? AND attempt=?",
     "table": "automation_previews",
-    "line": 175,
+    "line": 192,
     "status": "unobserved"
   },
   {
     "file": "apps/backend/src/automations/bundle-runtime.ts",
     "sql": "UPDATE automation_operations SET outcome='failed',code=CASE WHEN name='send' THEN 'unknown_result' ELSE 'temporary' END WHERE preview_id=? AND outcome='running'",
     "table": "automation_operations",
-    "line": 176,
+    "line": 193,
     "status": "unobserved"
   },
   {
     "file": "apps/backend/src/automations/bundle-runtime.ts",
     "sql": "UPDATE automation_runs SET attempt=?,started_at=?,phase_started_at=?,version=version+1 WHERE automation_id=? AND number=?",
     "table": "automation_runs",
-    "line": 253,
+    "line": 270,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/automations/bundle-runtime.ts",
     "sql": "UPDATE automation_runs SET version=version+1,phase='run',phase_started_at=?,run_started_at=?,trigger_result=? WHERE automation_id=? AND number=?",
     "table": "automation_runs",
-    "line": 322,
+    "line": 333,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/automations/bundle-runtime.ts",
     "sql": "INSERT INTO automation_previews(id,project_task_id,automation_id,digest,event,attempt,at) VALUES (?,?,?,?,?,?,?)",
     "table": "automation_previews",
-    "line": 397,
+    "line": 408,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/automations/bundle-runtime.ts",
     "sql": "UPDATE automation_previews SET attempt=json_set(attempt,'$.identity',json(?)) WHERE id=?",
     "table": "automation_previews",
-    "line": 413,
+    "line": 424,
     "status": "unobserved"
   },
   {
     "file": "apps/backend/src/automations/bundle-runtime.ts",
     "sql": "UPDATE automation_previews SET attempt=json_set(attempt,'$.phase','run','$.ran',1) WHERE id=?",
     "table": "automation_previews",
-    "line": 418,
+    "line": 429,
     "status": "unobserved"
   },
   {
     "file": "apps/backend/src/automations/bundle-runtime.ts",
     "sql": "UPDATE automation_previews SET result=?,attempt=NULL WHERE id=?",
     "table": "automation_previews",
-    "line": 438,
+    "line": 453,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/automations/bundle-store.ts",
-    "sql": "INSERT INTO automation_versions(automation_id,digest,contract_version,saved_at,saved_by,files,config,docs,parts,ai_uses,review) VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(automation_id,digest) DO NOTHING",
+    "sql": "INSERT INTO automation_versions(automation_id,digest,contract_version,saved_at,saved_by,files,config,docs,parts,ai_uses,direct_fetch,review) VALUES (?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(automation_id,digest) DO NOTHING",
     "table": "automation_versions",
     "line": 144,
     "status": "touch"
@@ -514,91 +514,91 @@
     "file": "apps/backend/src/automations/bundle-store.ts",
     "sql": "INSERT INTO automation_changes(automation_id,revision,previous_revision,kind,actor,digest,acknowledgement,message_id,badge_match,at) VALUES (?,?,?,?,?,?,?,?,?,?)",
     "table": "automation_changes",
-    "line": 163,
+    "line": 164,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/automations/bundle-store.ts",
     "sql": "INSERT INTO automations(id,number,project_task_id,name,latest_digest,revision) VALUES (?, (SELECT coalesce(max(number),0)+1 FROM automations),?,?,?,1) RETURNING external_id",
     "table": "automations",
-    "line": 173,
+    "line": 174,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/automations/bundle-store.ts",
     "sql": "UPDATE automation_previews SET automation_id=? WHERE project_task_id=? AND automation_id IS NULL AND digest=?",
     "table": "automation_previews",
-    "line": 178,
+    "line": 179,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/automations/bundle-store.ts",
     "sql": "UPDATE automations SET latest_digest=?,revision=revision+1 WHERE id=?",
     "table": "automations",
-    "line": 188,
+    "line": 189,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/automations/bundle-store.ts",
     "sql": "UPDATE automation_versions SET review=? WHERE automation_id=? AND digest=?",
     "table": "automation_versions",
-    "line": 195,
+    "line": 196,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/automations/bundle-store.ts",
     "sql": "UPDATE automations SET name=?,latest_digest=?,live_digest=?,activation_revision=?,activation_epoch=?,disabled_reason=?,deleted=?, next_at=?,event_after=?,host_pressure_after=?,host_pressure_cursor=?,revision=revision+1 WHERE id=?",
     "table": "automations",
-    "line": 313,
+    "line": 330,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/automations/bundle-store.ts",
     "sql": "UPDATE automation_runs SET state='skipped',phase=NULL,version=version+1,expires_at=NULL,finished_at=?, reason_kind=?,reason=? WHERE automation_id=? AND state IN ('waiting','running') AND (?=1 OR mode='live') AND attempt IS NULL RETURNING number",
     "table": "automation_runs",
-    "line": 319,
+    "line": 336,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/automations/bundle-store.ts",
     "sql": "UPDATE automation_signal_receipts SET settled_at=? WHERE automation_id=? AND run_number=? AND settled_at IS NULL",
     "table": "automation_signal_receipts",
-    "line": 324,
+    "line": 341,
     "status": "unobserved"
   },
   {
     "file": "apps/backend/src/automations/bundle-store.ts",
     "sql": "DELETE FROM automation_pending_skill_events WHERE automation_id=?",
     "table": "automation_pending_skill_events",
-    "line": 328,
+    "line": 345,
     "status": "unobserved"
   },
   {
     "file": "apps/backend/src/automations/bundle-store.ts",
     "sql": "UPDATE automation_previews SET attempt=json_set(attempt,'$.phase','stopping') WHERE automation_id=? AND result IS NULL AND attempt IS NOT NULL",
     "table": "automation_previews",
-    "line": 332,
+    "line": 349,
     "status": "unobserved"
   },
   {
     "file": "apps/backend/src/automations/bundle-store.ts",
     "sql": "DELETE FROM automation_secrets WHERE automation_id=?",
     "table": "automation_secrets",
-    "line": 345,
+    "line": 362,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/automations/bundle-store.ts",
     "sql": "INSERT INTO automation_secrets VALUES (?,?) ON CONFLICT(automation_id) DO UPDATE SET hook_token=excluded.hook_token",
     "table": "automation_secrets",
-    "line": 349,
+    "line": 366,
     "status": "touch"
   },
   {
     "file": "apps/backend/src/automations/bundle-store.ts",
     "sql": "UPDATE automations SET revision=revision+1 WHERE id=?",
     "table": "automations",
-    "line": 352,
+    "line": 369,
     "status": "touch"
   },
   {

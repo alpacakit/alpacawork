@@ -81,6 +81,7 @@ CREATE TABLE automation_versions (
   docs TEXT NOT NULL CHECK(json_valid(docs) AND json_type(docs)='object'),
   parts TEXT NOT NULL CHECK(json_valid(parts) AND json_type(parts)='array'),
   ai_uses TEXT NOT NULL DEFAULT '{}' CHECK(json_valid(ai_uses) AND json_type(ai_uses)='object'),
+  direct_fetch INTEGER NOT NULL DEFAULT 0 CHECK(direct_fetch IN (0,1)),
   review TEXT NOT NULL CHECK(json_valid(review) AND json_type(review)='object'),
   PRIMARY KEY(automation_id,digest)
 ) STRICT;

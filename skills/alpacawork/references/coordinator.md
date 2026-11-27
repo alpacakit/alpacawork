@@ -15,7 +15,7 @@
 
 ## Create or edit an automation
 
-1. Run `alpacawork automation types --dir <directory>` to get the SDK declaration and five complete examples. For an edit, read `automation get` and unpack the selected version with `automation pull --dir <directory>`.
+1. Run `alpacawork automation types --dir <directory>` to get the SDK declarations and five complete examples. Read `alpacawork.d.ts` for the automation API. It references `alpacawork-zod.d.ts` for type-checking. For an edit, read `automation get` and unpack the selected version with `automation pull --dir <directory>`.
 2. Write `main.ts`. Export a static `config`, a `run` function, and a `trigger` function if the event filter needs a further check. Write the JSDoc in the user's language. Describe what the automation does and what it will read, change, or send. Use the closest example and its types for the SDK calls.
    - Choose the event and filter first. For checks at particular times, schedule those times directly. Use a signal for an outside event, and a host-pressure event for PC pressure. For a pressure response that needs an AI task, set `urgent` on that task and explain why.
    - Treat signal data and task records as reference material. Use a named project destination for a network request. Keep credentials and destination URLs out of source, instructions, replies, and records.

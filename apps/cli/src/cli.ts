@@ -22,6 +22,7 @@ import { errorBody, parseInput, PROBLEM_CODE, Problem } from '@alpacawork/core';
 import { operationId, writeAttempt } from './write-attempt.js';
 import { actorHeaders, LostAnswer, RemoteProblem, prepareRequest, request, requestBytes } from './transport.js';
 import { automationProgramCommands } from '@alpacawork/contract/command-access';
+import { automationPullResultSchema } from '@alpacawork/contract/automation-program';
 import { saveServer, selectServer, unsetServer, verifyServer } from './endpoint.js';
 import { boundedFile, tooLarge, prepareByteUpload } from './byte-upload.js';
 import { relayMcp } from './mcp.js';
@@ -31,11 +32,11 @@ import { controlRunFilesSchema } from '@alpacawork/contract/control';
 import { taskIdSchema } from '@alpacawork/contract/fields';
 import { prepareReportDiffs, diffUploadId, type DiffSummary } from './report-diffs.js';
 
-/** A file option's text: the UTF-8 file at its absolute path, or stdin for `-`, at most the option's `max` bytes. */
+/** A file option's bounded UTF-8 text, read from a file or stdin. */
 async function document(path: string, option: CommandOption): Promise<unknown> {
   const name = commandFlag(option), max = option.max;
   if (max === undefined) throw new Error(`${name} has no size limit`);
-  if (path !== '-' && !isAbsolute(path))
+  if (path !== '-' && !option.relativePath && !isAbsolute(path))
     throw new Problem(PROBLEM_CODE.invalidInput, `${name} needs an absolute path`);
   let bytes: Uint8Array;
   try { bytes = path === '-' ? await readStdin(max, name) : await boundedFile(path, max, name); }
@@ -338,8 +339,8 @@ async function runMain(args: string[], installedServer?: string): Promise<number
       const input = spec.parse(values);
       let result = await spec.handler(input, { origin: (await selectedServer()).server, options, opId });
       if (spec.id === 'automation/pull' && typeof options.dir === 'string') {
-        const pulled = result as { digest: string; files: { path: string; source: string }[]; declaration: string };
-        result = { digest: pulled.digest, ...await writeAutomationBundle(options.dir, pulled.files, pulled.declaration) };
+        const pulled = parseInput(automationPullResultSchema, result);
+        result = { digest: pulled.digest, ...await writeAutomationBundle(options.dir, pulled.files, pulled.declarations) };
       }
       if (result !== undefined) process.stdout.write(JSON.stringify(result) + '\n');
       process.exitCode = defaultPolicy.exitCode(result);

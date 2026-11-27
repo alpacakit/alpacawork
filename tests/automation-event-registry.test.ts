@@ -40,7 +40,7 @@ test('one event row supplies the task reader, validation, preview candidates and
   const active = bundleNowWrite(flow.root, db => {
     const now = new Date();
     const { automation } = createBundleAutomation(db, flow.project, 'Read completions', version, human, now.toISOString());
-    updateBundleReview(db, automation, version.digest, { state: 'ok', findings: [], summary: '', model: null,
+    updateBundleReview(db, automation, version.digest, { state: 'ok', findings: [], summary: '', reasonKind: null, model: null,
       at: now.toISOString(), acknowledged: null });
     return bundleLifecycle(db, flow.root, automation, { kind: 'enabled', acknowledge: false }, human, now);
   });

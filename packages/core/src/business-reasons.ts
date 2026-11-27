@@ -6,6 +6,7 @@ const EXECUTABLE_ISSUES = ['not_absolute', 'not_found', 'not_file', 'not_executa
 export type ExecutableIssue = typeof EXECUTABLE_ISSUES[number];
 
 export const businessReasonOptions = [
+  z.object({ kind: z.literal('automation_destination_missing'), names: z.array(z.string()).min(1) }).strict(),
   z.object({ kind: z.literal('http_destination_blocked') }).strict(),
   z.object({ kind: z.literal('http_destination_certificate') }).strict(),
   z.object({ kind: z.literal('http_destination_invalid') }).strict(),

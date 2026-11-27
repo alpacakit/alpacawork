@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import {
   automationOperationErrorCodes, automationRunResultSchema, automationTriggerResultSchema,
-  type AutomationOperation, type ProgramAutomationEvent,
+  type AutomationOperation, type AutomationOperationRecordCode, type AutomationProgramError, type AutomationProgramErrorCode,
+  type ProgramAutomationEvent,
 } from '@alpacawork/contract/automation-program';
 
 export const BUNDLE_TRIGGER_MS = 60_000;
@@ -11,16 +12,22 @@ export type BundlePhase = 'trigger' | 'run';
 export type TriggerResult = z.infer<typeof automationTriggerResultSchema>;
 export type RunResult = z.infer<typeof automationRunResultSchema>;
 export type BundleOperationErrorCode = typeof automationOperationErrorCodes[number];
-export type BundleError = { message: string; file: string | null; line: number | null };
+export type BundleError = AutomationProgramError;
 export type BundleOutput = { stream: 'stdout' | 'stderr'; text: string };
 
 export class AlpacaworkError extends Error {
   readonly name = 'AlpacaworkError';
-  constructor(readonly code: BundleOperationErrorCode, readonly operation: string, message: string) {
+  constructor(readonly code: BundleOperationErrorCode, readonly operation: string, message: string,
+    readonly recordCode: AutomationOperationRecordCode = code) {
     super(message);
   }
 }
-export type OperationFailure = Pick<AlpacaworkError, 'code' | 'operation' | 'message'>;
+export type OperationFailure = Pick<AlpacaworkError, 'code' | 'operation' | 'message' | 'recordCode'>;
+
+export function bundleError(code: AutomationProgramErrorCode): BundleError {
+  return { code, message: null, file: null, line: null };
+}
+
 export type BundleOutcome = {
   state: 'done' | 'skipped' | 'stopped' | 'failed';
   trigger: TriggerResult | null;

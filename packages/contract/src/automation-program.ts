@@ -10,6 +10,7 @@ import { digestSchema, taskIdSchema, taskStateSchema } from './fields.js';
 
 export const AUTOMATION_BUNDLE_LIMITS = { files: 20, fileBytes: 65_536, totalBytes: 262_144, entry: 'main.ts' } as const;
 export const AUTOMATION_BUNDLE_EXTENSIONS = ['.ts', '.mts', '.js', '.mjs', '.json'] as const;
+export const AUTOMATION_DECLARATION_PATHS = ['alpacawork.d.ts', 'alpacawork-zod.d.ts'] as const;
 
 export const AUTOMATION_SDK_CONTRACT_VERSION = 1;
 export const AUTOMATION_DESTINATION_MAX_CHARS = 8192;
@@ -251,7 +252,8 @@ export const automationOperations = {
     input: z.strictObject({ ...destination, method: z.enum(['POST', 'PUT', 'PATCH']).optional(), body: jsonBytes(65_536).optional() }),
     output: response, phase: 'run', write: true, grant: 'send',
     record: ({ to, method, body }: RecordedInput) => recordNamedInput(to, { to, method: method ?? 'POST', body: body ?? null }),
-    description: 'Send JSON to a declared destination. Preview records the intended request.',
+    description: 'Send JSON to a declared destination. Check the returned status for HTTP success. Responses below 500 except 429 return their status. ' +
+      'Exhausted retries for 429 or 5xx and unconfirmed delivery throw AlpacaworkError. Preview records the request and returns a null status.',
   },
   disable: {
     input: z.strictObject({}), output: z.strictObject(previewFlag), phase: 'run', write: true, grant: 'self',
@@ -263,6 +265,8 @@ export const automationOperations = {
 export type AutomationOperation = keyof typeof automationOperations;
 export type AutomationOperationInput<N extends AutomationOperation> = z.infer<typeof automationOperations[N]['input']>;
 export const automationOperationErrorCodes = ['limit', 'forbidden', 'invalid', 'temporary', 'unknown_result'] as const;
+const operationRecordCode = z.enum([...automationOperationErrorCodes, 'ai_unavailable']);
+export type AutomationOperationRecordCode = z.infer<typeof operationRecordCode>;
 export const automationTriggerResultSchema = z.strictObject({ run: z.boolean(), reason: line, context: jsonBytes(16_384).optional() });
 export const automationRunResultSchema = z.strictObject({ summary: line, report: bytes(16_384).optional(), notify: z.literal(true).optional() });
 
@@ -279,9 +283,9 @@ export const automationOutsideEffectKindSchema = z.enum(['file', 'network', 'pro
 export const automationAiUseSchema = z.enum(['ai.ask', 'tasks.create']);
 export const automationReviewResultSchema = z.strictObject({
   state: z.enum(['ok', 'fix', 'unavailable', 'running']),
-  findings: z.array(z.strictObject({ level: z.enum(['must', 'note']), file: z.string(), line: positive, text: z.string(),
-    outsideEffect: automationOutsideEffectKindSchema.optional() })),
-  summary: z.string(), model: z.string().nullable(), at: date,
+  findings: z.array(z.strictObject({ level: z.enum(['must', 'note']), file: z.string(), line: positive, title: line, text: z.string(),
+    outsideEffect: automationOutsideEffectKindSchema.optional(), outsidePart: text(128).optional() })),
+  summary: z.string(), reasonKind: z.literal('review_unavailable').nullable(), model: z.string().nullable(), at: date,
   acknowledged: z.strictObject({ by: z.unknown(), at: date }).nullable(),
 });
 export const automationProgramLimitsSchema = z.strictObject({
@@ -293,16 +297,22 @@ export const automationProgramFactsSchema = z.strictObject({
   limits: automationProgramLimitsSchema,
   ai: z.array(ai.extend({ name, uses: z.array(automationAiUseSchema).min(1).nullable(), costHint: z.strictObject({ perCallUsd: z.number().nonnegative() }).nullable() })),
   outside: z.array(z.strictObject({ name, host: z.string().nullable(), ready: z.boolean() })),
+  directNetwork: z.boolean(),
 });
 const operationUsage = z.strictObject({ model: z.string().nullable(), costUsd: z.number().nonnegative().nullable() });
 export const automationPreviewOperationSchema = z.strictObject({
   name, target: automationJson.nullable(), input: automationJson, replaced: z.boolean(), result: automationJson.nullable(),
-  code: z.enum(automationOperationErrorCodes).nullable(), usage: operationUsage.nullable(),
+  code: operationRecordCode.nullable(), usage: operationUsage.nullable(), outcome: z.enum(['running', 'done', 'failed']),
 });
-const programError = z.strictObject({ message: z.string(), file: z.string().nullable(), line: positive.nullable() });
+const programErrorCode = z.enum([...operationRecordCode.options, 'interrupted', 'timeout', 'program_start_failed', 'program_no_result']);
+export type AutomationProgramErrorCode = z.infer<typeof programErrorCode>;
+export const automationProgramErrorSchema = z.strictObject({
+  code: programErrorCode.nullable(), message: z.string().nullable(), file: z.string().nullable(), line: positive.nullable(),
+}).refine(({ code, message }) => (code === null) !== (message === null), 'Return a system code or a program message');
+export type AutomationProgramError = z.infer<typeof automationProgramErrorSchema>;
 export const automationProgramOutcomeSchema = z.strictObject({
   state: z.enum(['done', 'skipped', 'stopped', 'failed']), summary: z.string().nullable(), report: z.string().nullable(),
-  notify: z.boolean(), error: programError.nullable(),
+  notify: z.boolean(), error: automationProgramErrorSchema.nullable(),
 });
 export const automationProgramPreviewSchema = z.strictObject({
   hash: digestSchema, at: date, by: z.unknown(),
@@ -316,14 +326,27 @@ export const automationVersionSchema = z.strictObject({
   facts: automationProgramFactsSchema, docs: automationProgramDocsSchema, parts: z.array(z.string()),
   outsideEffects: z.array(z.strictObject({ kind: automationOutsideEffectKindSchema, text: z.string() })),
   sourceRequest: z.strictObject({ id: z.string(), text: z.string() }).nullable(),
-  review: automationReviewResultSchema, preview: automationProgramPreviewSchema.nullable(),
+  missingDestinations: z.array(name), review: automationReviewResultSchema, preview: automationProgramPreviewSchema.nullable(),
 });
 export type AutomationVersion = z.infer<typeof automationVersionSchema>;
 export type AutomationProgramFacts = z.infer<typeof automationProgramFactsSchema>;
 
-/** Paths are portable and relative to the bundle root. The generated declaration is not source. */
+export function isAutomationDeclarationPath(path: string): boolean {
+  return AUTOMATION_DECLARATION_PATHS.some(declaration => declaration === path);
+}
+const generatedDeclaration = <Path extends typeof AUTOMATION_DECLARATION_PATHS[number]>(path: Path) =>
+  z.strictObject({ path: z.literal(path), source: z.string() });
+export const automationDeclarationsSchema = z.tuple([
+  generatedDeclaration(AUTOMATION_DECLARATION_PATHS[0]), generatedDeclaration(AUTOMATION_DECLARATION_PATHS[1]),
+]);
+export type AutomationDeclarations = z.infer<typeof automationDeclarationsSchema>;
+export const automationPullResultSchema = z.strictObject({
+  digest: digestSchema, files: automationBundleSchema, declarations: automationDeclarationsSchema,
+});
+
+/** Paths are portable and relative to the bundle root. Generated declarations are separate from source. */
 export function isAutomationBundlePath(path: string): boolean {
-  if (path.length > 1024 || path === 'alpacawork.d.ts' || /[\\\x00-\x1f\x7f:%?#]/.test(path)) return false;
+  if (path.length > 1024 || isAutomationDeclarationPath(path) || /[\\\x00-\x1f\x7f:%?#]/.test(path)) return false;
   const segments = path.split('/');
   if (segments.some(segment => segment === '' || segment === '.' || segment === '..' || segment.toLowerCase() === 'package.json')) return false;
   const filename = segments.at(-1)!;
@@ -340,11 +363,10 @@ export const automationProgramRunSchema = z.strictObject({
   phaseStartedAt: date.nullable(), runStartedAt: date.nullable(), finishedAt: date.nullable(), count: positive,
   reasonKind: z.string().nullable(), reason: z.string().nullable(),
   trigger: automationTriggerResultSchema.omit({ context: true }).nullable(),
-  summary: z.string().nullable(), report: z.string().nullable(), notify: z.boolean(), error: programError.nullable(),
+  summary: z.string().nullable(), report: z.string().nullable(), notify: z.boolean(), error: automationProgramErrorSchema.nullable(),
   operations: z.array(automationPreviewOperationSchema.extend({
     ordinal: positive, at: date, durationMs: count.nullable(),
     taskState: taskStateSchema.nullable(),
-    outcome: z.enum(['running','done','failed']),
     usage: z.strictObject({ model: z.string().nullable(), costUsd: z.number().nonnegative().nullable(),
       inputTokens: count.nullable(), outputTokens: count.nullable() }).nullable(),
   })),
@@ -356,7 +378,7 @@ export const automationAttentionSchema = z.array(z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.enum(['disabled','awaiting_enable','stopping']), at: date }),
 ]));
 export const automationWeekSchema = z.strictObject({
-  matched: count, started: count, skipped: count, failed: count, busiestDay: count,
+  matched: count, started: count, done: count, skipped: count, failed: count, busiestDay: count,
   skippedBy: z.array(z.strictObject({ reason: z.string(), count })),
 });
 export const automationProgramViewSchema = z.strictObject({
@@ -371,7 +393,7 @@ export const automationProgramViewResultSchema = z.strictObject({ automation: au
 export const automationProgramSaveResultSchema = automationProgramViewResultSchema.extend({ saved: automationVersionSchema });
 export const automationProgramListResultSchema = z.strictObject({
   automations: z.array(automationProgramViewSchema.pick({ id: true, project: true, name: true, hash: true, enabled: true,
-    awaitingEnable: true, everEnabled: true, nextAt: true, week: true, lastRun: true, attention: true }).extend({ latest: automationVersionSchema.pick({ facts: true, docs: true, review: true }) })),
+    awaitingEnable: true, everEnabled: true, nextAt: true, week: true, lastRun: true, attention: true }).extend({ latest: automationVersionSchema.pick({ facts: true, docs: true, review: true, missingDestinations: true }) })),
   counts: z.strictObject({ enabled: count, draft: count, stopped: count }),
   today: z.strictObject({ aiCalls: count, outside: count }),
 });

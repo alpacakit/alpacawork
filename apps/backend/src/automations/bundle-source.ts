@@ -290,20 +290,21 @@ type SourceNode = {
   callee?: SourceNode; object?: SourceNode; property?: SourceNode; arguments?: SourceNode[]; properties?: SourceNode[];
   id?: SourceNode; left?: SourceNode; argument?: SourceNode; param?: SourceNode; params?: SourceNode[];
   elements?: (SourceNode | null)[]; expression?: SourceNode;
+  kind?: string; declarations?: SourceNode[]; init?: SourceNode; specifiers?: SourceNode[]; local?: SourceNode; importKind?: string; declare?: boolean;
 };
 const propertyName = (node: SourceNode) => node.computed ? undefined
   : node.key?.type === 'Identifier' ? node.key.name : node.key?.type === 'StringLiteral' ? node.key.value : undefined;
 
-function bindsSdk(node: SourceNode | null | undefined, name: string): boolean {
+function bindsName(node: SourceNode | null | undefined, name: string): boolean {
   switch (node?.type) {
     case 'Identifier': return node.name === name;
-    case 'ArrayPattern': return node.elements?.some(item => bindsSdk(item, name)) ?? false;
-    case 'ObjectPattern': return node.properties?.some(item => bindsSdk(item, name)) ?? false;
-    case 'ObjectProperty': return bindsSdk(node.value as SourceNode, name);
-    case 'AssignmentPattern': return bindsSdk(node.left, name);
-    case 'RestElement': return bindsSdk(node.argument, name);
+    case 'ArrayPattern': return node.elements?.some(item => bindsName(item, name)) ?? false;
+    case 'ObjectPattern': return node.properties?.some(item => bindsName(item, name)) ?? false;
+    case 'ObjectProperty': return bindsName(node.value as SourceNode, name);
+    case 'AssignmentPattern': return bindsName(node.left, name);
+    case 'RestElement': return bindsName(node.argument, name);
     case 'TSAsExpression': case 'TSNonNullExpression': case 'TSTypeAssertion': case 'TSSatisfiesExpression':
-      return bindsSdk(node.expression, name);
+      return bindsName(node.expression, name);
     default: return false;
   }
 }
@@ -311,16 +312,93 @@ function bindsSdk(node: SourceNode | null | undefined, name: string): boolean {
 function changesSdkBinding(node: SourceNode, name: string): boolean {
   switch (node.type) {
     case 'VariableDeclarator': case 'ClassExpression': case 'ClassDeclaration':
-      return bindsSdk(node.id, name);
+      return bindsName(node.id, name);
     case 'FunctionExpression': case 'FunctionDeclaration': case 'ArrowFunctionExpression':
     case 'ObjectMethod': case 'ClassMethod': case 'ClassPrivateMethod':
-      return bindsSdk(node.id, name) || (node.params?.some(param => bindsSdk(param, name)) ?? false);
-    case 'CatchClause': return bindsSdk(node.param, name);
-    case 'AssignmentExpression': case 'ForInStatement': case 'ForOfStatement': return bindsSdk(node.left, name);
-    case 'UpdateExpression': return bindsSdk(node.argument, name);
+      return bindsName(node.id, name) || (node.params?.some(param => bindsName(param, name)) ?? false);
+    case 'CatchClause': return bindsName(node.param, name);
+    case 'AssignmentExpression': case 'ForInStatement': case 'ForOfStatement': return bindsName(node.left, name);
+    case 'UpdateExpression': return bindsName(node.argument, name);
     case 'CallExpression': return node.callee?.type === 'Identifier' && node.callee.name === 'eval';
     default: return false;
   }
+}
+
+const functionNodes = new Set(['FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression',
+  'ObjectMethod', 'ClassMethod', 'ClassPrivateMethod', 'StaticBlock']);
+const blockNodes = new Set(['BlockStatement', 'CatchClause', 'ClassExpression', 'SwitchStatement',
+  'ForStatement', 'ForOfStatement', 'ForInStatement']);
+
+const erasedExpressions = new Set(['TSAsExpression', 'TSNonNullExpression', 'TSTypeAssertion',
+  'TSSatisfiesExpression', 'TSInstantiationExpression', 'ParenthesizedExpression']);
+function sourceValue(node: SourceNode | undefined): SourceNode | undefined {
+  while (node && erasedExpressions.has(node.type)) node = node.expression;
+  return node;
+}
+function globalFetchHost(node: SourceNode | undefined) {
+  const value = sourceValue(node);
+  return value?.type === 'Identifier' && (value.name === 'globalThis' || value.name === 'global') ? value.name : undefined;
+}
+
+function callsGlobalFetch(program: Script['program']): boolean {
+  const names = ['fetch', 'globalThis', 'global'] as const;
+  type Name = (typeof names)[number];
+  type Reference = { name: Name; scope: Scope };
+  type Scope = { parent: Scope | null; functionScope: boolean; bindings: Map<Name, Reference | null> };
+  const calls: Reference[] = [];
+  const remember = (scope: Scope, binding: SourceNode | undefined) => {
+    for (const name of names) if (bindsName(binding, name)) scope.bindings.set(name, null);
+  };
+  const localFunction = (scope: Scope): Scope => {
+    while (!scope.functionScope && scope.parent) scope = scope.parent;
+    return scope;
+  };
+  function visit(value: unknown, scope: Scope) {
+    if (Array.isArray(value)) { value.forEach(child => visit(child, scope)); return; }
+    if (typeof value !== 'object' || value === null || !('type' in value)) return;
+    const node = value as SourceNode;
+    if ((node.type === 'FunctionDeclaration' || node.type === 'ClassDeclaration') && !node.declare)
+      remember(scope, node.id);
+    const functionScope = functionNodes.has(node.type);
+    if (functionScope || blockNodes.has(node.type)) scope = { parent: scope, functionScope, bindings: new Map() };
+    if (node.type === 'FunctionExpression' || node.type === 'ClassExpression') remember(scope, node.id);
+    if (functionScope) for (const param of node.params ?? []) remember(scope, param);
+    if (node.type === 'CatchClause') remember(scope, node.param);
+    if (node.type === 'VariableDeclaration' && !node.declare) {
+      const bindingScope = node.kind === 'var' ? localFunction(scope) : scope;
+      for (const { id, init } of node.declarations ?? []) {
+        remember(bindingScope, id);
+        const host = node.kind === 'const' ? globalFetchHost(init) : undefined;
+        if (host && id?.type === 'ObjectPattern' && id.properties?.some(property => {
+          const target = property.value as SourceNode | undefined;
+          return property.type === 'ObjectProperty' && propertyName(property) === 'fetch' &&
+            target?.type === 'Identifier' && target.name === 'fetch';
+        })) bindingScope.bindings.set('fetch', { name: host, scope });
+      }
+    }
+    if (node.type === 'ImportDeclaration' && node.importKind !== 'type')
+      for (const specifier of node.specifiers ?? []) if (specifier.importKind !== 'type') remember(scope, specifier.local);
+    if (node.type === 'CallExpression' || node.type === 'OptionalCallExpression') {
+      const callee = sourceValue(node.callee);
+      if (callee?.type === 'Identifier' && callee.name === 'fetch') calls.push({ name: 'fetch', scope });
+      if (callee?.type === 'MemberExpression' || callee?.type === 'OptionalMemberExpression') {
+        const host = globalFetchHost(callee.object);
+        if (host && (callee.computed ? callee.property?.type === 'StringLiteral' && callee.property.value === 'fetch'
+          : callee.property?.type === 'Identifier' && callee.property.name === 'fetch')) calls.push({ name: host, scope });
+      }
+    }
+    for (const child of Object.values(node)) visit(child, scope);
+  }
+  const isGlobal = ({ name, scope }: Reference): boolean => {
+    for (let current: Scope | null = scope; current; current = current.parent) {
+      if (!current.bindings.has(name)) continue;
+      const binding = current.bindings.get(name);
+      return binding ? isGlobal(binding) : false;
+    }
+    return true;
+  };
+  visit(program, { parent: null, functionScope: true, bindings: new Map() });
+  return calls.some(isGlobal);
 }
 
 function recordedAiUses(fn: FunctionNode, phase: 'trigger' | 'run'): [string, AiUse][] {
@@ -330,7 +408,7 @@ function recordedAiUses(fn: FunctionNode, phase: 'trigger' | 'run'): [string, Ai
     item.key.type === 'Identifier' && item.key.name === 'alp');
   if (property?.type !== 'ObjectProperty' || property.value.type !== 'Identifier') return [];
   const sdk = property.value.name, uses: [string, AiUse][] = [];
-  let ambiguous = fn.params.slice(1).some(param => bindsSdk(param as SourceNode, sdk));
+  let ambiguous = fn.params.slice(1).some(param => bindsName(param as SourceNode, sdk));
 
   function visit(value: unknown) {
     if (Array.isArray(value)) { value.forEach(item => visit(item)); return; }
@@ -457,8 +535,9 @@ export function analyzeAutomationBundle(files: readonly BundleSource[], validate
   };
   if (configRead && validateConfig) issues.push(...validateConfig(config, configPath, configLine));
   if (issues.length || !run)
-    throw new Problem(PROBLEM_CODE.invalidInput, 'Fix the automation bundle before saving', undefined,
+    throw new Problem(PROBLEM_CODE.invalidInput, 'Fix the issues in the automation bundle', undefined,
       { reason: { kind: 'validation_error' }, issues });
-  return { config, configPath, configLine, docs: { run, trigger }, parts: [...parts].sort(),
+  const directFetch = [...modules.values()].some(module => callsGlobalFetch(module.script.program));
+  return { config, configPath, configLine, docs: { run, trigger }, parts: [...parts].sort(), directFetch,
     aiUses: Object.fromEntries([...aiUses].map(([name, uses]) => [name, [...uses].sort()])) };
 }

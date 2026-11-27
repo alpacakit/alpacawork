@@ -28,7 +28,7 @@ function draftAt(root: string, project: string, name: string) {
   try { return store.write(db => {
     const at = new Date().toISOString();
     const { automation } = createBundleAutomation(db, project, name, prepareAutomationVersion(root, files), human, at);
-    updateBundleReview(db, automation, automation.latest, { state: 'ok', findings: [], summary: '', model: null, at, acknowledged: null });
+    updateBundleReview(db, automation, automation.latest, { state: 'ok', findings: [], summary: '', reasonKind: null, model: null, at, acknowledged: null });
     return automation;
   }); }
   finally { store.close(); }

@@ -134,7 +134,8 @@ export function safeBundleSettlement(outcome: BundleSettlement): BundleSettlemen
     ...outcome,
     reason: outcome.reason && redactSecrets(outcome.reason),
     trigger: outcome.trigger && { ...outcome.trigger, reason: redactSecrets(outcome.trigger.reason) },
-    error: outcome.error && { ...outcome.error, message: redactSecrets(outcome.error.message).slice(0, 1024) },
+    error: outcome.error && { ...outcome.error,
+      message: outcome.error.message === null ? null : redactSecrets(outcome.error.message).slice(0, 1024) },
     summary: outcome.summary && redactSecrets(outcome.summary),
     report: outcome.report && redactSecrets(outcome.report),
     output: outcome.output?.map(row => ({ ...row, text: redactSecrets(row.text) })),
@@ -288,7 +289,7 @@ function recentBundleWeek(db: DatabaseSync, automation: BundleAutomation, timezo
     const local = day.format(new Date(value));
     return local >= first && local <= today ? local : null;
   };
-  let matched = 0, started = 0, skipped = 0, failed = 0, busiestDay = 0;
+  let matched = 0, started = 0, done = 0, skipped = 0, failed = 0, busiestDay = 0;
   const startsByDay = new Map<string, number>(), skippedBy = new Map<string, number>();
   for (const row of rows) {
     const startedDay = inWeek(row.run_started_at);
@@ -304,14 +305,18 @@ function recentBundleWeek(db: DatabaseSync, automation: BundleAutomation, timezo
     }
     matched += matches;
     if (ownMatch && startedDay) started++;
-    if (ownMatch && row.state === 'failed' && inWeek(row.finished_at)) failed++;
-    if (matches && row.state === 'skipped' && inWeek(row.finished_at)) {
+    const finishedDay = inWeek(row.finished_at);
+    if (ownMatch && finishedDay) {
+      if (row.state === 'done') done++;
+      if (row.state === 'failed') failed++;
+    }
+    if (matches && row.state === 'skipped' && finishedDay) {
       skipped += matches;
       const reason = text(row.reason_kind) ?? 'skipped';
       skippedBy.set(reason, (skippedBy.get(reason) ?? 0) + matches);
     }
   }
-  return { matched, started, skipped, failed, busiestDay,
+  return { matched, started, done, skipped, failed, busiestDay,
     skippedBy: [...skippedBy].map(([reason, count]) => ({ reason, count })).sort((a, b) => b.count - a.count || a.reason.localeCompare(b.reason)) };
 }
 

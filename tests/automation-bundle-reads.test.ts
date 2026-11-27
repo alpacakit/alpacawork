@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import type { DatabaseSync } from 'node:sqlite';
 import { test, type TestContext } from 'node:test';
-import { automationProgramRunsViewSchema, type ProgramAutomationEvent } from '@alpacawork/contract/automation-program';
+import {
+  automationProgramListResultSchema, automationProgramRunsViewSchema, automationProgramViewResultSchema, type ProgramAutomationEvent,
+} from '@alpacawork/contract/automation-program';
+import { errorBody } from '@alpacawork/core';
 import { bundleCommands } from '@alpacawork/backend/test-dist/automations/bundle-commands.js';
 import {
   appendBundleSignal, bundleAutomationView, enqueueBundleRun, settleBundleRun,
@@ -16,11 +19,12 @@ const human = { kind: 'human' } as const;
 const when = (at: string) => new Date(at);
 const now = when('2026-01-08T12:00:00Z');
 
-async function fixture(t: TestContext) {
+async function fixture(t: TestContext, options: { destinations?: string[] } = {}) {
   const { root, project } = await taskFlow(t);
   const prepared = prepareAutomationVersion(root, [{
     path: 'main.ts', source: `
-      export const config = { on: { event: 'signal' }, timezone: 'Asia/Tokyo', limits: { perDay: 5 } };
+      export const config = { on: { event: 'signal' }, timezone: 'Asia/Tokyo', limits: { perDay: 5 },
+        uses: { send: ${JSON.stringify(options.destinations ?? [])} } };
       /** Record a synthetic result. */
       export function run() { return { summary: 'Recorded' }; }
     `,
@@ -37,11 +41,35 @@ function admit(db: DatabaseSync, automation: BundleAutomation, ref: string, date
   return enqueueBundleRun(db, automation, automation.latest, event, mode, when(date));
 }
 
+test('enabling names the same missing destinations shown before enabling', async t => {
+  const { root, write, create } = await fixture(t, { destinations: ['alerts', 'updates'] });
+  const draft = await write(db => create(db, 'Missing destinations'));
+  const context = { actor: human, caller: () => human };
+  const expected = ['alerts', 'updates'];
+  const { automation } = automationProgramViewResultSchema.parse(
+    bundleCommands['automation/get'].run(root, { automation: draft.id }, context));
+  assert.deepEqual(automation.latest.missingDestinations, expected);
+  const { automations } = automationProgramListResultSchema.parse(bundleCommands['automation/list'].run(root, {}, context));
+  assert.deepEqual(automations.find(row => row.id === draft.id)?.latest.missingDestinations, expected);
+  await assert.rejects(
+    async () => bundleCommands['automation/enable'].run(root, {
+      automation: draft.id, expectedHash: draft.hash, acknowledgeReview: true,
+    }, context),
+    error => {
+      const result = errorBody(error).error;
+      assert.equal(result.code, 'invalid_input');
+      assert.equal(result.retry, 'fix');
+      assert.deepEqual(result.reason, { kind: 'automation_destination_missing', names: expected });
+      return true;
+    },
+  );
+});
+
 test('weekly counts use local days and count runs independently of trials and folded signals', async t => {
   const { root, write, create } = await fixture(t);
   const week = await write(db => {
     const draft = create(db, 'Weekly signal totals');
-    updateBundleReview(db, draft, draft.latest, { state: 'ok', findings: [], summary: '', model: null,
+    updateBundleReview(db, draft, draft.latest, { state: 'ok', findings: [], summary: '', reasonKind: null, model: null,
       at: '2025-12-31T00:00:00.000Z', acknowledged: null });
     const a = bundleLifecycle(db, root, draft, { kind: 'enabled', acknowledge: true }, human, when('2025-12-31T00:00:00Z'));
     const start = (number: number, date: string) =>
@@ -71,12 +99,16 @@ test('weekly counts use local days and count runs independently of trials and fo
 
     const later = admit(db, a, 'later', '2026-01-08T03:00:00Z');
     start(later.number, '2026-01-08T03:00:01Z');
+    settleBundleRun(db, a, later.number, when('2026-01-08T03:00:02Z'), { state: 'done' });
+    const stopped = admit(db, a, 'stopped', '2026-01-08T04:00:00Z');
+    start(stopped.number, '2026-01-08T04:00:01Z');
+    settleBundleRun(db, a, stopped.number, when('2026-01-08T04:00:02Z'), { state: 'stopped' });
     const trial = admit(db, a, 'trial', '2026-01-08T05:00:00Z', 'trial');
     start(trial.number, '2026-01-08T05:00:01Z');
     settleBundleRun(db, a, trial.number, when('2026-01-08T05:00:02Z'), { state: 'failed' });
     return bundleAutomationView(db, root, a, now).week;
   });
-  assert.deepEqual(week, { matched: 4, started: 2, skipped: 2, failed: 1, busiestDay: 2,
+  assert.deepEqual(week, { matched: 5, started: 3, done: 1, skipped: 2, failed: 1, busiestDay: 2,
     skippedBy: [{ reason: 'daily_limit', count: 2 }] });
 });
 

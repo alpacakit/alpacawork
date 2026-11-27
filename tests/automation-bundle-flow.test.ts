@@ -278,6 +278,44 @@ test('a graceful restart records an interrupted automation and exposes its failu
   assert.equal(failure?.reasonKind, 'interrupted');
 });
 
+test('run history separates a program message from an unavailable AI and its failed operation', { timeout: 20_000 }, async t => {
+  const f = await fixture(t, true);
+  const ownMessage = 'The backup is unusually small';
+  const custom = await f.enable(await f.create('Check the backup', bundle(schedule, `
+    /** Check the backup size. */
+    export async function run() {
+      await new Promise(() => setTimeout(() => { throw ${JSON.stringify(ownMessage)}; }, 0));
+    }
+  `)));
+  const unavailable = await f.enable(await f.create('Request a review', bundle({
+    ...schedule, limits: { ...schedule.limits, tasksPerRun: 1 },
+    uses: { ai: { reviewer: { agent: 'review', model: 'sonnet', effort: 'high' } } },
+  }, `
+    /** Ask an AI to review the backup. */
+    export async function run({ alp }) {
+      await alp.tasks.create({ title: 'Review the backup', ai: 'reviewer', instruction: 'Check the backup size.' });
+      return { summary: 'The review was requested' };
+    }
+  `)));
+  writeFileSync(join(f.root, 'config.yaml'), stringify({ agents: { fake: fixtureAgentSetting('claude') } }));
+
+  for (const id of [custom.id, unavailable.id]) await f.runNow(id);
+
+  const [withMessage] = await eventually(() => f.runs(custom.id), rows => rows[0]?.state === 'failed');
+  assert.equal(withMessage?.reasonKind, 'program_failed');
+  assert.equal(withMessage?.reason, ownMessage);
+  assert.equal(withMessage?.error?.message, ownMessage);
+  assert.equal(withMessage?.error?.code, null);
+
+  const [withCode] = await eventually(() => f.runs(unavailable.id), rows => rows[0]?.state === 'failed');
+  assert.equal(withCode?.reasonKind, 'ai_unavailable');
+  assert.equal(withCode?.reason, null);
+  assert.equal(withCode?.error?.code, 'ai_unavailable');
+  assert.equal(withCode?.error?.message, null);
+  assert.deepEqual(withCode?.operations.map(({ name, code, outcome, result }) => ({ name, code, outcome, result })),
+    [{ name: 'tasks.create', code: 'ai_unavailable', outcome: 'failed', result: null }]);
+});
+
 test('two-stage previews substitute task creation and follow the exact inspected files into the saved version',
   { timeout: 20_000 }, async t => {
     const f = await fixture(t);

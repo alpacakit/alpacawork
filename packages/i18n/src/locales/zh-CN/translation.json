@@ -100,6 +100,7 @@
       "attachment_request_belongs_another_task": "附件所属的委托属于其他任务",
       "attachment_request_ids_must_differ": "来源和目标的委托 ID 不能相同",
       "automatic_requests_reached_placement_limit": "发给该智能体的自动委托已达到上限",
+      "automation_destination_missing": "请输入缺少的发送地址（{{names}}）。",
       "awaits_user_s_review_confirm_it_or_send_it_back_first": "{{task}} 正在等待用户验收。请先验收通过或退回",
       "build_browser_application_with_pnpm_build": "请用 pnpm build 构建浏览器应用",
       "busy_timeout_must_nonnegative_32_bit_integer": "等待时间必须是非负的 32 位整数",

@@ -61,7 +61,7 @@ export function frozenBundleAi(root: string, selection: { agent: string; model: 
 export function prepareAutomationVersion(root: string, input: AutomationBundle, now = new Date()) {
   const files = [...input].sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
   let checked: (AutomationConfig & { timezone: string }) | undefined;
-  const { docs, parts, aiUses } = analyzeAutomationBundle(files, (config, configPath, configLine) => {
+  const { docs, parts, aiUses, directFetch } = analyzeAutomationBundle(files, (config, configPath, configLine) => {
     const decoded = automationConfigSchema.safeParse(config);
     const issues: Issue[] = [];
     const issue = (keys: readonly PropertyKey[], message: string) => issues.push({
@@ -91,7 +91,7 @@ export function prepareAutomationVersion(root: string, input: AutomationBundle, 
   });
   if (!checked) throw new Error('The automation analyzer omitted config validation');
   return { files, digest: automationBundleDigest(files), contractVersion: AUTOMATION_SDK_CONTRACT_VERSION,
-    config: checked, docs: automationProgramDocsSchema.parse(docs), parts, aiUses };
+    config: checked, docs: automationProgramDocsSchema.parse(docs), parts, aiUses, directFetch };
 }
 
 export type PreparedAutomationVersion = ReturnType<typeof prepareAutomationVersion>;
@@ -140,11 +140,11 @@ export function editableBundleAutomation(db: DatabaseSync, id: string, hash: str
 }
 
 function insertVersion(db: DatabaseSync, uuid: string, bundle: PreparedAutomationVersion, now: string, actor: BundleReviewer): boolean {
-  const review: AutomationVersion['review'] = { state: 'running', findings: [], summary: '', model: null, at: now, acknowledged: null };
-  return !!db.prepare(`INSERT INTO automation_versions(automation_id,digest,contract_version,saved_at,saved_by,files,config,docs,parts,ai_uses,review)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(automation_id,digest) DO NOTHING`)
+  const review: AutomationVersion['review'] = { state: 'running', findings: [], summary: '', reasonKind: null, model: null, at: now, acknowledged: null };
+  return !!db.prepare(`INSERT INTO automation_versions(automation_id,digest,contract_version,saved_at,saved_by,files,config,docs,parts,ai_uses,direct_fetch,review)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(automation_id,digest) DO NOTHING`)
     .run(uuid, bundle.digest, bundle.contractVersion, now, JSON.stringify(actor), JSON.stringify(bundle.files), JSON.stringify(bundle.config),
-      JSON.stringify(bundle.docs), JSON.stringify(bundle.parts), JSON.stringify(bundle.aiUses), JSON.stringify(review)).changes;
+      JSON.stringify(bundle.docs), JSON.stringify(bundle.parts), JSON.stringify(bundle.aiUses), +bundle.directFetch, JSON.stringify(review)).changes;
 }
 
 export function bundleVersion(db: DatabaseSync, uuid: string, digest: string): SavedVersion {
@@ -154,6 +154,7 @@ export function bundleVersion(db: DatabaseSync, uuid: string, digest: string): S
     files: automationBundleSchema.parse(JSON.parse(String(row.files))),
     config: JSON.parse(String(row.config)) as AutomationConfig & { timezone: string },
     docs: automationProgramDocsSchema.parse(JSON.parse(String(row.docs))), parts: JSON.parse(String(row.parts)), aiUses: JSON.parse(String(row.ai_uses)),
+    directFetch: Boolean(row.direct_fetch),
     review: automationReviewResultSchema.parse(JSON.parse(String(row.review))) };
 }
 
@@ -202,16 +203,20 @@ const effectParts: Readonly<Record<string, AutomationVersion['outsideEffects'][n
   module: 'other', vm: 'other', process: 'process',
 };
 
-function outsideEffects(version: SavedVersion): AutomationVersion['outsideEffects'] {
+export function bundleOutsideEffects(version: Pick<PreparedAutomationVersion, 'parts' | 'directFetch'>): AutomationVersion['outsideEffects'] {
   const effects: AutomationVersion['outsideEffects'] = [];
   for (const part of version.parts) {
     const module = part.slice('node:'.length).split('/')[0]!;
     if (Object.hasOwn(effectParts, module)) effects.push({ kind: effectParts[module]!, text: part });
   }
-  for (const finding of version.review.findings) {
-    if (finding.outsideEffect) effects.push({ kind: finding.outsideEffect, text: finding.text });
-  }
+  if (version.directFetch) effects.push({ kind: 'network', text: 'fetch' });
   return effects;
+}
+
+export function matchesBundleOutsidePart(
+  part: AutomationVersion['outsideEffects'][number], finding: AutomationVersion['review']['findings'][number],
+): boolean {
+  return part.kind === finding.outsideEffect && part.text === finding.outsidePart;
 }
 
 /** The first save owns provenance even when the same content is restored or saved again. */
@@ -227,6 +232,17 @@ function versionSourceRequest(db: DatabaseSync, automation: string, digest: stri
   return { id: result.id, text };
 }
 
+function bundleDestinationReadiness(db: DatabaseSync, root: string, project: string, names: readonly string[]) {
+  const destination = db.prepare(`SELECT d.host,s.restore_id,s.version AS secret_version,d.version FROM automation_destinations d
+    LEFT JOIN automation_destination_secrets s USING(project_task_id,name) WHERE d.project_task_id=? AND d.name=?`);
+  const generation = restoreId(root);
+  const outside = names.map(name => {
+    const row = destination.get(project, name);
+    return { name, host: row ? String(row.host) : null, ready: row?.restore_id === generation && row.secret_version === row.version };
+  });
+  return { outside, missingDestinations: outside.filter(row => !row.ready).map(row => row.name) };
+}
+
 export function bundleVersionView(db: DatabaseSync, root: string, automation: BundleAutomation, digest: string, now: Date, includeSource = false): AutomationVersion {
   const saved = bundleVersion(db, automation.uuid, digest), { config } = saved;
   const project = automation.projectUuid;
@@ -236,13 +252,14 @@ export function bundleVersionView(db: DatabaseSync, root: string, automation: Bu
   const cost = db.prepare(`SELECT sum(cost_usd)/count(DISTINCT call_id) AS mean
     FROM automation_operations WHERE name='ai.ask' AND at>=? AND cost_usd IS NOT NULL AND project_task_id=?
     AND json_extract(target,'$.name')=? AND json_extract(target,'$.agent')=? AND json_extract(target,'$.model')=? AND json_extract(target,'$.effort')=?`);
-  const destination = db.prepare(`SELECT d.host,s.restore_id,s.version AS secret_version,d.version FROM automation_destinations d
-    LEFT JOIN automation_destination_secrets s USING(project_task_id,name) WHERE d.project_task_id=? AND d.name=?`);
-  const generation = restoreId(root);
+  const { outside, missingDestinations } = bundleDestinationReadiness(db, root, project, config.uses?.send ?? []);
+  const effects = bundleOutsideEffects(saved);
+  const findings = saved.review.findings;
   return {
     digest, contractVersion: saved.contractVersion, savedAt: saved.savedAt, savedBy: saved.savedBy,
     files: saved.files.map(({ path, source }) => ({ path, bytes: Buffer.byteLength(source) })), docs: saved.docs, parts: saved.parts,
-    outsideEffects: outsideEffects(saved), sourceRequest: includeSource ? versionSourceRequest(db, automation.uuid, digest) : null,
+    outsideEffects: effects.filter(effect => !findings.some(finding => matchesBundleOutsidePart(effect, finding))),
+    sourceRequest: includeSource ? versionSourceRequest(db, automation.uuid, digest) : null,
     facts: {
       when: { event: config.on.event, where: config.on.where ?? null, textKey: automationEvents[config.on.event].textKey,
         filter: saved.docs.trigger?.summary ?? null },
@@ -254,12 +271,10 @@ export function bundleVersionView(db: DatabaseSync, root: string, automation: Bu
         const uses = Object.hasOwn(saved.aiUses, name) ? saved.aiUses[name]! : null;
         return { name, ...row, uses, costHint: typeof mean === 'number' ? { perCallUsd: mean } : null };
       }),
-      outside: (config.uses?.send ?? []).map(name => {
-        const row = destination.get(project, name);
-        return { name, host: row ? String(row.host) : null, ready: row?.restore_id === generation && row.secret_version === row.version };
-      }),
+      outside,
+      directNetwork: findings.some(finding => finding.outsideEffect === 'network') || effects.some(effect => effect.kind === 'network'),
     },
-    review: saved.review, preview: latestPreview ? automationProgramPreviewSchema.parse(JSON.parse(String(latestPreview.result))) : null,
+    missingDestinations, review: saved.review, preview: latestPreview ? automationProgramPreviewSchema.parse(JSON.parse(String(latestPreview.result))) : null,
   };
 }
 
@@ -278,8 +293,10 @@ export function bundleLifecycle(db: DatabaseSync, root: string, automation: Bund
       if (version.config.limits.until && automationLocalDay(version.config.timezone, now) > version.config.limits.until)
         throw new Problem(PROBLEM_CODE.conflict, 'The automation has expired');
       for (const selection of Object.values(version.config.uses?.ai ?? {})) frozenBundleAi(root, selection);
-      if (bundleVersionView(db, root, automation, automation.latest, now).facts.outside.some(row => !row.ready))
-        throw new Problem(PROBLEM_CODE.conflict, 'Enter every declared destination before enabling');
+      const { missingDestinations } = bundleDestinationReadiness(db, root, automation.projectUuid, version.config.uses?.send ?? []);
+      if (missingDestinations.length)
+        throw new Problem(PROBLEM_CODE.invalidInput, `Enter the missing destinations before enabling: ${missingDestinations.join(', ')}`,
+          undefined, { reason: { kind: 'automation_destination_missing', names: missingDestinations } });
       if (version.review.state === 'running' || (version.review.state !== 'ok' && !command.acknowledge))
         throw new Problem(PROBLEM_CODE.conflict, 'Acknowledge the review before enabling');
       if (version.review.state !== 'ok') {

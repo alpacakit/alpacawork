@@ -18,6 +18,7 @@ import {
   type BundleSettlement, type RunKey,
 } from './bundle-runs.js';
 import { recoverAutomationBundle, runAutomationBundle, type BundleCallbacks, type BundleCompletion, type BundleIdentity, type BundlePhase, type ObservedBundleResult } from './bundle-process.js';
+import { bundleError, type BundleError } from './bundle-ipc.js';
 import { createBundleOperator, type BundleOperationContext } from './bundle-operations.js';
 
 const START_MS = 60_000;
@@ -46,14 +47,30 @@ function writeRunAttempt(db: DatabaseSync, key: RunKey, attempt: RunIdentity) {
     .run(JSON.stringify(attempt), key.uuid, key.number);
 }
 
+function failedRun(error: BundleError, started: boolean, resolveTrigger = started): BundleSettlement {
+  return { state: 'failed', kind: error.code ?? 'program_failed', reason: error.message ?? undefined,
+    failedPhase: started ? 'run' : 'trigger', resolveTrigger, error };
+}
+
 function interruptedRun(started: boolean): BundleSettlement {
-  const reason = 'The server stopped while the automation was running';
-  return { state: 'failed', kind: 'interrupted', reason, failedPhase: started ? 'run' : 'trigger',
-    error: { message: reason, file: null, line: null } };
+  return failedRun(bundleError('interrupted'), started, false);
 }
 
 function cancelledRun(started: boolean): BundleSettlement {
   return { state: started ? 'stopped' : 'skipped', kind: 'cancelled', reason: 'The automation was stopped' };
+}
+
+function previewSummary(summary: string | undefined, operations: ReturnType<typeof operationViews>): string | null {
+  if (summary === undefined) return null;
+  const titles = new Map<string, string>();
+  for (const { name, replaced, outcome, result, input } of operations) {
+    if (name !== 'tasks.create' || !replaced || outcome !== 'done') continue;
+    const id = result && typeof result === 'object' && 'id' in result ? result.id : null;
+    const title = input && typeof input === 'object' && 'title' in input ? input.title : null;
+    if (typeof id === 'string' && typeof title === 'string') titles.set(id, title);
+  }
+  const composed = redactSecrets(summary).replace(/preview-\d+/g, id => titles.get(id) ?? id);
+  return redactSecrets(composed);
 }
 
 /** Each content address is immutable. Publish the ESM tree only after every file is written. */
@@ -284,20 +301,14 @@ export class BundleRuntime {
           this.recordOutcome(db, automation, run.key, attempt, stopped, { ...value, output: observed.outputTail, trigger });
         // A user stop recorded before the process completed owns the outcome even if polling delivered it later.
         if (attempt.cancelledAt !== undefined && attempt.cancelledAt <= observed.completedAt) return finish(cancelledRun(started));
-        if (observed.timedOut) {
-          const reason = 'The automation exceeded its time limit';
-          return finish({ state: 'failed', kind: 'timeout', reason, failedPhase: started ? 'run' : 'trigger',
-            resolveTrigger: started, error: { message: reason, file: null, line: null } });
-        }
+        if (observed.timedOut) return finish(failedRun(bundleError('timeout'), started));
         if (observed.abortedBySignal)
           return finish(stop.reason === SERVER_SHUTDOWN ? interruptedRun(started) : cancelledRun(started));
         if (refusal) return finish({ state: 'skipped', ...refusal, resolveTrigger: true });
         if (outcome?.limit) return finish({ state: started ? 'stopped' : 'skipped', kind: 'limit:' + outcome.limit, reason: outcome.reason ?? 'Operation limit reached' });
         if (outcome?.state === 'skipped') return finish({ state: 'skipped', kind: 'trigger_rejected', reason: outcome.reason ?? trigger?.reason ?? 'Trigger did not match', resolveTrigger: true });
         if (outcome?.state === 'done') return finish({ state: 'done', resolveTrigger: true, ...outcome.result });
-        const reason = outcome?.error?.message ?? 'The automation exited without a result';
-        return finish({ state: 'failed', kind: 'program_failed', reason, failedPhase: started ? 'run' : 'trigger',
-          resolveTrigger: started, error: outcome?.error ?? { message: reason, file: null, line: null } });
+        return finish(failedRun(outcome?.error ?? bundleError('program_no_result'), started));
       });
     };
     try {
@@ -329,7 +340,7 @@ export class BundleRuntime {
       }, stop);
     } catch {
       result = { stopped: true, abortedBySignal: stop.aborted, completedAt: Date.now(), timedOut: false, phase: 'trigger', exitCode: null, signal: null, outputTail: [],
-        outcome: { state: 'failed', trigger: null, result: null, error: { message: 'Could not start the automation', file: null, line: null } } };
+        outcome: { state: 'failed', trigger: null, result: null, error: bundleError('program_start_failed') } };
     } finally {
       await this.closeGrant(run.identity.id);
       if (cwd) await rm(cwd, { force: true, recursive: true }).catch(() => {});
@@ -424,16 +435,20 @@ export class BundleRuntime {
       if (!result.stopped) throw new Problem(PROBLEM_CODE.conflict, 'Waiting to confirm the preview stopped');
       const preview = await this.write(db => {
         const outcome = result.outcome, trigger = outcome?.trigger ?? null;
-        const operations = operationViews(db, { previewId: uuid }).map(({ ordinal: _ordinal, at: _at, durationMs: _duration,
-          outcome: _outcome, taskState: _taskState, usage, ...operation }) => ({ ...operation, usage: usage && { model: usage.model, costUsd: usage.costUsd } }));
+        const records = operationViews(db, { previewId: uuid });
+        const operations = records.map(({ ordinal: _ordinal, at: _at, durationMs: _duration,
+          taskState: _taskState, usage, ...operation }) => ({ ...operation, usage: usage && { model: usage.model, costUsd: usage.costUsd } }));
+        const state = result.timedOut ? 'failed' : outcome?.state ?? 'failed';
+        const error = result.timedOut ? bundleError('timeout')
+          : outcome?.error ?? (state === 'failed' ? bundleError(result.abortedBySignal ? 'interrupted' : 'program_no_result') : null);
         const preview = automationProgramPreviewSchema.parse({
           hash: digest(JSON.stringify([uuid, projectUuid, version.digest, event])),
           at, by, event: { kind: event.kind, ref: event.ref, manual: event.manual },
           ran: db.prepare("SELECT json_extract(attempt,'$.ran') AS ran FROM automation_previews WHERE id=?").get(uuid)?.ran === 1,
           trigger: trigger && { run: trigger.run, reason: redactSecrets(trigger.reason) }, operations,
-          outcome: { state: result.stopped ? outcome?.state ?? 'failed' : 'failed', summary: outcome?.result?.summary ?? null,
+          outcome: { state, summary: previewSummary(outcome?.result?.summary, records),
             report: outcome?.result?.report ?? null, notify: !!outcome?.result?.notify,
-            error: outcome?.error ?? (result.timedOut ? { message: 'The preview exceeded its time limit', file: null, line: null } : null) },
+            error },
         });
         db.prepare('UPDATE automation_previews SET result=?,attempt=NULL WHERE id=?').run(JSON.stringify(preview), uuid);
         if (automation) touch(db, { kind: 'automation', id: automation.id });

@@ -100,6 +100,7 @@
       "attachment_request_belongs_another_task": "La solicitud del archivo adjunto pertenece a otra tarea",
       "attachment_request_ids_must_differ": "Los ID de solicitud de origen y de destino deben ser distintos",
       "automatic_requests_reached_placement_limit": "Las solicitudes automáticas al agente llegaron al límite",
+      "automation_destination_missing": "Introduce los destinos que faltan ({{names}}).",
       "awaits_user_s_review_confirm_it_or_send_it_back_first": "{{task}} espera la revisión del usuario. Primero acéptala o devuélvela",
       "build_browser_application_with_pnpm_build": "Compila la aplicación del navegador con pnpm build",
       "busy_timeout_must_nonnegative_32_bit_integer": "El tiempo de espera debe ser un entero de 32 bits no negativo",

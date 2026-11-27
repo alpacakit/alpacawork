@@ -6,7 +6,7 @@ import { automationOperations, type AutomationOperation } from '@alpacawork/cont
 import { backendEntry } from '../app-paths.js';
 import { terminateRecordedGroup } from '../runs/termination.js';
 import {
-  AlpacaworkError, BUNDLE_STOP_GRACE_MS, BUNDLE_TRIGGER_MS, bundleReply,
+  AlpacaworkError, BUNDLE_STOP_GRACE_MS, BUNDLE_TRIGGER_MS, bundleError, bundleReply,
   type BundleControl, type BundleLaunch, type BundleMessage, type BundleOutcome, type BundleOutput,
   type BundlePhase, type OperationFailure, type RunPermission, type TriggerResult,
 } from './bundle-ipc.js';
@@ -94,12 +94,12 @@ function send(child: ChildProcess, message: BundleControl): void {
 
 function failure(name: AutomationOperation, error: unknown): OperationFailure {
   return error instanceof AlpacaworkError
-    ? { code: error.code, operation: name, message: redactSecrets(error.message) }
-    : { code: 'temporary', operation: name, message: 'The operation could not finish' };
+    ? { code: error.code, recordCode: error.recordCode, operation: name, message: redactSecrets(error.message) }
+    : { code: 'temporary', recordCode: 'temporary', operation: name, message: 'The operation could not finish' };
 }
 
-const refusal = (state: 'skipped' | 'failed', reason: string): BundleOutcome =>
-  ({ state, trigger: null, result: null, reason, error: state === 'failed' ? { message: reason, file: null, line: null } : null });
+const failedToStart: BundleOutcome =
+  { state: 'failed', trigger: null, result: null, error: bundleError('program_start_failed') };
 
 /** A missing leader is never permission to signal a process found later with the same numeric group. */
 export async function recoverAutomationBundle(identity: BundleIdentity): Promise<boolean> {
@@ -163,12 +163,12 @@ export async function runAutomationBundle(launch: BundleLaunch, callbacks: Bundl
       recorded.resolve(true);
     }).catch(() => {
       recorded.resolve(false);
-      if (completedAt === null) { outcome = refusal('failed', 'Could not record the identity of the automation runner'); done(); }
+      if (completedAt === null) { outcome = failedToStart; done(); }
     });
   });
   child.once('error', () => {
     recorded.resolve(false);
-    if (completedAt === null) { outcome = refusal('failed', 'Could not start the automation runner'); done(); }
+    if (completedAt === null) { outcome = failedToStart; done(); }
   });
   child.once('exit', done);
   child.once('close', () => closed.resolve());
@@ -182,7 +182,10 @@ export async function runAutomationBundle(launch: BundleLaunch, callbacks: Bundl
         if (!await recorded.promise || completedAt !== null) return;
         const allowed = await callbacks.beforeImport();
         if (completedAt !== null) return;
-        if (!allowed) { outcome = refusal('skipped', 'The automation stopped before it could start'); done(); }
+        if (!allowed) {
+          outcome = { state: 'skipped', trigger: null, result: null, reason: 'The automation stopped before it could start', error: null };
+          done();
+        }
         else {
           admitted = true;
           send(child, { type: 'launch', launch });
@@ -228,7 +231,7 @@ export async function runAutomationBundle(launch: BundleLaunch, callbacks: Bundl
   child.on('message', message => {
     if (!message || typeof message !== 'object' || !('type' in message)) return;
     const work = onMessage(message as BundleMessage).catch(() => {
-      if (completedAt === null) { outcome = refusal('failed', 'The automation runner could not be admitted'); done(); }
+      if (completedAt === null) { outcome = failedToStart; done(); }
     }).finally(() => handling.delete(work));
     handling.add(work);
   });

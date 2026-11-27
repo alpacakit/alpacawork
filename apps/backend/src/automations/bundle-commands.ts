@@ -4,7 +4,7 @@ import { validateHeaderName, validateHeaderValue } from 'node:http';
 import type { DatabaseSync } from 'node:sqlite';
 import type { CommandInput } from '@alpacawork/contract/commands';
 import type { Caller } from '@alpacawork/contract/command-access';
-import { automationTypeDeclaration, automationExamples } from '@alpacawork/contract/automation-program-assets';
+import { automationDeclarations, automationExamples } from '@alpacawork/contract/automation-program-assets';
 import { automationEvents, automationProgramPreviewSchema } from '@alpacawork/contract/automation-program';
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 import { touch } from '@alpacawork/db';
@@ -151,7 +151,7 @@ export const bundleCommands = {
     },
   },
   'automation/types': {
-    run: () => ({ declaration: automationTypeDeclaration, examples: automationExamples }),
+    run: () => ({ declarations: automationDeclarations, examples: automationExamples }),
   },
   'automation/new': {
     act: () => ({ action: { name: 'automation.new' }, task: null }), journaled: true, limit: bodyLimit, run: saved,
@@ -165,7 +165,7 @@ export const bundleCommands = {
   'automation/pull': {
     run: (root, input, context) => automationRead(root, context, 'automation.pull', input.automation, (db, a) => {
       const version = bundleVersion(db, a.uuid, input.version ?? a.latest);
-      return { digest: version.digest, files: version.files, declaration: automationTypeDeclaration };
+      return { digest: version.digest, files: version.files, declarations: automationDeclarations };
     }),
   },
   'automation/versions': {
@@ -189,7 +189,7 @@ export const bundleCommands = {
         WHERE o.workspace_day=? AND (? IS NULL OR p.external_id=?)`).get(day, project, project) : undefined;
       return { automations: views.map(v => ({
         id: v.id, project: v.project, name: v.name, hash: v.hash, enabled: v.enabled, awaitingEnable: v.awaitingEnable,
-        latest: { facts: v.latest.facts, docs: v.latest.docs, review: v.latest.review }, lastRun: v.lastRun, attention: v.attention,
+        latest: { facts: v.latest.facts, docs: v.latest.docs, review: v.latest.review, missingDestinations: v.latest.missingDestinations }, lastRun: v.lastRun, attention: v.attention,
         week: v.week, nextAt: v.nextAt, everEnabled: v.everEnabled,
       })), counts: { enabled: views.filter(v => v.enabled).length,
         draft: views.filter(v => !v.everEnabled).length, stopped: views.filter(v => !v.enabled && v.everEnabled).length },
