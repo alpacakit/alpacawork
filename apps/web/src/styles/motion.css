@@ -134,6 +134,10 @@
   --animate-side: motion-side var(--motion-slow) var(--ease-out) both;
   @keyframes motion-drawer { from { opacity: 0; translate: calc(-1 * var(--motion-shift-far)) 0; } }
   @keyframes motion-side { from { opacity: 0; translate: var(--motion-shift-far) 0; } }
+  /* The time left before a share card's post opens: a bar running down to nothing at an even pace (its length is set
+     where it is used). */
+  --animate-lead: motion-lead linear forwards;
+  @keyframes motion-lead { to { scale: 0 1; } }
   /* A new mark beside Done: drops into its place. */
   --animate-land: motion-land var(--motion-slow) var(--ease-pop) both;
   @keyframes motion-land { from { opacity: 0; translate: 0 calc(-1 * var(--motion-shift-far)); } }

@@ -85,18 +85,33 @@ test("the analysis does not slide sideways when everything on it fits", async ({
   await noSidewaysSlide(page, runtime.origin);
 });
 
-test("each service's button opens that service's post screen with the card's sentence", async ({ page, context, runtime }) => {
+test("a service's button says what became of the picture, then opens that service's post screen with the card's sentence", async ({ page, context, runtime }) => {
   await context.route(/^https:\/\/(x\.com|bsky\.app|www\.threads\.com)\//, route => route.fulfill({ body: "" }));
   await page.goto(`${runtime.origin}/?face=analysis`);
   await page.getByRole("button", { name: "Share", exact: true }).click();
   const card = page.getByRole("dialog", { name: "Share" });
   await expect(card.getByRole("img", { name: /^Work handed to AI/ })).toBeVisible();
-  for (const [name, start] of [["X", "https://x.com/intent/post?text="], ["Bluesky", "https://bsky.app/intent/compose?text="], ["Threads", "https://www.threads.com/intent/post?text="]] as const) {
-    const opened = page.waitForEvent("popup");
-    await card.getByRole("button", { name: `Post to ${name}` }).click();
+  const posted = async (opened: Promise<import("@playwright/test").Page>, start: string) => {
     const url = (await opened).url();
     expect(url.startsWith(start)).toBe(true);
     expect(decodeURIComponent(url.slice(start.length))).toMatch(/#alpacawork$/);
+  };
+  // Left alone, the post opens by itself once its few seconds have run; the picture's fate stands until then.
+  let opened = page.waitForEvent("popup", { timeout: 6000 });
+  await card.getByRole("button", { name: "Post to X" }).click();
+  await expect(card.getByRole("status")).toContainText(/Image (copied|saved)/);
+  await expect(card.getByRole("status")).toContainText("Opening X in");
+  await posted(opened, "https://x.com/intent/post?text=");
+  await expect(card.getByRole("status")).toHaveCount(0);
+  // Cancel keeps the page where it is.
+  await card.getByRole("button", { name: "Post to Bluesky" }).click();
+  await card.getByRole("button", { name: "Cancel" }).click();
+  await expect(card.getByRole("status")).toHaveCount(0);
+  for (const [name, start] of [["Bluesky", "https://bsky.app/intent/compose?text="], ["Threads", "https://www.threads.com/intent/post?text="]] as const) {
+    opened = page.waitForEvent("popup", { timeout: 2000 });
+    await card.getByRole("button", { name: `Post to ${name}` }).click();
+    await card.getByRole("button", { name: "Open now" }).click();
+    await posted(opened, start);
   }
 });
 
