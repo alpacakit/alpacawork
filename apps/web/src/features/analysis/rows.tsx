@@ -640,7 +640,7 @@ function Frame({ row, scale, lineScale, height, children }: { row: number; scale
     <div className={cn("relative", height)}>
       <span aria-hidden className="absolute bottom-full start-0 text-xs whitespace-nowrap text-soft">{scale.label}</span>
       {/* The line's scale: only the value its top stands for, as quiet as the bars' (the line is named on the left). */}
-      {lineScale && <span aria-hidden className="absolute end-0 bottom-full flex items-center text-xs whitespace-nowrap text-soft"><LineMark />{lineScale}</span>}
+      {lineScale && <span aria-hidden className="absolute end-0 bottom-full flex items-baseline text-xs whitespace-nowrap text-soft"><LineMark />{lineScale}</span>}
       <i aria-hidden className="pointer-events-none absolute inset-x-0 top-0 border-t border-rule" />
       <i aria-hidden className="pointer-events-none absolute inset-x-0 top-1/2 border-t border-rule" />
       <div className="absolute inset-0 border-b border-lit-line">{children}</div>

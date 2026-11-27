@@ -63,10 +63,15 @@ test('question choices enter ordered answer badges, toggle, remove context, surv
   expect(body).not.toHaveProperty('context'); expect(body.tasks).toEqual(['T112']);
   expect(body.text).toBe('T112 1-Option1 2-Option2 Shorter labels are easier to read.');
   await expect(card(page).locator('[data-ask-answer]')).toHaveCount(1); await shot(page, 'pc-sent');
-  // The turn's mark on the rail sits level with its message's head line: on "you", boxed to its capitals, that it hangs from.
+  // The turn's mark on the rail sits level with its message's head line: on the middle of its time's capitals.
   const level = await card(page).locator('[data-coordinator-mark]').first().evaluate(mark => {
-    const at = mark.getBoundingClientRect(), name = mark.parentElement!.getBoundingClientRect();
-    return Math.abs(at.top + at.height / 2 - (name.top + name.height / 2));
+    const time = mark.closest('div')!.querySelector('time')!, words = document.createRange();
+    words.selectNodeContents(time);
+    const style = getComputedStyle(time), pen = document.createElement('canvas').getContext('2d')!;
+    pen.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+    const capital = pen.measureText('H'), baseline = words.getClientRects()[0]!.top + capital.fontBoundingBoxAscent;
+    const at = mark.getBoundingClientRect();
+    return Math.abs(at.top + at.height / 2 - (baseline - capital.actualBoundingBoxAscent / 2));
   });
   expect(level).toBeLessThanOrEqual(1);
 });
