@@ -1,5 +1,5 @@
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
-import type { AnalysisBucket, AnalysisDays, AnalysisHead, AnalysisPeriod } from '@alpacawork/contract/analysis';
+import { analysisRecordStart, type AnalysisBucket, type AnalysisDays, type AnalysisHead, type AnalysisPeriod } from '@alpacawork/contract/analysis';
 
 const DAY_MS = 86_400_000;
 const periodLength = { today: 1, '7d': 7, '28d': 28 } as const;
@@ -41,16 +41,16 @@ export function makeHead(project: string | null, timeZone: string, today: string
   const end = input.to ?? input.end ?? today;
   if (end > today || input.end && firstDay !== null && end < firstDay || input.period === 'all' && input.end && end !== today)
     throw new Problem(PROBLEM_CODE.invalidInput, 'Choose an end day within the available history. All time ends today.');
-  const empty = { timeZone, today, firstDay, project, period: null, previous: null };
-  if (firstDay === null) return empty;
+  const first = analysisRecordStart({ firstDay, today });
+  const head = { timeZone, today, firstDay, project, previous: null };
   let from = input.from;
   if (!from) {
-    if (!input.period || input.period === 'all') return { ...empty, period: { from: firstDay, to: today } };
+    if (!input.period || input.period === 'all') return { ...head, period: { from: first, to: today } };
     from = addDays(end, 1 - periodLength[input.period]);
   }
   const size = (Date.parse(end) - Date.parse(from)) / DAY_MS + 1;
   const before = addDays(from, -size);
-  return { ...empty, period: { from, to: end }, previous: before < firstDay ? null : { from: before, to: addDays(from, -1) } };
+  return { ...head, period: { from, to: end }, previous: before < first ? null : { from: before, to: addDays(from, -1) } };
 }
 
 export const inDays = (day: string, range: AnalysisDays | null) => range !== null && range.from <= day && day <= range.to;

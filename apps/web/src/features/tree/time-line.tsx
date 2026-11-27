@@ -11,6 +11,7 @@ import { MarkShape, type MarkKind, type MarkTone } from "@/components/ui/timelin
 import { TONE } from "@/components/ui/tone";
 import { FINISH_MARK, STOP_MARK } from "@/domain/report-events";
 import { useTimeView } from "@/state/time-view";
+import { TimeTipPopover } from "./time-tip";
 import type { FinishWords } from "@/domain/finish-words";
 import { isHand, type Segment, type TaskHistory, type TimeEvent } from "@/domain/time-history";
 import { formatCalendarDate, formatClock, sameCalendarDay } from "@/domain/time";
@@ -782,7 +783,8 @@ function useMarkWords() {
 export const EDGE_HALO = 8;
 
 /**
- * What every pressable glyph on a strip (a mark, an edge note) is: one button. A pointer's press, Enter or Space does
+ * What every pressable glyph on a strip that opens History (a mark, an edge note) is: one button; the band's expected
+ * report opens its tip instead (FutureLabel). A pointer's press, Enter or Space does
  * `onPress`, never the strip's own press under it. One that stands for a moment (`point`) shows its time on the strip's
  * probe while a mouse points at it or it has focus, and with a `ring`, is ringed while History points at that record.
  */
@@ -901,10 +903,39 @@ export function Lane({ line, marks, scale, level, now, finish, turnFrom, onPick,
       <g clipPath={`url(#${overId})`}><Wave stretches={line.stretches} scale={scale} level={level} drops={line.drops} turnFrom={null} late /></g>
     </g>}
     <Marks marks={marks} scale={scale} y={level.base} onPick={onPick} probe={probe} />
-    {label && <text data-future-label x={labelX} y={level.base + 4} textAnchor="start"
-      className={cn("text-xs tabular-nums", passed !== null ? "fill-ink font-medium" : "fill-muted")}>
-      <title>{finish!.long}</title><FutureText words={label} /></text>}
+    {label && <FutureLabel words={label} long={finish!.long} x={labelX} y={level.base} over={passed !== null} />}
   </g>;
+}
+
+/**
+ * The band's words for one row, pressed (a click, Enter or Space) to open what they mean in the reader's words, as the
+ * row's other times are (TimeTipPopover); never the strip's own press under it. Its hit area is the row's height over
+ * its words, so a press need not land on a glyph, and its focus ring stays inside a phone's short strip. It keeps the
+ * page's pointer rule: while another tip is open, a press on it only closes that tip, as on the row's other times.
+ */
+function FutureLabel({ words, long, x, y, over }: { words: FutureWords; long: string; x: number; y: number; over: boolean }) {
+  const { t } = useTranslation("tree");
+  const heading = t("status.tip.report");
+  const k = textScale();
+  const width = wordsW(words.text, k) + (words.days === 0 ? 0 : dayMarkW(words.days, k));
+  const half = Math.min(12, y - 1);
+  return <TimeTipPopover heading={heading} body={<p>{long}</p>}>
+    <g data-future-tip role="button" tabIndex={0} aria-label={`${heading}: ${long}`}
+      className="group/future cursor-pointer outline-none"
+      onClick={(event) => event.stopPropagation()}
+      onKeyDown={(event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault(); event.stopPropagation();
+        event.currentTarget.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      }}>
+      <rect x={x - 4} y={y - half} width={width + 8} height={2 * half} rx={3} fill="transparent"
+        className="group-focus-visible/future:stroke-ink/40" strokeWidth={2} />
+      <text data-future-label x={x} y={y + 4} textAnchor="start"
+        className={cn("text-xs tabular-nums decoration-dotted group-hover/future:underline group-data-[state=open]/future:underline",
+          over ? "fill-ink font-medium" : "fill-muted")}>
+        <FutureText words={words} /></text>
+    </g>
+  </TimeTipPopover>;
 }
 
 /** The visible words and width of the shared future band; only drawn rows contribute to its width. */

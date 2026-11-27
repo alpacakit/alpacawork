@@ -99,10 +99,12 @@ export function AnalysisView({ place, mode, canDock }: { place: AnalysisPlace; m
         have come and each for what is chosen now (ReadPart); nothing is put in above what is drawn later. */}
     <ReadPart set={set}
       skeleton={<FaceSkeleton look={place.look} span={place.span} bucket={bucket} />}>
-      {([first, finished]) => !days || !head ? <p className="text-soft">{t("usage.none")}</p>
-        : place.look === "tasks" ? <><WorkBand work={(first as TasksView).activeWork} /><TasksLook view={first as TasksView} span={place.span} root={root} days={days} open={open} zone={zoneName(head.timeZone)} /></>
+      {([first, finished]) => !days || !head ? null : <>
+        {/* Nothing recorded yet: the look keeps its shape at zero, and says what fills it. */}
+        {head.firstDay === null && <p className="mb-8 text-soft narrow:mb-6">{t("face.empty")}</p>}
+        {place.look === "tasks" ? <><WorkBand work={(first as TasksView).activeWork} /><TasksLook view={first as TasksView} span={place.span} root={root} days={days} open={open} zone={zoneName(head.timeZone)} /></>
           : <UsageLook view={first as UsageView} span={place.span} root={root} tasks={finished as TasksView} days={days} open={open} zone={zoneName(head.timeZone)}
-            series={series} />}
+            series={series} />}</>}
     </ReadPart>
     </div></ListScroll>
     <AnalysisLayers place={place} project={project} days={days} mode={mode} canDock={canDock} />

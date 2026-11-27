@@ -364,6 +364,29 @@ test('each closed day is reported once, during the next day, until seven days af
   assert.deepEqual(queued[0]!.report.events, [['search', 1, 'desktop.linux', 'screen', 'en', 'system']]);
 });
 
+test('a day the server ran under DO_NOT_TRACK is never reported after it is removed; the days around it still are', async t => {
+  const { copy, root } = workspace(t, 'telemetry-dnt');
+  const paths = { consent: join(root, 'config/consent.json'), state: join(root, 'state') };
+  let now = at, env: NodeJS.ProcessEnv = {};
+  const telemetry = new TelemetryService(copy, {}, { paths, now: () => now, envelope: makeEnvelope,
+    facts: (c, time, latestDay) => ({ ...facts, consent: c, now: time, latestDay, env }), fetch: (async () => new Response(null, { status: 503 })) as typeof fetch });
+  telemetry.choose('on', 'screen');
+  const attributes = { device: 'desktop.linux', via: 'screen', lang: 'en', theme: 'system' } as const;
+  // Day 1 is used with sending on; day 2 has use in the workspace while the server runs with DO_NOT_TRACK=1.
+  telemetry.mark({ kind: 'event', op: 'search', attributes });
+  await telemetry.tick();
+  now = at + TELEMETRY_DAY_MS; env = { DO_NOT_TRACK: '1' };
+  const db = openControlDatabase(copy, { busyTimeoutMs: 1000 }, false);
+  try { db.prepare("UPDATE runs SET record=json_set(record,'$.created_at',?) WHERE id=(SELECT min(id) FROM runs)").run(new Date(now).toISOString()); }
+  finally { db.close(); }
+  await telemetry.tick();
+  // On day 3 it is removed and day 3 is used: day 1 is still sent, day 2 is not, and day 3 follows the next day.
+  now += TELEMETRY_DAY_MS; env = {};
+  telemetry.mark({ kind: 'event', op: 'search', attributes });
+  await telemetry.tick(); now += TELEMETRY_DAY_MS; await telemetry.tick();
+  assert.deepEqual(telemetry.queue.queued().map(item => item.value.report.day), [day, '2026-11-05']);
+});
+
 test('the workspace shape measures the live tree: depth, widest parent, longest task thread, never archived tasks', t => {
   const { copy } = workspace(t, 'telemetry');
   const db = openControlDatabase(copy, { busyTimeoutMs: 1000 }, false);

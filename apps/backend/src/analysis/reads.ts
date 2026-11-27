@@ -18,7 +18,7 @@ import { clocks, emptyClock, iso, lastEndedAt, shareOf, unitMarks, type ModelRun
 import { CluesSum, waitsOf } from './clues.js';
 import { addSplit, emptySplit, splitWaits, type WaitSplit } from './presence.js';
 import { readChanges } from './timeline-reads.js';
-import type { AnalysisChangesInput } from '@alpacawork/contract/analysis';
+import { analysisChartStart, type AnalysisChangesInput } from '@alpacawork/contract/analysis';
 import { matchesUsage, recordedModelName, usageGroup, usageIdentity, type UsageIdentity } from './usage-axes.js';
 
 type DatedUnit = { day: string; unit: Unit };
@@ -216,7 +216,7 @@ const byBucket = <T extends { day: string }>(records: readonly T[], bucket: Anal
 function makeSeries<T extends { day: string }, C extends object>(bucket: AnalysisBucket, head: AnalysisHead,
   records: readonly T[], values: (items: T[]) => C) {
   const indexed = byBucket(records, bucket);
-  const points = buckets(head.firstDay, head.today, bucket).map(point => ({ ...point,
+  const points = buckets(analysisChartStart(head), head.today, bucket).map(point => ({ ...point,
     ...values(within(indexed.get(bucketStart(point.from, bucket))?.items ?? [], point)),
   }));
   return { bucket, points };
@@ -225,13 +225,14 @@ const within = <T extends { day: string }>(items: readonly T[], range: AnalysisD
   items.filter(({ day }) => inDays(day, range));
 
 function usageBuckets(head: AnalysisHead, range: AnalysisDays | null, bucket: AnalysisBucket) {
-  if (!range || !head.firstDay || range.to < head.firstDay) return [];
-  const from = range.from < head.firstDay ? head.firstDay : range.from;
+  const first = analysisChartStart(head);
+  if (!range || range.to < first) return [];
+  const from = range.from < first ? first : range.from;
   return buckets(from, range.to, bucket).map(point => ({ ...point, complete: point.complete && point.to < head.today }));
 }
 
 function usageChart(head: AnalysisHead, bucket: AnalysisBucket, view: AnalysisUsageInput['view'] = 'period') {
-  const history = view === 'history' && head.firstDay ? { from: head.firstDay, to: head.today } : null;
+  const history = view === 'history' ? { from: analysisChartStart(head), to: head.today } : null;
   const range = view === 'period' ? head.period : history;
   return { bucket, history, points: usageBuckets(head, range, bucket) };
 }
@@ -585,7 +586,8 @@ class ScopedAnalysis {
   }
 
   async tasks(input: AnalysisTasksInput, slices: Slices): Promise<Omit<AnalysisTasksView, 'activeWork'>> {
-    const head = this.head(input), lifetime = this.head({}).period;
+    // The record's days, none while nothing is recorded (`ever` is null then, as for any span without a record).
+    const head = this.head(input), lifetime = head.firstDay === null ? null : this.head({}).period;
     const taskTotals = this.taskTotals;
     const prCounts = creditAcceptedPrs(this.datedUnits);
     const units = this.datedUnits.map(item => ({ ...item, prCount: prCounts.get(item.unit) ?? 0 }));
@@ -600,8 +602,10 @@ class ScopedAnalysis {
     const series = makeSeries(input.bucket, head, units, taskTotals);
     const counts = new Map<string, number>();
     for (const { day, unit } of this.datedUnits) if (isFinished(unit)) counts.set(day, (counts.get(day) ?? 0) + 1);
-    const from = monday(head.firstDay ?? head.today), finished: number[] = [];
-    if (head.firstDay) for (let day = from; day <= head.today; day = addDays(day, 1)) finished.push(counts.get(day) ?? 0);
+    // The calendar shows at least its last four weeks, from Monday, so a young record still reads as a calendar.
+    const start = analysisChartStart(head), weeksBack = addDays(head.today, -27);
+    const from = monday(start < weeksBack ? start : weeksBack), finished: number[] = [];
+    for (let day = from; day <= head.today; day = addDays(day, 1)) finished.push(counts.get(day) ?? 0);
     return { head, counts: { value: value.counts, previous: before?.counts ?? null },
       accepted: { value: value.accepted, previous: before?.accepted ?? null }, ever, series, grass: { from, finished },
       unfinished: this.unfinished(),
@@ -623,7 +627,7 @@ class ScopedAnalysis {
     }
     const count = (range: AnalysisDays | null) => daily?.count(range, this.now) ?? this.useCounts([...this.launchesIn(range, input)]);
     const value = count(head.period);
-    const ever = chart.history ? input.period === 'all' ? value : count(chart.history) : null;
+    const ever = chart.history && head.firstDay !== null ? input.period === 'all' ? value : count(chart.history) : null;
     const series = { bucket: input.bucket, points: daily ? chart.points
       .map(point => ({ ...point, counts: daily.count(point, this.now) })) : [] };
     return { head, counts: { value, previous: head.previous && count(head.previous) }, ever, series,

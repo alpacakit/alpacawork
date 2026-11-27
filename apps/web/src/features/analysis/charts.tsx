@@ -54,6 +54,8 @@ export function Grass({ from, counts, firstDay, today, span }: { from: string; c
   // Whole weeks: the days after today close the last one, drawn as the days before the record are.
   const shown = Math.ceil(counts.length / 7) * 7;
   for (let at = 0; at < shown; at++) (weeks[Math.floor(at / 7)] ??= []).push(addDays(from, at));
+  // A month is named over its first week; the first column names its own only when the next does not name the next month.
+  const monthStarts = (column: number) => !!weeks[column] && Number(weeks[column]![0]!.slice(8)) <= 7;
   const names = [0, 3, 6].map(day => [day, weekdayLabel(addDays(from, day))] as const);
   const cell = "block size-3.5 rounded-[3px]";
   // A long record is wider than the room: the calendar scrolls inside itself, and shows its latest weeks first.
@@ -65,7 +67,7 @@ export function Grass({ from, counts, firstDay, today, span }: { from: string; c
       {[0, 1, 2, 3, 4, 5, 6].map(day => <em key={day} className="flex h-3.5 items-center justify-end pe-1 text-xs not-italic text-soft">{names.find(([at]) => at === day)?.[1] ?? ""}</em>)}
       {weeks.map((week, column) => [
         <em key={`m${column}`} className="flex h-3.5 w-3.5 items-center overflow-visible text-xs whitespace-nowrap not-italic text-soft">
-          {column === 0 || Number(week[0]!.slice(8)) <= 7 ? monthLabel(week[0]!) : ""}</em>,
+          {monthStarts(column) || column === 0 && !monthStarts(1) ? monthLabel(week[0]!) : ""}</em>,
         ...week.map((day, row) => {
           const count = counts[column * 7 + row] ?? 0;
           // A day outside the record (before it began, after today) is a small dot: where the record runs is seen.

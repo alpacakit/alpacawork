@@ -13,9 +13,10 @@ import { AgentMark } from "@/components/ui/agent-mark";
 import { useServerSettings } from "@/data/queries";
 import { agentKind } from "@/domain/agent-mark";
 import { Icon } from "@/components/ui/icon";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { Task } from "@/data/types";
 import { useWorkspaceSelector, useWorkspaceStore, type WorkspaceData } from "@/data/workspace-store";
-import { runningRunsSaid, shortLength } from "@/domain/row-status";
+import { runningRunsSaid } from "@/domain/row-status";
 import { cn } from "@/lib/utils";
 
 /** The one second clock the speed cells share, in Unix seconds as the ledgers count; it runs only while a cell shows. */
@@ -94,9 +95,6 @@ function sharedScale(data: WorkspaceData, now: number) {
 
 const shown = (rate: number) => rate >= 100 ? Math.round(rate / 5) * 5 : Math.round(rate);
 const formatRate = (rate: number) => rate >= 10_000 ? `${Math.round(rate / 1000)}k` : rate >= 1000 ? `${(rate / 1000).toFixed(1)}k` : String(rate);
-/** One minute of silence turns the bars into how long it has been silent. */
-const IDLE_SECONDS = 60;
-
 /** What a cell shows, as one string: equal strings skip the re-render. Empty when none of its Runs is measured. */
 function useSpeedKey(read: (data: WorkspaceData, now: number) => string) {
   const store = useWorkspaceStore();
@@ -105,14 +103,12 @@ function useSpeedKey(read: (data: WorkspaceData, now: number) => string) {
 }
 
 /** `live`: output counted in the 5 seconds ending now; otherwise the rate is the latest one held between model calls. */
-type RowShown = { rate: number; live: boolean; bars: number[]; scale: number; idle: number };
-/** `idle` is kept only as shown (whole minutes, from one minute up), so a silent row does not re-render every second. */
+type RowShown = { rate: number; live: boolean; bars: number[]; scale: number };
 const rowKey = (task: Task) => (data: WorkspaceData, now: number) => {
   const speed = rowSpeed(task, data, now);
   if (!speed) return "";
-  const idle = speed.idleSeconds >= IDLE_SECONDS ? Math.floor(speed.idleSeconds / 60) * 60 : 0;
   const bars = speed.bars.map(shown);
-  return JSON.stringify({ rate: shown(speed.rate), live: bars.at(-1)! > 0, bars, scale: sharedScale(data, now), idle } satisfies RowShown);
+  return JSON.stringify({ rate: shown(speed.rate), live: bars.at(-1)! > 0, bars, scale: sharedScale(data, now) } satisfies RowShown);
 };
 
 /**
@@ -142,16 +138,6 @@ function MinuteBars({ bars, scale }: { bars: number[]; scale: number }) {
 /** Beside a narrow list the bars' slot holds only the heading's unit, as wide on every row so the numbers line up. */
 const UNIT_WIDTH = 24;
 
-function useIdleWords() {
-  const { t } = useTranslation("tree");
-  return (seconds: number) => {
-    const { unit, count } = shortLength(seconds * 1000);
-    const length = unit === "minutes" ? t("status.length.minutes", { count }) : unit === "hours" ? t("status.length.hours", { count })
-      : t("status.length.days", { count });
-    return t("speed.idle", { length });
-  };
-}
-
 function rowTip(t: (key: string, options?: Record<string, unknown>) => string, row: RowShown) {
   const peak = Math.max(...row.bars), mean = Math.round(row.bars.reduce((sum, bar) => sum + bar, 0) / row.bars.length);
   return t("speed.rowTip", { rate: formatRate(row.rate), mean: formatRate(mean), peak: formatRate(peak) });
@@ -169,18 +155,17 @@ export function SpeedLane({ width, className, children }: { width: number; class
   return <div data-speed-lane style={{ width }} className={cn("flex flex-none justify-end pr-3 text-xs", className)}>{children}</div>;
 }
 
-/** A wide row's speed in the column; after a minute of silence, how long it has been silent in place of the bars. */
+/**
+ * A wide row's speed in the column: the number and the minute's bars, 0 over an empty baseline while it is silent.
+ */
 export function RowTokenSpeed({ task, compact }: { task: Task; compact: boolean }) {
   const { t } = useTranslation("tree");
-  const idleWords = useIdleWords();
   const key = useSpeedKey(rowKey(task));
   if (!key) return null;
   const row = JSON.parse(key) as RowShown;
-  const idle = row.idle >= IDLE_SECONDS;
-  // While silent the bars keep their baseline and the words take the number's place, so the column does not jump.
-  return <span data-token-speed title={idle && compact ? idleWords(row.idle) : rowTip(t, row)} className={cn("flex items-baseline whitespace-nowrap", compact ? "gap-1" : "gap-2")}>
-    {idle ? <span className="text-muted">{compact ? t("speed.idleShort") : idleWords(row.idle)}</span> : <RateNumber rate={row.rate} live={row.live} />}
-    {compact ? <span aria-hidden="true" style={{ width: UNIT_WIDTH }} className="flex-none" /> : <MinuteBars bars={idle ? [] : row.bars} scale={row.scale} />}
+  return <span data-token-speed title={rowTip(t, row)} className={cn("flex items-baseline whitespace-nowrap", compact ? "gap-1" : "gap-2")}>
+    <RateNumber rate={row.rate} live={row.live} />
+    {compact ? <span aria-hidden="true" style={{ width: UNIT_WIDTH }} className="flex-none" /> : <MinuteBars bars={row.bars} scale={row.scale} />}
   </span>;
 }
 
@@ -195,6 +180,24 @@ const totalKey = (tops: readonly Task[]) => (data: WorkspaceData, now: number) =
 };
 
 /**
+ * What the speed column means, behind a small mark in its heading: the card opens on a press, phones included, and
+ * says that a 0 may only be an agent waiting on a command.
+ */
+function SpeedHelp({ bars, className }: { bars: boolean; className?: string }) {
+  const { t } = useTranslation("tree");
+  return <Popover>
+    <PopoverTrigger data-speed-help aria-label={t("speed.help")} onClick={event => event.stopPropagation()}
+      className={cn("relative inline-flex size-4 flex-none cursor-pointer items-center justify-center rounded-full text-muted outline-none before:absolute before:-inset-3 before:content-[''] pointer-fine:hover:bg-hover pointer-fine:hover:text-ink focus-visible:ring-2 focus-visible:ring-ink/40", className)}>
+      <Icon name="help" className="size-3.5" /></PopoverTrigger>
+    <PopoverContent align="end" className="w-64 p-3 text-xs font-normal" onClick={event => event.stopPropagation()}>
+      <p className="m-0">{t("speed.helpSpeed")}</p>
+      {bars && <p className="m-0 mt-1">{t("speed.helpBars")}</p>}
+      <p className="m-0 mt-2 border-t border-rule pt-2">{t("speed.helpZero")}</p>
+    </PopoverContent>
+  </Popover>;
+}
+
+/**
  * The In progress heading's total in the speed column, with the unit that names the column below; its number stands
  * over the rows' numbers and the unit where their bars do (beside a narrow list, in the slot the rows keep empty).
  */
@@ -203,9 +206,12 @@ export function HeadingTokenSpeed({ tops, compact }: { tops: readonly Task[]; co
   useLayoutEffect(() => { scaleTasks = tops; }, [tops]);
   const key = useSpeedKey(totalKey(tops));
   if (!key) return null;
-  return <span data-token-speed title={t("speed.totalTip", { count: tops.length })} className={cn("flex items-baseline whitespace-nowrap font-normal", compact ? "gap-1" : "gap-2")}>
+  return <span data-token-speed className={cn("flex items-baseline whitespace-nowrap font-normal", compact ? "gap-1" : "gap-2")}>
+    <SpeedHelp bars={!compact} className="self-center" />
+    <span title={t("speed.totalTip", { count: tops.length })} className={cn("flex items-baseline", compact ? "gap-1" : "gap-2")}>
     <RateNumber rate={Number(key)} live className="font-medium" />
     <span style={{ width: compact ? UNIT_WIDTH : BARS_WIDTH }} className={cn("flex-none text-muted", compact ? "text-[10px]" : "text-[11px]")}>{t("speed.unit")}</span>
+    </span>
   </span>;
 }
 
@@ -257,7 +263,7 @@ export function HeadingAgents({ tops, narrow }: { tops: readonly Task[]; narrow:
   if (!agents) return null;
   return <span data-heading-agents className="flex min-w-0 items-baseline gap-1.5 whitespace-nowrap text-xs font-normal tabular-nums text-muted">
     <AgentCounts tasks={tops} />
-    {narrow && <NarrowTotal tops={tops} />}
+    {narrow && <><SpeedHelp bars={false} className="self-center" /><NarrowTotal tops={tops} /></>}
     <span aria-hidden="true" className={cn(TIME_SLOT, "invisible")}>0</span>
   </span>;
 }
@@ -270,13 +276,12 @@ function NarrowTotal({ tops }: { tops: readonly Task[] }) {
   </span>;
 }
 
-/** On a phone, where the rows lie across the strips: the speed in its own slot after the square; after a minute of silence, that it is silent. */
+/** On a phone, where the rows lie across the strips: the speed in its own slot after the square, 0 while silent. */
 export function NarrowTokenSpeed({ task }: { task: Task }) {
   const { t } = useTranslation("tree");
   const key = useSpeedKey(rowKey(task));
   const row = key ? JSON.parse(key) as RowShown : null;
   return <span title={row ? rowTip(t, row) : undefined} className={NARROW_SPEED_SLOT}>
-    {row && (row.idle >= IDLE_SECONDS ? <span className="text-muted/70">{t("speed.idleShort")}</span>
-      : <><span className={row.rate ? "text-muted" : "text-muted/50"}>{formatRate(row.rate)}</span><span className="text-[0.85em] text-muted">{t("speed.perSecond")}</span></>)}
+    {row && <><span className={row.rate ? "text-muted" : "text-muted/50"}>{formatRate(row.rate)}</span><span className="text-[0.85em] text-muted">{t("speed.perSecond")}</span></>}
   </span>;
 }

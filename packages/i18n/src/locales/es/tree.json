@@ -75,8 +75,10 @@
     "restore": "Restaurar"
   },
   "speed": {
-    "idle": "Sin salida {{length}}",
-    "idleShort": "Inactivo",
+    "help": "Cómo leer la velocidad de salida",
+    "helpBars": "Las barras muestran el último minuto en pasos de 5 segundos.",
+    "helpSpeed": "La velocidad a la que los agentes en curso producen tokens (media de los últimos 5 segundos).",
+    "helpZero": "Un 0 que se mantiene puede significar que el agente espera a que termine un comando o similar (una grabación de pantalla, una ejecución en GitHub). Abre la tarea para ver qué espera.",
     "perSecond": "/s",
     "rowTip": "Velocidad de salida {{rate}} tok/s (media de los últimos 5 segundos)\nÚltimo minuto: media {{mean}}, máximo {{peak}}",
     "totalTip_many": "Velocidad de salida total de {{count}} tareas en curso (media de los últimos 5 segundos)",

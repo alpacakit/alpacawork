@@ -183,9 +183,9 @@ test("beside the strips a row uses its state icon and the future band says only 
     expect(document.querySelector(`[data-row="${id}"] [data-read]`)?.textContent).toMatch(new RegExp(`^${id}`));
     expect(document.querySelector(`[data-row="${id}"] [data-icon="doing"]`)).toBeTruthy();
   }
-  // An expected report is written after now without its prefix; the title retains the full wording.
+  // An expected report is written after now without its prefix; its press retains the full wording.
   expect(stripWords("T2")).toEqual([expect.stringMatching(/^\d\d:\d\d$/)]);
-  expect(document.querySelector('[data-row="T2"] svg[data-time-strip] text title')?.textContent).toContain("Expected report");
+  expect(document.querySelector('[data-row="T2"] svg[data-time-strip] [data-future-tip]')?.getAttribute("aria-label")).toContain("Expected report");
   // No estimate: nothing is written.
   expect(stripWords("T3")).toEqual([]);
   expect(document.querySelector('[data-row="T3"] [data-overrun]')).toBeNull();
@@ -200,7 +200,7 @@ test("beside the strips a row uses its state icon and the future band says only 
   expect(over.querySelector("path.fill-overdue-area")).not.toBeNull();
   expect(over.querySelector(".text-error, .text-turn, line, [stroke-width='3']")).toBeNull();
   expect(stripWords("T4")).toEqual([expect.stringMatching(/^~\d+ (min|hours?) overdue$/)]);
-  expect(document.querySelector('[data-row="T4"] svg[data-time-strip] text title')?.textContent).toMatch(/^\d+ of 30 min worked/);
+  expect(document.querySelector('[data-row="T4"] svg[data-time-strip] [data-future-tip]')?.getAttribute("aria-label")).toMatch(/^Report estimate: \d+ of 30 min worked/);
   // Tomorrow's estimate: the clock alone, with a small "+1" after it, not "tomorrow 06:30".
   expect(stripWords("T6")).toEqual([expect.stringMatching(/^\d\d:\d\d$/)]);
   expect(document.querySelector('[data-row="T6"] [data-future-day]')?.textContent).toBe("+1");
@@ -399,7 +399,7 @@ test("an overrun stays in the future band while its quiet past keeps its true ti
   scale.width = scale.x(now) + futureBandWidth([{ text: "~9 hours overdue", days: 0 }]);
   strip = lane();
   expect(Number(strip.querySelector("text")?.getAttribute("x"))).toBe(scale.x(now) + 16);
-  expect(strip.querySelector("text title")?.textContent).toBe(finish.long);
+  expect(strip.querySelector("[data-future-tip]")?.getAttribute("aria-label")).toBe(`Report estimate: ${finish.long}`);
   expect(strip.querySelector("[data-overrun] clipPath rect")).toBeTruthy();
 });
 

@@ -93,10 +93,11 @@ const paths = {
       <path d="M6 21v-4a6 6 0 0 1 12 0v4" />
     </>
   ),
+  /* A robot's head, its antenna included, in the middle of the box, so it stands on the centre line of words beside it. */
   agent: (
     <>
-      <rect x="5" y="6" width="14" height="13" rx="3" />
-      <path d="M12 3v3M9 11h.01M15 11h.01M9 15h6" />
+      <rect x="5" y="7" width="14" height="13" rx="3" />
+      <path d="M12 4v3M9 12h.01M15 12h.01M9 16h6" />
     </>
   ),
   /* The folded bar's menu. */
