@@ -165,6 +165,19 @@ export function createPersonSettings(root: string, definitions: readonly Setting
   };
 }
 /**
+ * The theme saved for the screen when it is light or dark, else null (following the OS). Settings that cannot be read
+ * name none: the page still opens and shows that failure itself.
+ */
+export function savedTheme(root: string): 'light' | 'dark' | null {
+  try {
+    const value = createPersonSettings(root).values().theme;
+    return value === 'light' || value === 'dark' ? value : null;
+  } catch (error) {
+    if (error instanceof Problem && error.code === PROBLEM_CODE.unavailable) return null;
+    throw error;
+  }
+}
+/**
  * The reply language the user's AI conversations are held in (`ai.language`), or null while none is saved. Settings
  * that cannot be read name none: a launch goes on without it.
  */

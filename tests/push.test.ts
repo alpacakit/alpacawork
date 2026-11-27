@@ -548,6 +548,11 @@ describe('serve', () => {
     const literal = await (await fetch(base + '/')).text();
     assert.match(literal, /<title>alpacawork<\/title>/);
     assert.match(literal, /name="apple-mobile-web-app-title" content="Team __PWA_LIGHT__"/);
+    // Settings that cannot be read still open the page, which shows that failure itself.
+    writeFileSync(join(root, '.alpacawork', 'personal-settings.json'), '{broken');
+    const unreadable = await fetch(base + '/');
+    assert.equal(unreadable.status, 200);
+    assert.match(await unreadable.text(), /<html lang="en" data-theme="system">/);
   });
 
   test('subscriptions: key, register, list, refuse unknown endpoints, remove', async () => {
