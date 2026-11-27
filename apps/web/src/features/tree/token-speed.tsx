@@ -137,6 +137,8 @@ function MinuteBars({ bars, scale }: { bars: number[]; scale: number }) {
 }
 /** Beside a narrow list the bars' slot holds only the heading's unit, as wide on every row so the numbers line up. */
 const UNIT_WIDTH = 24;
+/** What the heading's help takes, beside a narrow list, of the column's right padding (pr-3 → pr-2). */
+const COMPACT_HELP_ROOM = 4;
 
 function rowTip(t: (key: string, options?: Record<string, unknown>) => string, row: RowShown) {
   const peak = Math.max(...row.bars), mean = Math.round(row.bars.reduce((sum, bar) => sum + bar, 0) / row.bars.length);
@@ -198,8 +200,10 @@ function SpeedHelp({ bars, className }: { bars: boolean; className?: string }) {
 }
 
 /**
- * The In progress heading's total in the speed column, with the unit that names the column below; its number stands
- * over the rows' numbers and the unit where their bars do (beside a narrow list, in the slot the rows keep empty).
+ * The In progress heading's total in the speed column, with the unit that names the column below and the column's help
+ * after it, so the help reads as the speed's and not as one more AI's mark; its number stands over the rows' numbers and
+ * the unit where their bars do. Beside a narrow list the unit is the short one, so the unit and the help fit the slot
+ * the rows keep empty and the heading's right padding.
  */
 export function HeadingTokenSpeed({ tops, compact }: { tops: readonly Task[]; compact: boolean }) {
   const { t } = useTranslation("tree");
@@ -207,10 +211,13 @@ export function HeadingTokenSpeed({ tops, compact }: { tops: readonly Task[]; co
   const key = useSpeedKey(totalKey(tops));
   if (!key) return null;
   return <span data-token-speed className={cn("flex items-baseline whitespace-nowrap font-normal", compact ? "gap-1" : "gap-2")}>
-    <SpeedHelp bars={!compact} className="self-center" />
-    <span title={t("speed.totalTip", { count: tops.length })} className={cn("flex items-baseline", compact ? "gap-1" : "gap-2")}>
-    <RateNumber rate={Number(key)} live className="font-medium" />
-    <span style={{ width: compact ? UNIT_WIDTH : BARS_WIDTH }} className={cn("flex-none text-muted", compact ? "text-[10px]" : "text-[11px]")}>{t("speed.unit")}</span>
+    <span title={t("speed.totalTip", { count: tops.length })} className="contents">
+      <RateNumber rate={Number(key)} live className="font-medium" />
+    </span>
+    <span style={{ width: compact ? UNIT_WIDTH + COMPACT_HELP_ROOM : BARS_WIDTH }}
+      className={cn("flex flex-none items-center text-muted", compact ? "gap-0.5 text-[10px]" : "gap-1 text-[11px]")}>
+      <span title={t("speed.totalTip", { count: tops.length })}>{t(compact ? "speed.perSecond" : "speed.unit")}</span>
+      <SpeedHelp bars={!compact} />
     </span>
   </span>;
 }
@@ -257,13 +264,13 @@ export function AgentCounts({ tasks }: { tasks: readonly Task[] }) {
   </span>;
 }
 
-/** The heading's agents in all, as the rows say theirs (with, on a phone, the total speed after it). */
+/** The heading's agents in all, as the rows say theirs (with, on a phone, the total speed and its help after it). */
 export function HeadingAgents({ tops, narrow }: { tops: readonly Task[]; narrow: boolean }) {
   const agents = tops.reduce((sum, task) => sum + runningRunsSaid(task), 0);
   if (!agents) return null;
   return <span data-heading-agents className="flex min-w-0 items-baseline gap-1.5 whitespace-nowrap text-xs font-normal tabular-nums text-muted">
     <AgentCounts tasks={tops} />
-    {narrow && <><SpeedHelp bars={false} className="self-center" /><NarrowTotal tops={tops} /></>}
+    {narrow && <><NarrowTotal tops={tops} /><SpeedHelp bars={false} className="-ml-0.5 self-center" /></>}
     <span aria-hidden="true" className={cn(TIME_SLOT, "invisible")}>0</span>
   </span>;
 }
