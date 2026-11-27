@@ -116,7 +116,7 @@ const rowKey = (task: Task) => (data: WorkspaceData, now: number) => {
  * rate is held between model calls, and quiet at 0.
  */
 function RateNumber({ rate, live, className }: { rate: number; live: boolean; className?: string }) {
-  return <span className={cn("inline-block w-8 flex-none text-right tabular-nums", !rate ? "text-muted/50" : live ? "text-ink" : "text-ink/55", className)}>{formatRate(rate)}</span>;
+  return <span className={cn("inline-block w-7 flex-none text-right tabular-nums", !rate ? "text-muted/50" : live ? "text-ink" : "text-ink/55", className)}>{formatRate(rate)}</span>;
 }
 
 /** The bars' slot, also the heading's unit's: 12 bars of 3px with 1px between. */
@@ -146,8 +146,9 @@ function rowTip(t: (key: string, options?: Record<string, unknown>) => string, r
 }
 
 /** The speed column at the title column's end, before the time: a number and the minute's bars, or the number alone beside a narrow list. */
-export const SPEED_LANE = 112;
-const COMPACT_LANE = 72;
+/** Its number's slot, the gap and the bars, and the room before the time after it: nothing left over before the number. */
+export const SPEED_LANE = 96;
+const COMPACT_LANE = 68;
 /** A list narrower than this (the detail open beside it) keeps its time strip's room with the number alone; under 600px there is no column. */
 const FULL_LANE_SHEET = 900;
 export const speedLane = (sheet: number) => sheet < FULL_LANE_SHEET ? COMPACT_LANE : SPEED_LANE;
