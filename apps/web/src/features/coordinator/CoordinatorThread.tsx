@@ -156,7 +156,8 @@ function EarlierRow({ count, open, toggle }: { count: number; open: boolean; tog
  * the top is in sight (or passed), the next page is asked for. A page brings more than this, so each page read leaves
  * the next one waiting for the reader to come near it again, rather than several being read at once on a tall screen.
  * It is far enough ahead that a reader flinging on to the top usually gets there after the page; one who gets there
- * first finds the thread still reading (aria-busy), which a phone's sheet does not take for its top to pull down from.
+ * first finds the thread still reading above (data-reading-above), which a phone's sheet does not take for its top to
+ * pull down from.
  */
 const READ_AHEAD = 40;
 /**
@@ -373,7 +374,7 @@ export const CoordinatorThread = memo(function CoordinatorThread({ turns: recent
   // Empty is no message at all: the first one sent stands in the greeting's place as any message does.
   const empty = !!served.id && !work.length && !shown.tail.length && !served.earlier;
   return <>
-    <ol ref={thread} data-action-focus-scope tabIndex={-1} data-coordinator-thread aria-busy={earlierOpen && earlier.reading || undefined} className={cn("relative m-0 list-none px-3 pt-1 pb-2 [overflow-wrap:anywhere] [--gutter:--spacing(6)] [--rail:7px] before:absolute before:top-5 before:bottom-5 before:left-[calc(--spacing(3)+var(--rail))] before:w-px before:bg-rule", empty && "before:hidden")}>
+    <ol ref={thread} data-action-focus-scope tabIndex={-1} data-coordinator-thread data-reading-above={earlierOpen && earlier.reading || undefined} className={cn("relative m-0 list-none px-3 pt-1 pb-2 [overflow-wrap:anywhere] [--gutter:--spacing(6)] [--rail:7px] before:absolute before:top-5 before:bottom-5 before:left-[calc(--spacing(3)+var(--rail))] before:w-px before:bg-rule", empty && "before:hidden")}>
       {empty && <ConversationStart />}
       {earlierOpen && (earlier.more || earlier.full) && <ReadOlder held={earlier.turns.length} full={earlier.full} reading={earlier.reading} failed={earlier.failed} read={readOlder} />}
       {rows}

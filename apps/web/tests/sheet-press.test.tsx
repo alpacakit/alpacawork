@@ -11,6 +11,9 @@ const touch = { pointerType: "touch" } as PointerEvent;
 test("a finger at the top of what a sheet shows pulls it, but not while that part is still reading in what comes above it", () => {
   const { sheet: surface, thread, row } = sheet();
   expect(pullsFrom(touch, row, surface)).toBe(true);
+  // Something only being read (a task's history, a placeholder) is no reason to hold the sheet.
   thread.setAttribute("aria-busy", "true");
+  expect(pullsFrom(touch, row, surface)).toBe(true);
+  thread.setAttribute("data-reading-above", "");
   expect(pullsFrom(touch, row, surface)).toBe(false);
 });
