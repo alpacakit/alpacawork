@@ -1,10 +1,12 @@
-import { useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import icon from "../../../public/icons/icon-192-2c.png?inline";
+import { useWorked } from "@/components/ui/copy-button";
 import { Icon, shareIcon } from "@/components/ui/icon";
 import { TAB, TabLabel } from "@/components/ui/tabs";
 import { deviceValue, jsonCodec, useDeviceValue } from "@/lib/device-storage";
 import { srgb } from "@/lib/mermaid-colors";
+import { carry } from "@/lib/motion";
 import { notify } from "@/lib/notify";
 import { cn } from "@/lib/utils";
 import { appliedTheme } from "@/state/theme";
@@ -118,6 +120,73 @@ function Way({ name, label, face, disabled, onClick, describedBy, children }: {
 }
 
 /**
+ * The ✓ of a picture just copied, drawn where the copy was asked for: as it appears, the picture is seen going from
+ * the card into it (lib/motion.ts carry), so the copy is felt without reading a word.
+ */
+function CopiedMark({ picture, className }: { picture: RefObject<HTMLElement | null>; className?: string }) {
+  const mark = useRef<HTMLSpanElement>(null);
+  useLayoutEffect(() => carry(picture.current, mark.current), [picture]);
+  return <span ref={mark} className={cn("grid flex-none place-items-center", className)}><Icon name="check" className="size-full" /></span>;
+}
+
+/** A press on a service: where it goes, its post screen, what became of the picture (null while it is on its way), and when. */
+type Leaving = { to: Destination; url: string; picture: "copied" | "saved" | "lost" | null; at: number };
+/** How long what became of the picture stands before the service opens: read in that time, and within the few seconds a
+ *  browser still counts the press as the person's (Chrome and Firefox: 5), so the tab is not taken for a pop-up. */
+const LEAD_SECONDS = 3;
+
+/**
+ * What the press did, standing where the hint was: the picture copied (or saved), then, once that is known, the service
+ * opening in a few seconds, with a line running down, a way to open it now and a way not to. It stays after the tab
+ * opens, saying what to do there, until it is closed. The service is opened by hand instead where the picture could not
+ * be made, and where the browser no longer counts the press as the person's (Safari counts it only for a moment), so
+ * the tab is not stopped as a pop-up.
+ */
+function PostLead({ leaving: { to, url, picture }, card, done }: { leaving: Leaving; card: RefObject<HTMLElement | null>; done: () => void }) {
+  const { t } = useTranslation("analysis");
+  const [left, setLeft] = useState(LEAD_SECONDS);
+  const [phase, setPhase] = useState<"counting" | "byHand" | "opened">("counting");
+  const counting = phase === "counting" && (picture === "copied" || picture === "saved");
+  const open = () => {
+    const tab = window.open(url, "_blank");
+    if (!tab) { setPhase("byHand"); return; }
+    try { tab.opener = null; } catch { /* Already gone elsewhere: nothing of this page stays reachable from it. */ }
+    setPhase("opened");
+  };
+  const opener = useRef(open);
+  opener.current = open;
+  useEffect(() => { if (picture === "lost") setPhase("byHand"); }, [picture]);
+  useEffect(() => {
+    if (!counting) return;
+    if (navigator.userActivation && !navigator.userActivation.isActive) { setPhase("byHand"); return; }
+    if (left <= 0) { opener.current(); return; }
+    const tick = setTimeout(() => setLeft(left - 1), 1000);
+    return () => clearTimeout(tick);
+  }, [left, counting]);
+  const said = picture === "copied" ? t("card.postCopied", { name: to.name }) : picture === "saved" ? t("card.postSave", { name: to.name })
+    : picture === "lost" ? t("card.drawFailed") : t("card.postPreparing");
+  const quiet = "rounded-sm px-1.5 py-0.5 text-xs text-muted hover:bg-hover hover:text-ink narrow:min-h-10 narrow:px-3";
+  // The time left runs down as a line along the foot of the box, so the words and the two ways keep one line even on a
+  // phone. Only what became of the picture is read out; the seconds are not read each time they change.
+  return <div className="relative mt-3 grid gap-1.5 overflow-hidden rounded-md border border-line px-3 pt-2.5 pb-2">
+    <p role="status" className="flex items-start gap-2 text-sm text-ink">
+      {picture === "copied" ? <CopiedMark picture={card} className="mt-0.5 size-4" />
+        : picture === "saved" ? <Icon name="check" className="mt-0.5 size-4 flex-none" /> : null}{said}</p>
+    <div className="flex flex-wrap items-center gap-x-1 gap-y-1">
+      {phase === "byHand" && picture !== null
+        ? <button type="button" onClick={open} className="me-auto rounded-sm bg-scrim px-3 py-1 text-xs font-semibold text-paper dark:bg-paper dark:text-scrim narrow:min-h-10">{t("card.postOpen", { name: to.name })}</button>
+        : phase === "opened" ? <span className="me-auto" />
+          : <>
+            <span aria-hidden className="me-auto text-xs text-muted tabular-nums">{t("card.postOpensIn", { name: to.name, count: Math.max(left, 1) })}</span>
+            <button type="button" onClick={open} disabled={picture === null} className={cn(quiet, "disabled:opacity-38")}>{t("card.postOpenNow")}</button>
+          </>}
+      <button type="button" onClick={done} className={quiet}>{phase === "opened" ? t("card.postClose") : t("card.postCancel")}</button>
+    </div>
+    {counting && <span aria-hidden className="absolute inset-x-0 bottom-0 h-0.5 origin-left bg-ink motion-reduce:hidden motion-safe:animate-lead" style={{ animationDuration: `${LEAD_SECONDS}s` }} />}
+  </div>;
+}
+
+/**
  * The card over the analysis: the picture as it is saved, the ways out of the page (each only when pressed), then what
  * it shows: the span, the number leading, those under it, its colours. The numbers are the analysis commands' for the
  * card's span and the project in view (the project is not on the card).
@@ -160,19 +229,23 @@ export function CardPane({ place, reads: { face, tasks, usage }, waitFrom }: {
     : facts === null ? <p className="text-soft">{t("usage.none")}</p> : <CardSkeleton waitFrom={waitFrom} />;
 
   const drawn = async () => facts && svg ? { name: cardFileName(facts), png: await cardPng(svg) } : null;
-  const save = async (message = t("card.saved")) => {
+  /** Saves the picture into the downloads; says so, or that it failed, with toasts, or says nothing when the caller (a post,
+   *  which says it in its own box) passes null. */
+  const save = async (message: string | null = t("card.saved")) => {
     try {
       const picture = await drawn();
-      if (!picture) return;
+      if (!picture) return false;
       const link = document.createElement("a");
       link.href = URL.createObjectURL(picture.png);
       link.download = picture.name;
       link.click();
       setTimeout(() => URL.revokeObjectURL(link.href), 4000);
-      notify.success(message);
-    } catch { notify.error(t("card.drawFailed")); }
+      if (message) notify.success(message);
+      return true;
+    } catch { if (message !== null) notify.error(t("card.drawFailed")); return false; }
   };
-  const copy = () => { if (svg) copyCard(svg).then(() => notify.success(t("card.copied")), () => notify.error(t("card.copyFailed"))); };
+  const preview = useRef<HTMLDivElement>(null);
+  const [copied, copy] = useWorked(() => !!svg && copyCard(svg).then(() => true, () => { notify.error(t("card.copyFailed")); return false; }));
   const share = async () => {
     try {
       const picture = await drawn();
@@ -184,15 +257,17 @@ export function CardPane({ place, reads: { face, tasks, usage }, waitFrom }: {
     }
   };
   // The picture goes with the person to the service: onto the clipboard while the press still counts, or, where this
-  // browser cannot copy a picture, into their downloads, then the post opens in a new tab. Should a copy still fail,
-  // the picture is saved after all, so it is at hand to attach either way.
+  // browser cannot copy a picture, into their downloads (and there too should a copy still fail). The post opens a
+  // moment later (PostLead), so what happened to the picture is read here before the service's tab covers the page.
+  const [leaving, setLeaving] = useState<Leaving | null>(null);
   const post = (to: Destination) => {
     if (!svg || !facts) return;
-    const text = cardPostText(facts, choice, card.length === "all");
-    const saveForPost = () => void save(t("card.postSave", { name: to.name }));
-    if (copying) void copyCard(svg).then(() => notify.success(t("card.postCopied")), saveForPost);
+    const lead: Leaving = { to, url: to.post(cardPostText(facts, choice, card.length === "all")), picture: null, at: Date.now() };
+    setLeaving(lead);
+    const settle = (picture: Leaving["picture"]) => setLeaving(now => now?.at === lead.at ? { ...now, picture } : now);
+    const saveForPost = () => void save(null).then(saved => settle(saved ? "saved" : "lost"));
+    if (copying) void copyCard(svg).then(() => settle("copied"), saveForPost);
     else saveForPost();
-    window.open(to.post(text), "_blank", "noopener");
   };
 
   // A number is chosen by the name the card gives it; several can be, so each chosen one carries a check.
@@ -214,7 +289,7 @@ export function CardPane({ place, reads: { face, tasks, usage }, waitFrom }: {
     <div ref={probe} hidden className="font-sans">
       {THEMES.map(each => <div key={each} className={`theme-${each}`}>{PROBE.map(name => <i key={name} data-token={name} className={name} />)}</div>)}
     </div>
-    <CardPreview picture={svg && input ? { svg, label: cardWords(input) } : undefined}>{state}</CardPreview>
+    <CardPreview ref={preview} picture={svg && input ? { svg, label: cardWords(input) } : undefined}>{state}</CardPreview>
     {/* The services first, then what stays on this device, apart by a rule; one line under them says what a service's
         press does. On a phone the ways share the width. */}
     <div className="mt-5 flex items-start gap-2 narrow:gap-0">
@@ -223,10 +298,12 @@ export function CardPane({ place, reads: { face, tasks, usage }, waitFrom }: {
         <svg aria-hidden viewBox="0 0 24 24" className="size-5" fill="currentColor"><path d={each.mark} /></svg></Way>)}
       <span aria-hidden className="mx-2 mt-3 h-6 w-px flex-none bg-line narrow:mx-1" />
       {sharing && <Way name={t("card.more")} face={DEVICE} disabled={!current} onClick={() => void share()}><Icon name={shareIcon()} className="size-5" /></Way>}
-      <Way name={t("card.copy")} face={DEVICE} disabled={!current} onClick={copy}><Icon name="copy" className="size-5" /></Way>
+      <Way name={t("card.copy")} face={DEVICE} disabled={!current} onClick={copy}>
+        {copied ? <CopiedMark picture={preview} className="size-5" /> : <Icon name="copy" className="size-5" />}</Way>
       <Way name={t("card.save")} face={DEVICE} disabled={!current} onClick={() => void save()}><Icon name="download" className="size-5" /></Way>
     </div>
-    <p id={postHint} className="mt-2 text-xs text-muted">{copying ? t("card.postHintCopy") : t("card.postHintSave")}</p>
+    {leaving ? <PostLead key={leaving.at} leaving={leaving} card={preview} done={() => setLeaving(null)} />
+      : <p id={postHint} className="mt-2 text-xs text-muted">{copying ? t("card.postHintCopy") : t("card.postHintSave")}</p>}
     <div className="mt-8 grid gap-6">
       {row(t("period.label"), <Seg label={t("period.label")} value={card.length} className={fold}
         onChange={length => useViewStore.getState().showAnalysis({ ...place, card: { ...card, length } })}

@@ -63,6 +63,9 @@
    Edge note a time strip's note at its edge (Not started · … since) rides with the strip while it scrolls or is held; once it rests
            it glides to the edge over slow out, or, out of sight, comes in from its side by shift-far, fading in
            (features/tree/time-line.tsx useEdgeRest)
+   Carried  a picture copied to the clipboard (the share card): a still copy of it lifts off the picture and shrinks
+           into the ✓ drawn where it was taken (the post's box, the Copy button), over slow ×1.5, in-out, fading over
+           the last part as the ✓ lands with ease-pop over base. Reduced motion: the ✓ only fades in (lib/motion.ts carry)
    Frequent things move least: the clock's tick moves nothing; a row's update only tints it.
    Every question answered: once the stamp is read (its hold) and the card is half gone (fling ÷2), a ring of one
    piece per answer fills piece by piece (each base, all within slow ×2), its tick draws in base, it settles with
@@ -134,6 +137,10 @@
   --animate-side: motion-side var(--motion-slow) var(--ease-out) both;
   @keyframes motion-drawer { from { opacity: 0; translate: calc(-1 * var(--motion-shift-far)) 0; } }
   @keyframes motion-side { from { opacity: 0; translate: var(--motion-shift-far) 0; } }
+  /* The time left before a share card's post opens: a bar running down to nothing at an even pace (its length is set
+     where it is used). */
+  --animate-lead: motion-lead linear forwards;
+  @keyframes motion-lead { to { scale: 0 1; } }
   /* A new mark beside Done: drops into its place. */
   --animate-land: motion-land var(--motion-slow) var(--ease-pop) both;
   @keyframes motion-land { from { opacity: 0; translate: 0 calc(-1 * var(--motion-shift-far)); } }

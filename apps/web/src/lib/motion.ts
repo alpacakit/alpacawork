@@ -102,6 +102,34 @@ export function rise(element: Element | null, delay = 0) {
 }
 
 /**
+ * "This went there": a still copy of `from` lifts off it and shrinks into `mark` (a ✓ that has just been drawn where
+ * the thing was taken), fading over the last part of the way as the mark grows into place under it. The way takes
+ * --motion-slow ×1.5, in-out (it leaves a rest and comes to one); only transform and opacity move. Reduced motion:
+ * nothing travels, the mark only fades in.
+ */
+export function carry(from: HTMLElement | null, mark: Element | null) {
+  if (!canAnimate(from) || !canAnimate(mark)) return;
+  if (reducedMotion()) { mark.animate([{ opacity: 0 }, { opacity: 1 }], { duration: duration("fast"), easing: easing("out") }); return; }
+  const start = from.getBoundingClientRect(), end = mark.getBoundingClientRect();
+  if (!start.width || !end.width) return;
+  const { copy } = stillCopy(from);
+  Object.assign(copy.style, { position: "fixed", left: `${start.left}px`, top: `${start.top}px`, width: `${start.width}px`, height: `${start.height}px`,
+    margin: "0", zIndex: "var(--layer-popover)", boxShadow: "var(--shadow-float)", willChange: "transform, opacity" });
+  from.ownerDocument.body.append(copy);
+  // It lands a little larger than the mark, so it is still a picture when it gets there.
+  const scale = Math.max(end.width, CARRIED_PX) / start.width;
+  const dx = end.left + end.width / 2 - (start.left + start.width / 2), dy = end.top + end.height / 2 - (start.top + start.height / 2);
+  const total = duration("slow") * 1.5;
+  const flight = copy.animate([{ transform: "translate(0, 0) scale(1)", opacity: 1 }, { opacity: 1, offset: 0.7 }, { transform: `translate(${dx}px, ${dy}px) scale(${scale})`, opacity: 0 }],
+    { duration: total, easing: easing("in-out"), fill: "forwards" });
+  const gone = () => copy.remove();
+  void flight.finished.then(gone, gone);
+  mark.animate([{ opacity: 0, scale: 0.75 }, { opacity: 1, scale: 1 }], { duration: duration("base"), delay: total * 0.8, easing: easing("pop"), fill: "backwards" });
+}
+/** The width a carried picture lands at, when the mark it lands on is smaller. */
+const CARRIED_PX = 28;
+
+/**
  * A still copy of `element` as it is drawn now, scrolled where it is, for what is gone from the page as it moves: a
  * picture of it. What is on its way somewhere (a fade, a move, a placeholder coming in, another copy fading) is held
  * where it is seen now, and nothing in it moves by the sheet's rules (styles.css). It keeps what draws it (its classes
