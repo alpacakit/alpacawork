@@ -14,7 +14,7 @@
     "trigger": "通す物",
     "week": "過去7日",
     "weekFailed_other": "失敗した {{count}}",
-    "weekLine": "当たった {{matched}} ・ 動いた {{started}} ・ 見送った {{skipped}}",
+    "weekLine": "当たった {{matched}} ・ 済んだ {{done}} ・ 見送った {{skipped}}",
     "weekNone": "過去7日に当たった出来事はありません",
     "weekWhy": "（{{list}}）",
     "when": "いつ"
@@ -88,8 +88,8 @@
   "column": {
     "last": "最後の回",
     "name": "名前",
-    "week": "7日 動いた/当たった",
-    "weekValue": "過去7日に当たった {{matched}}回のうち {{started}}回動いた",
+    "week": "7日 済んだ/当たった",
+    "weekValue": "過去7日に当たった {{matched}}回のうち {{done}}回済んだ",
     "when": "いつ"
   },
   "delete": "消す",
@@ -317,7 +317,7 @@
     "ran_other": "動いた {{count}}",
     "ranFailed_other": "動いた {{count}}（うち失敗 {{failed}}）",
     "reason": {
-      "ai_unavailable": "担当の AI が使えない状態でした（設定 ＞ AI）",
+      "ai_unavailable": "担当の AI が使えない状態でした（設定 › AI）",
       "automation_expired": "期限を過ぎていた",
       "cancelled": "取りやめた",
       "cooldown": "前の回から時間が空いていない",
@@ -355,7 +355,14 @@
       "unavailable": "担当の AI が使えない状態でした（設定 › AI）",
       "unknown": "タスクを作れませんでした。続く時は、入力欄でこの自動実行について聞いてください",
       "unknownOther": "うまく動きませんでした。続く時は、入力欄でこの自動実行について聞いてください",
-      "version_changed": "版が変わった"
+      "version_changed": "版が変わった",
+      "program_start_failed": "プログラムを始められなかった",
+      "program_no_result": "プログラムが結果を返さずに終わった",
+      "forbidden": "許されていない操作だった",
+      "invalid": "操作の中身が正しくなかった",
+      "temporary": "一時的に通らなかった",
+      "unknown_result": "結果が分からなかった（届いたかは相手の側で確かめてください）",
+      "review_unavailable": "見直せませんでした"
     },
     "rejected": "通さなかった：{{reason}}",
     "report": "報告",

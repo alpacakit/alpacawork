@@ -16,7 +16,7 @@
     "week": "Last 7 days",
     "weekFailed_one": "failed {{count}}",
     "weekFailed_other": "failed {{count}}",
-    "weekLine": "Matched {{matched}} · ran {{started}} · skipped {{skipped}}",
+    "weekLine": "Matched {{matched}} · done {{done}} · skipped {{skipped}}",
     "weekNone": "Nothing matched in the last 7 days",
     "weekWhy": " ({{list}})",
     "when": "When"
@@ -92,8 +92,8 @@
   "column": {
     "last": "Last run",
     "name": "Name",
-    "week": "7 days ran/matched",
-    "weekValue": "{{started}} of {{matched}} matches in the last 7 days ran",
+    "week": "7 days done/matched",
+    "weekValue": "{{done}} of {{matched}} matches in the last 7 days done",
     "when": "When"
   },
   "delete": "Delete",
@@ -373,7 +373,14 @@
       "unavailable": "The AI to run it couldn't be used (Settings › AI)",
       "unknown": "The task couldn't be created. If it keeps happening, ask about this automation in the input",
       "unknownOther": "It didn’t work. If it keeps happening, ask about this automation in the input",
-      "version_changed": "The version changed"
+      "version_changed": "The version changed",
+      "program_start_failed": "The program couldn't start",
+      "program_no_result": "The program ended without a result",
+      "forbidden": "The operation was not allowed",
+      "invalid": "The operation was not valid",
+      "temporary": "It did not go through for now",
+      "unknown_result": "The result is unknown (check on the other side whether it arrived)",
+      "review_unavailable": "Couldn't review"
     },
     "rejected": "Not let through: {{reason}}",
     "report": "Report",

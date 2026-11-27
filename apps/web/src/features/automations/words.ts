@@ -138,10 +138,10 @@ export function aiCostText(t: T, facts: Facts): string | null {
 export const usd = (value: number) => value >= 1 ? value.toFixed(2).replace(/\.00$/, "") : value >= 0.01 ? value.toFixed(2) : value.toPrecision(1);
 
 /** Where it may reach out of this PC, and how many tasks one run may make: "Sends to hooks.slack.com · up to 1 task a run". */
-export function outsideText(t: T, facts: Facts, direct: readonly { kind: string }[] | null = null): string {
+export function outsideText(t: T, facts: Facts): string {
   const hosts = facts.outside.map(destination => destination.host ?? t("outside.notEntered", { name: destination.name }));
   // A program that reaches the network itself does so whatever it names to send to: said beside it.
-  const reaches = !!direct?.some(effect => effect.kind === "network");
+  const reaches = !!facts.directNetwork;
   return [hosts.length ? t("outside.sends", { hosts: hosts.join(t("trigger.or")) }) : reaches ? null : t("outside.none"),
     reaches ? t("outside.direct") : null,
     facts.limits.tasksPerRun ? t("outside.tasks", { count: facts.limits.tasksPerRun }) : t("outside.noTasks")].filter(Boolean).join(t("join"));
@@ -171,9 +171,11 @@ export function runLine(t: T, run: Pick<Run, "state" | "summary" | "trigger" | "
 
 /** Why a run did not go through, in words the screen has for the server's kind, else the server's own sentence. */
 export function reasonText(t: T, run: Pick<Run, "reasonKind" | "reasonText"> & { error?: Run["error"] }): string | null {
-  // That the program failed says nothing a person can act on: what it wrote itself, where it did, says why.
-  if (run.reasonKind && GENERAL_FAILURES.has(run.reasonKind) && run.error?.message) return run.error.message;
-  return (run.reasonKind && reasonWords(t, run.reasonKind)) || run.reasonText || run.error?.message || (run.reasonKind ? t("runs.reason.other") : null);
+  // That the program failed says nothing a person can act on: what it wrote itself says why (the server keeps it as
+  // the run's reason); a failure the server names (the AI unavailable, the time limit) is said in the screen's words.
+  if (run.reasonKind && GENERAL_FAILURES.has(run.reasonKind)) return run.error?.message || run.reasonText || t("runs.reason.other");
+  const code = run.error?.code;
+  return (run.reasonKind && reasonWords(t, run.reasonKind)) || (code && reasonWords(t, code)) || run.reasonText || run.error?.message || (run.reasonKind ? t("runs.reason.other") : null);
 }
 const GENERAL_FAILURES = new Set(["program_failed", "error", "failed"]);
 

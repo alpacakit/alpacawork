@@ -49,7 +49,7 @@ function toFacts(facts: AutomationVersion["facts"]): Version["facts"] {
 export function toVersion(version: AutomationVersion): Version {
   return { digest: version.digest, contractVersion: version.contractVersion, savedAt: version.savedAt, savedBy: savedBy(version.savedBy, version.sourceRequest),
     files: version.files, facts: toFacts(version.facts),
-    docs: version.docs, parts: version.parts, direct: version.outsideEffects.map(effect => ({ kind: effect.kind, text: effect.text })), review: version.review as Version["review"],
+    docs: version.docs, parts: version.parts, missingDestinations: version.missingDestinations, direct: version.outsideEffects.map(effect => ({ kind: effect.kind, text: effect.text })), review: version.review as Version["review"],
     preview: version.preview ? toPreview(version.preview) : null };
 }
 

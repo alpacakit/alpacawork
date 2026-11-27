@@ -18,11 +18,12 @@ export function ReviewSummary({ review }: { review: Review }) {
   const must = review.findings.some(finding => finding.level === "must");
   return <span data-automation-review className="block">
     <span className="block">{t(must ? "review.headMust" : "review.head", { count: review.findings.length })}
-      {review.summary && <>{t("colon")}{review.summary}</>}{" "}
+      {(review.summary || review.findings[0]?.title) && <>{t("colon")}{review.summary || review.findings[0]!.title}</>}{" "}
       <Button variant="ref" data-automation-review-open aria-expanded={open} className="narrow:min-h-11" onClick={() => setOpen(!open)}>{t(open ? "review.close" : "review.open")}</Button></span>
     {open && <span className="mt-1 block">
       {review.findings.map((finding, at) => <span key={at} className="mb-1 block">
-        {t(finding.level === "must" ? "review.must" : "review.note", { text: finding.text })}
+        {t(finding.level === "must" ? "review.must" : "review.note", { text: finding.title ?? finding.text })}
+        {finding.title && finding.text !== finding.title && <span className="block text-muted">{finding.text}</span>}
         <span className="ms-1 font-mono text-xs text-muted">{finding.file}{finding.line ? `:${finding.line}` : ""}</span></span>)}
       {review.model && review.at && <span className="block text-xs text-muted">{review.model}{t("join")}{formatLogTime(review.at, i18n.language)}</span>}
     </span>}

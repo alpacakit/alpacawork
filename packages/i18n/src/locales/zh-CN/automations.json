@@ -14,7 +14,7 @@
     "trigger": "放行",
     "week": "过去 7 天",
     "weekFailed_other": "失败 {{count}}",
-    "weekLine": "命中 {{matched}} · 运行 {{started}} · 跳过 {{skipped}}",
+    "weekLine": "命中 {{matched}} · 完成 {{done}} · 跳过 {{skipped}}",
     "weekNone": "过去 7 天没有命中的事件",
     "weekWhy": "（{{list}}）",
     "when": "何时"
@@ -88,8 +88,8 @@
   "column": {
     "last": "最近一次",
     "name": "名称",
-    "week": "7 天 运行/命中",
-    "weekValue": "过去 7 天命中 {{matched}} 次，运行 {{started}} 次",
+    "week": "7 天 完成/命中",
+    "weekValue": "过去 7 天命中 {{matched}} 次，完成 {{done}} 次",
     "when": "何时"
   },
   "delete": "删除",
@@ -317,7 +317,7 @@
     "ran_other": "运行 {{count}}",
     "ranFailed_other": "运行 {{count}}（其中失败 {{failed}}）",
     "reason": {
-      "ai_unavailable": "无法使用运行的 AI（设置 › AI）",
+      "ai_unavailable": "负责的 AI 无法使用（设置 › AI）",
       "automation_expired": "已过期限",
       "cancelled": "已取消",
       "cooldown": "距上一次太近",
@@ -355,7 +355,14 @@
       "unavailable": "负责的 AI 无法使用（设置 › AI）",
       "unknown": "未能创建任务。如果反复出现，请在输入框中询问此自动执行",
       "unknownOther": "没有正常运行。如果持续发生，请在输入框询问这个自动执行",
-      "version_changed": "版本变了"
+      "version_changed": "版本变了",
+      "program_start_failed": "程序未能启动",
+      "program_no_result": "程序未返回结果就结束了",
+      "forbidden": "操作不被允许",
+      "invalid": "操作内容不正确",
+      "temporary": "暂时未能完成",
+      "unknown_result": "结果不明（请在对方处确认是否送达）",
+      "review_unavailable": "无法复查"
     },
     "rejected": "未放行：{{reason}}",
     "report": "报告",

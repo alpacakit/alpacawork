@@ -124,7 +124,7 @@ function PaneTabs({ pane }: { pane: AutomationPane }) {
 /** Whether a version's AI's look found something the person has not said they read. */
 const reviewToRead = (version: Version) => version.review.state !== "ok" && !version.review.acknowledged;
 /** A destination it sends to that is not entered yet: it cannot be turned on until it is. */
-const missingDestination = (version: Version) => version.facts.outside.some(destination => !destination.ready);
+const missingDestination = (version: Version) => (version.missingDestinations?.length ?? 0) > 0 || version.facts.outside.some(destination => !destination.ready);
 /** Whether turning a version on waits for what the before-on band shows: an unread review, a missing destination. */
 const needsBefore = (version: Version) => reviewToRead(version) || missingDestination(version);
 
@@ -214,7 +214,7 @@ function FailedBand({ automation, failure, onRead }: { automation: Automation; f
   const why = off && automation.disabledReason && knownWords(t, `reason.${automation.disabledReason}`) || reasonText(t, failure);
   const action = off ? <Button data-automation-band-act className={BAND_BUTTON} disabled={writeDisabled || act.isPending}
       onClick={() => needsBefore(automation.latest) ? onRead() : act.mutate({ act: "enable", automation })}>{t("band.turnOn")}</Button>
-    : failure.reasonKind === "ai_unavailable" || failure.reasonKind === "unavailable" ? <Button variant="outline" data-automation-band-act className={BAND_BUTTON} onClick={() => openSettings("ai")}>{t("band.openAi")}</Button>
+    : failure.reasonKind === "ai_unavailable" ? <Button variant="outline" data-automation-band-act className={BAND_BUTTON} onClick={() => openSettings("ai")}>{t("band.openAi")}</Button>
     : <Button variant="outline" data-automation-band-act className={BAND_BUTTON} onClick={() => setPane("log")}>{t("band.readRuns")}</Button>;
   return <BandFrame data-automation-band="failed" failed title={t(off ? "band.offTitle" : "band.failedTitle", { time: formatLogTime(failure.at, i18n.language) })} action={action}>
     <p className="m-0 text-sm">{why}{!off && <>{why && t("sentence")}{t("band.failedNext")}</>}</p>
@@ -361,7 +361,7 @@ function AboutPane({ automation }: { automation: Automation }) {
         {aiCostText(t, facts) && <p className="m-0 text-xs text-muted">{aiCostText(t, facts)}</p>}
       </Row>
       <Row name={t("about.outside")}>
-        <p className="m-0">{outsideText(t, facts, version.direct)}</p>
+        <p className="m-0">{outsideText(t, facts)}</p>
         {facts.outside.length > 0 && <div className="mt-1.5"><DestinationRows automation={automation} names={facts.outside} /></div>}
       </Row>
     </Section>
@@ -371,7 +371,7 @@ function AboutPane({ automation }: { automation: Automation }) {
     </Section>
     {week && <Section title={t("about.week")}>
       <p data-automation-week-line className="m-0 py-1 text-sm">{!week.matched ? t("about.weekNone") : <>
-        {t("about.weekLine", { matched: week.matched, started: week.started, skipped: week.skipped })}
+        {t("about.weekLine", { matched: week.matched, done: week.done, skipped: week.skipped })}
         {week.skippedBy.length > 0 && t("about.weekWhy", { list: week.skippedBy.map(item => `${skipName(t, item.reason)} ${item.count}`).join(t("join")) })}
         {week.failed > 0 && <>{t("join")}{t("about.weekFailed", { count: week.failed })}</>}</>}</p>
     </Section>}

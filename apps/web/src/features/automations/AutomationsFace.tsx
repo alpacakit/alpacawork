@@ -166,11 +166,11 @@ function LastRun({ automation, failure: failed, narrow }: { automation: Automati
 function WeekBar({ automation }: { automation: Automation }) {
   const { t } = useTranslation("automations");
   if (!automation.week) return <span className="text-sm text-muted">—</span>;
-  const { matched, started } = automation.week;
+  const { matched, done } = automation.week;
   if (!matched) return <span className="text-sm text-muted">—</span>;
-  return <span data-automation-week className="flex items-center gap-2 text-sm text-muted tabular-nums" aria-label={t("column.weekValue", { started, matched })}>
-    <span aria-hidden className="h-1 w-11 overflow-hidden rounded-full bg-hover"><span className="block h-full rounded-full bg-ink" style={{ width: `${Math.round(started / matched * 100)}%` }} /></span>
-    {started}/{matched}
+  return <span data-automation-week className="flex items-center gap-2 text-sm text-muted tabular-nums" aria-label={t("column.weekValue", { done, matched })}>
+    <span aria-hidden className="h-1 w-11 overflow-hidden rounded-full bg-hover"><span className="block h-full rounded-full bg-ink" style={{ width: `${Math.round(done / matched * 100)}%` }} /></span>
+    {done}/{matched}
   </span>;
 }
 

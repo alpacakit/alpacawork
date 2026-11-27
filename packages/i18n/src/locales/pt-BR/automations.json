@@ -18,7 +18,7 @@
     "weekFailed_one": "falhou {{count}}",
     "weekFailed_many": "falharam {{count}}",
     "weekFailed_other": "falharam {{count}}",
-    "weekLine": "Coincidiram {{matched}} · rodaram {{started}} · puladas {{skipped}}",
+    "weekLine": "Coincidiram {{matched}} · concluídas {{done}} · puladas {{skipped}}",
     "weekNone": "Nada coincidiu nos últimos 7 dias",
     "weekWhy": " ({{list}})",
     "when": "Quando"
@@ -96,8 +96,8 @@
   "column": {
     "last": "Última execução",
     "name": "Nome",
-    "week": "7 dias rodaram/coincidências",
-    "weekValue": "{{started}} de {{matched}} coincidências dos últimos 7 dias rodaram",
+    "week": "7 dias concluídas/coincidências",
+    "weekValue": "{{done}} de {{matched}} coincidências dos últimos 7 dias concluídas",
     "when": "Quando"
   },
   "delete": "Excluir",
@@ -391,7 +391,14 @@
       "unavailable": "Não foi possível usar a IA que a executa (Configurações › IA)",
       "unknown": "Não foi possível criar a tarefa. Se continuar, pergunte sobre esta automação no campo de entrada",
       "unknownOther": "Não funcionou. Se continuar, pergunte sobre esta automação no campo de entrada",
-      "version_changed": "A versão mudou"
+      "version_changed": "A versão mudou",
+      "program_start_failed": "O programa não conseguiu começar",
+      "program_no_result": "O programa terminou sem resultado",
+      "forbidden": "A operação não era permitida",
+      "invalid": "A operação não era válida",
+      "temporary": "Não foi concluída por enquanto",
+      "unknown_result": "O resultado é desconhecido (confira do outro lado se chegou)",
+      "review_unavailable": "Não foi possível revisar"
     },
     "rejected": "Não deixou passar: {{reason}}",
     "report": "Relatório",

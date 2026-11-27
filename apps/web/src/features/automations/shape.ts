@@ -32,13 +32,15 @@ export const factsSchema = z.object({
     use: z.enum(["ask", "task"]).optional(), costHint: z.object({ perCallUsd: z.number() }).nullable() })),
   /** Where it may send: a destination's name and its host (null, and not ready, until a person enters it). */
   outside: z.array(z.object({ name: z.string(), host: z.string().nullable(), ready: z.boolean() })),
+  /** The program reaches the network itself (not through a destination). */
+  directNetwork: z.boolean().optional(),
 });
 export type Facts = z.infer<typeof factsSchema>;
 
 /** An AI's look at a version after it was saved: whether it found something to fix, and where. */
 export const reviewSchema = z.object({
   state: z.enum(["ok", "fix", "unavailable", "running"]),
-  findings: z.array(z.object({ level: z.enum(["must", "note"]), file: z.string(), line: z.number().nullable(), text: z.string() })),
+  findings: z.array(z.object({ level: z.enum(["must", "note"]), file: z.string(), line: z.number().nullable(), title: z.string().optional(), text: z.string() })),
   summary: z.string(), model: z.string().nullable(), at: at.nullable(),
   acknowledged: z.object({ by: z.string(), at }).nullable(),
 });
@@ -79,7 +81,7 @@ export const versionSchema = z.object({
   files: z.array(z.object({ path: z.string(), bytes: z.number() })),
   facts: factsSchema, docs: z.object({ run: docSchema, trigger: docSchema.nullable() }),
   /** The `node:` parts it uses, and what it does that does not go through alpacawork (files, the network, other programs). */
-  parts: z.array(z.string()), direct: z.array(z.object({ kind: z.enum(["file", "network", "process", "other"]), text: z.string() })).nullable(),
+  parts: z.array(z.string()), missingDestinations: z.array(z.string()).optional(), direct: z.array(z.object({ kind: z.enum(["file", "network", "process", "other"]), text: z.string() })).nullable(),
   review: reviewSchema, preview: previewSchema.nullable(),
 });
 export type Version = z.infer<typeof versionSchema>;
@@ -122,7 +124,7 @@ export const attentionSchema = z.object({ kind: z.enum(["failed", "disabled", "a
 export type Attention = z.infer<typeof attentionSchema>;
 
 /** The last 7 days of runs: those its event matched, those that went on to `run`, failed, skipped (and why, counted). */
-export const weekSchema = z.object({ matched: z.number(), started: z.number(), failed: z.number(), skipped: z.number(),
+export const weekSchema = z.object({ matched: z.number(), started: z.number(), done: z.number(), failed: z.number(), skipped: z.number(),
   skippedBy: z.array(z.object({ reason: z.string(), count: z.number() })), busiestDay: z.number() });
 
 export const automationSchema = z.object({
