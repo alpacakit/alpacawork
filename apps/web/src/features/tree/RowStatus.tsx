@@ -250,16 +250,32 @@ export function WaitedNote({ task, className }: { task: Task; className?: string
   </span>;
 }
 
-/** A computer's one-line row's end, in the phone's quiet line's order: the children's count, what is so of its state, its one time. */
-export function RowEnd({ task, childCount, id, className }: { task: Task; childCount: string | null; id?: string; className?: string }) {
+/**
+ * A computer's one-line row's end, in the phone's quiet line's order: the children's count, what is so of its state, its
+ * one time. `timeApart`: a working row beside the speed column says its time after the speed (RowTime), at the row's end.
+ */
+export function RowEnd({ task, childCount, id, timeApart, className }: { task: Task; childCount: string | null; id?: string; timeApart?: boolean; className?: string }) {
   return <span id={id} data-row-end className={cn("flex min-w-0 shrink items-baseline gap-1.5 text-xs", className)}>
     {task.homeRow?.section === "error" && <RowKindWord task={task} />}
     {childCount && <RowChildren childCount={childCount} word={task.homeRow?.section === "error"} />}
     <WaitedNote task={task} />
     <StatusNotes task={task} />
     <RunningRuns task={task} />
-    <TimeSlot task={task}><StatusTime task={task} /></TimeSlot>
+    {!timeApart && <TimeSlot task={task}><StatusTime task={task} /></TimeSlot>}
   </span>;
+}
+
+/**
+ * A working row's time at the row's end, after the speed column: its right edge is every other row's time's (the line's
+ * right padding), so the times of all sections stand in one column, the working ones in the working colour.
+ */
+export function RowTime({ task }: { task: Task }) {
+  return <span data-row-time className={cn(TIME_SLOT, "flex-none self-center pr-2 text-xs")}><StatusTime task={task} /></span>;
+}
+
+/** The heading's room over the rows' times (RowTime): the heading has no time of its own. */
+export function RowTimeRoom() {
+  return <span aria-hidden="true" className={cn(TIME_SLOT, "invisible flex-none pr-2 text-xs")}>0</span>;
 }
 
 function RowChildren({ childCount, word }: { childCount: string; word: boolean }) {

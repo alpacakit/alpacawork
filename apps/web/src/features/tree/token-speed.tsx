@@ -266,7 +266,7 @@ export function AgentCounts({ tasks }: { tasks: readonly Task[] }) {
 }
 
 /** The heading's agents in all, as the rows say theirs (with, on a phone, the total speed and the speed's help). */
-export function HeadingAgents({ tops, narrow }: { tops: readonly Task[]; narrow: boolean }) {
+export function HeadingAgents({ tops, narrow, timeApart }: { tops: readonly Task[]; narrow: boolean; timeApart?: boolean }) {
   const agents = tops.reduce((sum, task) => sum + runningRunsSaid(task), 0);
   if (!agents) return null;
   // The heading stands on the rows' grid: its agents over theirs, its total over their speeds, and on a phone the help
@@ -275,7 +275,7 @@ export function HeadingAgents({ tops, narrow }: { tops: readonly Task[]; narrow:
     <AgentCounts tasks={tops} />
     {narrow && <NarrowTotal tops={tops} />}
     {narrow ? <span className={cn(TIME_SLOT, "self-center text-left")}><SpeedHelp bars={false} className="align-middle" /></span>
-      : <span aria-hidden="true" className={cn(TIME_SLOT, "invisible")}>0</span>}
+      : !timeApart && <span aria-hidden="true" className={cn(TIME_SLOT, "invisible")}>0</span>}
   </span>;
 }
 
