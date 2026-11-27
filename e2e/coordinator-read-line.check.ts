@@ -383,7 +383,7 @@ test.describe('send, answer, close and open again', () => {
       await page.screenshot({ path: info.outputPath(`2-opened-folded-${width}.png`) });
       await toTop(page); await page.waitForTimeout(300);
       await clickInSight(page, earlier(page).locator('button')); await settleMotion(page);
-      await expect(page.locator('[data-earlier]')).toHaveCount(0);
+      await expect(page.locator('[data-earlier]')).toHaveAttribute('data-earlier', 'open');
       await expect(page.locator('[data-coordinator-turn]')).toHaveCount(5);
       await page.screenshot({ path: info.outputPath(`3-opened-history-${width}.png`) });
       await fold(page);

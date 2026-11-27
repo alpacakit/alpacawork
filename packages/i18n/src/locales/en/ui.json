@@ -42,6 +42,7 @@
     "earlierCount_one": "{{count}} earlier message",
     "earlierCount_other": "{{count}} earlier messages",
     "earlierFailed": "Could not load.",
+    "earlierLimit": "Can't load further back ({{limit}} messages max)",
     "earlierMore": "Load earlier",
     "earlierReading": "Loading…",
     "error": {

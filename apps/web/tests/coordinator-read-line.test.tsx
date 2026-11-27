@@ -14,7 +14,7 @@ const answered = (n: number, extra: Partial<CoordinatorTurn> = {}): CoordinatorT
   attachments: [], status: "succeeded", waiting: false, answer: `Answer ${n}.`, answeredAt: at, seen: n <= 3, error: null, result: null, ...extra });
 const conversation = (turns: CoordinatorTurn[]): CoordinatorConversation => ({ id: "conversation-1", nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns });
 const five = [1, 2, 3, 4, 5].map(n => answered(n));
-/** E: an earlier row; o/f: an open/folded exchange. */
+/** E: the history's entrance; o/f: an open/folded exchange. */
 const shape = () => [...document.querySelectorAll<HTMLElement>("[data-coordinator-thread] > li")]
   .map(row => row.dataset.earlier ? "E" : row.dataset.exchange === "open" ? "o" : "f").join("");
 function show(turns: CoordinatorTurn[]) {
@@ -47,21 +47,23 @@ test("opening reads folded history without unfolding it; its entrance counts mes
   expect(calls.flatMap(([, init]) => JSON.parse(String(init?.body)).seen)).toEqual(['turn-4', 'turn-5']);
 });
 
-test("revealing history removes its entrance, shows earlier exchanges and hands focus to the next operation without scrolling", async () => {
+test("revealing history shows earlier exchanges above its entrance, which stays and folds them again, the focus kept on it", async () => {
   show(five.map(turn => ({ ...turn, seen: true })));
   expect(shape()).toBe('Eo');
   const button = document.querySelector<HTMLButtonElement>('[data-earlier] button')!;
-  const next = document.querySelector<HTMLButtonElement>('[data-coordinator-message="turn-5"] button')!;
-  const focus = vi.spyOn(next, 'focus');
   button.focus();
   fireEvent.click(button);
   await act(async () => {});
-  expect(document.querySelector('[data-earlier]')).toBeNull();
-  expect(shape()).toBe('ffffo');
+  expect(shape()).toBe('ffffEo');
+  expect(button.getAttribute('aria-expanded')).toBe('true');
   expect([...document.querySelectorAll<HTMLElement>('[data-coordinator-message]')].map(row => row.dataset.coordinatorMessage))
     .toEqual(five.map(turn => turn.id));
-  expect(document.activeElement).toBe(next);
-  expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+  expect(document.activeElement).toBe(button);
+  fireEvent.click(button);
+  await act(async () => {});
+  expect(shape()).toBe('Eo');
+  expect(button.getAttribute('aria-expanded')).toBe('false');
+  expect(document.activeElement).toBe(button);
 });
 
 test("arrivals stay shown while old history remains independently folded", async () => {
@@ -78,7 +80,7 @@ test("opening the conversation again folds manually opened history", async () =>
   try {
     show(five.map(turn => ({ ...turn, seen: true })));
     fireEvent.click(document.querySelector('[data-earlier] button')!);
-    expect(document.querySelector('[data-earlier]')).toBeNull();
+    expect(document.querySelector('[data-earlier]')?.getAttribute('data-earlier')).toBe('open');
     act(() => useConversation.getState().setExpanded(false));
     await act(async () => useConversation.getState().setExpanded(true));
     expect(shape()).toBe('Eo');

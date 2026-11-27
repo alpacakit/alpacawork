@@ -41,6 +41,7 @@
     "draft": "書きかけ",
     "earlierCount_other": "以前のメッセージ {{count}}件",
     "earlierFailed": "読めませんでした。",
+    "earlierLimit": "これより前は読み込めません（{{limit}}件まで）",
     "earlierMore": "さらに前を読む",
     "earlierReading": "読み込み中…",
     "error": {

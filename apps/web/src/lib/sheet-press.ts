@@ -122,13 +122,14 @@ const swallowClick = (event: MouseEvent) => { event.preventDefault(); event.stop
  * Whether a press may pull `sheet` down from what it shows: a finger, on something that would scroll nothing first if it
  * went down (every scroller between it and the sheet stands at its top), and that takes no finger's moves for itself
  * (a field, a player, a frame, an element that lets the browser no vertical pan of its own). A press on a scroller that
- * is scrolled down is its scroll, even once it reaches the top: what is read back is not pulled away.
+ * is scrolled down is its scroll, even once it reaches the top: what is read back is not pulled away. Nor is a part
+ * still reading in what comes above it (`data-reading-above`): its top is not the top yet.
  */
 export function pullsFrom(event: PointerEvent, target: Element, sheet: Element) {
   if (event.pointerType !== "touch" || target.closest("input, textarea, select, [contenteditable=true], video, audio, iframe")) return false;
   for (let node: Element | null = target; node && node !== sheet; node = node.parentElement) {
     const style = getComputedStyle(node);
-    if (!/auto|manipulation|pan-y/.test(style.touchAction)) return false;
+    if (!/auto|manipulation|pan-y/.test(style.touchAction) || node.hasAttribute("data-reading-above")) return false;
     if (/auto|scroll/.test(style.overflowY) && node.scrollHeight > node.clientHeight && node.scrollTop > 0.5) return false;
   }
   return true;

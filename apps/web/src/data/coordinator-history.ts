@@ -66,15 +66,35 @@ async function readWindow(conversationId: string, boundary: string, held: Coordi
 }
 /** One page before the window's oldest turn, put before it: the page ends where the window starts. */
 async function readOlder(conversationId: string, held: CoordinatorHistory, signal: AbortSignal): Promise<CoordinatorHistory> {
-  if (!held.more) return held;
+  if (!held.more || historyFull(held)) return held;
   const page = await readCoordinatorTurns(conversationId, { before: held.more }, signal);
   return { ...held, turns: [...page.turns, ...held.turns], resets: joinResets(page.resets, held.resets), more: page.more };
 }
 
 /**
+ * The most turns older than the snapshot's that the screen holds: reading back stops there, so a long conversation's
+ * thread stays light to scroll and to change. Measured on a phone-sized screen at a quarter of the CPU, 300 held
+ * scrolled at full frame rate and 600 did not.
+ */
+export const COORDINATOR_HISTORY_LIMIT = 300;
+/** The window holds as many turns as the screen keeps, with older ones still in the conversation: it reads no further. */
+export const historyFull = (history: CoordinatorHistory) => history.more !== null && history.turns.length >= COORDINATOR_HISTORY_LIMIT;
+/**
+ * Every window the screen holds is its newest COORDINATOR_HISTORY_LIMIT turns, however it grew (a page read further
+ * back, or the turns pushed out of the snapshot put after it): the ones past that leave it with their resets, and its
+ * oldest turn kept becomes where older ones start.
+ */
+function bound(history: CoordinatorHistory): CoordinatorHistory {
+  const over = history.turns.length - COORDINATOR_HISTORY_LIMIT;
+  if (over <= 0) return history;
+  const turns = history.turns.slice(over), kept = new Set(turns.map(turn => turn.id));
+  return { ...history, turns, resets: history.resets.filter(reset => reset.beforeRequestId === null || kept.has(reset.beforeRequestId)), more: turns[0]!.id };
+}
+
+/**
  * The window as a Query, read when the history is opened (`boundary`: where the snapshot starts now). It is read again
  * when it is stale and the screen comes back (files cleaned since show as removed) and when the snapshot moves on;
- * `readOlderTurns` widens it by a page.
+ * `readOlderTurns` widens it by a page until it is full. `forgetHistory` lets it go.
  */
 export const coordinatorHistory = (client: QueryClient, root: string, conversationId: string, boundary: string) => queryOptions({
   queryKey: key(root, conversationId),
@@ -82,7 +102,7 @@ export const coordinatorHistory = (client: QueryClient, root: string, conversati
     const query = client.getQueryCache().find<CoordinatorHistory>({ queryKey: key(root, conversationId), exact: true });
     const held = query?.state.data;
     const wider = !!query && widen.delete(query);
-    return wider && held && held.until === boundary ? readOlder(conversationId, held, signal) : readWindow(conversationId, boundary, held, signal);
+    return (wider && held && held.until === boundary ? readOlder(conversationId, held, signal) : readWindow(conversationId, boundary, held, signal)).then(bound);
   },
   staleTime: 60_000,
   refetchOnWindowFocus: true,
@@ -97,4 +117,9 @@ export function readOlderTurns(client: QueryClient, root: string, conversationId
   if (!query) return Promise.resolve();
   widen.add(query);
   return query.fetch(undefined, { cancelRefetch: false }).then(() => undefined, () => undefined);
+}
+
+/** The window let go (the history folded): nothing of it is held until it is opened again and read from its first page. */
+export function forgetHistory(client: QueryClient, root: string, conversationId: string) {
+  client.removeQueries({ queryKey: key(root, conversationId), exact: true });
 }

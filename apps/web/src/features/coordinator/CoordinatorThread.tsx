@@ -1,4 +1,5 @@
-import { Fragment, memo, useCallback, useMemo, useState, useRef, type ReactNode } from "react";
+import { Fragment, memo, useCallback, useEffect, useLayoutEffect, useMemo, useState, useRef, type ReactNode } from "react";
+import { COORDINATOR_HISTORY_LIMIT } from "@/data/coordinator-history";
 import { useShallow } from "zustand/react/shallow";
 import { useTranslation } from "react-i18next";
 import { CopyButton } from "@/components/ui/copy-button";
@@ -134,34 +135,72 @@ function Outcome({ turn }: { turn: CoordinatorTurn }) {
 
 /* Hallmark · component: one exchange of the conversation (a message, what joined it, and its answer) · states: open (all of
  * it) · folded (the message's first two lines and the answer's first sentence; a press opens it) */
-/** One hidden history range, counted in messages; its entrance disappears when the rows are revealed. */
-function EarlierRow({ count, reveal }: { count: number; reveal: () => void }) {
+/**
+ * The history's entrance, just above the opening's latest exchange, counted in messages: it stays where it is while
+ * the history is open, and the same press folds it again.
+ */
+function EarlierRow({ count, open, toggle }: { count: number; open: boolean; toggle: () => void }) {
   const { t } = useTranslation("ui");
   const focus = useActionFocus();
-  return <li {...focus} data-earlier="folded" className="relative scroll-mt-14 border-b border-rule pl-(--gutter)">
-    <button type="button" aria-expanded={false} onClick={reveal}
+  return <li {...focus} data-earlier={open ? "open" : "folded"} className="relative scroll-mt-14 border-b border-rule pl-(--gutter)">
+    <button type="button" aria-expanded={open} onClick={toggle}
       className="group flex min-h-11 w-full items-center gap-1.5 py-2 text-left text-xs text-muted narrow:min-h-12">
       <span className="relative font-medium text-ink cap-box">
-        <span className={`${ON_RAIL} -ml-(--gutter) inset-y-0 flex items-center`}><Icon name="unfold" className={cn("size-3.5 text-muted", ON_DISC)} /></span>{t("coordinatorCard.earlierCount", { count })}</span>
+        <span className={`${ON_RAIL} -ml-(--gutter) inset-y-0 flex items-center`}><Icon name={open ? "fold" : "unfold"} className={cn("size-3.5 text-muted", ON_DISC)} /></span>{t("coordinatorCard.earlierCount", { count })}</span>
       <span className="ml-auto rounded-sm px-2 cap-box underline decoration-line underline-offset-3 group-hover:text-ink group-hover:decoration-ink">
-        {t("coordinatorCard.exchangeOpen")}</span>
+        {t(open ? "coordinatorCard.exchangeFold" : "coordinatorCard.exchangeOpen")}</span>
     </button>
   </li>;
 }
 /**
- * At the top of the opened history, while older turns are still to be read: a press reads the next page of them. It
- * says it is reading meanwhile, and that it could not, with the same press to try again.
+ * How close to the top of what is read the reader comes before the next page is read: once the message this many from
+ * the top is in sight (or passed), the next page is asked for. A page brings more than this, so each page read leaves
+ * the next one waiting for the reader to come near it again, rather than several being read at once on a tall screen.
+ * It is far enough ahead that a reader flinging on to the top usually gets there after the page; one who gets there
+ * first finds the thread still reading above (data-reading-above), which a phone's sheet does not take for its top to
+ * pull down from.
  */
-function ReadOlder({ reading, failed, read }: { reading: boolean; failed: boolean; read: () => void }) {
+const READ_AHEAD = 40;
+/**
+ * At the top of the opened history, while older turns are still to be read: a press reads the next page of them, and
+ * so does the reader coming within READ_AHEAD messages of it. It says it is reading meanwhile, and that it could not,
+ * with the same press to try again. Once the history holds as many as the screen keeps, it says nothing further back
+ * is read.
+ */
+function ReadOlder({ held, full, reading, failed, read }: { held: number; full: boolean; reading: boolean; failed: boolean; read: () => void }) {
   const { t } = useTranslation("ui");
-  return <li data-earlier-more={reading ? "reading" : failed ? "failed" : ""} className="relative border-b border-rule pl-(--gutter)">
-    <button type="button" disabled={reading} onClick={read}
-      className="group flex min-h-11 w-full items-center gap-1.5 py-2 text-left text-xs text-muted disabled:cursor-default narrow:min-h-12">
+  const place = useRef<HTMLLIElement>(null);
+  const latest = useRef(read);
+  latest.current = read;
+  const waiting = !full && !reading && !failed;
+  // Watched once per wait: a wait ends with the read it starts, and the next begins with what that read brought
+  // (`held`), so the message watched is READ_AHEAD from the top of what is read now.
+  useEffect(() => {
+    const row = place.current, messages = row?.closest("[data-coordinator-thread]")?.querySelectorAll("[data-coordinator-message]");
+    const mark = messages?.[Math.min(READ_AHEAD, messages.length) - 1];
+    if (!waiting || !row || !mark || typeof IntersectionObserver === "undefined") return;
+    let asked = false;
+    // In sight or below it: the reader has come that far.
+    const sight = new IntersectionObserver(entries => {
+      if (asked || !entries.some(entry => entry.isIntersecting)) return;
+      asked = true; latest.current();
+    }, { root: row.closest("[data-card-scroll]"), rootMargin: "0px 0px 1000000px 0px" });
+    sight.observe(mark);
+    return () => sight.disconnect();
+  }, [waiting, held]);
+  if (full) return <li ref={place} data-earlier-more="full" className="relative border-b border-rule pl-(--gutter)">
+    <p role="status" className="m-0 flex min-h-11 items-center py-2 text-xs text-muted narrow:min-h-12">
+      {t("coordinatorCard.earlierLimit", { limit: COORDINATOR_HISTORY_LIMIT })}</p>
+  </li>;
+  // Pressed while it reads, it does nothing, and keeps the focus of whoever pressed it.
+  return <li ref={place} data-earlier-more={reading ? "reading" : failed ? "failed" : ""} className="relative border-b border-rule pl-(--gutter)">
+    <button type="button" aria-disabled={reading || undefined} onClick={() => { if (!reading) read(); }}
+      className="group flex min-h-11 w-full items-center gap-1.5 py-2 text-left text-xs text-muted aria-disabled:cursor-default narrow:min-h-12">
       <span className="relative cap-box">
         <span className={`${ON_RAIL} -ml-(--gutter) inset-y-0 flex items-center`}><Icon name="up" className={cn("size-3.5 text-muted", ON_DISC)} /></span>
         <span role={reading || failed ? "status" : undefined} className={cn(failed && "text-error", reading && "motion-safe:animate-pulse")}>
           {reading ? t("coordinatorCard.earlierReading") : failed ? t("coordinatorCard.earlierFailed") : null}</span></span>
-      <span className="ml-auto rounded-sm px-2 cap-box underline decoration-line underline-offset-3 group-hover:text-ink group-hover:decoration-ink group-disabled:no-underline">
+      <span className="ml-auto rounded-sm px-2 cap-box underline decoration-line underline-offset-3 group-hover:text-ink group-hover:decoration-ink group-aria-disabled:no-underline">
         {t("coordinatorCard.earlierMore")}</span>
     </button>
   </li>;
@@ -171,7 +210,7 @@ function ReadOlder({ reading, failed, read }: { reading: boolean; failed: boolea
  * (its turn, whether it is open or waits, what joined it, the day it is read on), not when another row or the
  * conversation's usage does. One component for both, so a message sent from here keeps its row when serve takes it.
  */
-const NONE_TURNS: readonly CoordinatorTurn[] = [], NO_SKILLS: readonly { name: string }[] = [];
+const NONE_TURNS: readonly CoordinatorTurn[] = [], NO_SKILLS: readonly { name: string }[] = [], NO_RESETS: readonly CoordinatorReset[] = [];
 const ThreadRow = memo(function ThreadRow({ served, local, waiting, open, joined, skills, retry, toggle, viewer }: {
   /** Serve's turn, or (`local`) a message sent from here that serve has not shown yet. */
   served?: CoordinatorTurn; local?: LocalTurn; waiting: boolean; open: boolean;
@@ -239,7 +278,7 @@ export const CoordinatorThread = memo(function CoordinatorThread({ turns: recent
   const setHand = (next: (map: ReadonlyMap<string, boolean>) => ReadonlyMap<string, boolean>) => setHands(state => ({ of: state.of, map: next(state.map) }));
   const earlierOpen = hand.get(EARLIER) ?? false;
   // Turns older than the snapshot's, serve's window ending where the snapshot starts, read once the history is open.
-  const earlier = useEarlierHistory(root, served.id ?? null, served.earlier ?? null, earlierOpen);
+  const earlier = useEarlierHistory(root, served.id ?? null, served.earlier ?? null, earlierOpen, recent, served.resets ?? NO_RESETS);
   const shown = useShownConversation(recent);
   // The window and the snapshot are joined by ID in serve's order (the window first), then grouped once: a message
   // sent into another across the snapshot's first turn stands under it.
@@ -275,6 +314,20 @@ export const CoordinatorThread = memo(function CoordinatorThread({ turns: recent
     return 'here';
   });
   const readOlder = () => { if (thread.current) keepThreadPosition(thread.current); void earlier.readMore(); };
+  // Folded, what was read above the entrance leaves, and the entrance stays in sight where it was pressed, as far as what
+  // is left above it allows (the reading does not stay down in the latest exchange's end).
+  const kept = useRef<number | null>(null);
+  const toggleEarlier = () => {
+    const row = thread.current?.querySelector<HTMLElement>("[data-earlier]");
+    kept.current = earlierOpen && row ? row.getBoundingClientRect().top : null;
+    toggle(EARLIER, !earlierOpen);
+  };
+  useLayoutEffect(() => {
+    const at = kept.current, row = thread.current?.querySelector<HTMLElement>("[data-earlier]"), area = thread.current?.closest<HTMLElement>("[data-card-scroll]");
+    if (at === null || earlierOpen) return;
+    kept.current = null;
+    if (row && area) area.scrollTop += row.getBoundingClientRect().top - at;
+  });
   // Where the coordinator started again: before the message it started with, or at the end until there is one. A message
   // drawn as no row of its own (sent into another, or sent again in its place) leaves its line before the next row in
   // serve's order, so a line is never folded away with it.
@@ -300,10 +353,13 @@ export const CoordinatorThread = memo(function CoordinatorThread({ turns: recent
   }, [earlier.resets, served.resets, turns, work, shown.tail]);
   const resetLines = (id: string | null) => resets.get(id)?.map(reset => <ResetLine key={reset.id} reset={reset} />) ?? null;
   const tailStart = work.length;
+  // The history is counted whole, open or folded: the turns of the snapshot before its latest exchange and those before it.
+  const count = Math.max(0, shown.thread.findIndex(turn => turn.id === opened.latest)) + (served.earlier?.count ?? 0);
+  const entrance = count > 0 && <EarlierRow count={count} open={earlierOpen} toggle={toggleEarlier} />;
   const rows = [...work.map(turn => ({ kind: 'server' as const, turn })), ...shown.tail].map((row, at) => {
     // Lines of a reset stand before the message it started with; one with none yet, before what is still on its way.
     const lines = at === tailStart ? <>{resetLines(null)}{resetLines(row.turn.id)}</> : at >= start || earlierOpen ? resetLines(row.turn.id) : null;
-    return <Fragment key={row.kind === 'local' && row.turn.stage === "refused" ? `refused:${row.turn.id}` : row.turn.id}>{lines}{drawRow(row, at)}</Fragment>;
+    return <Fragment key={row.kind === 'local' && row.turn.stage === "refused" ? `refused:${row.turn.id}` : row.turn.id}>{at === start && entrance}{lines}{drawRow(row, at)}</Fragment>;
   });
   function drawRow(row: { kind: 'server'; turn: CoordinatorTurn } | (typeof shown.tail)[number], at: number) {
     if (row.kind === 'local')
@@ -319,14 +375,12 @@ export const CoordinatorThread = memo(function CoordinatorThread({ turns: recent
   // address, a file's name) folds at any letter where it would outrun the conversation, as in the reader.
   // Empty is no message at all: the first one sent stands in the greeting's place as any message does.
   const empty = !!served.id && !work.length && !shown.tail.length && !served.earlier;
-  // Hidden, the history is counted whole: the turns here before the latest exchange and those not read yet.
-  const hidden = start + (earlier.unread ?? 0);
   return <>
-    <ol ref={thread} data-action-focus-scope tabIndex={-1} data-coordinator-thread className={cn("relative m-0 list-none px-3 pt-1 pb-2 [overflow-wrap:anywhere] [--gutter:--spacing(6)] [--rail:7px] before:absolute before:top-5 before:bottom-5 before:left-[calc(--spacing(3)+var(--rail))] before:w-px before:bg-rule", empty && "before:hidden")}>
+    <ol ref={thread} data-action-focus-scope tabIndex={-1} data-coordinator-thread data-reading-above={earlierOpen && earlier.reading || undefined} className={cn("relative m-0 list-none px-3 pt-1 pb-2 [overflow-wrap:anywhere] [--gutter:--spacing(6)] [--rail:7px] before:absolute before:top-5 before:bottom-5 before:left-[calc(--spacing(3)+var(--rail))] before:w-px before:bg-rule", empty && "before:hidden")}>
       {empty && <ConversationStart />}
-      {hidden > 0 && !earlierOpen && <EarlierRow count={hidden} reveal={() => toggle(EARLIER, true)} />}
-      {earlierOpen && earlier.more && <ReadOlder reading={earlier.reading} failed={earlier.failed} read={readOlder} />}
+      {earlierOpen && (earlier.more || earlier.full) && <ReadOlder held={earlier.turns.length} full={earlier.full} reading={earlier.reading} failed={earlier.failed} read={readOlder} />}
       {rows}
+      {!rows.length && entrance}
       {!shown.tail.length && resetLines(null)}
     </ol>
     {viewer.viewer}

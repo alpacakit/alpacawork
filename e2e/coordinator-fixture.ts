@@ -148,7 +148,7 @@ export async function revealReplies(page: Page) {
   const row = panel.locator('[data-earlier=folded]');
   if (await row.count()) {
     await row.locator('button[aria-expanded]').click();
-    await expect(panel.locator('[data-earlier]')).toHaveCount(0);
+    await expect(panel.locator('[data-earlier]')).toHaveAttribute('data-earlier', 'open');
   }
 }
 
