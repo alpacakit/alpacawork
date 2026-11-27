@@ -92,7 +92,7 @@ function RunFacts({ run, facts }: { run: RunDetail; facts: Facts }) {
     {asks.map((operation, at) => <Fact key={at} name={t("runs.judged")}>{askText(t, operation)}</Fact>)}
     {(done.length > 0 || run.state === "done") && <Fact name={t("runs.didFor")}>
       {done.length ? done.map((operation, at) => <p key={at} className="m-0">{operationText(t, operation, facts)}</p>) : t("runs.didNothing")}</Fact>}
-    {run.error && <Fact name={t("runs.error")}><span className="text-error">{run.error.message}</span>
+    {run.error?.message && <Fact name={t("runs.error")}><span className="text-error">{run.error.message}</span>
       {run.error.file && <span className="ms-1 font-mono text-xs text-muted">{run.error.file}{run.error.line ? `:${run.error.line}` : ""}</span>}</Fact>}
     {run.report && <Fact name={t("runs.report")}><p className="m-0 whitespace-pre-wrap">{run.report}</p></Fact>}
     {run.output && (run.output.stdout || run.output.stderr) && <Fact name="">
