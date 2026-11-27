@@ -70,7 +70,7 @@ test('an AI placing a member must give a placement reason', async t => {
   const h = await setup(t);
   await assert.rejects(h.commands.placeMember({ taskId: h.task.id, profileKey: 'claude', expectedTaskHash: h.task.hash,
     expectedResponsibleRevision: h.owner.revision }, h.actor),
-  { code: 'invalid_input', reason: { kind: 'reason_required', flag: '--placed-as', choices: 'policy|lighter|exception' } });
+  { code: 'invalid_input', reason: { kind: 'reason_required', flag: '--placed-as', choices: 'default|policy|lighter|exception' } });
 });
 
 test('member mutations reject a current owner target and stale revision', async t => {

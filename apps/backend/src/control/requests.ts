@@ -285,7 +285,8 @@ export class RequestService {
             speaksForUser(context.actor) && currentReview(task.meta, unfinished) !== null;
           const aboutRun = review ? reviewTarget(task.meta, head, unfinished) : null;
           const reasons = context.purpose === 'instruction' && !context.answersQuestion ? context.reasons ?? {} : undefined;
-          const placed = reasons && placementReason(reasons, author, input.selected !== undefined || input.aiStack !== undefined);
+          const named = input.selected !== undefined || input.aiStack !== undefined;
+          const placed = reasons && placementReason(reasons, author, { named, asked: named });
           const taken = reasons && resultDecision(reasons, author,
             priorResult(tx, task, placement.id, author, callerRun?.task ?? null, aboutRun));
           const request: NewRequest = { id: input.requestId, taskId: task.id, placementId: placement.id,

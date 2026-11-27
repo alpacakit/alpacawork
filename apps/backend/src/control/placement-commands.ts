@@ -30,6 +30,9 @@ type Write = {
   handover(logId: string): void;
 };
 
+/** A placement names its AI's values with either; without them they come from the configured AI order for tasks. */
+const namesAi = (input: { selected?: Selection; aiStack?: AiStackPrefix }) => input.selected !== undefined || input.aiStack !== undefined;
+
 export class PlacementCommands {
   private readonly transition = new TaskTransition();
   constructor(readonly root: string) {}
@@ -96,7 +99,7 @@ export class PlacementCommands {
   }
   placeNewResponsible(input: PlaceAgentInput & PlacementOptions, actor: TaskActor) {
     return this.write(input.taskId, input.expectedTaskHash, actor, ({ store, record, handover }) => {
-      const placed = placementReason(input, actor, true);
+      const placed = placementReason(input, actor, { named: namesAi(input), asked: true });
       const profileKey = this.requireProfile(input.profileKey, input.selected, input.aiStack);
       return placeAgentReceiptSchema.parse(input.replacePlacementId === undefined
         ? { ...store.createAndPlace({ taskId: input.taskId,
@@ -113,7 +116,8 @@ export class PlacementCommands {
       const candidate = store.placements(input.taskId).find(item => item.id === input.placementId);
       if (!candidate) throw new Problem(PROBLEM_CODE.notFound, 'Placement does not belong to task', undefined, { reason: { kind: 'placement_does_not_belong_task' } });
       this.requireProfile(candidate.profileKey);
-      const placed = placementReason(input, actor, true);
+      // Handing over chooses an agent already placed, with the AI it has.
+      const placed = placementReason(input, actor, { named: true, asked: true });
       return setResponsibleReceiptSchema.parse(store.setResponsible(input.placementId, input.expectedPlacementRevision,
         result => handover(record('responsible_changed', result.placement, 'responsible', undefined, undefined, placed && { placed }))));
     });
@@ -130,7 +134,7 @@ export class PlacementCommands {
   }
   placeMember(input: PlaceMemberInput & PlacementOptions, actor: TaskActor) {
     return this.withResponsibleAt(input, actor, ({ store, record }) => {
-      const placed = placementReason(input, actor, true);
+      const placed = placementReason(input, actor, { named: namesAi(input), asked: true });
       const profileKey = this.requireProfile(input.profileKey, input.selected, input.aiStack);
       if (input.agentId === undefined)
         return placeMemberReceiptSchema.parse(store.createAndPlace({ taskId: input.taskId,

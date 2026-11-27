@@ -23,11 +23,19 @@ function required(option: string, choices: readonly string[], subject?: { reques
 
 const requiresActionReason = (actor: TaskActor) => actor.kind !== 'human';
 
-export function placementReason(input: PlacementOptions, actor: TaskActor, relevant: boolean): PlacedReason | undefined {
-  if (relevant && requiresActionReason(actor) && input.placedAs === undefined) required('placedAs', PLACED_AS);
+/**
+ * Why an AI actor launches the AI it does: `default` when it names no launch values and the configured order supplies them,
+ * any other code when it names them. `named` says whether the write names an AI; `asked` whether an AI actor must say why.
+ */
+export function placementReason(input: PlacementOptions, actor: TaskActor, { named, asked }: { named: boolean; asked: boolean }):
+  PlacedReason | undefined {
+  if (asked && requiresActionReason(actor) && input.placedAs === undefined) required('placedAs', PLACED_AS);
   if (input.placedAs === undefined) return undefined;
-  if (!relevant)
-    throw new Problem(PROBLEM_CODE.invalidInput, '--placed-as on a request needs --selected or --ai-stack', undefined,
+  if (input.placedAs === 'default' && named)
+    throw new Problem(PROBLEM_CODE.invalidInput, '--placed-as default is for naming no AI; this write names one', undefined,
+      { reason: { kind: 'placement_default_names_an_ai' } });
+  if (input.placedAs !== 'default' && !named)
+    throw new Problem(PROBLEM_CODE.invalidInput, `--placed-as ${input.placedAs} needs an AI named with --ai-stack or --selected`, undefined,
       { reason: { kind: 'placement_reason_needs_selection' } });
   return { code: input.placedAs, ...(input.placedNote === undefined ? {} : { note: input.placedNote }) };
 }

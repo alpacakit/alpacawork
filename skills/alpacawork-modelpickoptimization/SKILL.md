@@ -9,7 +9,7 @@ These rules are added on top of the alpacawork skill. The project policy may lis
 
 ## 1. Start point
 
-- The start point is the model and effort the work would get without a trial: what the user named for this work, else the first fitting model rule, else the default AI in the configuration (the first row of the agents' AI stack, `aiStack`, in `alpacawork config get`).
+- The start point is the model and effort the work would get without a trial, chosen as [alpacawork's request procedure](../alpacawork/references/request.md) says: what the user named for this work, else the first fitting model rule, else the default AI in the configuration.
 - When the policy has no model rules, the default AI is the start point for every piece of work. Trials and proposals below work the same way; the first passing trial proposes the first rule.
 
 ## 2. Try lighter, or not
