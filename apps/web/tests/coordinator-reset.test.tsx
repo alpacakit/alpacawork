@@ -104,11 +104,11 @@ test("older turns are counted while folded, opening reads their first page, and 
   // Counted whole: the older exchanges here and the 3 not read yet.
   expect(Number(/(\d+)件/.exec(thread().querySelector("[data-earlier]")?.textContent ?? "")?.[1])).toBeGreaterThanOrEqual(3);
   fireEvent.click(thread().querySelector("[data-earlier] button")!);
-  await waitFor(() => expect(order()).toEqual(["more", "old-1", "old-2", "a", "earlier", "b"]));
+  await waitFor(() => expect(order()).toEqual(["more", "old-1", "old-2", "a", "b"]));
   // Brought into sight, the head reads the next page by itself.
   await seeHead();
   // The first turn is here: nothing more to read.
-  await waitFor(() => expect(order()).toEqual(["old-0", "old-1", "old-2", "a", "earlier", "b"]));
+  await waitFor(() => expect(order()).toEqual(["old-0", "old-1", "old-2", "a", "b"]));
 });
 
 test("reset waits for the answer at work; clearing still takes a second press", () => {
@@ -134,7 +134,7 @@ test("a message sent into an answer stays under it when the answer comes back on
   setConversationState({ open: true, expanded: true, read: true, conversation });
   card();
   fireEvent.click(thread().querySelector("[data-earlier] button")!);
-  await waitFor(() => expect(order()).toEqual(["old", "earlier", "a"]));
+  await waitFor(() => expect(order()).toEqual(["old", "a"]));
   const old = thread().querySelector<HTMLElement>("[data-coordinator-message=old]")!;
   if (old.dataset.exchange === "folded") fireEvent.click(old.querySelector("[data-exchange-toggle]")!);
   expect(thread().querySelector("[data-coordinator-message=old]")?.textContent).toContain("ask joined");
@@ -182,11 +182,11 @@ test("older turns come in serve's order with their resets, and the window is rea
   setConversationState({ open: true, expanded: true, read: true, conversation });
   card();
   fireEvent.click(thread().querySelector("[data-earlier] button")!);
-  await waitFor(() => expect(order()).toEqual(["x", "asked", "y", "earlier", "a"]));
+  await waitFor(() => expect(order()).toEqual(["x", "asked", "y", "a"]));
   // "a" left the snapshot: the window is read again from where the snapshot starts now, and nothing between is lost.
   conversation = { ...conversation, earlier: { count: 3, before: "b" }, turns: [b] };
   setConversationState({ conversation });
-  await waitFor(() => expect(order()).toEqual(["x", "asked", "y", "a", "earlier", "b"]));
+  await waitFor(() => expect(order()).toEqual(["x", "asked", "y", "a", "b"]));
   expect(fetcher.mock.calls.filter(([url]) => String(url).startsWith("/api/coordinator/turns?")).map(([url]) => String(url).split("before=")[1])).toEqual(["a", "b"]);
 });
 
@@ -231,7 +231,7 @@ test("the history's first read failing, the press to read on reads it again", as
   fireEvent.click(thread().querySelector("[data-earlier] button")!);
   await waitFor(() => expect(thread().querySelector("[data-earlier-more=failed]")).not.toBeNull(), { timeout: 5000 });
   fireEvent.click(thread().querySelector("[data-earlier-more] button")!);
-  await waitFor(() => expect(order()).toEqual(["old", "earlier", "a"]));
+  await waitFor(() => expect(order()).toEqual(["old", "a"]));
 });
 
 test("a reset line stays where it was when the message it stood before is drawn as no row of its own", () => {
@@ -269,7 +269,7 @@ test("history held open is read again when the screen comes back after it went s
   setConversationState({ open: true, expanded: true, read: true, conversation });
   card();
   fireEvent.click(thread().querySelector("[data-earlier] button")!);
-  await waitFor(() => expect(order()).toEqual(["old", "earlier", "a"]));
+  await waitFor(() => expect(order()).toEqual(["old", "a"]));
   const old0 = thread().querySelector<HTMLElement>("[data-coordinator-message=old]")!;
   if (old0.dataset.exchange === "folded") fireEvent.click(old0.querySelector("[data-exchange-toggle]")!);
   expect(thread().querySelector("[data-file-removed]")).toBeNull();
@@ -307,9 +307,9 @@ test("history held open and read again when the screen comes back reads only the
   setConversationState({ open: true, expanded: true, read: true, conversation });
   card();
   fireEvent.click(thread().querySelector("[data-earlier] button")!);
-  await waitFor(() => expect(order()).toEqual(["more", "n1", "n2", "earlier", "a"]));
+  await waitFor(() => expect(order()).toEqual(["more", "n1", "n2", "a"]));
   await seeHead();
-  await waitFor(() => expect(order()).toEqual(["o1", "o2", "n1", "n2", "earlier", "a"]));
+  await waitFor(() => expect(order()).toEqual(["o1", "o2", "n1", "n2", "a"]));
   const pagesRead = () => fetcher.mock.calls.filter(([url]) => String(url).startsWith("/api/coordinator/turns?")).length;
   expect(pagesRead()).toBe(2);
   vi.spyOn(Date, "now").mockReturnValue(Date.now() + 61_000);
@@ -366,16 +366,18 @@ test("reading back stops at the limit and says so; the snapshot moving on keeps 
   expect(thread().querySelector("[data-coordinator-message=t101]")).not.toBeNull();
 });
 
-test("folding the history again takes what was read off the screen; opened again, it is read from its first page", async () => {
+test("the history opened leaves its entrance; the conversation opened again folds it and lets go of what was read, read again from its first page", async () => {
   const history = longHistory(120);
   vi.stubGlobal("fetch", history.fetcher);
   setConversationState({ open: true, expanded: true, read: true, conversation: history.state.conversation });
   card();
   fireEvent.click(thread().querySelector("[data-earlier] button")!);
   await waitFor(() => expect(earlierShown()).toBe(50));
+  expect(thread().querySelector("[data-earlier]")).toBeNull();
   await seeHead();
   await waitFor(() => expect(earlierShown()).toBe(100));
-  fireEvent.click(thread().querySelector("[data-earlier] button")!);
+  act(() => useConversation.getState().setExpanded(false));
+  await act(async () => useConversation.getState().setExpanded(true));
   expect(earlierShown()).toBe(0);
   expect(thread().querySelector("[data-earlier]")?.textContent).toContain("120件");
   fireEvent.click(thread().querySelector("[data-earlier] button")!);
@@ -397,12 +399,12 @@ test("a message coming in keeps the one it pushed out of the snapshot on screen,
   setConversationState({ open: true, expanded: true, read: true, conversation });
   card();
   fireEvent.click(thread().querySelector("[data-earlier] button")!);
-  await waitFor(() => expect(order()).toEqual(["x", "earlier", "asked", "a"]));
+  await waitFor(() => expect(order()).toEqual(["x", "asked", "a"]));
   // "b" pushes "a" out of the snapshot, and serve's snapshot no longer carries its line; until the history is read
   // again to take them in, both stay where they were.
   conversation = { ...conversation, earlier: { count: 2, before: "b" }, turns: [b], resets: [] };
   setConversationState({ conversation });
-  await waitFor(() => expect(order()).toEqual(["x", "asked", "a", "earlier", "b"]));
+  await waitFor(() => expect(order()).toEqual(["x", "asked", "a", "b"]));
   release();
-  await waitFor(() => expect(order()).toEqual(["x", "asked", "a", "earlier", "b"]));
+  await waitFor(() => expect(order()).toEqual(["x", "asked", "a", "b"]));
 });

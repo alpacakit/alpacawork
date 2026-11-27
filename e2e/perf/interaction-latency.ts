@@ -121,7 +121,7 @@ try {
           : state.expect === 'input-close' ? !document.querySelector('[data-one-input]')
           : state.expect === 'chat-open' ? !!document.querySelector('[data-coordinator-panel]')
           : state.expect === 'chat-close' ? !document.querySelector('[data-coordinator-panel]')
-          : state.expect === 'history-open' ? !!document.querySelector('[data-earlier=open]') && document.querySelectorAll('[data-coordinator-message]').length === 40
+          : state.expect === 'history-open' ? !document.querySelector('[data-earlier]') && document.querySelectorAll('[data-coordinator-message]').length === 40
           : state.expect === 'task-switch' ? document.querySelector('[data-reader-task-id]')?.textContent !== state.previousTask && !!document.querySelector('[data-history-ready="true"]')
           : state.expect === 'detail-open' ? !!document.querySelector('[data-reader-content]') && !!document.querySelector('[data-history-ready="true"]')
           : state.expect === 'detail-close' ? !document.querySelector('[data-reader-content]')
