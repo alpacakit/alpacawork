@@ -118,8 +118,8 @@ function ProjectHeading({ project }: { project: Pick<Project, "id" | "title" | "
   const { t } = useTranslation("panels");
   return <span className="flex min-w-0 items-center gap-2.5" data-project-heading>
     <ProjectTile name={project.title} color={project.color} size={28} />
-    <span dir="auto" className="min-w-0 truncate">{project.title}</span>
-    <span className="flex-none text-md font-normal text-soft tabular-nums">{project.id}</span>
+    <span dir="auto" className="min-w-0 cap-truncate">{project.title}</span>
+    <span className="flex-none text-md font-normal text-soft tabular-nums cap-box">{project.id}</span>
     <CopyButton clip={() => textClip(project.id)} label={t("project.copyId", { id: project.id })} className="flex-none" />
   </span>;
 }

@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { Seg, Shown } from "./parts";
 import { analysisHome, analysisSurfaces, belowLayer, type AnalysisPlace } from "./place";
 import { useTodayFinished } from "./data";
+import { CapCentred } from "@/components/ui/text-mark";
 
 /** Where the analysis was left, for coming back to it: one place for every switch that shows it (the bar's, its menu's). */
 let leftAnalysis: AnalysisPlace | null = null;
@@ -60,12 +61,13 @@ export function TodayMarks() {
   const shown = rows.length <= fit ? rows : rows.slice(rows.length - Math.max(0, Math.floor((room - chrome - count) / step)));
   const hidden = data!.total - shown.length;
   const words = t("home.marks", { count: data!.total, passed: rows.filter(row => row.outcome === "passed").length });
-  return <div ref={place} className="flex min-w-0 flex-1"><Shown current={answer!.current} className="flex min-w-0">
+  // Centred on the capitals of the heading's words (CapCentred), in a heading that stands its words on their baseline.
+  return <CapCentred className="min-w-0 flex-1 grid-cols-[minmax(0,1fr)]"><div ref={place} className="flex min-w-0 flex-1"><Shown current={answer!.current} className="flex min-w-0">
     <button type="button" aria-label={t("home.label", { marks: words })} title={words}
       onClick={() => useViewStore.getState().showAnalysis(analysisHome("tasks", { period: "today" }))}
       className="ms-2.5 flex min-w-0 items-center gap-0.5 rounded-sm p-1.5 hover:bg-hover narrow:ms-1.5">
-      {hidden > 0 && <span className="me-1 text-xs font-normal text-muted tabular-nums">+{hidden}</span>}
+      {hidden > 0 && <span className="me-1 text-xs font-normal text-muted tabular-nums cap-box">+{hidden}</span>}
       {shown.map(row => <i key={row.id} className={cn("block h-3 w-2 flex-none rounded-xs narrow:w-1.5", row.outcome ? MARK[row.outcome] : "bg-rule", fresh.has(row.id) && "animate-land")} />)}
     </button>
-  </Shown></div>;
+  </Shown></div></CapCentred>;
 }

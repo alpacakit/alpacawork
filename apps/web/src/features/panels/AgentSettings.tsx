@@ -98,7 +98,7 @@ function AgentSettingsCard({ agent, onChange, onRemove, issues, nextId, environm
     <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
       {/* Pressing the name opens the card too, like its caret button (which stays the keyboard's way in). */}
       <div onClick={() => setExpanded(value => !value)} className={cn('flex min-w-0 cursor-pointer flex-wrap items-center gap-2', agent.enabled === false && 'opacity-50')}>
-        <h3 id={`${id}-heading`} className="flex items-center gap-1.5 text-base font-semibold [overflow-wrap:anywhere]"><AgentMark name={agent.name} kind={adapter ?? undefined} />{agent.name}</h3>
+        <h3 id={`${id}-heading`} className="flex items-center gap-1.5 text-base font-semibold [overflow-wrap:anywhere]"><AgentMark name={agent.name} kind={adapter ?? undefined} /><span className="cap-box">{agent.name}</span></h3>
         {adapter && adapter !== agent.name && <span className="whitespace-nowrap text-sm text-muted">{t('agentSettings.kind', { adapter })}</span>}
         {agent.options && <span className="rounded-full border border-warn px-2 py-0.5 text-sm text-warn">{t('agentSettings.edited')}</span>}
       </div>

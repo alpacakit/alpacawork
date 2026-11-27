@@ -17,6 +17,7 @@ import type { TaskProjectedPageDTO, TaskPageRowDTO, TaskTimelineLaneDTO } from "
 import { StateIcon } from "@/components/ui/state-label";
 import { TaskId } from "@/components/ui/task-id";
 import { Icon } from "@/components/ui/icon";
+import { TextMark } from "@/components/ui/text-mark";
 import { NativeSelect } from "@/components/ui/native-select";
 import { TONE, useTaskLook } from "@/components/ui/tone";
 import { SentArc } from "./SentArc";
@@ -517,7 +518,7 @@ function useDatedRows(data: InfiniteData<TaskProjectedPageDTO> | undefined, asse
 }
 
 /**
- * A heading's line: its square, name, count and way in on one centre. On a phone it is a finger's 44px, and its words sit
+ * A heading's line: its square, name, count and way in on one baseline, the marks centred on the words' capitals. On a phone it is a finger's 44px, and its words sit
  * low in it, 6px over the rule as on a computer (h-8 pb-1.5), so a heading stands with the rows under it, not halfway
  * between the groups. The 44px and the rule are the heading's height either way.
  */
@@ -533,22 +534,26 @@ function SectionHead({ section, first, shared, onToggle }: { section: Section; f
   const { t } = useTranslation("tree");
   const name = { doing: t("home.running"), error: t("home.error"), review: t("home.turn"), awaited: t("home.awaited"), held: t("home.held"), todo: t("home.todo"), done: t("home.finished") }[section.section];
   return <div data-section={section.section} data-motion-key={`section:${section.section}`} className="flex border-b border-rule">
-    <div style={frozen(shared)} className={cn("sticky left-0 flex h-8 bg-bg pl-list-text items-end pb-1.5 text-base font-semibold text-ink narrow:h-11 narrow:items-center narrow:pb-0",
+    <div style={frozen(shared)} className={cn("sticky left-0 flex h-8 bg-bg pl-list-text items-baseline-last pb-1.5 text-base font-semibold text-ink narrow:h-11 narrow:items-center narrow:pb-0",
       !first && "h-12 pt-4 narrow:h-13 narrow:pt-2", columnEdge(shared))}>
-      <h2 className="m-0 flex min-w-0 flex-1 pr-2 text-base font-semibold">
+      {/* Its words, the name's and the agents' and speed's after it, stand on one baseline (the line's last, so the
+          heading still ends 6px over the rule); its marks centre on the capitals of the words beside them (CapCentred). */}
+      <h2 className="m-0 flex min-w-0 flex-1 items-baseline pr-2 text-base font-semibold">
         <button type="button" aria-expanded={section.open} onClick={onToggle} className={cn(HEAD_LINE, HEAD_PRESS, "flex-none")}>
-          {/* The square stands on the list's mark line, where a row's unread dot does; the name starts on the rows' icons. */}
-          <span aria-hidden="true" className="relative -mr-1.5 flex w-0 flex-none items-center self-stretch">
-            <i className={cn("absolute left-[calc(var(--spacing-list-mark)-var(--spacing-list-text))] size-2 -translate-x-1/2 rounded-xs", SECTION_MARK[section.section])} />
+          <span className="flex items-baseline gap-1.5">
+            {/* The square stands on the list's mark line, where a row's unread dot does; the name starts on the rows' icons. */}
+            <TextMark className="-mr-1.5 w-0">
+              <i className={cn("relative left-[calc(var(--spacing-list-mark)-var(--spacing-list-text))] size-2 flex-none -translate-x-1/2 rounded-xs", SECTION_MARK[section.section])} />
+            </TextMark>
+            <span>{name}</span>
+            <span className="font-normal tabular-nums text-muted">{section.count}</span>
+            <TextMark><Icon name="right" className={cn("size-3 text-muted transition-transform motion-reduce:transition-none", section.open && "rotate-90")} /></TextMark>
           </span>
-          <span>{name}</span>
-          <span className="font-normal tabular-nums text-muted">{section.count}</span>
-          <Icon name="right" className={cn("size-3 text-muted transition-transform motion-reduce:transition-none", section.open && "rotate-90")} />
         </button>
         {section.section === "done" && <TodayMarks />}
-        {section.section === "doing" && <span className={cn(HEAD_LINE, "ml-auto min-w-0 shrink narrow:pr-1.5")}><HeadingAgents tops={sectionTops(section)} narrow={shared.narrow} timeApart={shared.lane > 0} /></span>}
+        {section.section === "doing" && <span className="ml-auto flex min-w-0 shrink items-baseline narrow:pr-1.5"><HeadingAgents tops={sectionTops(section)} narrow={shared.narrow} timeApart={shared.lane > 0} /></span>}
       </h2>
-      {shared.lane > 0 && section.section === "doing" && <SpeedLane width={shared.lane} className={cn("mb-0.5", shared.lane < SPEED_LANE && "pr-3")}><HeadingTokenSpeed tops={sectionTops(section)} compact={shared.lane < SPEED_LANE} /></SpeedLane>}
+      {shared.lane > 0 && section.section === "doing" && <SpeedLane width={shared.lane} className={cn(shared.lane < SPEED_LANE && "pr-3")}><HeadingTokenSpeed tops={sectionTops(section)} compact={shared.lane < SPEED_LANE} /></SpeedLane>}
       {shared.lane > 0 && section.section === "doing" && <RowTimeRoom>{shared.lane < SPEED_LANE && <HeadingSpeedUnit tops={sectionTops(section)} />}</RowTimeRoom>}
     </div>
   </div>;
@@ -666,7 +671,7 @@ const TaskRow = memo(function TaskRow({ node, shared, visibleRows }: TaskRowProp
             </span>
             {press(<>
               <RowProjectTile project={task.projectId} />
-              <TaskId id={task.id} className="flex-none text-xs tabular-nums text-muted" />
+              <TaskId id={task.id} className="flex-none text-xs tabular-nums text-muted cap-box" />
               {/* The title keeps about half the line; what stands at its end (the agents first) gives way. */}
               <RowTitle title={task.title} className="min-w-[45%] flex-1 text-base text-ink" />
             </>, "flex min-w-[45%] flex-1 items-center gap-1.5 text-left after:absolute after:inset-0 after:content-['']", timeApart ? `${endId} ${timeId}` : endId)}
@@ -699,7 +704,7 @@ function EmptyStrip({ height }: { height: number }) {
  * only at its own breaks, leaving the line short before its "…". The form sets the size, weight and colour.
  */
 function RowTitle({ title, className }: { title: string; className?: string }) {
-  return <span data-row-title className={cn("min-w-0 truncate", className)}>{title}</span>;
+  return <span data-row-title className={cn("min-w-0 cap-truncate", className)}>{title}</span>;
 }
 
 function openDetail(id: string, key?: string, returnTo?: HTMLElement) {

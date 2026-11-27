@@ -39,8 +39,9 @@ import { useEarlierHistory } from "./earlier-history";
 function MessageHead({ turn, mark, more }: { turn: SentTurn; mark?: ReactNode; more?: ReactNode }) {
   const { t, i18n } = useTranslation("ui");
   return <div className="relative mb-type-close flex flex-wrap items-baseline gap-x-1.5 text-xs text-muted">
-    {mark && <span data-coordinator-mark className={`${ON_RAIL} -ml-(--gutter) top-[0.5lh] flex -translate-y-1/2`}>{mark}</span>}
-    <span className="font-medium text-ink">{t("coordinatorCard.you")}</span>
+    {/* The mark hangs on the rail from "you", boxed to its capitals, and centres on them. */}
+    <span className="relative font-medium text-ink cap-box">
+      {mark && <span data-coordinator-mark className={`${ON_RAIL} -ml-(--gutter) inset-y-0 flex items-center`}>{mark}</span>}{t("coordinatorCard.you")}</span>
     <time dateTime={turn.at} className="tabular-nums">{messageTime(turn.at, i18n.language)}</time>
     {turn.status === "joined" && <span>· {t("coordinatorCard.sentDuringWork")}</span>}
     {more}
@@ -140,9 +141,9 @@ function EarlierRow({ count, reveal }: { count: number; reveal: () => void }) {
   return <li {...focus} data-earlier="folded" className="relative scroll-mt-14 border-b border-rule pl-(--gutter)">
     <button type="button" aria-expanded={false} onClick={reveal}
       className="group flex min-h-11 w-full items-center gap-1.5 py-2 text-left text-xs text-muted narrow:min-h-12">
-      <span className={`${ON_RAIL} top-1/2 flex -translate-y-1/2`}><Icon name="unfold" className={cn("size-3.5 text-muted", ON_DISC)} /></span>
-      <span className="font-medium text-ink">{t("coordinatorCard.earlierCount", { count })}</span>
-      <span className="ml-auto rounded-sm px-2 underline decoration-line underline-offset-3 group-hover:text-ink group-hover:decoration-ink">
+      <span className="relative font-medium text-ink cap-box">
+        <span className={`${ON_RAIL} -ml-(--gutter) inset-y-0 flex items-center`}><Icon name="unfold" className={cn("size-3.5 text-muted", ON_DISC)} /></span>{t("coordinatorCard.earlierCount", { count })}</span>
+      <span className="ml-auto rounded-sm px-2 cap-box underline decoration-line underline-offset-3 group-hover:text-ink group-hover:decoration-ink">
         {t("coordinatorCard.exchangeOpen")}</span>
     </button>
   </li>;
@@ -156,10 +157,11 @@ function ReadOlder({ reading, failed, read }: { reading: boolean; failed: boolea
   return <li data-earlier-more={reading ? "reading" : failed ? "failed" : ""} className="relative border-b border-rule pl-(--gutter)">
     <button type="button" disabled={reading} onClick={read}
       className="group flex min-h-11 w-full items-center gap-1.5 py-2 text-left text-xs text-muted disabled:cursor-default narrow:min-h-12">
-      <span className={`${ON_RAIL} top-1/2 flex -translate-y-1/2`}><Icon name="up" className={cn("size-3.5 text-muted", ON_DISC)} /></span>
-      <span role={reading || failed ? "status" : undefined} className={cn(failed && "text-error", reading && "motion-safe:animate-pulse")}>
-        {reading ? t("coordinatorCard.earlierReading") : failed ? t("coordinatorCard.earlierFailed") : null}</span>
-      <span className="ml-auto rounded-sm px-2 underline decoration-line underline-offset-3 group-hover:text-ink group-hover:decoration-ink group-disabled:no-underline">
+      <span className="relative cap-box">
+        <span className={`${ON_RAIL} -ml-(--gutter) inset-y-0 flex items-center`}><Icon name="up" className={cn("size-3.5 text-muted", ON_DISC)} /></span>
+        <span role={reading || failed ? "status" : undefined} className={cn(failed && "text-error", reading && "motion-safe:animate-pulse")}>
+          {reading ? t("coordinatorCard.earlierReading") : failed ? t("coordinatorCard.earlierFailed") : null}</span></span>
+      <span className="ml-auto rounded-sm px-2 cap-box underline decoration-line underline-offset-3 group-hover:text-ink group-hover:decoration-ink group-disabled:no-underline">
         {t("coordinatorCard.earlierMore")}</span>
     </button>
   </li>;

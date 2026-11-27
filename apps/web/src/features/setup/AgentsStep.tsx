@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { textClip } from "@/lib/clipboard";
 import { AGENT_LOGOS } from "@/components/ui/agent-logos";
 import { AgentMark } from "@/components/ui/agent-mark";
-import { TextMark } from "@/components/ui/text-mark";
+import { CapCentred, TextMark } from "@/components/ui/text-mark";
 import { KIND_LETTERS } from "@/domain/agent-mark";
 import { cn } from "@/lib/utils";
 import { recordFailure } from "@/lib/notify";
@@ -192,8 +192,8 @@ function Consent({ checked, onChange }: { checked: boolean; onChange: (checked: 
   const [open, setOpen] = useState(false);
   const rows = [[t("consent.rows.sentKey"), t("consent.rows.sent")], [t("consent.rows.notSentKey"), t("consent.rows.notSent")],
     [t("consent.rows.idKey"), t("consent.rows.id")], [t("consent.rows.intervalKey"), t("consent.rows.interval")], [t("consent.rows.stopKey"), t("consent.rows.stop")]];
-  return <div data-setup-consent className="mt-5 grid grid-cols-[22px_minmax(0,1fr)] items-start gap-3">
-    <input id={id} type="checkbox" checked={checked} onChange={event => onChange(event.target.checked)} className="mt-0.75 size-4.5 cursor-pointer accent-ink" />
+  return <div data-setup-consent className="mt-5 grid grid-cols-[22px_minmax(0,1fr)] items-baseline gap-3">
+    <CapCentred><input id={id} type="checkbox" checked={checked} onChange={event => onChange(event.target.checked)} className="size-4.5 cursor-pointer accent-ink" /></CapCentred>
     <label htmlFor={id} className="cursor-pointer font-semibold">{t("consent.label")}</label>
     <p className="col-start-2 m-0 text-sm text-muted [word-break:auto-phrase]">{t("consent.body")} <button type="button" className="inline-link" aria-expanded={open}
       onClick={() => setOpen(was => !was)}>{t(open ? "consent.close" : "consent.detail")}</button></p>

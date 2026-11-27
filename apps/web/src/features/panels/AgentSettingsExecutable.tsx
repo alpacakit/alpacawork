@@ -3,6 +3,7 @@ import { Trans, useTranslation } from 'react-i18next';
 import { AGENT_ADAPTERS, type BuiltinAdapterId } from '@alpacawork/contract/agent-adapters';
 import { FieldError, FieldHint } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/textarea';
+import { CapCentred } from '@/components/ui/text-mark';
 import { SettingRow } from '@/components/settings/SettingRow';
 import { useAgentExecutable } from '@/data/queries';
 import { cn } from '@/lib/utils';
@@ -76,20 +77,20 @@ export function AgentExecutableRow({ agent, onChange, issues }: { agent: AgentDr
   const name = `${id}-executable`;
   return <SettingRow id={`${id}-other`} label={t('agentSettings.executable')} className="grid-cols-[10rem_minmax(0,1fr)] items-start narrow:grid-cols-1 narrow:gap-y-2">
     <div role="radiogroup" aria-labelledby={`${id}-other-label`} className="min-w-0 space-y-2">
-      <label className="flex items-start gap-2">
-        <input type="radio" name={name} className={cn(RADIO, 'mt-1')} checked={selected === 'automatic'} onChange={() => choose('automatic')} />
+      <label className="flex items-baseline gap-2">
+        <CapCentred><input type="radio" name={name} className={RADIO} checked={selected === 'automatic'} onChange={() => choose('automatic')} /></CapCentred>
         <span className="shrink-0">{t('agentSettings.automatic')}</span>
         {choices.automatic && <Candidate path={choices.automatic.path} version={choices.automatic.version} />}
         {detected && !choices.automatic && <span className="text-sm text-muted">{t('agentSettings.notFoundShort')}</span>}
       </label>
-      {choices.others.map(candidate => <label key={candidate.path} className="flex items-start gap-2">
-        <input type="radio" name={name} className={cn(RADIO, 'mt-1')} checked={selected === candidate.path} onChange={() => choose(candidate.path)} />
+      {choices.others.map(candidate => <label key={candidate.path} className="flex items-baseline gap-2">
+        <CapCentred><input type="radio" name={name} className={RADIO} checked={selected === candidate.path} onChange={() => choose(candidate.path)} /></CapCentred>
         <Candidate path={candidate.path} version={candidate.version} />
       </label>)}
       <div className="flex items-start gap-2 narrow:flex-wrap">
         <label className="flex min-h-control-md shrink-0 items-center gap-2">
           <input type="radio" name={name} className={RADIO} checked={selected === 'other'} onChange={() => choose('other')} />
-          <span>{t('agentSettings.otherPlace')}</span>
+          <span className="cap-box">{t('agentSettings.otherPlace')}</span>
         </label>
         {/* Grows with the path, so a long one wraps and stays readable whole instead of scrolling inside the box. */}
         <Textarea id={`${id}-other`} rows={1} className="min-h-control-md min-w-0 flex-1 resize-none font-mono [field-sizing:content] [overflow-wrap:anywhere] narrow:basis-full"

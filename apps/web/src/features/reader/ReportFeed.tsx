@@ -27,7 +27,7 @@ import { RegionSkeleton } from "@/components/ui/skeleton";
 import { ON_RAIL, TimelineMark } from "@/components/ui/timeline-mark";
 import { TONE, stateWord } from "@/components/ui/tone";
 import { Icon, type IconName } from "@/components/ui/icon";
-import { TextMark } from "@/components/ui/text-mark";
+import { CapCentred, TextMark } from "@/components/ui/text-mark";
 import { CopyButton } from "@/components/ui/copy-button";
 import { taskFileUrl } from "@/data/task-file-url";
 import { useTaskNames, useWorkspaceInfo, useWriteDisabled, useReadState } from "@/data/queries";
@@ -1020,7 +1020,7 @@ function WorkingPerson({ run, task, onFollow, open, lead, others }: { run: Contr
         reason: beforeCause ? limitName(beforeCause, ui) : t("reportFeed.row.carriedOn.limit") })}</span>}
       </span>
       {/* Every working line ends its first line with the same meter, so the figures stand in one column. */}
-      {run.activity?.context && <span className="flex-none self-center"><ContextMeter context={run.activity.context} press conversations={task.conversations ?? undefined} /></span>}</span>
+      {run.activity?.context && <CapCentred><ContextMeter context={run.activity.context} press conversations={task.conversations ?? undefined} /></CapCentred>}</span>
     {!words ? null : !lead ? <div data-working-note dir="auto" className={`${cell} ${NOTE} text-sm block text-ink`}><MarkdownBody text={words} task={task} onFollow={onFollow} report variant="note" /></div>
       : <LeadNote open={open} words={words} task={task} onFollow={onFollow} className={cell} />}
     {worked ? <button type="button" data-working-steps aria-expanded={listed} onClick={event => { keepPressedRow(event.currentTarget); setListed(!listed); }}
@@ -1030,7 +1030,7 @@ function WorkingPerson({ run, task, onFollow, open, lead, others }: { run: Contr
       : <WorkLine step={latest} idle={idle} className={`${cell} mt-1.5 text-xs`} />}
     {worked && <div className={cell}><StepList steps={full} open={reading} className="mt-1" /></div>}
     {/* As wide as a child line's → keeps past its end (press-end: 16px less a sixth), so every meter ends on one edge. */}
-    <span data-working-chevron className="col-start-3 row-start-1 flex w-[calc(var(--spacing)*4*20/24)] items-center justify-end self-center">{lead && <DisclosureChevron open={open} />}</span>
+    <span data-working-chevron className="col-start-3 row-start-1 flex w-[calc(var(--spacing)*4*20/24)] items-baseline justify-end text-xs">{lead && <CapCentred><DisclosureChevron open={open} /></CapCentred>}</span>
   </div>;
 }
 
@@ -1092,7 +1092,7 @@ function ChildWorkLine({ item, mark, onFollow }: { item: ChildWork; mark: boolea
       <AgentLabel data-child-work-model label={model} mark={false} />{mark && <span>{t("reportFeed.row.working")}</span>}
       {others > 0 && <span data-child-work-others className="whitespace-nowrap">·&nbsp;{t("reportFeed.working.others", { count: others })}</span>}
       </span>
-      {run.activity?.context && <span className="flex-none self-center"><ContextMeter context={run.activity.context} press={false} /></span>}</span>
+      {run.activity?.context && <CapCentred><ContextMeter context={run.activity.context} press={false} /></CapCentred>}</span>
     <span data-child-work-title className={`col-start-2 mt-0.5 line-clamp-2 min-w-0 text-sm ${ROW_WORDS} [overflow-wrap:anywhere] narrow:col-span-2 narrow:col-start-1`}>{item.title}</span>
     <Icon name="right" className="press-end col-start-3 row-start-1 row-span-2 size-4 self-center text-muted group-hover/row:text-ink [--edge-press:--spacing(4)]" />
   </button>;
