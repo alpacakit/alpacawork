@@ -56,6 +56,29 @@ export function barLimit({ agents, stack }: AgentLimitsResponse, now: number): B
   return first && { kind: "stopped", agent: first.agent, window: first.window };
 }
 
+/** How many agents the bar shows side by side: two fit beside the other buttons on a phone, as the name of one did. */
+export const BAR_AGENTS = 2;
+
+/**
+ * The agents the bar shows, each as `barLimit` says it on that agent's own rows: the agents in the stack's order, then
+ * the others whose limits are read (tasks use them when a request names one). Of these, the first `BAR_AGENTS` in a row
+ * that include the one work goes on with now, so a spent primary stands beside the fallback that carries on. An agent
+ * whose limits cannot be read shows only when the stack lists it (work may go there); none, until some agent's are known.
+ */
+export function barLimits(response: AgentLimitsResponse, now: number): BarLimit[] {
+  const current = barLimit(response, now);
+  if (!current) return [];
+  const listed = [...new Set(response.stack.map(row => row.adapter))];
+  const others = response.agents.filter(agent => agent.state === "ok" && !listed.includes(agent.adapter)).map(agent => agent.adapter);
+  const shown = [...listed, ...others].flatMap(adapter => {
+    const rows = response.stack.filter(row => row.adapter === adapter);
+    return barLimit({ agents: response.agents, stack: rows.length ? rows : [{ adapter, model: null }] }, now) ?? [];
+  });
+  const at = shown.findIndex(limit => limit.agent.adapter === current.agent.adapter);
+  const start = Math.max(0, at - (BAR_AGENTS - 1));
+  return shown.slice(start, start + BAR_AGENTS);
+}
+
 /** Where an agent stands in the stack tasks run on: each of its rows' place (0 the primary) and model; none when tasks use it only when a request names it. */
 export const stackPlaces = (adapter: AgentLimits["adapter"], stack: AgentLimitsResponse["stack"]): { at: number; model: string | null }[] =>
   stack.flatMap((row, at) => row.adapter === adapter ? [{ at, model: row.model }] : []);

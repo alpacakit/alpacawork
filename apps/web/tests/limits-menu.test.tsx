@@ -23,21 +23,13 @@ function open(limits: AgentLimitsResponse) {
   return { bar, trigger };
 }
 
-test("the bar names only the agent, without the window or the percent, but says them aloud; the menu marks the window the bar shows", () => {
-  const { bar, trigger } = open({ agents: [agent("claude", [week(85), week(100, "Fable")]), agent("codex", [week(25)])],
-    stack: [{ adapter: "claude", model: "opus" }, { adapter: "codex", model: null }] });
-  expect(bar?.trim()).toBe("Claude");
-  expect(trigger.getAttribute("aria-label")).toMatch(/85%/);
-  expect(screen.getByRole("dialog").querySelector("[data-limit-shown]")?.closest("[data-limit-agent]")?.getAttribute("data-limit-agent")).toBe("claude");
-  expect(document.querySelectorAll("[data-limit-shown]")).toHaveLength(1);
-});
-
-test("with the first agent spent, the bar shows only the next one, the agent work goes on with", () => {
+test("the bar shows each agent as its mark and ring, without names, and says the windows aloud; the menu marks the window of the agent work goes on with", () => {
   const { bar, trigger } = open({ agents: [agent("claude", [week(100)]), agent("codex", [week(25)])],
     stack: [{ adapter: "claude", model: "opus" }, { adapter: "codex", model: null }] });
-  expect(bar?.trim()).toBe("Codex");
-  expect(trigger.getAttribute("aria-label")).toMatch(/Codex.*25%/);
-  expect(trigger.getAttribute("aria-label")).not.toMatch(/Claude/);
+  expect(bar?.trim()).toBe("");
+  expect([...trigger.querySelectorAll("[data-limits-agent]")].map(slot => slot.getAttribute("data-limits-agent"))).toEqual(["claude", "codex"]);
+  expect(trigger.getAttribute("aria-label")).toMatch(/Claude[\s\S]*Codex.*25%/);
+  expect(document.querySelectorAll("[data-limit-shown]")).toHaveLength(1);
   expect(document.querySelector("[data-limit-shown]")?.closest("[data-limit-agent]")?.getAttribute("data-limit-agent")).toBe("codex");
 });
 

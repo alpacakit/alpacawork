@@ -10,7 +10,7 @@ import { notify } from "@/lib/notify";
 import { Popup } from "@/components/ui/popup";
 import { useFrameSelector } from "@/data/workspace-store";
 import { resources } from "@/data/resources";
-import { barLimit, type BarLimit, besideModelWindow, currentLimitWindow, limitTone, readWords, resetWords, stackPlaces, stoppedWords, windowLabel } from "@/domain/limits";
+import { barLimit, barLimits, type BarLimit, besideModelWindow, currentLimitWindow, limitTone, readWords, resetWords, stackPlaces, stoppedWords, windowLabel } from "@/domain/limits";
 import { AGENT_NAMES } from "@/domain/agent-names";
 import { useNow } from "@/state/clock";
 import { openSettings } from "@/state/dialog-store";
@@ -86,10 +86,21 @@ function barWords(shown: BarLimit, name: string, now: number, locale: string, t:
 }
 
 /**
- * The bar's plan limits: the agent work goes on with now (the first in the task stack whose limit is not spent) as a
- * ring and its name. While every agent is stopped, it names the one that works again first and until when; a folded
- * bar says only until when. The window, percent and reset
- * time are available in the label and the menu.
+ * One agent in the bar: its mark, then a ring as full as the window that holds it, as the menu reads (the name, then its
+ * bars). One whose limits are unknown has an empty ring and a faded mark; one nothing holds, the ring of no limit (four arcs).
+ */
+function BarAgent({ limit }: { limit: BarLimit }) {
+  const percent = "window" in limit ? limit.window.usedPercent : 0;
+  return <span data-limits-agent={limit.agent.adapter} data-limit-kind={limit.kind} className="flex flex-none items-center gap-1">
+    <AgentMark name={limit.agent.adapter} kind={limit.agent.adapter} className={cn(limit.kind === "unknown" && "opacity-50")} />
+    <UsageRing percent={percent} tone={limitTone(percent)} open={limit.kind === "unlimited"} />
+  </span>;
+}
+
+/**
+ * The bar's plan limits: up to two agents tasks run on (`barLimits`), each as a ring and its mark, with no names: the
+ * marks say whose they are. While every agent is stopped, the words after them say until when the first works again
+ * (a folded bar keeps only that agent and the time). The windows, percents and reset times are in the label and the menu.
  * A press opens every agent's windows with when each resets and the account each is signed in as. Nothing shows until
  * some agent's limits are known.
  */
@@ -106,28 +117,24 @@ export function LimitsMenu({ folded = false }: { folded?: boolean }) {
   const trigger = useRef<HTMLButtonElement>(null);
   const agents = limits.data?.agents ?? [];
   const shown = limits.data ? barLimit(limits.data, now) : null;
-  if (!shown) return null;
-  // A stopped agent's window is a spent one, so its ring is full too.
+  if (!shown || !limits.data) return null;
+  // The menu marks the window the bar's agent of now shows, so its figure is found there.
   const shownWindow = "window" in shown ? shown.window : null;
-  const percent = shownWindow?.usedPercent ?? 0;
-  const tone = limitTone(percent);
-  const name = AGENT_NAMES[shown.agent.adapter].short;
-  const label = barWords(shown, name, now, i18n.language, t);
+  const stopped = shown.kind === "stopped" ? shown.window : null;
+  const bar = folded && stopped ? [shown] : barLimits(limits.data, now);
+  const label = bar.map(limit => barWords(limit, AGENT_NAMES[limit.agent.adapter].short, now, i18n.language, t)).join("\n");
   const stackLabel = t("limits.openStack", { title: t("panels:agentSettings.aiStack.title") });
   const read = readWords(agents.map(agent => agent.observedAt).filter(at => at !== null).sort()[0] ?? null, now, t);
   const status = refreshing ? t("limits.refreshing") : read;
   return <>
-    <Button ref={trigger} variant="ghost" size="bar" data-limits-trigger data-tone={tone} aria-haspopup="dialog" aria-expanded={open}
-      aria-label={label} title={label} onClick={() => setOpen(value => !value)}
-      className="w-auto min-w-0 gap-1.5 px-2 narrow:w-auto narrow:min-w-9">
-      {/* An agent nothing holds has the ring of no limit (four arcs), and no window or figure. */}
-      <UsageRing percent={percent} tone={tone} open={shown.kind === "unlimited"} />
-      {/* Stopped in a folded bar, it says only until when: the name, its order and the time are in the menu. */}
-      {!(folded && shown.kind === "stopped") && <><AgentMark name={shown.agent.adapter} kind={shown.agent.adapter} /><span className="min-w-0 truncate text-sm">{name}</span></>}
-      {shown.kind === "stopped" ? <>
-        <span className="hidden text-sm whitespace-nowrap text-error @min-[60rem]:inline">{stoppedWords(shown.window, now, i18n.language, t)}</span>
-        <span className="text-sm whitespace-nowrap text-error @min-[60rem]:hidden">{stoppedWords(shown.window, now, i18n.language, t, true)}</span>
-      </> : shown.kind === "unknown" && <span className="text-sm text-muted">—</span>}
+    <Button ref={trigger} variant="ghost" size="bar" data-limits-trigger data-tone={limitTone(shownWindow?.usedPercent ?? 0)}
+      aria-haspopup="dialog" aria-expanded={open} aria-label={label} title={label} onClick={() => setOpen(value => !value)}
+      className="w-auto min-w-0 gap-3 px-2 narrow:w-auto narrow:min-w-9">
+      {bar.map(limit => <BarAgent key={limit.agent.adapter} limit={limit} />)}
+      {stopped && <>
+        <span className="hidden text-sm whitespace-nowrap text-error @min-[60rem]:inline">{stoppedWords(stopped, now, i18n.language, t)}</span>
+        <span className="text-sm whitespace-nowrap text-error @min-[60rem]:hidden">{stoppedWords(stopped, now, i18n.language, t, true)}</span>
+      </>}
     </Button>
     {/* The heading's line is as high as its button, so the box is shorter over it: the title stands as far from the top
         edge as from the side. The button's box is wider than its mark, so it is pulled out to end the mark where the
