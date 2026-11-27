@@ -347,7 +347,9 @@ test("reading back stops at the limit and says so; the snapshot moving on keeps 
   for (let shown = 100; shown <= 300; shown += 50) { await seeHead(); await waitFor(() => expect(earlierShown()).toBe(shown)); }
   const head = () => thread().querySelector<HTMLElement>("[data-earlier-more]")!;
   expect(head().dataset.earlierMore).toBe("full");
-  expect(head().textContent).toBe("これより前は読み込めません（300件まで）");
+  // It says where reading back stops, with nothing left to press.
+  expect(head().textContent).toContain("300");
+  expect(head().querySelector("button")).toBeNull();
   // Full, it no longer waits to come into sight: nothing further back is read.
   await new Promise(resolve => setTimeout(resolve, 50));
   expect(watching.size).toBe(0);

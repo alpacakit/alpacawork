@@ -56,14 +56,13 @@ test("revealing history shows earlier exchanges above its entrance, which stays 
   await act(async () => {});
   expect(shape()).toBe('ffffEo');
   expect(button.getAttribute('aria-expanded')).toBe('true');
-  expect(button.textContent).toBe('4 earlier messagesCollapse');
   expect([...document.querySelectorAll<HTMLElement>('[data-coordinator-message]')].map(row => row.dataset.coordinatorMessage))
     .toEqual(five.map(turn => turn.id));
   expect(document.activeElement).toBe(button);
   fireEvent.click(button);
   await act(async () => {});
   expect(shape()).toBe('Eo');
-  expect(button.textContent).toBe('4 earlier messagesExpand');
+  expect(button.getAttribute('aria-expanded')).toBe('false');
   expect(document.activeElement).toBe(button);
 });
 

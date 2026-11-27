@@ -43,7 +43,7 @@
     "earlierCount_many": "{{count}} mensagens anteriores",
     "earlierCount_other": "{{count}} mensagens anteriores",
     "earlierFailed": "Não foi possível carregar.",
-    "earlierLimit": "Não é possível carregar mensagens mais antigas (máx. {{limit}})",
+    "earlierLimit": "Não dá para carregar mais (máx. {{limit}})",
     "earlierMore": "Carregar anteriores",
     "earlierReading": "Carregando…",
     "error": {
