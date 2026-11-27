@@ -14,6 +14,7 @@ import { useDeviceValue } from "@/lib/device-storage";
 import { closeGuide, going, guideStages, moveGuide, putAway, type GoingStage } from "./guide-state";
 import { GUIDE, PARTS, SCREENS, doneOnShowing, shownAgainAt, stepsLeft, type GuideAlign, type GuideEntry, type GuideFacts, type GuideScreen, type GuideSide } from "./guide-definition";
 import { RolesPicture } from "./RolesPicture";
+import { PhoneSwipePicture } from "./PhoneSwipePicture";
 import { useGoingGuide, useGuide, useGuideScreen, useGuideStage, useGuideStart } from "./use-guide";
 
 /**
@@ -123,15 +124,24 @@ function standing(target: Box, size: { width: number; height: number }, view: { 
  * Where a balloon of `size` stands in a view of `view`, pointing at `target`: beside it, clear of every box of `clear`
  * (the parts whose content stays read), on the side where it stands nearest the target; the side asked for when it is
  * as near there as anywhere, then the opposite one, then either side across. Lined up with the target as `align` says,
- * kept inside the view whatever happens, its arrow on the target's middle. With no side to stand clear on (a detail
- * taking the whole screen), it stands by the target alone: never pushed back over the very part it points at.
+ * kept inside the view whatever happens, its arrow on the target's middle. With no side to stand clear on, it stands
+ * clear of the boxes the target is not in (a detail taking the whole screen holds the target: it stands by the target
+ * alone, never pushed back over the very part it points at); with none of those either (a conversation taking all the
+ * room over the input), it stands on the asked side as far as the view lets it, over the target's own edge rather than
+ * over a part it was told to keep clear, where it leaves most of the target seen; over a target it would hide (a
+ * button), it stands by the target alone, as with a detail taking the whole screen.
  */
 export function placeBalloon(target: Box, size: { width: number; height: number }, view: { width: number; height: number }, asked: GuideSide,
   align: GuideAlign = "middle", clear: readonly Box[] = []): Placed {
   const sides = [asked, OPPOSITE[asked], ...ACROSS[asked]];
   const stands = (boxes: readonly Box[]) => sides.map(side => standing(target, size, view, side, align, boxes)).filter(each => each.inView)
     .reduce<Standing | null>((best, each) => best && best.away <= each.away ? best : each, null);
-  const stood = stands(clear) ?? stands([]) ?? standing(target, size, view, asked, align, []);
+  const holds = (box: Box) => box.left <= target.left && box.top <= target.top
+    && box.left + box.width >= target.left + target.width && box.top + box.height >= target.top + target.height;
+  // Over the target's own edge only where the balloon leaves most of it seen (a conversation, not a button).
+  const roomy = 2 * size.width <= target.width || 2 * size.height <= target.height;
+  const stood = stands(clear) ?? stands(clear.filter(box => !holds(box))) ?? (roomy ? standing(target, size, view, asked, align, []) : null)
+    ?? stands([]) ?? standing(target, size, view, asked, align, []);
   const x = clamp(stood.x, MARGIN, view.width - size.width - MARGIN), y = clamp(stood.y, MARGIN, view.height - size.height - MARGIN);
   const middleX = target.left + target.width / 2, middleY = target.top + target.height / 2;
   return stood.side === "top" || stood.side === "bottom"
@@ -475,11 +485,14 @@ function BalloonBody({ screen, entry, facts, again, placed }: { screen: GuideScr
       side === "top" || side === "bottom" ? "-translate-x-1/2" : "-translate-y-1/2", side === "top" ? "-translate-y-1/2" : side === "bottom" ? "translate-y-1/2" : side === "left" ? "-translate-x-1/2" : "translate-x-1/2")} />
     {entry.roles && !again && <RolesPicture lit={entry.roles} />}
     <div className="flex items-start gap-1">
-      <p ref={words} className="m-0 flex-1 py-1.5 text-sm">
+      {/* A little room between sentences, so a sentence's own second line reads as part of it; a lead bold as a whole
+          stands a little further apart. */}
+      <p ref={words} className="m-0 flex-1 py-1.5 text-sm [&>span]:py-0.5 [&>span[data-bold]:first-child]:mb-1">
         <Sentences words={say} />
       </p>
       <CloseGuide screen={screen} className="pointer-events-auto text-bg/75 hover:bg-bg/15 hover:text-bg" />
     </div>
+    {entry.picture === "phone-swipe" && !again && <PhoneSwipePicture />}
     {/* Its buttons side by side at the right; one under the other where they do not fit beside each other. */}
     {(next || entry.action) && <div className="mt-1.5 flex flex-wrap justify-end gap-2 pr-1">
       {entry.action && <Button variant="outline" data-guide-action className="pointer-events-auto border-bg/40 bg-transparent text-bg hover:bg-bg/15"

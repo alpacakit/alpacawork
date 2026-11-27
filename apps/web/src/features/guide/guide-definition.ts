@@ -67,6 +67,8 @@ import type { GuideStage } from "./guide-state";
  * - `reads`: what it reads from outside the screen for itself alone, read only while it is left (stepsLeft);
  * - `roles`: who does what, drawn over its first words (RolesPicture) with this role lit: the role its part is on the
  *   screen. Not over its words when it comes round again;
+ * - `picture`: a picture under its first words that shows at a glance what they say (Guide's pictures). Not under its
+ *   words when it comes round again;
  * - `show`: a motion that shows how its part is used (show-how), played by that part's owner a moment after the
  *   balloon stands, each time it stands; the balloon stays still meanwhile and stands clear of where it takes the part.
  * Nothing else names a step: the balloon and the stored stage read them from here.
@@ -87,9 +89,9 @@ export const PARTS = {
   send: "[data-ask-send]:not(:disabled)",
   /**
    * Where the coordinator is seen at work: "Open conversation" over that box, which says what it is doing (pressed, it
-   * opens the conversation), or the open conversation's head.
+   * opens the conversation), or the open conversation as a whole.
    */
-  coordinator: "[data-coordinator-pill][data-coordinator-expand], [data-coordinator-panel-head]",
+  coordinator: "[data-coordinator-pill][data-coordinator-expand], [data-coordinator-panel]",
   /** What stands in the row over that box: the conversation's button, and the buttons of the Task open in the detail. */
   overInput: "[data-coordinator-fold-row] > *",
   /** The conversation with the coordinator: that button while it is folded, its "Clear conversation" while it is open. */
@@ -243,9 +245,19 @@ export type GuideEntry = {
   reads?: readonly GuideRead[];
   show?: ShowHowKind;
   roles?: GuideRole;
+  picture?: GuidePicture;
 };
 
+/** A picture a step can show under its words (`picture`): answering on a phone, by a swipe. */
+export type GuidePicture = "phone-swipe";
+
 const turnSection = (t: TFunction) => t("tree:home.turn");
+/**
+ * The person's turn open in the detail, as a question or a report, while nothing they sent is still with the
+ * coordinator: what they just sent (an answer in their own words, one more) answers it, so it is not said to be awaiting
+ * them until what comes of it is known.
+ */
+const openTurn = (f: GuideFacts, kind: "question" | "result") => f.open === kind && !f.busy;
 const finish = (t: TFunction) => t("ui:coordinatorCard.done");
 /**
  * Every step at the input stands clear of the foot, what stands in the row over it, the conversation's panel while it is
@@ -276,12 +288,13 @@ export const GUIDE: readonly GuideEntry[] = [
     action: { label: t => t("tree:guide.tryExample"), run: t => exampleInDraft(t("tree:guide.example")) },
     say: t => t("tree:guide.say.send") },
   // Whatever was sent (a request, an answer, one more), while the coordinator is on it: not while it can still be
-  // taken back, which the screen says itself.
-  { id: "received", phase: "now", part: "coordinator", side: "top", when: f => f.busy && !f.soon, roles: "coordinator",
+  // taken back, which the screen says itself. Clear of the foot, so a conversation taking all the room over it (made
+  // as big as it goes) has it over its own head rather than over the input.
+  { id: "received", phase: "now", part: "coordinator", clear: ["foot", "overInput"], side: "top", when: f => f.busy && !f.soon, roles: "coordinator",
     say: t => t("tree:guide.say.received"), again: t => t("tree:guide.again.received") },
   // A question open in the detail, until its answer is sent: right beside the questions' box, over the detail's margin;
   // where the detail lies over the page, clear of it (what is read over the questions stays read).
-  { id: "answer", phase: "turn", turn: true, part: "asked", clear: ["detailOver", "foot", "overInput"], side: "left", align: "start", when: f => f.open === "question",
+  { id: "answer", phase: "turn", turn: true, part: "asked", clear: ["detailOver", "foot", "overInput"], side: "left", align: "start", when: f => openTurn(f, "question"),
     say: t => t("tree:guide.say.answer"), again: t => t("tree:guide.again.answer") },
   // A report open with nothing written yet: it is there to look over, and more can be asked after it, with one more
   // to try (the one way on the step offers; Done stays there to press); then, with words written, the label that goes
@@ -297,8 +310,8 @@ export const GUIDE: readonly GuideEntry[] = [
   // over the buttons at its foot (never over the words written).
   { id: "send-ready", phase: "now", part: "send", clear: ["words", "overInput", "panel"], side: "right", when: f => f.drafting,
     say: t => t("tree:guide.say.sendReady"), again: t => t("tree:guide.say.sendReady") },
-  // Done on an open report.
-  { id: "accept", phase: "turn", turn: true, part: "finish", side: "top", align: "end", when: f => f.open === "result",
+  // Done on an open report (openTurn).
+  { id: "accept", phase: "turn", turn: true, part: "finish", side: "top", align: "end", when: f => openTurn(f, "result"),
     say: t => t("tree:guide.say.accept", { finish: finish(t) }), again: t => t("tree:guide.again.accept", { finish: finish(t) }) },
   // A Task being worked on, opened before anything has come back from it (the person looking round during their
   // first wait): where the AI on it is stopped. Once they have had a turn, the detail stays open on the Task they
@@ -323,7 +336,7 @@ export const GUIDE: readonly GuideEntry[] = [
     say: t => t("tree:guide.say.conversation", { clear: t("ui:coordinatorCard.clear") }) },
   { id: "another-repository", phase: "close", passable: true, part: "project", side: "right", align: "start", next: true, when: () => true,
     say: t => t("tree:guide.say.anotherRepository", { create: t("chrome:projects.new") }) },
-  { id: "phone", phase: "close", passable: true, part: "settings", side: "bottom", align: "end", next: true,
+  { id: "phone", phase: "close", passable: true, part: "settings", side: "bottom", align: "end", next: true, picture: "phone-swipe",
     action: { label: t => t("tree:guide.openSteps"), run: () => openSettings("apps") },
     when: f => f.apps,
     say: t => t("tree:guide.say.phone", { settings: t("chrome:appBar.settings"), apps: t("panels:settings.tabs.apps") }) },
