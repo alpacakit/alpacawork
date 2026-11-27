@@ -5,6 +5,7 @@ import { Message } from "@/components/ui/message";
 import { ReadFailure } from "@/components/ui/loadable";
 import { ProjectTile } from "@/components/ui/project-tile";
 import { cn } from "@/lib/utils";
+import { TextMark } from "@/components/ui/text-mark";
 import type { ShelfTarget } from "./archive-types";
 
 /**
@@ -25,8 +26,8 @@ export function ArchivedNotice({ title, shelf, placement, onRestore, onOpenArchi
   const path = <div className={cn("m-0 flex min-w-0 flex-wrap items-start gap-x-1.5 gap-y-2 text-base text-ink", placement === "list" && "justify-center text-start")}>
     {shelf.shelvedBy.map((step, at) => <Fragment key={step.id}>
       {at > 0 && <span aria-hidden="true" className="text-soft">›</span>}
-      <span className="inline-flex max-w-full min-w-0 items-start gap-1.5">
-        <ProjectTile name={step.title} color={step.color} size={20} className="mt-0.5" />
+      <span className="inline-flex max-w-full min-w-0 items-baseline gap-1.5">
+        <TextMark><ProjectTile name={step.title} color={step.color} size={20} /></TextMark>
         <span className="min-w-0">
           <span dir="auto" className="[overflow-wrap:anywhere]">{step.title}</span>
           <span className="ml-1.5 whitespace-nowrap text-sm text-muted tabular-nums">{step.id}</span>

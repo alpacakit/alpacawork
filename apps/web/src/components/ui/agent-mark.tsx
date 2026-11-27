@@ -11,7 +11,6 @@ import { TextMark } from "./text-mark";
  * Copilot) wears that logo; any other, a round badge of two letters in a colour of its own (domain/agent-mark). Its
  * size follows the text around it, so it sits on the line wherever it stands.
  */
-
 export const AgentMark = memo(function AgentMark({ name, model, kind: given, label, className }: {
   /** The agent's name as configured (claude, codex, inkling), or a kind's own id where only the kind is known. */
   name?: string;

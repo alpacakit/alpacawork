@@ -33,12 +33,15 @@ export function useContextWords(context: ContextView | null) {
   const window = !context || context.windowTokens === null ? t("context.noWindow") : t("context.tokens", { count: context.windowTokens, tokens: count(context.windowTokens) });
   return { figure, shown, used, window, label: t("context.label", { figure: shown, used, window }) };
 }
-/** A context's ring and figure, as every meter of a conversation shows them. `figure`: the figure's own place (a column). */
+/**
+ * A context's ring and figure, as every meter of a conversation shows them. The figure is boxed to its capitals, so a row
+ * that centres the two centres the digits on the ring. `figure`: the figure's own place (a column).
+ */
 export function ContextFace({ words, figure: place }: { words: ReturnType<typeof useContextWords>; figure?: string }) {
   const { figure, shown } = words;
   return <>
     <UsageRing percent={figure.percent ?? 0} tone={figure.tone} open={figure.open} className="size-3.5" />
-    <span className={cn("tabular-nums", place, figure.percent === null ? "text-muted" : TONE_TEXT[figure.tone])}>{shown}</span>
+    <span className={cn("cap-box tabular-nums", place, figure.percent === null ? "text-muted" : TONE_TEXT[figure.tone])}>{shown}</span>
   </>;
 }
 /** The tokens used and the window, one row each. */

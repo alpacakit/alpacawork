@@ -7,13 +7,14 @@ import { cn } from "@/lib/utils";
  * row's id (RowLines). A browser without text-box keeps the strut a whole line high and centres the marks on the line.
  */
 export function CapStrut({ className }: { className?: string }) {
-  return <span className={cn("w-0 cap-box", className)}>{"​"}</span>;
+  return <span className={cn("cap-strut", className)} />;
 }
 
 /**
- * A mark beside words (who a History row was between, its arrow), centred on their capitals whatever their size and the
- * font that draws them. The strut is the box's first item, so it gives the box its baseline, and the mark centres
- * on it: the row the mark stands in lines it up with the words on their baseline (`items-baseline`). Laid out where it is
+ * A mark beside words (who a History row was between, its arrow, an agent's logo before its name), centred on their
+ * capitals whatever their size and the font that draws them. The strut is the box's first item, so it gives the box its
+ * baseline, and the mark centres on it: set in a line of text, or in a row that lines its items up on their baseline
+ * (`items-baseline`), the mark stands with the words. Laid out where it is
  * drawn, not moved there, so its row is as tall as it draws and nothing round it cuts it. Centred on the line box
  * instead, it stood 0.5px over the words on a phone and 0.6px over them on a computer.
  */

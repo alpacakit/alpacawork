@@ -410,13 +410,16 @@
    Not steps      calculated values stay as `[calc(...)]` (tree height,
                   dialog and panel limits) and so do lines drawn from another
                   element's size (tree connectors: half the card head + 1px);
-                  1px nudges use Tailwind's `px` (`mt-px`, `-left-px`)
+                  1px steps of spacing use Tailwind's `px` (`mt-px`, `-left-px`).
    Centring       by alignment, never by moving: a row's items centre with
                   items-center (place-items-center for one), words in it are
-                  boxed to their capitals (`cap-box`), and a mark set in a
-                  line of words centres on their capitals by TextMark
-                  (components/ui/text-mark.tsx); no translate, top or
-                  vertical-align offsets to line things up
+                  boxed to their capitals (`cap-box`, `cap-truncate`), and a
+                  mark beside words centres on their capitals by TextMark
+                  (components/ui/text-mark.tsx), in a line of text or in a row
+                  lined up on its baseline; no translate, top, margin or
+                  vertical-align offsets to line things up. The one exception
+                  is a project tile's kana and kanji (project-tile.tsx): CSS
+                  has no edge for an ideograph's middle the browsers draw yet
    `cn` (lib/utils.ts) knows the names that tailwind-merge does not, so a
    caller's `min-h-control-lg` replaces a part's `min-h-control-sm`. */
 @theme {
