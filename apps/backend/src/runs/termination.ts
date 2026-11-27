@@ -1,4 +1,4 @@
-import { platform, processGroupState, watchProcessGroup } from '@alpacawork/core';
+import { isLiveProcess, platform, processGroupState, processRows, watchProcessGroup } from '@alpacawork/core';
 import { setTimeout as delay } from 'node:timers/promises';
 
 /** One TERM→grace→KILL sequence, advanced by the caller's observations; each signal is due once. */
@@ -15,8 +15,8 @@ export class TerminationSequence {
 }
 
 /** Group authority and post-KILL confirmation belong to the group caller, not to the signal sequence. */
-async function terminateGroup(pid: number, observe: () => ReturnType<typeof processGroupState>): Promise<boolean> {
-  const sequence = new TerminationSequence(10_000);
+async function terminateGroup(pid: number, observe: () => ReturnType<typeof processGroupState>, graceMs = 10_000): Promise<boolean> {
+  const sequence = new TerminationSequence(graceMs);
   for (;;) {
     const state = observe();
     if (state === 'gone') return true;
@@ -35,6 +35,11 @@ export async function terminateAgent(pid: number): Promise<void> {
 }
 
 /** Recovery needs an incarnation witness; leader loss never authorizes a reused group. */
-export function terminateRecordedGroup(identity: Parameters<typeof processGroupState>[0]): Promise<boolean> {
-  return terminateGroup(identity.group, watchProcessGroup(identity));
+export function terminateRecordedGroup(identity: Parameters<typeof processGroupState>[0], graceMs?: number): Promise<boolean> {
+  const observe = watchProcessGroup(identity);
+  return terminateGroup(identity.group, () => {
+    const state = observe();
+    // POSIX may retain group IDs while an external reaper still holds zombies.
+    return state !== 'gone' && !processRows().some(row => row.pgid === identity.group && isLiveProcess(row)) ? 'gone' : state;
+  }, graceMs);
 }

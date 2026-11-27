@@ -20,7 +20,7 @@ const scope = { root: '/fixture', conversationId: 'c' };
 const snapshot = (id = 'c', cancelled: string[] = [], turns: any[] = []) => served({ id, cancelled, admitted: {}, turns, nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false });
 const queued = { id: 'message', at: '', ask: 'Fix T3', attachments: [], status: 'queued', waiting: true, answer: null, seen: false, answeredAt: null, error: null, result: null };
 /** The Run that answered the message ended, and it wrote on T3 (the review the message answers). */
-const carried = { ...queued, status: 'succeeded', waiting: false, result: { writes: [{ task: 'T3', record: 'L9', kind: 'request_accepted' }], refused: [] } };
+const carried = { ...queued, status: 'succeeded', waiting: false, result: { writes: [{ task: 'T3', record: 'L9', kind: 'request_accepted' }], refused: [], automations: [] } };
 const response = (value: unknown) => new Response(snapshotJson(value));
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(r => { resolve = r; }); return { promise, resolve }; }
 const admit = (id = 'message', ownScope = scope) => captureReaderIntent(intentAbout(task, 'continue', people), useSitting.getState().card, tasks, id, ownScope, () => {})();
@@ -38,7 +38,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 for (const text of ['Fix the flow for T3', 'T3']) test(`ordinary text has no answer receipt: ${text}`, () => {
   expect(captureReaderSend(textDocument(text), tasks, 'message', scope)()).toBe(false);
-  reconcileReaderSends(snapshot('c', [], [{ ...queued, status: 'succeeded', result: { writes: [], refused: [] } }]), scope.root);
+  reconcileReaderSends(snapshot('c', [], [{ ...queued, status: 'succeeded', result: { writes: [], refused: [], automations: [] } }]), scope.root);
   expect(receipt()).toBeUndefined();
   expect(keptDepartures()).toEqual([]);
 });

@@ -17,6 +17,15 @@
     "waiting_other": "$t(tree:home.turn): {{count}}",
     "withCounts": "({{counts}}) {{page}}"
   },
+  "face": {
+    "analysis": "Análisis",
+    "automations": "Automatizaciones",
+    "automationsAttention_one": "{{count}} automatización necesita revisión",
+    "automationsAttention_many": "{{count}} automatizaciones necesitan revisión",
+    "automationsAttention_other": "{{count}} automatizaciones necesitan revisión",
+    "label": "Pantalla",
+    "use": "Usar"
+  },
   "gathered": {
     "markAllRead": "Marcar todo como leído"
   },

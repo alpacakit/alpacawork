@@ -134,7 +134,7 @@ test('an ordinary screen reply with no write has an empty successful result', as
   const w = callerWorkspace(t), head = w.screenRun({ words: 'Hello', session: 'screen' });
   const url = await w.start(); await w.startScreenRun(url, head); w.end(head, 'succeeded', 'Hello back');
   const message = new CoordinatorConversation(w.root).read().turns.find(turn => turn.id === head.requestId)!;
-  assert.equal(message.answer, 'Hello back'); assert.deepEqual(message.result, { writes: [], refused: [] });
+  assert.equal(message.answer, 'Hello back'); assert.deepEqual(message.result, { writes: [], refused: [], automations: [] });
 });
 
 test('input validation and authorization failures on an existing Task preserve their actual Problem on the screen Request', async t => {
@@ -177,8 +177,8 @@ test('an HTTP operation waiting across a same-session Run change records its ref
   const rejected = await pending;
   assert.equal(rejected.status, 403); assert.equal(rejected.body.error.reason.kind, 'coordinator_run_changed');
   const results = control(w.root, db => resultsOf(db, [head.requestId, next.requestId]));
-  assert.deepEqual(results.get(head.requestId), { writes: [], refused: [{ task: w.project, ...rejected.body.error }] });
-  assert.deepEqual(results.get(next.requestId), { writes: [], refused: [] });
+  assert.deepEqual(results.get(head.requestId), { writes: [], refused: [{ task: w.project, ...rejected.body.error }], automations: [] });
+  assert.deepEqual(results.get(next.requestId), { writes: [], refused: [], automations: [] });
   assert.equal((await call(url, ['task', 'get', '--task', w.project])).task.hash, shown.hash);
 });
 
@@ -246,7 +246,7 @@ test('an admitted refusal survives quiesce and drained observes its durable Prob
   assert.equal((await drained.json()).state, 'drained');
   assert.equal(savedWhenDrained, 1, 'the original admission includes durable refusal recording');
   const result = control(w.root, db => resultsOf(db, [head.requestId])).get(head.requestId)!;
-  assert.deepEqual(result, { writes: [], refused: [{ task: task.id, ...rejected.body.error }] });
+  assert.deepEqual(result, { writes: [], refused: [{ task: task.id, ...rejected.body.error }], automations: [] });
 });
 
 test('an already delivered reply reference remains readable while another input referencing it has an uncertain receipt', async t => {
@@ -277,7 +277,7 @@ test('message result lookup uses indexes for both disjoint canonical authors',as
     }
     return original.call(this,sql);
   });
-  const result=control(w.root,db=>resultsOf(db,[screen.requestId]));assert.deepEqual(result.get(screen.requestId),{writes:[],refused:[]});
+  const result=control(w.root,db=>resultsOf(db,[screen.requestId]));assert.deepEqual(result.get(screen.requestId),{writes:[],refused:[],automations:[]});
   assert.equal(plans.length,1);const plan=plans[0]!.join('\n');
   assert.match(plan,/SEARCH l USING INDEX task_log_message/);assert.match(plan,/SEARCH q USING INDEX requests_message/);
   assert.doesNotMatch(plan,/SCAN [lq](?:\s|$)/m);

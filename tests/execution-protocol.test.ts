@@ -14,6 +14,10 @@ import { EventJournal, executionFolder, identityOf } from '@alpacawork/backend/t
 import { settle, settleTransaction, closeLaunches } from '@alpacawork/backend/test-dist/runs/scheduler.js';
 import { readAgentsSettings } from '@alpacawork/backend/test-dist/agents-settings.js';
 
+import { RunStore } from '@alpacawork/runs';
+import { installAgentStub } from './helpers/agent-stub.ts';
+import { taskFlow } from './task-flow.fixture.ts';
+
 test('immutable publication is durable, bounded and no-overwrite; invalid JSON fails', t => {
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'protocol-'))); t.after(() => rmSync(root, { recursive: true, force: true }));
   const folder = join(root, 'messages');
@@ -189,4 +193,60 @@ test('unmanaged journal preflight releases its exclusion on rollback and still d
     assert.equal(h.store.runtimeGet(run.id)!.reason, 'manager_lost');
     assert.equal(h.store.getText(run.id)!.result, null, 'absence never proves successful completion');
   } finally { closeLaunches(lost.launches); }
+});
+
+test('urgent first requests share one reserve slot across recovery and uncertain delivery', async t => {
+  const f = await taskFlow(t);
+  const path = process.env.PATH;
+  t.after(() => { if (path === undefined) delete process.env.PATH; else process.env.PATH = path; });
+  process.env.PATH = installAgentStub(f.root, 'claude');
+  const loaded = readAgentsSettings(f.root);
+  if (!loaded.ok) throw loaded.error;
+  const settings = { ...loaded, config: { ...loaded.config, limits: { ...loaded.config.limits, parallel: 1 } } };
+  const ordinary = await f.request(await f.task('Ordinary work'));
+  const queued = await f.request(await f.task('Ordinary work waiting'));
+  const first = await f.request(await f.task('First urgent task'));
+  const second = await f.request(await f.task('Second urgent task'));
+  const firstRequest = f.run(first).requestId, secondRequest = f.run(second).requestId;
+  // Earlier runs keep the urgency they had at admission even when the current definition is ordinary.
+  f.store(store => store.write(() => {
+    const project = store.connection.prepare('SELECT id FROM tasks WHERE external_id=?').get(f.project)!.id!;
+    const write = store.connection.prepare(`INSERT INTO automation_operations
+      (id,project_task_id,ordinal,name,at,local_day,workspace_day,outcome,requested_task_id,request_id,urgent)
+      VALUES (?,?,1,'tasks.create',?,'2026-11-24','2026-11-24','done',?,?,1)`);
+    write.run(randomUUID(), project, '2026-11-24T10:00:00.000Z', first.id, firstRequest);
+    write.run(randomUUID(), project, '2026-11-24T11:00:00.000Z', second.id, secondRequest);
+  }));
+
+  // Each call opens a fresh store. Closing the launch descriptors simulates leaving a committed reservation unclaimed.
+  const reserve = async () => {
+    const store = new RunStore(f.root, { busyTimeoutMs: 1_000 });
+    try {
+      const decision = await settleTransaction(store, settings);
+      try { return decision.launches.map(item => item.id); }
+      finally { closeLaunches(decision.launches); }
+    } finally { store.close(); }
+  };
+  assert.deepEqual(await reserve(), [ordinary.runId, first.runId]);
+  assert.deepEqual(await reserve(), [ordinary.runId, first.runId]);
+
+  f.store(store => {
+    const launch = attemptOf(store, first.runId)!;
+    const journal = new EventJournal(executionFolder(f.root, first.runId, launch.attemptId), identityOf(launch));
+    journal.append('claimed', { managerPid: process.pid, managerStarted: 'test', bootId: 'test' });
+    journal.append('spawn_intent', { initialInputId: launch.initialInputId });
+    journal.append('input_attempt', { inputId: launch.initialInputId, instructionRunId: first.runId, contentDigest: digestBytes(launch.prompt) });
+    journal.append('input_uncertain', { inputId: launch.initialInputId, receipt: { type: 'disconnect' } });
+    journal.append('completed', { outcome: { state: 'failed', reason: 'exit' }, session: null, measuredUsage: null,
+      exit: { code: 1, signal: null }, result: { state: 'missing', digest: null, size: 0 } });
+    new RunEventImporter(store).pass();
+  });
+  assert.equal(f.run(first).state, 'failed');
+  assert.deepEqual(await reserve(), [ordinary.runId]);
+  assert.equal(f.run(second).state, 'queued');
+  assert.equal(f.run(queued).state, 'queued');
+
+  await f.commands.lifecycle({ id: first.id, action: 'archive', expectedTaskHash: (await f.get(first.id)).hash });
+  assert.deepEqual(await reserve(), [ordinary.runId, second.runId]);
+  assert.equal(f.run(queued).state, 'queued');
 });

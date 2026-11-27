@@ -1,3 +1,4 @@
+import type { AutomationOrigin } from './automation.js';
 /** Task metadata validation and views shared by the control database. */
 import { randomUUID } from 'node:crypto';
 import { Problem, PROBLEM_CODE, faultReason } from '@alpacawork/core';
@@ -115,11 +116,12 @@ export function validateControlMetadata(value: unknown): ControlMetadata {
 }
 
 export function initialControlDocument(id: string, parentId: string | null, title: string,
-  created: { kind: TaskKind; userRequested: boolean; actor: TaskActor; analysisSubject?: AnalysisSubject }): ControlMetadata {
+  created: { kind: TaskKind; userRequested: boolean; actor: TaskActor; origin?: AutomationOrigin; analysisSubject?: AnalysisSubject }): ControlMetadata {
   const meta = taskMetadata({ format: CONTROL_TASK_FORMAT, id, kind: created.kind, parentId, lifecycle: 'active',
     title: text(title, 'title', MAX_TITLE_LENGTH), version: 1n, baseState: 'todo', hold: false, userRequested: created.userRequested,
     analysisSubject: created.analysisSubject,
     log: [{ id: `L${randomUUID()}`, kind: 'created', at: now(), title: null, description: null, actor: created.actor,
-      fromState: null, toState: 'todo', userRequested: created.userRequested }] });
+      fromState: null, toState: 'todo', userRequested: created.userRequested,
+      ...(created.origin ? { origin: created.origin } : {}) }] });
   return validateControlMetadata(meta);
 }

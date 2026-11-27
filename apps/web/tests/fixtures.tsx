@@ -357,7 +357,7 @@ export function indexOf(value: Served, rev = 1, requiredPv: Partial<RequiredPvDT
   return projectedIndexSchema.parse({ restoreId: "initial", generation: "a", rev, sourcePv: Math.max(0, ...Object.values(requiredPv).flatMap(Object.values)),
     requiredPv: { view: {}, history: {}, page: {}, timeline: {}, search: {}, ...requiredPv }, root: value.root, tasks: rows,
     placements: value.placements, runs: value.runs, home: home.filter((row) => row.section !== "done"),
-    projectShelfVersion: "a".repeat(64),
+    projectShelfVersion: "a".repeat(64), automationsVersion: "0",
     projects: listed.map(project => ({ ...project, counts: menu(project.id) })),
     profiles: value.profiles, attachmentBytes: value.attachmentBytes,
     errors: value.errors, writable: value.writable, staleIds: [],
@@ -461,9 +461,16 @@ export function screenData(value: Served = tree(), baseline = baselines(value.ta
   return { ...mapped, tasks: mapped.tasks.map(opened),
     shelved: mapped.shelved.map((item) => ({ ...item, task: opened(item.task) })),
     people, seed, drawing: { root: value.root, restoredAt: null as number | null },
-    info: { root: value.root, rev: index.rev, checkpointAt: baseline.checkpoint.at, writable: value.writable,
+    info: { root: value.root, rev: index.rev, checkpointAt: baseline.checkpoint.at, automationsVersion: index.automationsVersion, writable: value.writable,
       errors: value.errors, staleIds: [] as string[], runs: value.runs, profiles: value.profiles, attachmentBytes: value.attachmentBytes, projects: index.projects,
       presence: index.presence, host: index.host, coordinatorWork: index.coordinatorWork, counts: index.counts, home: index.home } };
+}
+/**
+ * The queries' provider alone, as the screen's root gives every part (main.tsx): for a part drawn outside a workspace
+ * that still reads through it (an agent's mark reads the server settings for each agent's kind).
+ */
+export function WithQueries({ children }: { children: ReactNode }) {
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
 }
 export function TestWorkspace({ children, data: provided }: { children: ReactNode; data?: ReturnType<typeof screenData> }) {
   const [initial] = useState(() => provided ?? screenData());

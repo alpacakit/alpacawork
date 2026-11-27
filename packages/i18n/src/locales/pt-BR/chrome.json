@@ -17,6 +17,15 @@
     "waiting_other": "$t(tree:home.turn): {{count}}",
     "withCounts": "({{counts}}) {{page}}"
   },
+  "face": {
+    "analysis": "Análise",
+    "automations": "Automações",
+    "automationsAttention_one": "{{count}} automação precisa de atenção",
+    "automationsAttention_many": "{{count}} automações precisam de atenção",
+    "automationsAttention_other": "{{count}} automações precisam de atenção",
+    "label": "Tela",
+    "use": "Usar"
+  },
   "gathered": {
     "markAllRead": "Marcar tudo como lido"
   },

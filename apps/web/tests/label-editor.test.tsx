@@ -1,4 +1,4 @@
-import { freeze, outgoingKey, cancelUnsent, canTakeBack, takeBack, reconcileOutbox } from '../src/features/coordinator/editor/outbox';
+import { freeze, outgoingKey, cancelUnsent, canTakeBack, takeBack, reconcileOutbox, refuse } from '../src/features/coordinator/editor/outbox';
 import { consumeInput } from '../src/features/coordinator/editor/input-ownership';
 import { serialize, draftDocument, filterDocument, parseDocument } from '../src/features/coordinator/editor/document';
 import { served, snapshotJson, SERVED } from './conversation-fixture';
@@ -12,9 +12,10 @@ import { Reader } from '../src/features/reader/Reader';
 import { LabelEditor } from '../src/features/coordinator/editor/LabelEditor';
 import { CoordinatorCard } from '../src/features/coordinator/CoordinatorCard';
 import { useViewStore } from '../src/state/view-store';
-import { replyInDraft, useInputDraft } from '../src/features/coordinator/editor/draft';
+import { automationInDraft, replyInDraft, useInputDraft } from '../src/features/coordinator/editor/draft';
+import { pointInputAt } from '../src/features/automations/input-badge';
 import { useConversation } from '../src/features/coordinator/coordinator';
-import { taskLabel, textDocument, replyTo, replyIn, inlines, emptyDocument, hasContent, type Document } from '../src/features/coordinator/editor/document';
+import { taskLabel, textDocument, replyTo, replyIn, inlines, emptyDocument, hasContent, automationIn, aboutAutomation, type Document } from '../src/features/coordinator/editor/document';
 import { useDraftStore } from '../src/features/forms/draft-store';
 import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -330,18 +331,19 @@ test('the recipient hint follows the first distinct draft label and its language
 });
 
 
-test('loading draft merge keeps one reply reference and the retained reply wins', async () => {
+test('loading draft merge keeps one reply reference and one automation badge, and the retained ones win', async () => {
   const retained = { id: 'retained-reply', answeredAt: '2026-10-22T11:00:00Z' };
   const incoming = { id: 'incoming-reply', answeredAt: '2026-10-22T11:01:00Z' };
   mount();
-  act(() => input.change(() => replyTo(textDocument('Retained words'), retained)));
+  act(() => input.change(() => aboutAutomation(replyTo(textDocument('Retained words'), retained), { id: 'A1', name: 'Retained' })));
   act(() => setConversationState({ conversation: null }));
   // QueryCache delivers removals through its scheduled subscription; edit only once the loading draft is actually shown.
   await waitFor(() => expect(JSON.parse(input.key)[2]).toBe('loading'));
-  act(() => input.change(() => replyTo(textDocument('Loading words'), incoming)));
+  act(() => input.change(() => aboutAutomation(replyTo(textDocument('Loading words'), incoming), { id: 'new', name: '' })));
   act(() => setConversationState({ conversation: { id: 'editor-tests', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns: [] } }));
   expect(replyIn(input.doc)).toEqual(retained);
   expect(inlines(input.doc).filter(node => node.type === 'replyLabel')).toHaveLength(1);
+  expect(inlines(input.doc).filter(node => node.type === 'automationLabel').map(node => node.type === 'automationLabel' && node.attrs.id)).toEqual(['A1']);
   expect(current().getText()).toContain('Retained words'); expect(current().getText()).toContain('Loading words');
 });
 
@@ -466,6 +468,98 @@ test('pending words leave the editor immediately; editing identical next words p
   expect(serialize(draftDocument(entries[key]!.values))).toBe('same');
 });
 
+
+test.each([
+  ['A2106', null, 'A2106'], ['new', null, undefined],
+  // A badge put in for the next message while the last is still on its way stays when that one is admitted.
+  ['new', 'A2106', 'A2106'], ['new', 'new', 'new'], ['A2106', 'new', 'new'],
+] as const)('sending with the %s badge, the next badge %s, leaves %s in the input', (sent, next, left) => {
+  mount();
+  act(() => { automationInDraft(sent === 'new' ? 'new' : { id: sent, name: 'Morning digest' }); });
+  act(() => { current().commands.focus('end'); current().commands.insertContent('make it 8:30'); });
+  expect(automationIn(input.doc)?.id).toBe(sent);
+  const key = input.key, requestId = input.entry.values.requestId!;
+  act(() => { freeze('/fixture', { conversationId: 'editor-tests', text: serialize(input.doc), automation: sent, attachments: [] }, input.entry.values, { from: key }); });
+  if (next) act(() => { automationInDraft(next === 'new' ? 'new' : { id: next, name: 'Morning digest' }, { pressed: true }); });
+  const entries = { ...useDraftStore.getState().entries };
+  expect(consumeInput(entries, entries[outgoingKey('/fixture', requestId)]!)).toBe(true);
+  expect(automationIn(draftDocument(entries[key]!.values))?.id).toBe(left);
+  expect(serialize(draftDocument(entries[key]!.values))).not.toContain('make it 8:30');
+});
+
+test('a message sent with a badge comes back into its words under the badge put in since, one badge only', () => {
+  mount();
+  act(() => { automationInDraft('new'); });
+  act(() => { current().commands.focus('end'); current().commands.insertContent('every morning at 9'); });
+  const id = input.entry.values.requestId!, key = input.key;
+  act(() => { freeze('/fixture', { conversationId: 'editor-tests', text: serialize(input.doc), automation: 'new', attachments: [] }, input.entry.values, { from: key }); });
+  act(() => { automationInDraft('new', { pressed: true }); });
+  // Withdrawn before it went, its words come back into the input, which holds only the next badge.
+  act(() => { expect(cancelUnsent('/fixture', id)).toBe('cancelled'); });
+  if (canTakeBack(useDraftStore.getState().entries, '/fixture', id, key)) act(() => { expect(takeBack('/fixture', id, key)).toBe(true); });
+  expect(serialize(input.doc)).toBe('every morning at 9');
+  expect(inlines(input.doc).filter(node => node.type === 'automationLabel')).toHaveLength(1);
+});
+
+test('a message withdrawn while the next is also on its way comes back with its own badge', () => {
+  mount();
+  act(() => { automationInDraft('new'); });
+  act(() => { current().commands.focus('end'); current().commands.insertContent('first words'); });
+  const first = input.entry.values.requestId!, key = input.key;
+  act(() => { freeze('/fixture', { conversationId: 'editor-tests', text: serialize(input.doc), automation: 'new', attachments: [] }, input.entry.values, { from: key }); });
+  act(() => { automationInDraft('new', { pressed: true }); });
+  act(() => { current().commands.focus('end'); current().commands.insertContent('second words'); });
+  act(() => { freeze('/fixture', { conversationId: 'editor-tests', text: serialize(input.doc), automation: 'new', attachments: [] }, input.entry.values, { from: key }); });
+  act(() => { expect(cancelUnsent('/fixture', first)).toBe('cancelled'); });
+  if (canTakeBack(useDraftStore.getState().entries, '/fixture', first, key)) act(() => { expect(takeBack('/fixture', first, key)).toBe(true); });
+  expect(serialize(input.doc)).toBe('first words');
+  expect(automationIn(input.doc)?.id).toBe('new');
+});
+
+test.each([['new', 'A2106'], ['A2106', 'new']] as const)('a refused message sent with the %s badge comes back under the %s badge put in since', (sent, next) => {
+  mount();
+  const target = (id: string) => id === 'new' ? 'new' as const : { id, name: 'Morning digest' };
+  act(() => { automationInDraft(target(sent)); });
+  act(() => { current().commands.focus('end'); current().commands.insertContent('words'); });
+  const id = input.entry.values.requestId!, key = input.key;
+  act(() => { freeze('/fixture', { conversationId: 'editor-tests', text: serialize(input.doc), automation: sent, attachments: [] }, input.entry.values, { from: key }); });
+  act(() => { automationInDraft(target(next), { pressed: true }); });
+  act(() => { refuse('/fixture', id, 'refused'); });
+  if (canTakeBack(useDraftStore.getState().entries, '/fixture', id, key)) act(() => { expect(takeBack('/fixture', id, key)).toBe(true); });
+  expect(serialize(input.doc)).toContain('words');
+  expect(automationIn(input.doc)?.id).toBe(next);
+});
+
+test('the automation shown in settings is the badge of an input with nothing written, and leaves with it', () => {
+  mount();
+  act(() => pointInputAt({ id: 'A2106', name: 'Morning digest' }));
+  expect(automationIn(input.doc)?.id).toBe('A2106');
+  act(() => pointInputAt({ id: 'A7', name: 'Other' }));
+  expect(automationIn(input.doc)?.id).toBe('A7');
+  act(() => pointInputAt(null));
+  expect(automationIn(input.doc)).toBeUndefined();
+});
+
+test('away from the automations, a badge left from before (a reload) comes off an input with nothing written, and stays beside words', () => {
+  mount();
+  // Put in by a page before this one: nothing here pointed the input at it.
+  act(() => { automationInDraft({ id: 'A15', name: 'Every minute' }); });
+  act(() => pointInputAt(null));
+  expect(automationIn(input.doc)).toBeUndefined();
+  act(() => { automationInDraft({ id: 'A15', name: 'Every minute' }); });
+  act(() => { current().commands.focus('end'); current().commands.insertContent('make it 8:30'); });
+  act(() => pointInputAt(null));
+  expect(automationIn(input.doc)?.id).toBe('A15');
+});
+
+test('a badge chosen while the conversation loads, before any words, stays when it arrives', async () => {
+  mount();
+  act(() => setConversationState({ conversation: null }));
+  await waitFor(() => expect(JSON.parse(input.key)[2]).toBe('loading'));
+  act(() => { automationInDraft('new'); });
+  act(() => setConversationState({ conversation: { id: 'editor-tests', nextLaunch: { agent: 'claude', values: {} }, ...SERVED, busy: false, admitted: {}, cancelled: [], turns: [] } }));
+  expect(automationIn(input.doc)?.id).toBe('new');
+});
 
 test.each(['reply', 'change', 'intend'] as const)('programmatic %s edits only the visible input while the earlier reply/body stay retained', kind => {
   mount();

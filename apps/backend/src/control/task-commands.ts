@@ -9,6 +9,8 @@ import { controlTaskHead } from './task-dto.js';
  * facts. Each is one write whose records go through TaskTransition (a creation through TaskRepository.create), which
  * also sends back the ancestors the change reopens.
  */
+import type { AutomationOrigin } from '@alpacawork/raw/automation';
+import { taskOrigin } from '@alpacawork/raw/task-log-schema';
 import { randomUUID } from 'node:crypto';
 import { Problem, PROBLEM_CODE } from '@alpacawork/core';
 import { initialControlDocument, now, validateTaskSettings, type AnalysisSubject, type ControlTask, type TaskActor, type TaskKind,
@@ -22,6 +24,8 @@ import { TaskTransition, returnsAt, withControlWrite, type ControlTx } from './t
 const TASK_PARENT = 'A task needs a parent: its project or a task of that project';
 /** One Task to create: its title and the values it starts with (a write's values, checked against its schema). */
 type TaskDraft = { title: string; values?: unknown; analysisSubject?: AnalysisSubject };
+type CreateTasks = { kind?: TaskKind; color?: string; parentId: string | null;
+  userRequested: boolean | null; tasks: readonly TaskDraft[]; expectedParentHash?: string };
 /** What each lifecycle action makes the Task, and the record it writes. */
 const LIFECYCLE = {
   archive: { lifecycle: 'archived', record: 'archived' },
@@ -94,17 +98,22 @@ export class ControlTaskCommands {
    * is a project or a task, and it belongs to that project or to that task's. A Task created without a parent got its
    * default from the entry (`defaultParentAt`). Only the parent’s responsible Run creates its unmarked children.
    */
-  create(input: { kind?: TaskKind; color?: string; parentId: string | null; userRequested: boolean | null; tasks: readonly TaskDraft[];
-    expectedParentHash?: string }) {
+  create(input: CreateTasks) {
+    return this.write(this.creation(input));
+  }
+
+  private creation(input: CreateTasks, automationOrigin?: AutomationOrigin) {
     const kind = input.kind ?? 'task';
     const settings = validateTaskSettings(kind, input.color === undefined ? null : { color: input.color });
     if (kind === 'task' && input.parentId === null)
       throw new Problem(PROBLEM_CODE.invalidInput, TASK_PARENT, undefined,
         { reason: { kind: 'task_needs_parent_project_or_task_project' }, issues: [{ path: 'parent', code: 'required', message: '--parent is required' }] });
     const userRequested = kind === 'task' && (input.userRequested ?? this.actor.kind === 'human');
-    return this.write((writer, tx) => {
+    return (writer: TaskRepository, tx: ControlTx) => {
       const parent = input.parentId === null ? null : checkedTask(writer.get(input.parentId), input.expectedParentHash);
       if (parent) assertActive(parent);
+      if (automationOrigin && parent?.meta.kind !== 'project')
+        throw new Problem(PROBLEM_CODE.invalidInput, 'An automation creates tasks directly below its project');
       if (kind === 'project' && parent && parent.meta.kind !== 'project')
         throw new Problem(PROBLEM_CODE.invalidInput, `A project's parent is a project; ${parent.id} is a task`, undefined,
           { reason: { kind: 'project_s_parent_project_task', parent: String(parent.id) } });
@@ -114,8 +123,9 @@ export class ControlTaskCommands {
       // A new task takes its parent's schema; a project has a fixed schema for its own values.
       const fields = readTaskFields(tx.store.connection);
       const schema = kind === 'project' ? PROJECT_VALUES : schemaAlong(parent ? writer.ancestry(parent.id) : [], fields.schemas);
+      const origin = automationOrigin ?? (parent?.meta.kind === 'task' ? taskOrigin(parent.meta.log) : undefined);
       const ids = input.tasks.map(draft => writer.create(kind, id => {
-        const meta = initialControlDocument(id, parent?.id ?? null, draft.title, { kind, userRequested, actor: this.actor, analysisSubject: draft.analysisSubject });
+        const meta = initialControlDocument(id, parent?.id ?? null, draft.title, { kind, userRequested, actor: this.actor, origin, analysisSubject: draft.analysisSubject });
         const values = draft.values === undefined ? {} : patchedValues(id, {}, draft.values, schema, fields.catalog);
         return { meta, values, ...(settings === null ? {} : { settings }) };
       }));
@@ -123,7 +133,17 @@ export class ControlTaskCommands {
       // Also refuses a new Task below a finished one (the finished-branch rule).
       for (const id of ids) this.transition.reopenAncestors(tx, { taskId: id, kind: 'created' });
       return { tasks: ids.map(id => controlTaskHead(writer.get(id))) };
-    });
+    };
+  }
+  /** Opens no transaction: the runner commits this together with placement, request and outcome. */
+  static createAutomationTask(tx: ControlTx, input: { project: string; title: string; origin: AutomationOrigin;
+    awaitReview: boolean }) {
+    const { automationId, revision, runNumber } = input.origin;
+    const commands = new ControlTaskCommands(tx.store.root, { kind: 'automation', automationId, revision, runNumber });
+    const writer = new TaskRepository(tx.store.root, tx.store.connection);
+    const create = commands.creation({ parentId: input.project, userRequested: input.awaitReview,
+      tasks: [{ title: input.title }] }, input.origin);
+    return create(writer, tx).tasks[0]!;
   }
   /** A task moves within its project, below a parent that keeps its responsible; a project does not move. */
   move(input: { id: string; parentId: string | null; expectedTaskHash: string }) {

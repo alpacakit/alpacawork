@@ -22,7 +22,7 @@ import { decideOf } from '../src/domain/questions';
 const asked = [decideItem('Proceed?', [['Yes', 'Proceed']])];
 const question = decideOf(asked)[0]!;
 const flush = async () => act(async () => { await new Promise(resolve => setTimeout(resolve, 20)); });
-const conversation = {id:'review7',nextLaunch: { agent: 'claude', values: {} },...SERVED, busy: false,cancelled:[],turns:[{id:'old',at,ask:'before',attachments:[],status:'succeeded', waiting: false,answer:'before',seen:false,answeredAt:at,error:null,result:{writes:[],refused:[]}}]};
+const conversation = {id:'review7',nextLaunch: { agent: 'claude', values: {} },...SERVED, busy: false,cancelled:[],turns:[{id:'old',at,ask:'before',attachments:[],status:'succeeded', waiting: false,answer:'before',seen:false,answeredAt:at,error:null,result:{writes:[],refused:[],automations:[]}}]};
 import { fakeNavigation, sessionHistory } from './navigation-fake';
 import { closeReaderStep, closeImage } from '../src/state/history-step';
 let nav: ReturnType<typeof fakeNavigation>;
@@ -46,7 +46,10 @@ for (const delivery of ['running','queued then running'] as const) for (const me
       home:homeFixture([{taskId:'T1',section:'review'},{taskId:'T3',section:'review'}]),
       questions: ['T1','T3'].map(taskId => questionFixture({ id:'Q'+taskId,taskId,decide:asked })) });
     const data=screenData(served);
-    vi.spyOn(api,'request').mockResolvedValue(viewsOf(served).find(view => view.task.id === 'T1')!);
+    const view = viewsOf(served).find(view => view.task.id === 'T1')!;
+    // The home reads the automations too (what asks for a look): none here.
+    vi.spyOn(api,'request').mockImplementation(async (path: string) => path.includes('automation/list')
+      ? { automations: [], counts: { enabled: 0, drafts: 0, off: 0 }, today: { aiTask: 0 }, attention: [] } as never : view as never);
     const gate=new Promise<void>(resolve=>{release=resolve;});
     let requested:any=null; let receiptSnapshot:any=null;
     vi.spyOn(globalThis,'fetch').mockImplementation(async (input,init)=>{

@@ -1,9 +1,18 @@
+import { bundleHookChange, bundleLifecycle, bundleVersion, prepareAutomationVersion, readBundleAutomation } from '@alpacawork/backend/test-dist/automations/bundle-store.js';
+import { bundleCommands } from '@alpacawork/backend/test-dist/automations/bundle-commands.js';
+import { BundleEngine } from '@alpacawork/backend/test-dist/automations/bundle-engine.js';
+import { BundleReviews } from '@alpacawork/backend/test-dist/automations/bundle-review.js';
+import { enqueueBundleRun, listBundleRuns, pruneBundleHistory, settleBundleRun } from '@alpacawork/backend/test-dist/automations/bundle-runs.js';
+import { BundleRuntime, stopBundleRun } from '@alpacawork/backend/test-dist/automations/bundle-runtime.js';
+import { receiveSignal } from '@alpacawork/backend/test-dist/automations/signals.js';
+import { setTimeout as pause } from 'node:timers/promises';
 import { coordinatorRunFor } from './helpers/coordinator-run.ts';
 import { test } from 'node:test';
+import type { DatabaseSync } from 'node:sqlite';
 import assert from 'node:assert/strict';
-import { mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync, rmSync } from 'node:fs';
 import { resolve, join } from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { stringify } from 'yaml';
 import { ChangeLog, ControlStore, keepControlChanges, touch } from '@alpacawork/db';
 import { Problem, PROBLEM_CODE, digestBytes } from '@alpacawork/core';
@@ -31,31 +40,31 @@ import { changeAudit } from './helpers/control-change-audit.ts';
 import { assignResponsible, grantFixtureRequest } from './helpers/control-fixture.ts';
 import { fields } from './runs-fixtures.ts';
 import { fixtureAgentSetting, installAgentStub } from './helpers/agent-stub.ts';
-import { writeSites, siteId, trackedSite, routingFiles, maintenanceFiles, observeWriteSites, type WriteSite } from './helpers/control-write-inventory.ts';
+import { writeSites, siteId, trackedSite, writeSiteStatus, observeWriteSites, type WriteSite } from './helpers/control-write-inventory.ts';
 
-type ListedSite = WriteSite & { status: 'touch' | 'pending-routing' | 'unobserved' | 'maintenance' };
+type ListedSite = WriteSite & { status: ReturnType<typeof writeSiteStatus> };
 const inventory = JSON.parse(readFileSync(new URL('./fixtures/control-write-sites.json', import.meta.url), 'utf8')) as ListedSite[];
-const classify = (site: WriteSite) => maintenanceFiles.has(site.file) ? 'maintenance'
-  : !trackedSite(site) ? 'unobserved' : routingFiles.has(site.file) ? 'pending-routing' : 'touch';
 
 test('all control write statements retain an explicit classification and count', () => {
   assert.equal(new Set(inventory.map(siteId)).size, inventory.length,
     'distinct SQL sites require distinct execution evidence; identical statements must not share a coverage identity');
-  const actual = writeSites(resolve('.')).map(site => ({ id: siteId(site), table: site.table, status: classify(site) }));
+  const actual = writeSites(resolve('.')).map(site => ({ id: siteId(site), table: site.table, status: writeSiteStatus(site) }));
   assert.deepEqual(actual, inventory.map(site => ({ id: siteId(site), table: site.table, status: site.status })),
     'a new, removed or changed SQL write must update the source inventory');
 });
 
 test('seeded real operations cover writers and every committed row change has its own journal key', async t => {
   const { root, after } = changeFixture(t), previousPath = process.env.PATH;
-  process.env.PATH = installAgentStub(root, 'claude');
+  const versionFixture = join(root, 'judge-version.sh');
+  writeFileSync(versionFixture, '#!/bin/sh\nprintf "2.1.330 (Claude Code)\\n"\n', { mode: 0o700 });
+  process.env.PATH = installAgentStub(root, 'claude', [versionFixture]);
   after(() => {
     for (const directory of ['agent-bin', 'tool-bin']) rmSync(join(root, directory), { recursive: true, force: true });
   });
   after(() => { if (previousPath === undefined) delete process.env.PATH; else process.env.PATH = previousPath; });
   const setting = fixtureAgentSetting('claude');
   setting.params = Object.fromEntries(Object.keys(setting.params).map(key => [key, []]));
-  writeFileSync(join(root, 'config.yaml'), stringify({ agents: { fake: setting } }));
+  writeFileSync(join(root, 'config.yaml'), stringify({ agents: { fake: setting, claude: {} } }));
   const journal = keepControlChanges(root, new ChangeLog(1024)); after(journal.close);
   const audit = changeAudit(root, journal.log); after(audit.close);
   const observed = observeWriteSites(inventory); after(observed.close);
@@ -66,11 +75,127 @@ test('seeded real operations cover writers and every committed row change has it
   const step = async <T>(name: string, work: () => T | Promise<T>, kinds: string[] = []) => {
     const checked = await audit.step(name, work, kinds); pending.push(...checked.pending); return checked.result;
   };
-  const write = <T>(work: Parameters<ControlStore['write']>[0]) => control.write(work) as T;
+  const write = <T>(work: (db: DatabaseSync) => T): T => control.write(work);
   const human = { kind: 'human' } as const;
   const newTask = async (title: string) => (await step('create Task', () => commands.create({ parentId: 'P1',
     userRequested: false, tasks: [{ title, values: { decide: [{ decide_kind: 'choose', decide_question: 'Which direction?' }] } }] }))).tasks[0]!;
   const first = await newTask('First audited task'), second = await newTask('Second audited task');
+  const cache = join(root, '.automations');
+  after(() => {
+    if (existsSync(cache)) for (const entry of readdirSync(cache, { recursive: true, withFileTypes: true })) {
+      if (entry.isDirectory()) chmodSync(join(entry.parentPath, entry.name), 0o700);
+    }
+  });
+  const files = [{ path: 'main.ts', source: `
+export const config = { on: { event: 'signal' }, limits: { perDay: 10, tasksPerRun: 1 }, uses: { send: ['synthetic'] } };
+/** Proceed with a synthetic delivery. */
+export function trigger() { return { run: true, reason: 'Accepted' }; }
+/** Record a synthetic delivery. */
+export async function run({ event, alp, signal }) {
+  if (event.items.some(item => item.data?.hold)) {
+    if (!signal.aborted) await new Promise(resolve => signal.addEventListener('abort', resolve, { once: true }));
+    return { summary: 'Released' };
+  }
+  await alp.tasks.create({ title: 'Delivery task', request: false, data: { example: true } });
+  return { summary: 'Delivery recorded', report: 'Synthetic evidence' };
+}
+` }];
+  const ordered = async <T>(work: () => T | Promise<T>) => work();
+  const runtime = new BundleRuntime(root, 'http://127.0.0.1:1', ordered);
+  const reviews = new BundleReviews(root, async () => ({ kind: 'answer', model: 'synthetic',
+    text: JSON.stringify({ state: 'fix', summary: 'Synthetic acknowledgment', findings: [] }) }));
+  const context = () => ({ caller: () => human, actor: human, bundleRuntime: runtime, bundleReviews: reviews, opId: randomUUID() });
+  const date = () => new Date();
+  const syntheticEvent = () => ({ kind: 'signal' as const, ref: randomUUID(), at: date().toISOString(), manual: true,
+    count: 1, firstAt: date().toISOString(), lastAt: date().toISOString(),
+    items: [{ at: date().toISOString(), by: { kind: 'human' as const }, key: 'fixture', data: null }] });
+  const lifecycleAt = async (id: string, action: Parameters<typeof bundleLifecycle>[3]) =>
+    write(db => bundleLifecycle(db, root, readBundleAutomation(db, id), action, human, date()));
+  const engine = new BundleEngine(root, ordered, () => runtime.kick());
+  const awaitRun = async (id: string, settled: boolean) => {
+    for (let attempt = 0; attempt < 200; attempt++) {
+      runtime.kick();
+      const run = control.read(db => listBundleRuns(db, readBundleAutomation(db, id), 1)[0]);
+      if (run && (settled ? run.finishedAt !== null : run.phase === 'run')) return run;
+      await pause(25);
+    }
+    return assert.fail(`Automation ${id} did not ${settled ? 'settle' : 'start'}`);
+  };
+  try {
+    const prepared = prepareAutomationVersion(root, files);
+    await step('preview the bundle before saving', () => runtime.preview('P1', null, prepared, syntheticEvent(), human, true));
+    const { automation: draft } = await step('save and review an automation bundle', () =>
+      bundleCommands['automation/new'].run(root, { under: 'P1', name: 'Audit delivered signals', files }, context()));
+    const id = draft.id;
+    const hook = (operation: 'create' | 'rotate' | 'delete') => write(db =>
+      bundleHookChange(db, readBundleAutomation(db, id), operation, randomBytes(32).toString('base64url'), human, date().toISOString()));
+    for (const operation of ['create', 'rotate', 'delete'] as const) await step(`${operation} hook`, () => hook(operation));
+    const to = { under: 'P1', name: 'synthetic', url: 'https://example.invalid/' };
+    await step('save a synthetic destination', async () => {
+      const registration = { ...context(), verifyAutomationHttp: async () => null };
+      const verified = await bundleCommands['automation/destination-set'].prepareWrite(root, to, registration);
+      return bundleCommands['automation/destination-set'].run(root, to, { ...registration, ...verified });
+    });
+    await step('enable the automation bundle', () => lifecycleAt(id, { kind: 'enabled', acknowledge: true }));
+    await step('preview a saved automation', () => {
+      const { automation, version } = control.read(db => {
+        const automation = readBundleAutomation(db, id);
+        return { automation, version: bundleVersion(db, automation.uuid, automation.latest) };
+      });
+      return runtime.preview('P1', automation, version, syntheticEvent(), human, true);
+    });
+    const signal = (data: { n: number } | { hold: true }) =>
+      write(db => receiveSignal(db, { automation: id, data }, human, randomUUID(), date()));
+    await step('receive and group delivered signals', () => {
+      for (let n = 1; n <= 21; n++) signal({ n });
+    });
+    await step('start and complete a signal run with task reference data', async () => {
+      await engine.scan();
+      const result = await awaitRun(id, true);
+      assert.equal(result.state, 'done', result.reason ?? undefined);
+    });
+    await step('admit a signal whose action can be stopped', async () => {
+      signal({ hold: true });
+      await engine.scan();
+      const active = await awaitRun(id, false);
+      assert.equal(active.state, 'running');
+    });
+    await step('stop the running automation', async () => {
+      write(db => {
+        const automation = readBundleAutomation(db, id);
+        const active = listBundleRuns(db, automation, 1)[0]!;
+        stopBundleRun(db, automation, active.number, active.version, date());
+      });
+      const result = await awaitRun(id, true);
+      assert.equal(result.state, 'stopped');
+    });
+    await step('accept and then cancel a new signal', () => signal({ n: 1 }));
+    await step('disable the automation bundle and settle its pending signal', () => lifecycleAt(id, { kind: 'disabled' }));
+    await step('record and group refused runs', () => write(db => {
+      const automation = readBundleAutomation(db, id);
+      for (const reason of ['audit_daily_limit', 'audit_daily_limit']) {
+        enqueueBundleRun(db, automation, automation.latest, syntheticEvent(), 'live', date(), { kind: reason, reason: 'Synthetic refusal' });
+      }
+    }));
+    await step('record and resolve an automation failure', () => write(db => {
+      const automation = readBundleAutomation(db, id);
+      const failed = enqueueBundleRun(db, automation, automation.latest, syntheticEvent(), 'live', date());
+      settleBundleRun(db, automation, failed.number, date(), { state: 'failed', failedPhase: 'run', reason: 'Synthetic failure' });
+      const recovered = enqueueBundleRun(db, automation, automation.latest, syntheticEvent(), 'live', date());
+      settleBundleRun(db, automation, recovered.number, date(), { state: 'done', summary: 'Available again' });
+    }));
+    await step('save a changed draft', () => bundleCommands['automation/save'].run(root, { automation: id,
+      expectedHash: control.read(db => readBundleAutomation(db, id)).hash,
+      files: files.map(file => ({ ...file, source: file.source.replace('Synthetic evidence', 'Updated synthetic evidence') })),
+    }, context()));
+    await step('prune expired reference data while preserving recent run metadata', () =>
+      write(db => pruneBundleHistory(db, new Date(Date.now() + 32 * 86_400_000))));
+    await step('prune expired automation runs', () =>
+      write(db => pruneBundleHistory(db, new Date(Date.now() + 100 * 86_400_000))));
+  } finally {
+    engine.close();
+    await runtime.close();
+  }
   const field = { id: 'audit_item', title: 'Audit item', type: 'text', many: false,
     maxChars: 100, maxItems: null, hint: '', members: [] };
   await step('define field', () => write(db => writeFieldDef(db, field, '2026-11-16T00:00:00Z')));
@@ -333,7 +458,7 @@ test('seeded real operations cover writers and every committed row change has it
 
 
   const missing = inventory.filter(site => trackedSite(site) && !observed.seen.has(siteId(site)));
-  assert.deepEqual(missing.map(site => `${site.file}:${site.line} ${site.sql}`), [], 'every owned write site executes at least once');
+  assert.deepEqual(missing.map(site => `${site.file}:${site.line} ${site.sql}`), [], 'every write site classified for exercise executes at least once');
   await t.test('return routing records carry every committed journal key', () => {
     assert.deepEqual({ missingKeys: pending,
       unexercisedSites: inventory.filter(site => site.status === 'pending-routing' && !observed.seen.has(siteId(site))).map(siteId) },

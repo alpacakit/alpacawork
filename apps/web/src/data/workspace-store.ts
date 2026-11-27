@@ -35,6 +35,7 @@ const sameShelved = (a: WorkspaceData["shelved"], b: WorkspaceData["shelved"]) =
   a.length === b.length && a.every((item, i) => item.task === b[i]?.task && item.lifecycle === b[i]?.lifecycle);
 const sameInfo = (a: WorkspaceInfo, b: WorkspaceInfo) =>
   a.root === b.root && a.rev === b.rev && a.writable === b.writable && a.checkpointAt === b.checkpointAt &&
+  a.automationsVersion === b.automationsVersion &&
   a.attachmentBytes === b.attachmentBytes &&
   a.runs === b.runs && sameItems(a.staleIds, b.staleIds) && sameItems(a.home, b.home) &&
   a.presence.state === b.presence.state && a.presence.until === b.presence.until &&

@@ -1,4 +1,16 @@
+import { BundleEngine } from '../automations/bundle-engine.js';
+import { BundleRuntime } from '../automations/bundle-runtime.js';
+import { BundleReviews } from '../automations/bundle-review.js';
+import type { AutomationJudgeTransport } from '../agents/adapters/judge-claude.js';
+import type { PrepareHttp, VerifyHttpDestination } from '../automations/http-transport.js';
+import { AutomationIngress, assertRawSignalDataSize, assertSignalDepth, canonicalTriggerJson } from '../automations/signals.js';
+import { readHookUrl } from '../automations/hooks.js';
+import { handleHook, hookHeaders } from './automation-hook.js';
+import type { AutomationSignalData } from '@alpacawork/contract/automation';
+import { automationNotices } from '../automations/push.js';
+import { automationIdSchema, automationProjectSchema } from '@alpacawork/contract/automation';
 import { AnalysisReader, warmAnalysisWhenIdle } from '../analysis/reads.js';
+import { saveRunSkills } from '../analysis/run-skills.js';
 import { startTallyJob } from '../analysis/tally-job.js';
 import { openTallyScope } from '../analysis/tally-scope.js';
 import { mcpRequestBytes, type McpFileReadOptions } from '@alpacawork/contract/mcp';
@@ -100,17 +112,17 @@ import { ReturnRouter } from '../control/return-router.js';
 import { createFirstRunState, createNoticeState, createPersonSettings, UNSAVED_SETTINGS } from './person-state.js';
 import { FirstRunSkills } from '../installation/first-run-skills.js';
 import { resolveCaller, type CallerClaim } from '../control/credentials.js';
-import { authorize, reportTaskFacts, type Action, type Caller } from '../control/authorize.js';
+import { authorize, automationProgramCommands, reportTaskFacts, type Action, type Caller } from '../control/authorize.js';
 import { refuse, messageForRun, sourceMessage, deliveredMessages, pendingInput } from '../coordinator/messages.js';
 import { taskIdSchema, runIdSchema } from '@alpacawork/contract/fields';
 import { RUN_FILES, runFolder, runNumber } from '@alpacawork/contract/run';
 import { POLL_INTERVAL_MS } from '../poll-interval.js';
 
 /** `environmentFile`: what `serve` read as it started (environment-file.ts); a receiver started without one read none. */
-export type ServerOptions = ServeOptions & { pushSender?: PushSender; hostSource?: HostSource; environmentFile?: EnvironmentFile;
+export type ServerOptions = ServeOptions & { pushSender?: PushSender; prepareAutomationHttp?: PrepareHttp; verifyAutomationHttp?: VerifyHttpDestination; automationJudge?: AutomationJudgeTransport; hostSource?: HostSource; environmentFile?: EnvironmentFile;
   agentInspection?: import('../agents/availability.js').InspectionEnvironment };
 
-async function body(request: Request, limit: number): Promise<RawValueMap> {
+async function body(request: Request, limit: number, checkSource?: (source: string) => void): Promise<RawValueMap> {
   if (request.headers.get('content-type') !== 'application/json')
     throw new Problem(PROBLEM_CODE.invalidInput, 'Content-Type must be application/json', undefined, { reason: { kind: 'content_type_must_application_json' } });
   const chunks: Uint8Array[] = [];
@@ -120,18 +132,25 @@ async function body(request: Request, limit: number): Promise<RawValueMap> {
     if (size > limit) throw new Problem(PROBLEM_CODE.tooLarge, `Request exceeds ${limit / 1024} KiB`, undefined, { reason: { kind: 'request_exceeds_kib', limit: String(limit / 1024) } });
     chunks.push(chunk);
   }
+  const bytes = Buffer.concat(chunks);
+  let source: string, parsed: RawValueMap;
   try {
-    return JSON.parse(Buffer.concat(chunks).toString()) as RawValueMap;
+    source = checkSource ? new TextDecoder('utf-8', { fatal: true }).decode(bytes) : bytes.toString();
+    parsed = JSON.parse(source) as RawValueMap;
   } catch {
     throw new Problem(PROBLEM_CODE.invalidInput, 'Expected JSON', undefined, { reason: { kind: 'expected_json' } });
   }
+  checkSource?.(source);
+  return parsed;
 }
 /** resolveCaller again inside a write, on its connection: it imports nothing there and opens no other connection. */
 function identifyIn(root: string, db: DatabaseSync, claim: CallerClaim): Caller {
   const store = new RunStore(root, { busyTimeoutMs: 0 }, true, db);
   try { return resolveCaller(root, claim, store); } finally { store.close(); }
 }
-/** What a saved command response names: a Task write's Task, a plan's Tasks, and a stop's Runs. */
+/** Automation receipts follow the same project boundary as their automation. */
+const automationReceipt = z.object({ automation: z.object({ id: automationIdSchema, project: automationProjectSchema }) });
+/** What a saved Task command response names: a Task, a plan's Tasks, or a stop's Runs. */
 const receiptNames = z.object({ task: z.object({ id: z.string() }).optional(), tasks: z.array(z.object({ id: z.string() })).optional(),
   cancelled: z.array(z.string()).optional(), stop_requested: z.array(z.string()).optional() });
 /** The Tasks a saved command response is about, read on `db`: the Tasks it names and those of the Runs it names. */
@@ -346,7 +365,8 @@ export async function startServer(root: string, port: number, options: ServerOpt
   const analysis = new AnalysisReader(root, tallySince, changes.log);
   startupCleanup.push(() => analysis.close());
   let stopAnalysisTally: (() => Promise<void>) | undefined, stopAnalysisWarm: (() => void) | undefined;
-  const context: Context = { root, push, presence, analysis, agentInspection: options.agentInspection };
+  const context: Context = { root, push, presence, analysis, agentInspection: options.agentInspection,
+    verifyAutomationHttp: options.verifyAutomationHttp, bundleReviews: new BundleReviews(root, options.automationJudge) };
   const generation = randomUUID();
   startupCleanup.push(() => runs?.close());
   const stopDelivery = new StopDeliveryOwner(runStore());
@@ -354,6 +374,8 @@ export async function startServer(root: string, port: number, options: ServerOpt
   const lifecycle = new ServeLifecycle(root, generation, async () => { await orderedTail; await projection?.drain(); }, () => stopDelivery.gate(), async () => {
     readAbort.abort(new Problem(PROBLEM_CODE.unavailable, 'Serve is quiescing', undefined, { reason: { kind: 'serve_quiescing' } }));
     projection?.pause();
+    automationEngine?.close();
+    await context.bundleRuntime?.close();
   });
   /** One read of the control database, on its own connection. */
   function readControl<T>(work: (db: DatabaseSync) => T): T {
@@ -370,9 +392,10 @@ export async function startServer(root: string, port: number, options: ServerOpt
   const noticeState = createNoticeState(root);
   let latestSettings = defaultSettings();
   let settingsReadable = false;
-  let pushNoticesError = false;
+  let pushNoticesError = false, automationPushDirty = true;
   let publishedPresence: PresenceStatus = { state: 'away', until: null };
   context.presenceSettings = () => latestSettings;
+  context.automationLanguage = () => uiLocaleOrDefault(latestSettings.language);
   let pushSettingsError = false;
   const personRevisions: import('@alpacawork/contract/control').ControlIndexDTO['person'] = { settings: personSettings.revision(), notices: noticeState.revision(), coordinator: null };
   context.personSettings = personSettings;
@@ -404,9 +427,10 @@ export async function startServer(root: string, port: number, options: ServerOpt
   });
   const releaseExecutionDemand = changes.log.subscribe(() => {
     const range = changes.log.read('projection');
-    if (range.kind === 'overflow') { executionPrompt = true; coordinatorDirty = true; }
+    if (range.kind === 'overflow') { executionPrompt = true; coordinatorDirty = true; automationPushDirty = true; }
     else for (const batch of range.batches) if (batch.seq > lastDemand) {
       for (const key of batch.keys) {
+        if (key.kind === 'automation' || key.kind === 'automation_run') automationPushDirty = true;
         if (['request', 'run', 'attempt', 'start_grant', 'stop_epoch'].includes(key.kind)) executionPrompt = true;
         if (['conversation', 'dialogue', 'refusal', 'config'].includes(key.kind) || key.kind === 'person' && key.id === 'coordinator') coordinatorDirty = true;
         if (!coordinatorDirty && ['run', 'activity', 'request'].includes(key.kind)) {
@@ -524,6 +548,7 @@ export async function startServer(root: string, port: number, options: ServerOpt
   }
   context.presenceChanged = () => publishPresence(presence.status(latestSettings));
   let hostNotice: HostNotice | null = null;
+  let automationEngine: BundleEngine | undefined;
   /**
    * Running Runs and their agent processes, read from their own connection so a sample never joins a settle transaction.
    * A coordinator Run has no Task and so no title: whoever shows it names it in the reader's language.
@@ -537,6 +562,7 @@ export async function startServer(root: string, port: number, options: ServerOpt
   const host = new HostMonitor({ root, runs: runningRoots, source: options.hostSource,
     parallel: () => { const settings = readAgentsSettings(root); return settings.ok ? settings.config.limits.parallel : null; },
     noticeChanged: notice => { hostNotice = notice; republish(); },
+    pressureObserved: observation => automationEngine?.observePressure(observation),
     episodeStarted: (episode, sample) => {
       if (settingsReadable && latestSettings['push.host'] === true)
         void push.record(hostPushEvent(episode, sample, uiLocaleOrDefault(latestSettings.language))).catch(error => console.error('Host Push event could not be saved', error));
@@ -544,6 +570,7 @@ export async function startServer(root: string, port: number, options: ServerOpt
     episodeHeld: start => push.holdHost(start === null ? null : hostPushKey(start)),
     log: line => console.error(line) });
   context.host = host;
+  context.hostPressureSupported = host.supportsPressure;
   context.limits = new AgentLimitsMonitor({ environment: options.agentInspection,
     config: async () => { const settings = readAgentsSettings(root); return settings.ok ? settings.config : null; } });
   /** One SSE event. A subscriber that has stopped reading is dropped rather than buffered without bound. */
@@ -607,6 +634,9 @@ export async function startServer(root: string, port: number, options: ServerOpt
     const cli = c.req.header('x-alpacawork-client') === 'cli';
     const command = serverCommands.get(`${c.req.method} ${url.pathname}`);
     scopes.set(c.req.raw, requestScope(c.req.raw.headers, cli, cli && command?.implementation.replayFromRun === true, mcpRequests.has(c.req.raw)));
+    if (scopeOf(c.req.raw).claim.program &&
+        !automationProgramCommands.some(id => id === command?.id))
+      throw new Problem(PROBLEM_CODE.forbidden, 'This operation is outside the automation program grant');
     const mutation = !['GET','HEAD','OPTIONS'].includes(c.req.method) && url.pathname !== '/api/runtime/quiesce';
     if (mutation) {
       lifecycle.admit();
@@ -644,6 +674,12 @@ export async function startServer(root: string, port: number, options: ServerOpt
     recorded: operationRecorded }));
   installTelemetryRoutes(api, telemetry, request => { authorizeRead(callerOf(request), SCREEN); });
   installVoiceRoutes(api, root, request => { authorizeRead(callerOf(request), SCREEN); });
+  api.get('/api/automations/:id/hook', c => {
+    authorizeRead(callerOf(c.req.raw), { name: 'automation.hook-read' });
+    const origin = publicHost === undefined ? commandOrigin(c.req.raw) : `https://${publicHost}`;
+    const url = readControl(db => readHookUrl(db, c.req.param('id'), origin, restoreId(root)));
+    return c.json({ url }, 200, { ...jsonHeaders, ...hookHeaders });
+  });
   // Settings shows where the file is and why a line of it set nothing. The report holds nothing read from the file.
   const environmentFile = options.environmentFile ?? unreadEnvironmentFile(process.env);
   api.get('/api/environment-file', c => {
@@ -696,6 +732,7 @@ export async function startServer(root: string, port: number, options: ServerOpt
       } finally { store.close(); }
     });
   });
+
   api.get('/api/runtime/recovery',c=>{
     // Identity is information, never a credential. Credential syntax/Run validity still uses the existing caller Owner.
     callerOf(c.req.raw);
@@ -704,8 +741,7 @@ export async function startServer(root: string, port: number, options: ServerOpt
   const readOperation = (opId: string, caller: Caller) => {
     const control = new ControlStore(root, { busyTimeoutMs: 1000 }, true);
     try {
-      // The operation ID alone names an operation, a command's or a file's; what it saved is read as a read of the
-      // Tasks it names (a Run reads only its own project's), and one naming no Task is the person's.
+      // The operation ID alone names an operation. Its receipt follows the read access of the saved records.
       const found = control.read(db => {
         const read = (tasks: readonly string[]) => {
           for (const { action, task } of operationReadActions(tasks)) authorize(db, caller, action, { task, quote: null });
@@ -716,7 +752,12 @@ export async function startServer(root: string, port: number, options: ServerOpt
         const fileTasks = file?.task === null || file?.task === undefined ? [] : [String(file.task)];
         if (row) {
           const body: unknown = JSON.parse(String(row.response_json));
-          read([...fileTasks, ...receiptTasks(root, db, body)]);
+          const savedAutomation = automationReceipt.safeParse(body);
+          if (savedAutomation.success) {
+            const { readScope } = authorize(db, caller, { name: 'automation.get' }, { task: null, quote: null });
+            if (readScope !== null && readScope !== savedAutomation.data.automation.project)
+              throw new Problem(PROBLEM_CODE.notFound, 'Automation does not exist');
+          } else read([...fileTasks, ...receiptTasks(root, db, body)]);
           if (stopDelivery.hasPendingOperation(opId, db)) return {
             state: 'committed_pending_delivery',
             message: 'Retry the original write with the same input, operation ID and restore ID.',
@@ -744,6 +785,13 @@ export async function startServer(root: string, port: number, options: ServerOpt
       return found;
     } finally { control.close(); }
   };
+  const automationIngress = new AutomationIngress();
+  function requireOperationId(value: string | undefined) {
+    if (!value || value.length > 256 || /[\r\n]/.test(value))
+      throw new Problem(PROBLEM_CODE.unavailable, 'Reload the client before checking or sending this operation: X-Alpacawork-Op-Id is required', undefined,
+        { reason: { kind: 'reload_client_before_checking_or_sending_operation_x_alpacawork_op_id_required' } });
+    return value;
+  }
   function register<Values extends RawValueMap, Input>(route: HttpRegistration<Values, Input, Context, unknown>,
     spec?: ReturnType<typeof serverCommands.get>) {
     const implementation = spec?.implementation;
@@ -751,7 +799,8 @@ export async function startServer(root: string, port: number, options: ServerOpt
     if (act === undefined) throw new Error(`An HTTP entry that is no CLI command declares its act: ${route.method} /api${route.path}`);
     api.on(route.method, '/api' + route.path, async (c) => {
       const { claim, cwd } = scopeOf(c.req.raw);
-      const links = (value: unknown) => spec ? commandLinks(value, commandOrigin(c.req.raw, publicHost)) : value;
+      const links = (value: unknown) => spec && !spec.id.startsWith('automation/')
+        ? commandLinks(value, commandOrigin(c.req.raw, publicHost)) : value;
       // An entry that is no command is authorized by the act it declares, before its request is read.
       preflightEntryClaim(root, act, claim);
       if (act) authorizeRead(callerOf(c.req.raw), act);
@@ -759,7 +808,43 @@ export async function startServer(root: string, port: number, options: ServerOpt
       const pinned = needsInputEvidence ? callerOf(c.req.raw) : undefined;
       const rawValues = route.method === 'GET' ? undefined
         : route.path === '/presence/away' || route.path === '/presence/resume' ? {}
-        : await body(c.req.raw, implementation?.limit ?? requestLimitFor(route.handler));
+        : await body(c.req.raw, implementation?.limit ?? requestLimitFor(route.handler),
+          implementation?.automationIngress ? assertRawSignalDataSize : undefined);
+      // Bound trigger writes before they join the write queue, and guard the recursive JSON decoder.
+      let checkedValues: Input | undefined;
+      if (implementation?.automationIngress) {
+        if (rawValues && typeof rawValues === 'object' && 'data' in rawValues) assertSignalDepth(rawValues.data);
+        checkedValues = route.input.parse(rawValues!);
+        const caller = pinned!;
+        const input = checkedValues as Record<string, unknown>;
+        readControl(db => {
+          const act = implementation.act!(input, { root, db, caller, cwd });
+          authorize(db, caller, act.action, { task: act.task, quote: null });
+        });
+        automationIngress.take(implementation.automationIngress(input));
+      }
+      let prepared: Partial<Context> | undefined, preparationFault: { error: unknown } | undefined;
+      if (implementation?.prepareWrite) {
+        const opId = requireOperationId(c.req.header('x-alpacawork-op-id'));
+        checkedValues ??= route.input.parse(rawValues!);
+        const values = checkedValues as Record<string, unknown>, caller = pinned!;
+        const { actor } = readControl(db => {
+          screenRunning(db, caller);
+          const act = implementation.act!(values, { root, db, caller, cwd });
+          return authorize(db, caller, act.action, { task: act.task, quote: null });
+        });
+        if (!operationRecorded(opId)) {
+          try {
+            prepared = await lifecycle.run(async () => {
+              if (caller.kind === 'coordinator' && caller.source === 'screen' && typeof values.sourceRequest === 'string') {
+                await refreshInputEvidence(caller.runId, { sourceRequest: values.sourceRequest });
+                readControl(db => screenRunning(db, caller));
+              }
+              return implementation.prepareWrite!(root, values, { ...context, actor, cwd, caller: () => caller });
+            });
+          } catch (error) { preparationFault = { error }; }
+        }
+      }
       // One admission owns the complete write or referenced-reply read, including imported evidence and refusal records.
       const execute = async () => {
         const refusing: { request?: string; task?: string } = {};
@@ -778,8 +863,9 @@ export async function startServer(root: string, port: number, options: ServerOpt
               if (typeof source === 'string' && deliveredMessages(db, pinned.runId).includes(source)) refusing.request = source;
             });
           }
-          const values = route.method === 'GET' ? route.input.parseQuery(c.req.queries()) : route.input.parse(rawValues!);
-          const requestContext = { ...context, caller: () => callerOf(c.req.raw), cwd,
+          const values = checkedValues ?? (route.method === 'GET' ? route.input.parseQuery(c.req.queries()) : route.input.parse(rawValues!));
+          const requestContext = { ...context, ...prepared, caller: () => callerOf(c.req.raw), cwd,
+            hookOrigin: publicHost === undefined ? commandOrigin(c.req.raw) : `https://${publicHost}`,
             readFrame: context.readFrame,
             readLive: async () => {
               await context.readFrame!();
@@ -800,16 +886,14 @@ export async function startServer(root: string, port: number, options: ServerOpt
             return c.json(links(output), 200, jsonHeaders);
           }
           if (writes) {
-            const opId = c.req.header('x-alpacawork-op-id');
-            if (!opId || opId.length > 256 || /[\r\n]/.test(opId))
-              throw new Problem(PROBLEM_CODE.unavailable, 'Reload the client before checking or sending this operation: X-Alpacawork-Op-Id is required', undefined,
-                { reason: { kind: 'reload_client_before_checking_or_sending_operation_x_alpacawork_op_id_required' } });
+            const opId = requireOperationId(c.req.header('x-alpacawork-op-id'));
             const operation = spec.id;
             // Identified once before the write begins, where a Run's session may still be imported (resolveCaller).
             const caller = callerOf(c.req.raw);
             if (implementation?.journaled) {
               // It keeps its own operation record, so it is authorized on a read of the control database.
               const { actor } = readControl(db => {
+                screenRunning(db, caller);
                 const act = implementation.act!(values as Record<string, unknown>, { root, db, caller, cwd });
                 return authorize(db, caller, act.action, { task: act.task, quote: null });
               });
@@ -818,11 +902,11 @@ export async function startServer(root: string, port: number, options: ServerOpt
             }
             const control = new ControlStore(root);
             try {
-              const fingerprint = createHash('sha256').update(JSON.stringify({
-                operation, input: values, runId: claim.run?.runId ?? null,
-              })).digest('hex');
-              // A replay answers with its saved response; a new write is checked and written in this one transaction.
-              const receipt = await control.writeOperationAsync({ opId, operation, fingerprint }, async () => {
+              const identity = { operation, input: values, runId: claim.run?.runId ?? null,
+                ...(caller.kind === 'program' ? { programAttempt: caller.attemptId } : {}) };
+              const fingerprint = createHash('sha256').update(implementation?.automationIngress
+                ? canonicalTriggerJson(identity as AutomationSignalData) : JSON.stringify(identity)).digest('hex');
+              const authorizeWrite = () => {
                 const db = control.connection;
                 // Keep the HTTP-start Run pinned; a newer Run in the same session never inherits this operation.
                 const current = identifyIn(root, db, claim);
@@ -837,10 +921,23 @@ export async function startServer(root: string, port: number, options: ServerOpt
                 const act = implementation!.act!(values as Record<string, unknown>, { root, db, caller: current, cwd }), action = act.action;
                 const quote = recordedQuote(current, act.quote);
                 const decision = authorize(db, current, action, { task: act.task, quote, message });
+                return { current, actor: decision.actor, task: act.task };
+              };
+              // Operation IDs belong to the program attempt that supplied them.
+              const receiptId = caller.kind === 'program'
+                ? createHash('sha256').update(JSON.stringify([caller.attemptId, opId])).digest('hex') : opId;
+              let authorized: ReturnType<typeof authorizeWrite> | undefined;
+              // Signal authority follows the current caller and task even when a request replays a saved receipt.
+              const receipt = await control.writeOperationAsync({ opId: receiptId, operation, fingerprint }, async () => {
+                const { current, actor, task } = authorized ?? authorizeWrite();
+                // An in-flight retry must still replay a receipt committed while its preparation was running.
+                if (preparationFault) throw preparationFault.error;
                 const body = await route.handler(values as never,
-                  { ...requestContext, caller: () => current, actor: decision.actor, changed: undefined } as never);
+                  { ...requestContext, caller: () => current, actor, opId: receiptId, changed: undefined } as never);
                 return { status: 200, body };
-              });
+              }, implementation?.automationIngress || caller.kind === 'program' ? () => {
+                authorized = authorizeWrite();
+              } : undefined);
               // The Owner applies the same success contract to fresh and immutable replayed receipts.
               stopDelivery.completeOperation(opId);
               return c.json(links(receipt.body), receipt.status as ContentfulStatusCode, jsonHeaders);
@@ -862,7 +959,7 @@ export async function startServer(root: string, port: number, options: ServerOpt
           throw error;
         }
       };
-      if (runs) return lifecycle.run(execute);
+      if (runs || implementation?.journaled && spec?.id.startsWith('automation/')) return lifecycle.run(execute);
       return writes || !spec && route.method === 'POST' || implementation?.inputEvidence ? orderedWrite(execute) : execute();
     });
   }
@@ -940,6 +1037,22 @@ export async function startServer(root: string, port: number, options: ServerOpt
       }
       if (req.headers.origin !== undefined && req.headers.origin !== origin)
         throw new Problem(PROBLEM_CODE.forbidden, 'Cross-origin request rejected', undefined, { reason: { kind: 'cross_origin_request_rejected' } });
+      if (url.pathname === '/hooks' || url.pathname.startsWith('/hooks/')) {
+        await handleHook(req, res, url.pathname, {
+          read: readControl, ingress: automationIngress, generation: () => restoreId(root),
+          admit: () => {
+            lifecycle.admit();
+            if (releaseAdmission(root) !== 'accepting')
+              throw new Problem(PROBLEM_CODE.unavailable, 'Release maintenance is incomplete');
+          },
+          write: work => orderedWrite(() => {
+            const control = new ControlStore(root);
+            try { return control.write(work); }
+            finally { control.close(); }
+          }),
+        });
+        return;
+      }
       if (performanceReceiver?.handle(req, res, origin)) return;
       if (url.pathname === '/api/identity' && req.method === 'GET') {
         send(res, 200, { generation, root });
@@ -1042,6 +1155,8 @@ export async function startServer(root: string, port: number, options: ServerOpt
       await firstRunSkills.close();
       await stopUpdates?.();
       clearInterval(timer);
+      automationEngine?.close();
+      await context.bundleRuntime?.close();
       recordLoopDelay(); loopDelay?.disable();
       releaseExecutionDemand();
       await readThread?.stop();
@@ -1097,8 +1212,28 @@ export async function startServer(root: string, port: number, options: ServerOpt
     const connection = connectionFile(root, base, publicUrl, generation);
     stopUpdates=monitorUpdates(root,error=>console.error('Update discovery needs attention',error));
     stopTelemetry=monitorTelemetry(telemetry);
+    context.bundleRuntime = new BundleRuntime(root, base, ordered, {
+      prepareHttp: options.prepareAutomationHttp, runClaude: options.automationJudge,
+    });
+    context.bundleRuntime.start();
+    automationEngine = new BundleEngine(root, work => orderedWrite(() => {
+      lifecycle.admit();
+      return work();
+    }), () => context.bundleRuntime?.kick());
+    automationEngine.start(changes.log);
     host.start();
-    stopAnalysisTally = startTallyJob(root, tallySince, changes.log, batch => analysis.updateTallies(batch));
+    stopAnalysisTally = startTallyJob(root, tallySince, changes.log, batch => {
+      analysis.updateTallies(batch.map(({ id, tally }) => [id, tally]));
+      if (lifecycle.state !== 'accepting') return;
+      void retryBusy(() => orderedWrite(() => {
+        const control = new ControlStore(root);
+        try { control.write(db => saveRunSkills(db, batch, tallySince)); }
+        finally { control.close(); }
+        automationEngine?.tallied();
+      }), settleAbort.signal).catch(error => {
+        if (lifecycle.state === 'accepting') console.error('Run skill usage could not be saved', faultReason(error));
+      });
+    });
     stopAnalysisWarm = warmAnalysisWhenIdle(analysis, () => lifecycle.state === 'accepting' && !queuedWrites && !queuedReads);
     let lastPeriodicSettle = 0, lastHeartbeat = Date.now(), lastCheck = 0, lastAudit = Date.now();
     let auditing: Promise<void> | undefined;
@@ -1143,8 +1278,14 @@ export async function startServer(root: string, port: number, options: ServerOpt
       if (settingsReadable && shown && !shown.records.environment().errors.length)
         void lifecycle.run(async () => {
           const { state } = await noticeState.get();
+          const language = uiLocaleOrDefault(latestSettings.language);
+          if (automationPushDirty) {
+            automationPushDirty = false;
+            try { await push.observeAutomations(readControl(db => automationNotices(db, language)), now); }
+            catch (error) { automationPushDirty = true; throw error; }
+          }
+          await push.tick(now, currentPresence, state, language);
           pushNoticesError = false;
-          await push.tick(now, currentPresence, state, uiLocaleOrDefault(latestSettings.language));
         }).catch(error => {
           if (!pushNoticesError) console.error('Push notice state could not be read', error);
           pushNoticesError = true;

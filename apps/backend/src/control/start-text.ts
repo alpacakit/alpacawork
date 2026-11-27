@@ -270,15 +270,15 @@ export type StartTextInput = {
    */
   author?: RequestAuthor;
 };
-export type RequestAuthor = 'user' | 'coordinator' | 'above' | 'owner' | 'alpacawork';
+export type RequestAuthor = 'user' | 'coordinator' | 'above' | 'owner' | 'alpacawork' | 'automation';
 /**
  * Who wrote a Request, from how it was admitted: a seat going on by itself is alpacawork's; otherwise its recorded
  * actor. A placement writes to an owner from a task above (its parent, or an ancestor answering a question), and to a
  * member as that task's owner.
  */
-export const requestAuthor = (purpose: string, actor: 'human' | 'main' | 'placement', toOwner: boolean): RequestAuthor =>
+export const requestAuthor = (purpose: string, actor: import('@alpacawork/raw').TaskActor['kind'], toOwner: boolean): RequestAuthor =>
   purpose === 'return_continuation' ? 'alpacawork' : actor === 'human' ? 'user' : actor === 'main' ? 'coordinator'
-    : toOwner ? 'above' : 'owner';
+    : actor === 'automation' ? 'automation' : toOwner ? 'above' : 'owner';
 const AUTHOR_LINE: Record<RequestAuthor, string> = {
   user: 'Written by the user.',
   coordinator: 'Written by the coordinator.',
@@ -286,6 +286,7 @@ const AUTHOR_LINE: Record<RequestAuthor, string> = {
   above: 'Written by the owner of a task above this one.',
   owner: "Written by this task's owner.",
   alpacawork: 'Sent by alpacawork.',
+  automation: 'Written by an automation.',
 };
 
 export function startText({ source, taskId, responsible, mode, at, body, condition, voidsEstimate = false, since,

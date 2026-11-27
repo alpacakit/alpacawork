@@ -39,6 +39,8 @@
     "more": "Other apps",
     "numbers": "Numbers shown (up to {{limit}})",
     "passed": "Done without rework",
+    "postCancel": "Cancel",
+    "postClose": "OK",
     "postCopied": "Image copied to your clipboard. Paste it into your post on {{name}}",
     "postFinished_one": "In the last {{days}} days, AI finished {{value}} task I handed it",
     "postFinished_other": "In the last {{days}} days, AI finished {{value}} tasks I handed it",
@@ -46,13 +48,11 @@
     "postFinishedAll_other": "So far, AI has finished {{value}} tasks I handed it",
     "postHintCopy": "The image is copied to your clipboard. Paste it into the post screen before you post.",
     "postHintSave": "The image is saved. Attach it on the post screen before you post.",
-    "postPreparing": "Getting the image ready…",
+    "postOpen": "Open {{name}}",
+    "postOpenNow": "Open now",
     "postOpensIn_one": "Opening {{name}} in {{count}} second",
     "postOpensIn_other": "Opening {{name}} in {{count}} seconds",
-    "postOpenNow": "Open now",
-    "postOpen": "Open {{name}}",
-    "postCancel": "Cancel",
-    "postClose": "OK",
+    "postPreparing": "Getting the image ready…",
     "postSave": "Image saved. Attach it to your post on {{name}}",
     "postShare": "In the last {{days}} days, {{value}} of the work I handed AI was done without rework",
     "postShareAll": "So far, {{value}} of the work I handed AI has been done without rework",
@@ -86,8 +86,8 @@
     "laterTip": "The work redone and waited on after each task's first review",
     "meant": "As you meant",
     "noFixes": "No fixes were labelled in this span.",
-    "noQuestions": "Taken as done with no question asked",
     "none": "Nothing to show in this span.",
+    "noQuestions": "Taken as done with no question asked",
     "ofFixes_one": "Of the {{count}} fix you asked for, by kind",
     "ofFixes_other": "Of the {{count}} fixes you asked for, by kind",
     "ofItems_one": "Of {{count}} answered item",
@@ -183,10 +183,7 @@
     "youText": "Awaiting your review, and awaiting your answer to a question"
   },
   "face": {
-    "empty": "Nothing recorded yet. Once you ask for a task, finished tasks and AI usage show here from that day on.",
-    "analysis": "Analysis",
-    "label": "Screen",
-    "use": "Use"
+    "empty": "Nothing recorded yet. Once you ask for a task, finished tasks and AI usage show here from that day on."
   },
   "history": {
     "accepted": "Accepted",
@@ -220,9 +217,9 @@
     "more_one": "Show {{count}} more",
     "more_other": "Show {{count}} more",
     "outcome": "Outcome",
+    "resize": "Width (left and right arrow keys)",
     "task": "Task",
-    "usedTitle": "{{name}}",
-    "resize": "Width (left and right arrow keys)"
+    "usedTitle": "{{name}}"
   },
   "look": {
     "label": "View",
@@ -235,12 +232,12 @@
     "change": "Conditions changed",
     "command-stopped": "Command stopped at the limit",
     "compacted": "Conversation compacted",
-    "test": "Test command",
-    "produced": "Commit, pull request or linked deliverable",
     "instruction": "Instruction",
     "moved": "Moved",
+    "produced": "Commit, pull request or linked deliverable",
     "question-withdrawn": "Question withdrawn",
     "report": "Report",
+    "test": "Test command",
     "values-changed": "Values changed"
   },
   "outcome": {
@@ -284,17 +281,17 @@
     "failed-run": "Failed run",
     "fan-out": "One at a time where one read could do",
     "idle": "Nothing going on",
+    "large-output": "Large tool result",
     "limit-hit": "Stopped at the time limit",
     "long-step": "Long step",
     "long-wait": "Long wait for an answer",
+    "outputChars": "{{count, number}} characters",
     "queue-wait": "Waited to start",
     "repeated-failure": "Same failure again",
     "repeated-question": "Same question asked again",
     "rework": "Work done again",
-    "large-output": "Large tool result",
-    "same-test-same-commit": "Same test on the same checkout",
-    "outputChars": "{{count, number}} characters",
-    "same-result": "Same result read again"
+    "same-result": "Same result read again",
+    "same-test-same-commit": "Same test on the same checkout"
   },
   "same": "±0",
   "sep": " · ",

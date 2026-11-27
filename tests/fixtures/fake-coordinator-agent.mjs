@@ -53,7 +53,7 @@ if (mode === 'resume' && message === 'busy-once' && !existsSync(busyOnce)) {
 }
 // A background child left in the agent's process group, which outlives the agent itself.
 if (message.startsWith('child:')) spawn(process.execPath, ['-e', 'setTimeout(() => {}, 60000)'], { stdio: 'ignore' }).unref();
-const gate = /^(?:wait|child):(.+)$/.exec(message)?.[1];
+const gate = /^(?:wait|child):([^\n]+)(?:\n|$)/.exec(message)?.[1];
 // Test setup waits for this process to read its input, rather than a later DB receipt import.
 const requestId = /^Request ID of this input: ([^.\n]+)/m.exec(prompt)?.[1];
 // A coordinator can use the real CLI as its first action, before a warm-up or model latency.

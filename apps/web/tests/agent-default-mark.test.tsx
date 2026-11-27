@@ -1,13 +1,18 @@
 import { afterEach, beforeAll, expect, test, vi } from 'vitest';
 import { useState } from 'react';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render as bareRender, screen } from '@testing-library/react';
 import { parse } from 'yaml';
 import { i18n, startI18n } from '@alpacawork/i18n';
 import { AGENT_ADAPTERS } from '@alpacawork/contract/agent-adapters';
 import { AgentSettings } from '../src/features/panels/AgentSettings';
 import { newAgentDraft, readAgentsDraft, writeAgentsDraft, type AgentsDraft } from '../src/features/panels/agent-settings-draft';
+import { WithQueries } from './fixtures';
+import { queryClient } from '../src/data/query-client';
+
+// Drawn as the screen draws it, inside the queries' provider: an agent's mark reads the server settings.
+const render = (ui: Parameters<typeof bareRender>[0]) => bareRender(ui, { wrapper: WithQueries });
 beforeAll(async () => { startI18n(); await i18n.changeLanguage('en'); });
-afterEach(cleanup);
+afterEach(() => { cleanup(); queryClient.clear(); });
 
 test('a changed default value can be restored, and only fields with a default offer it', () => {
   const codex = newAgentDraft('codex', 'codex', 'codex');

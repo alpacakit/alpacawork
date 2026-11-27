@@ -5,6 +5,18 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./automation-program": {
+      "types": "./dist/automation-program.d.ts",
+      "default": "./dist/automation-program.js"
+    },
+    "./automation-program-assets": {
+      "types": "./dist/automation-program-assets.d.ts",
+      "default": "./dist/automation-program-assets.js"
+    },
+    "./automation": {
+      "types": "./dist/automation.d.ts",
+      "default": "./dist/automation.js"
+    },
     "./file-formats": {
       "types": "./dist/file-formats.d.ts",
       "default": "./dist/file-formats.js"
@@ -179,7 +191,7 @@
     }
   },
   "scripts": {
-    "build": "rm -rf dist && tsc -p tsconfig.json"
+    "build": "rm -rf dist && tsc -p tsconfig.json && node scripts/build-automation-assets.mjs"
   },
   "dependencies": {
     "@alpacawork/core": "workspace:*",

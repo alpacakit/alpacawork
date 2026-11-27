@@ -21,7 +21,11 @@ function required(option: string, choices: readonly string[], subject?: { reques
     { reason: { kind: 'reason_required', flag: `--${flag}`, choices: choices.join('|') }, issues: [{ path: option, code: 'required', message }] });
 }
 
-const requiresActionReason = (actor: TaskActor) => actor.kind !== 'human';
+/**
+ * Who says why they act: an agent. A person does not, and neither does an automation, whose AI and requests are fixed by
+ * the definition a person read and turned on.
+ */
+const requiresActionReason = (actor: TaskActor) => actor.kind !== 'human' && actor.kind !== 'automation';
 
 /** Whether a write gives its launch values with `--ai-stack` or `--selected`; without either they come from the configured AI order. */
 export const givesLaunchValues = (input: { selected?: unknown; aiStack?: unknown }) =>

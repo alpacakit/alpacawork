@@ -1,5 +1,6 @@
 import { currentStepKey, navigate, pushStep, replaceStep, traverse } from "@/lib/history";
 import { gathering, readerFocusReturn, readerOn, useViewStore, type Navigation, type ReaderPane, type ReaderPlace } from "./view-store";
+import { automationsMoved, readOpenAutomation } from "@/features/automations/place";
 import { analysisMoved, analysisSurfaces, belowLayer, readAnalysis } from "@/features/analysis/place";
 
 const HISTORY_KEY = "alpacaworkNavigation";
@@ -52,12 +53,19 @@ export const samePlace = (a: ReaderPlace, b: ReaderPlace) => a.task === b.task &
  */
 export function surfacesOf(search: string): string[] {
   const url = new URLSearchParams(search);
-  // On the analysis face its layers (a list, the card) come first; the reader and what is over it stand over them.
-  const below = analysisSurfaces(readAnalysis(url));
-  const task = url.get("task");
-  if (!task) return below;
-  return [...below, task, ...overReader(url).map(([kind, value]) => `${kind}:${value}`)];
+  const face = faceSurfaces(url), task = url.get("task");
+  // The reader's window shows a task, or else an automation (`Navigation.automation`), over the face's own surfaces.
+  const automation = task ? null : readOpenAutomation(url);
+  if (automation) return [...face, `automation:${automation.id}`];
+  if (!task) return face;
+  return [...face, task, ...overReader(url).map(([kind, value]) => `${kind}:${value}`)];
 }
+/** The face's own surfaces, under the reader's window: on the analysis face, its layers (a list, a task's values, the card). */
+const faceSurfaces = (url: URLSearchParams): string[] => analysisSurfaces(readAnalysis(url));
+/** How many of a navigation's surfaces are its face's own (`faceSurfaces`). */
+const faceDepth = (navigation: Navigation) => navigation.analysis ? analysisSurfaces(navigation.analysis).length : 0;
+/** Where the reader's window stands in the stack (`surfacesOf`): over the face's own surfaces. */
+const readerDepth = (search: string) => faceSurfaces(new URLSearchParams(search)).length;
 /**
  * The surfaces over the reader, bottom first, as the URL names them: a picture, or the viewer. The
  * one order `surfacesOf` stacks and `belowSurface` takes them away in.
@@ -66,6 +74,13 @@ const OVER_READER = ["image", "view"] as const;
 type OverReader = typeof OVER_READER[number];
 const overReader = (url: URLSearchParams): [OverReader, string][] =>
   OVER_READER.flatMap(kind => { const value = url.get(kind); return value ? [[kind, value] as [OverReader, string]] : []; });
+/** What a surface is (`surfacesOf`): its name before the colon (`automation`, `image`…), an analysis layer, or a task's reader. */
+const surfaceKind = (surface: string) => {
+  const kind = surface.includes(":") ? surface.slice(0, surface.indexOf(":")) : surface === "card" ? surface : "task";
+  // The analysis's layers are one kind: one stands where another stood (analysisSurfaces).
+  return ANALYSIS_LAYERS.has(kind) ? "analysis" : kind;
+};
+const ANALYSIS_LAYERS = new Set(["list", "unit", "card"]);
 const sameStack = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((item, at) => item === b[at]);
 
 const STEP_WRITTEN = "alpacawork-history-changed";
@@ -87,8 +102,10 @@ export function writeStep(push: boolean, entry: HistoryEntry, url: string | URL)
   const now = surfacesOf(new URL(url, location.href).search);
   // The step written over keeps its key; a pushed one comes after it.
   const here = currentStepKey();
-  const opened = now.map((_, depth): Opened => {
-    const standing = depth < was.length && sameStack(was.slice(0, depth), now.slice(0, depth));
+  const opened = now.map((surface, depth): Opened => {
+    // A surface stands where one of its own kind stood (another task in the reader, another automation): one of
+    // another kind (an automation opened from a task, a task from an automation) is opened by this step.
+    const standing = depth < was.length && surfaceKind(was[depth]!) === surfaceKind(surface) && sameStack(was.slice(0, depth), now.slice(0, depth));
     if (standing && prior[depth]) return prior[depth]!;
     return push ? { key: here, here: true } : { key: here, here: false };
   });
@@ -114,7 +131,7 @@ function closeSurface(depth: number, apply: () => void, landed?: () => void) {
 /** A surface over the reader closed (a picture's ×, the viewer's ×): it and those over it. */
 function closeOver(kind: OverReader, apply: () => void) {
   const depth = surfacesOf(location.search).findIndex(surface => surface.startsWith(`${kind}:`));
-  if (depth < 1) { apply(); return; }
+  if (depth <= readerDepth(location.search)) { apply(); return; }
   navigate(() => closeSurface(depth, apply), { bound: true });
 }
 export const closeImage = () => closeOver("image", () => useViewStore.getState().setImage(null));
@@ -122,9 +139,7 @@ export const closeView = () => closeOver("view", () => useViewStore.getState().s
 
 /** The reader's ×, Esc, and every other way a person closes it (a finger sliding a phone's sheet away, a press behind it). */
 export function closeReaderStep() {
-  // The reader stands over the analysis's layers, when it is open over the face.
-  const depth = analysisSurfaces(useViewStore.getState().analysis).length;
-  navigate(() => closeSurface(depth, () => useViewStore.getState().closeReader(), readerFocusReturn()), { bound: true });
+  navigate(() => closeSurface(readerDepth(location.search), () => useViewStore.getState().closeReader(), readerFocusReturn()), { bound: true });
 }
 
 /** A layer of the analysis closed (its ×, the list's way back from a task's values): it and those over it. */
@@ -137,12 +152,11 @@ export function closeAnalysisLayer(depth: number) {
 
 /** The navigation with only its `depth` bottom surfaces open (`surfacesOf`). */
 export function belowSurface(navigation: Navigation, depth: number): Navigation {
-  // The analysis's layers are the bottom of the stack; the reader's surfaces are counted over them.
-  const layers = analysisSurfaces(navigation.analysis).length;
-  if (navigation.analysis && depth < layers) return { ...navigation, analysis: belowLayer(navigation.analysis, depth),
-    task: null, taskAddress: null, image: null, view: null, event: null, scene: null, path: null, pane: "task" };
-  depth -= layers;
-  if (depth <= 0) return { ...navigation, task: null, taskAddress: null, image: null, view: null, event: null, scene: null, path: null, pane: "task" };
+  // The face's own surfaces first (the analysis's layers), then the reader's window and what is over it.
+  const face = faceDepth(navigation);
+  if (depth < face && navigation.analysis) navigation = { ...navigation, analysis: belowLayer(navigation.analysis, depth) };
+  depth -= face;
+  if (depth <= 0) return { ...navigation, task: null, taskAddress: null, automation: null, image: null, view: null, event: null, scene: null, path: null, pane: "task" };
   // The surfaces over the reader the navigation shows, bottom first (`overReader`): those below `depth` stay.
   const shown = new URLSearchParams();
   for (const kind of OVER_READER) if (navigation[kind]) shown.set(kind, navigation[kind]);
@@ -161,6 +175,8 @@ export function isStep(before: Navigation, after: Navigation, beforeUrl: URL, af
   const was = surfacesOf(beforeUrl.search), now = surfacesOf(afterUrl.search);
   const opened = now.length > was.length && sameStack(now.slice(0, was.length), was);
   const moved = before.project !== after.project
+    || automationsMoved(before.automations, after.automations)
+    || after.automation?.id !== before.automation?.id && !!after.automation || !!after.automation && before.automation?.pane !== after.automation.pane
     || analysisMoved(before.analysis, after.analysis)
     || gathering(before) !== gathering(after)
     || !!readerOn(after) && (readerOn(before) !== readerOn(after) || before.pane !== after.pane || before.path !== after.path

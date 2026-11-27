@@ -27,6 +27,11 @@
     "title": "Este equipo tiene mucha carga"
   },
   "push": {
+    "automationConsecutiveFailures": "Falló tres veces seguidas.",
+    "automationDefinitionChanged": "Cambió su definición.",
+    "automationFailed": "{{automation}} no se pudo ejecutar",
+    "automationFailureAction": "Abre la automatización para ver por qué falló.",
+    "automationOff": "{{automation}} desactivada",
     "groupTitle": "{{updateCount}} novedades",
     "reason": {
       "blocked": {

@@ -25,11 +25,10 @@ function cli(path: string[], backend = false, script?: string) {
 }
 const ordinary = commandCatalog.cliCommands.map(spec => [...spec.words]);
 
-test('all 57 ordinary and 8 backend operation helps expose access without connecting or authorizing', () => {
+test('all ordinary and backend operation helps expose access without connecting or authorizing', () => {
   const client = [...ordinary, ['server', 'show'], ['server', 'set'], ['server', 'unset'], ['run', 'stop-local']];
   const backend = [...['init', 'serve', 'maintenance'].map(name => ['workspace', name]),
     ...['build', 'rollback', 'prune', 'status'].map(name => ['release', name]), ['deploy']];
-  assert.equal(client.length, 57);
   assert.equal(backend.length, 8);
   // One process per program: what a help prints comes from its path, and its real start is the entry below.
   const helps = (entry: string, paths: string[][]) => JSON.parse(cli([], false, `
@@ -104,7 +103,7 @@ test('entry-specific conditions, roles and scopes remain visible in the correspo
   assert.ok(accessHelp('task.report').includes(urgentRecipient.help));
   assert.ok(accessHelp('task.comment').includes(urgentRecipient.help.replace('--urgent: ', '')));
   assert.ok(accessHelp('coordinator reply.get').includes(replyAccess.help));
-  assert.match(accessHelp('operation.get'), /No Task: only a person\./);
+  assert.match(accessHelp('operation.get'), /Other receipts: only a person\./);
   assert.match(accessHelp('server.set'), /outside server authorization/);
   assert.match(accessHelp('deploy'), /own Task held: unavailable/);
   assert.match(accessHelp('config.set'), /only a person or the coordinator\./);

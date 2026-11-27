@@ -3,14 +3,17 @@
  * is asked for, and what the file did not do is said by line number, in both languages.
  */
 import { afterEach, beforeAll, expect, test, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render as bareRender, screen, waitFor } from "@testing-library/react";
 import { i18n, startI18n } from "@alpacawork/i18n";
 import { adapterCatalog, DEFAULT_LIMITS, type EnvironmentFile } from "@alpacawork/contract";
 import { AgentSettings } from "../src/features/panels/AgentSettings";
 import { newAgentDraft } from "../src/features/panels/agent-settings-draft";
 import { SettingsBody } from "../src/features/panels/SettingsDialog";
 import { queryClient } from "../src/data/query-client";
-import { screenData, TestWorkspace } from "./fixtures";
+import { screenData, TestWorkspace, WithQueries } from "./fixtures";
+
+// Drawn as the screen draws it, inside the queries' provider: an agent's mark reads the server settings.
+const render = (ui: Parameters<typeof bareRender>[0]) => bareRender(ui, { wrapper: WithQueries });
 
 const PATH = "/home/person/.config/alpacawork/env";
 beforeAll(() => { startI18n(); });

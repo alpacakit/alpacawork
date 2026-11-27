@@ -1,3 +1,4 @@
+import { nextWorkspaceNumber } from './workspace-number.js';
 import { returnCauseIds, returnCauses } from '@alpacawork/runs';
 import { liveEndpoints, liveRequestIds } from './live-endpoints.js';
 import { taskLogs, taskEvent, routingHistory, TASK_RECORD_COLUMNS, TASK_RECORD_JOINS } from './task-history.js';
@@ -410,14 +411,11 @@ export class TaskRepository {
       });
   }
   /**
-   * The only numbering: takes the workspace's next Task number in this transaction, so no Task ID is ever given twice,
-   * and inserts the Task `document` makes for it. A task belongs to its parent if that is a project, else to its
+   * Takes the next shared public number in this transaction and inserts the Task `document` makes for it. A task belongs to its parent if that is a project, else to its
    * parent's project; a project belongs to none.
    */
   create(kind: ControlMetadata['kind'], document: (id: string) => { meta: ControlMetadata; values: TaskValues; settings?: ProjectSettings }): string {
-    const number = Number(this.connection.prepare(`UPDATE task_sequence SET next_number = next_number + 1
-      WHERE singleton = 1 RETURNING next_number - 1 AS number`).get()!.number);
-    if (number > MAX_TASK_NUMBER) throw new Problem(PROBLEM_CODE.idExhausted, 'Task number limit reached', undefined, { reason: { kind: 'task_number_limit_reached' } });
+    const number = nextWorkspaceNumber(this.connection);
     const id = publicTaskId(kind, number), { meta, values, settings } = document(id);
     const checkedSettings = validateTaskSettings(meta.kind, settings ?? null);
     const checkedMeta = validateControlMetadata(meta);

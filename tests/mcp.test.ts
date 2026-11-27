@@ -161,6 +161,30 @@ test('HTTP and stdio MCP share authorization, restore fencing, receipts and file
   assert.equal(text(stale).error.code, PROBLEM_CODE.restoreChanged);
   assert.equal(text(await call(get(20))).task.log.filter((entry: { title: string }) => entry.title === comment.title).length, 1);
 
+  const newAutomation = (ownerProject: string) => ({
+    under: ownerProject, name: 'Synthetic automation',
+    definition: { timezone: 'UTC', trigger: { kind: 'schedule', cron: '0 9 * * *' },
+      limits: { cooldownMinutes: 0, perDay: 1, waitForPrevious: true },
+      action: { kind: 'create_task', title: 'Synthetic action', instruction: 'Review fixture data',
+        ai: [{ agent: 'codex' }], awaitReview: false } },
+  });
+  const draftOperation = randomUUID(), outsideOperation = randomUUID();
+  const draftWrite = write('automation new', identity, newAutomation(project), draftOperation);
+  const draft = text(await call(draftWrite)).automation;
+  assert.equal(draft.enabled, false);
+  assert.deepEqual(text(await call(draftWrite)).automation, draft);
+  const outside = text(await call(write('automation new', identity, newAutomation('P1'), outsideOperation))).automation;
+  assert.deepEqual(text(await call(read('operation get', { opId: draftOperation }))).body.automation, draft);
+  assert.equal(text(await call(read('operation get', { opId: outsideOperation }), runHeaders)).error.code, PROBLEM_CODE.notFound);
+  const activate = { automation: draft.id, expectedAutomationHash: draft.hash };
+  assert.equal(text(await call(write('automation enable', identity, activate, randomUUID()))).error.code, PROBLEM_CODE.forbidden);
+  assert.equal(text(await call(read('automation get', { automation: draft.id }), runHeaders)).automation.id, draft.id);
+  assert.deepEqual(text(await call(read('automation runs', { automation: draft.id }), runHeaders)).runs, []);
+  assert.deepEqual(text(await call(read('automation list'), runHeaders)).automations.map((item: { id: string }) => item.id), [draft.id]);
+  assert.deepEqual(text(await call(read('automation list', { under: 'P1' }), runHeaders)).automations, []);
+  for (const command of ['automation get', 'automation runs'])
+    assert.equal(text(await call(read(command, { automation: outside.id }), runHeaders)).error.code, PROBLEM_CODE.notFound);
+
   const destination = { task: task!.id, path: 'notes.txt' };
   const inline = '😀' + '\t'.repeat(27_000);
   const put = write('task file put', identity, { ...destination, content: inline }, randomUUID());

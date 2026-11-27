@@ -15,7 +15,8 @@ import type { CoordinatorConversation } from '@/data/coordinator';
 import type { Task } from '@/data/types';
 import { attachmentLocation, attachmentsOf, attachmentsToCopy } from '@/domain/attachments';
 import { coordinatorFileUrl } from '@alpacawork/contract';
-import { draftDocument, emptyDocument, hasContent, filterDocument, inlines, markReaderOperation, replyIn, taskReferencesIn, type Document } from './document';
+import { automationBadgeTargetSchema } from '@alpacawork/contract/automation';
+import { draftDocument, emptyDocument, hasContent, filterDocument, inlines, markReaderOperation, replyIn, automationIn, aboutAutomation, taskReferencesIn, type Document } from './document';
 import { composing, restored, submitted } from './lifecycle';
 import { EDITABLE_INTENT_FIELDS, editableIntentValues, withoutEditableIntent } from './editable-intent';
 import { claimInput, consumeInput, retainedInput, retainingInput, recoverRetainedInput, projectInput, editProjectedInput, INPUT_PORTION } from './input-ownership';
@@ -44,6 +45,7 @@ import { clearingConversation } from '../press';
  */
 type Stage = 'queued' | 'checking' | 'posted' | 'accepted' | 'refused';
 const fixedSchema = z.object({ conversationId: z.string(), text: z.string(), tasks: z.array(z.string()).optional(),
+  automation: automationBadgeTargetSchema.optional(),
   skills: z.array(z.string()).optional(), attachments: z.array(z.string()), intent: coordinatorIntentSchema.optional(),
   answers: coordinatorAnswersInputSchema.optional(), replyTo: z.string().nullable().optional() });
 export type Fixed = z.infer<typeof fixedSchema>;
@@ -491,9 +493,13 @@ function restore(key: string, { input: from, entry, origin }: RecoveryPlace, fre
   // visible draft moves aside, only the requested original enters its place.
   const recoveredValues = retainedWhole && !Object.keys(parked).length
     ? projectInput(released, from, { ...draft.values, doc: JSON.stringify(recovered!) })! : null;
+  const shown = recoveredValues ? draftDocument(recoveredValues) : reader && fixed.intent && failedIds.has(fixed.intent.task) ? markReaderOperation(doc) : doc;
+  // The badge the input shows now stays, however the words come back; with none shown, the sent badge comes back.
+  const badge = automationIn(draftDocument(visible.values)) ?? automationIn(source);
+  const words = filterDocument(shown, node => node.type !== 'automationLabel');
   const values = {
     ...restored(recoveredValues ?? draftValues(entry.values), draft.values), ...own,
-    doc: recoveredValues?.doc ?? JSON.stringify(reader && fixed.intent && failedIds.has(fixed.intent.task) ? markReaderOperation(doc) : doc),
+    doc: JSON.stringify(badge ? aboutAutomation(words, badge) : words),
   };
   if (!released[from]) released[from] = draft;
   const input = editProjectedInput(released, from, values);
@@ -680,7 +686,7 @@ export function beginWithdrawal(root: string, requestId: string, conversation?: 
     if (turn && turn.status !== 'queued') return null;
     // A server row has no recoverable original document. Retain only this withdrawal's intent; never resend it.
     const fixed: Fixed = { conversationId: conversation.id, text: turn?.ask ?? '', attachments: turn?.attachments ?? [],
-      ...turn?.tasks ? { tasks: turn.tasks } : {}, ...turn?.replyTo ? { replyTo: turn.replyTo.id } : {} };
+      ...turn?.tasks ? { tasks: turn.tasks } : {}, ...turn?.automation ? { automation: turn.automation } : {}, ...turn?.replyTo ? { replyTo: turn.replyTo.id } : {} };
     entry = { status: 'editing', values: { requestId, doc: JSON.stringify(emptyDocument()), submitted: JSON.stringify(fixed), stage: 'posted', at: turn?.at ?? new Date().toISOString() } };
   }
   const queuedAtServe = entry.values.stage === 'accepted' && conversation?.turns.some(turn => turn.id === requestId && turn.status === 'queued');

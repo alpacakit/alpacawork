@@ -55,7 +55,7 @@ export function writeOp(command: Command, input: unknown, caller: Caller, task: 
   return op ? op(action, () => target === null ? null : task(target), caller) : null;
 }
 /** The way a CLI caller came: a person at a terminal, the coordinator in the screen's window or outside, or a Run by its agent. */
-export function callerVia(caller: Caller, agentOf: (placementId: string) => TelemetryAgent): TelemetryVia {
+export function callerVia(caller: Exclude<Caller, {kind: 'program'}>, agentOf: (placementId: string) => TelemetryAgent): TelemetryVia {
   switch (caller.kind) {
     case 'human': return 'cli';
     case 'coordinator': return caller.source === 'screen' ? 'coord.screen' : `coord.chat.${caller.source}`;
@@ -77,12 +77,12 @@ export function countCliWrites(telemetry: Counter, facts: CliWriteFacts): Middle
     const command = c.req.header('x-alpacawork-client') === 'cli' ? countedCommand(c.req.method, new URL(c.req.url).pathname) : undefined;
     const opId = c.req.header('x-alpacawork-op-id');
     if (!command || telemetry.gate().state !== 'on' || (opId !== undefined && facts.recorded(opId))) return next();
-    let counted: { op: TelemetryOp; caller: Caller } | null = null;
+    let counted: { op: TelemetryOp; caller: Exclude<Caller, {kind: 'program'}> } | null = null;
     try {
       const json = c.req.header('content-type')?.split(';')[0]?.trim() === 'application/json';
       const input: unknown = json ? await c.req.raw.clone().json().catch(() => null) : null;
       const caller = facts.caller(c.req.raw), op = writeOp(command, input, caller, facts.task);
-      if (op) counted = { op, caller };
+      if (op && caller.kind !== 'program') counted = { op, caller };
     } catch (error) { telemetry.diagnostic(error); }
     await next();
     if (!counted || c.res.status >= 300) return;

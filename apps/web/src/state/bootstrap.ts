@@ -18,6 +18,7 @@ import { rememberNavigation, resumeLanding, type Resume } from "./resume";
 import { addressesIn, screenSettings, setUrlValue, urlValue } from "./screen-settings";
 import { applyTimeViewUrl, useTimeView } from "./time-view";
 import { attachScreen, navigate, onPersonMove, showScreen, type Write } from "@/lib/history";
+import { AUTOMATIONS_KEYS, automationsValues, OPEN_AUTOMATION_KEYS, openAutomationValues, readAutomations, readOpenAutomation } from "@/features/automations/place";
 import { ANALYSIS_KEYS, analysisValues, readAnalysis } from "@/features/analysis/place";
 
 /** The same screen showing another URL of it (a link pressed), for the intent applying it to write as its step. */
@@ -142,8 +143,8 @@ function detailOf(task: string | null, row: Parameters<typeof taskDetail>[0] | u
  */
 function readNavigation(url: URL, index: TaskIndex, root: string, projects: Projects, missing: ReadonlySet<string>,
   turnSequence = isTurnSequenceNavigation()): Navigation {
-  // A task the URL names beside the analysis face is the reader over it.
-  const analysis = readAnalysis(url.searchParams);
+  // A task the URL names opens over whichever face it names.
+  const automations = readAutomations(url.searchParams), analysis = readAnalysis(url.searchParams);
   const requestedTask = urlValue("task", url);
   const row = requestedTask ? taskAtAddress(requestedTask, index) ?? readerTask(queryClient, root, requestedTask) : undefined;
   const refusal = requestedTask ? readQuery(queryClient, ['task', root, requestedTask])?.state.error : undefined;
@@ -172,7 +173,8 @@ function readNavigation(url: URL, index: TaskIndex, root: string, projects: Proj
     view: validView(view),
     event: shown && pane === "task" ? validEvent(urlValue("event", url)) : null,
     scene: shown && pane === "analysis" ? validScene(urlValue("at", url), urlValue("finding", url)) : null,
-    query: urlValue("q", url) ?? "", turnSequence, analysis };
+    // The window shows a task or an automation: a task the URL names comes first.
+    query: urlValue("q", url) ?? "", turnSequence, automations, automation: shown ? null : readOpenAutomation(url.searchParams), analysis };
 }
 
 /**
@@ -193,9 +195,9 @@ function writeNavigation(url: URL, navigation: Navigation): URL {
   // The navigation's keys are written afresh in one order, so one navigation has one URL whatever URL it came from
   // (the repair below compares them). Only full/partial mode belongs to the URL.
   // A task and the project are named by their Task IDs.
-  for (const key of ["project", "task", "width", "tab", "path", "q", "image", "view", "event", "at", "finding", ...ANALYSIS_KEYS] as const) setUrlValue(key, null, url);
+  for (const key of ["project", "task", "width", "tab", "path", "q", "image", "view", "event", "at", "finding", ...AUTOMATIONS_KEYS, ...OPEN_AUTOMATION_KEYS, ...ANALYSIS_KEYS] as const) setUrlValue(key, null, url);
   const task = readerOn(navigation);
-  const full = !!task && navigation.full;
+  const full = (!!task || !!navigation.automation) && navigation.full;
   if (navigation.project) setUrlValue("project", navigation.project, url);
   if (task) setUrlValue("task", task, url);
   if (full) setUrlValue("width", "full", url);
@@ -207,7 +209,8 @@ function writeNavigation(url: URL, navigation: Navigation): URL {
   if (task && navigation.pane === "task" && navigation.event) setUrlValue("event", navigation.event, url);
   if (task && navigation.pane === "analysis" && navigation.scene?.at) setUrlValue("at", navigation.scene.at, url);
   if (task && navigation.pane === "analysis" && navigation.scene?.finding) setUrlValue("finding", navigation.scene.finding, url);
-  for (const [key, value] of analysisValues(navigation.analysis)) setUrlValue(key, value, url);
+  for (const [key, value] of [...automationsValues(navigation.automations), ...analysisValues(navigation.analysis),
+    ...task ? [] : openAutomationValues(navigation.automation)]) setUrlValue(key, value, url);
   return url;
 }
 

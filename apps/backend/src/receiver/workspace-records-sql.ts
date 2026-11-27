@@ -51,6 +51,7 @@ export const ownerLookup: OwnerLookup = {
   refusal: single((db, id) => taskUuid(uuidOwner(id, true), db)),
   conversation: (_db, ids) => new Map(ids.map(id => [id, { task: null, coordinator: id }])),
   field_def: () => new Map(),
+  automation: () => new Map(), automation_run: () => new Map(), automation_signal: () => new Map(),
 };
 /**
  * A committed write's keys in the form these records read them. A writer names a row of a compound key as the JSON

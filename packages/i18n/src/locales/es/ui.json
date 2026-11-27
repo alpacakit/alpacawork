@@ -16,6 +16,12 @@
       "title": "IA probadas",
       "tookOver": "{{agent}} tomó el relevo"
     },
+    "automationResult": {
+      "created": "Se creó <open>{{id}}</open>",
+      "edited": "Se cambió <open>{{id}}</open>",
+      "notBadge": " (no es {{id}}, la automatización de la etiqueta)",
+      "notNew": " (la etiqueta pedía una automatización nueva)"
+    },
     "clear": "Borrar conversación",
     "clearAbout": "Borra los mensajes y la nota y deja la conversación vacía. No se puede deshacer",
     "clearConfirm": "Haz clic otra vez para borrar",
@@ -325,11 +331,15 @@
     "copyProject": "Copiar {{id}}",
     "enterHint": "Enter para enviar · Shift+Enter para una línea nueva (⌘/Ctrl+Enter también envía)",
     "expand": "Agrandar el cuadro de texto",
+    "newAutomation": "Nueva automatización",
     "noMatches": "Ningún elemento coincide",
     "openProject": "Ver en la lista",
     "openTask": "Abrir",
     "placeholder": "Gestiona tareas y pide trabajo, todo desde aquí",
+    "placeholderAutomation": "Instrucciones o preguntas sobre {{id}} (p. ej., que sea a las 8:30)",
+    "placeholderAutomations": "Crea o cambia automatizaciones con palabras (p. ej., cada mañana a las 9, informa de las tareas pendientes de revisión)",
     "placeholderFolded": "Pide aquí lo que necesites",
+    "placeholderNewAutomation": "Di qué ejecutar y cuándo (p. ej., cada mañana a las 9, informa de las tareas pendientes de revisión)",
     "placeholderProject": "Instrucciones o preguntas sobre este proyecto",
     "placeholderTask": "Instrucciones o preguntas sobre {{id}}",
     "placeholderTasks": "Instrucciones o preguntas sobre {{id}} y otras",

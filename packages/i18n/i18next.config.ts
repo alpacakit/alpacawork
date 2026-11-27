@@ -8,11 +8,15 @@ export default defineConfig({
   locales: [...uiLocales],
   plugins: [{
     name: "people-translator-arguments",
-    // These pure helpers receive useTranslation("people").t from their callers.
+    // These pure helpers receive useTranslation("people").t (or "automations") from their callers.
     // Qualify that argument only for extraction; no runtime source is changed.
     onLoad(code, path) {
       if (/\/domain\/(day-clock|finish-words)\.ts$/.test(path))
         return code.replace(/\bt\((["`])(?=(?:clock|day|finish)\.)/g, "t($1people:");
+      // The token speed's helper receives useTranslation("tree").t the same way.
+      if (/\/features\/tree\/token-speed\.tsx$/.test(path)) return code.replace(/\bt\((["`])speed\./g, "t($1tree:speed.");
+      // These receive useTranslation("automations").t the same way.
+      if (/\/features\/automations\/words\.ts$/.test(path)) return code.replace(/\bt\((["`])/g, "t($1automations:");
     },
   }],
   extract: {
@@ -43,6 +47,14 @@ export default defineConfig({
       "reader:history.waiting.*", "reader:history.reasons.*", "reader:files.facet.*",
       "reader:reportFeed.row.*", // A History row says its party, kind and ending by the record's own values.
       "translation:problem.*", "translation:validation.*",
+      // An automation said in words, by its fields' values and the server's codes (features/automations/words.ts).
+      "automations:schedule.*", "automations:weekday.*", "automations:event.*", "automations:next.*",
+      "automations:reason.*", "automations:runs.reason.*", "automations:duration.*", "automations:pressure.*",
+      "automations:trigger.*", "automations:runs.state.*",
+      "automations:attention.*", "automations:phase.*", "automations:group.*", "automations:mark.*", "automations:dot.*", "automations:pane.*", "automations:effect.*", "automations:field.*",
+      "panels:update.card.failedBody.*", // A failed update said by its category (features/update/UpdateView.tsx).
+      "panels:telemetry.outcome.*", // What became of a request sent, by its outcome (features/telemetry/Telemetry.tsx).
+      "panels:telemetry.fields.*", // A kind of information sent, by its field's name (features/telemetry/field-text.ts).
       "analysis:*", // The analysis writes its numbers and names through helpers and by the server's keys (features/analysis).
     ],
     sort: true,

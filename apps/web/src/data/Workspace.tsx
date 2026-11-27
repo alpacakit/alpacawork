@@ -65,7 +65,7 @@ export function Workspace({ children }: { children: ReactNode }) {
       people, drawing: { root: index.root, restoredAt },
       info: { root: index.root, rev: index.rev, writable: index.writable, errors: index.errors, staleIds: index.staleIds, runs: index.runs, profiles: index.profiles, attachmentBytes: index.attachmentBytes,
         projects: index.projects, presence: index.presence, host: index.host, coordinatorWork: index.coordinatorWork,
-        counts: index.counts, home: index.home, checkpointAt: baseline.checkpoint.at } };
+        counts: index.counts, home: index.home, checkpointAt: baseline.checkpoint.at, automationsVersion: index.automationsVersion } };
   }, [index, restoredAt, server, baseline, people, personStatus]);
   // What the screen cannot be drawn without, not read at first: the whole screen says so.
   // An update whose switch has not ended holds the workspace: nothing else is read until it goes on, so its line (and

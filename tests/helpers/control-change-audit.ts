@@ -5,7 +5,34 @@ import { controlDatabasePath, type ChangeKey, type ChangeLog } from '@alpacawork
 import { unobservedColumns, unobservedTables } from './control-write-inventory.ts';
 
 type Row = Record<string, SQLOutputValue>;
-const keyOf: Record<string, (row: Row) => ChangeKey> = {
+const automationId = (db: DatabaseSync, uuid: SQLOutputValue) =>
+  String(db.prepare('SELECT external_id FROM automations WHERE id=?').get(uuid)!.external_id);
+const automationKey = (db: DatabaseSync, uuid: SQLOutputValue): ChangeKey =>
+  ({ kind: 'automation', id: automationId(db, uuid) });
+const automationRunKey = (db: DatabaseSync, uuid: SQLOutputValue, number: SQLOutputValue): ChangeKey =>
+  ({ kind: 'automation_run', id: JSON.stringify([automationId(db, uuid), number]) });
+const operationKeys = (r: Row, db: DatabaseSync): ChangeKey[] => {
+  if (r.automation_id == null || r.run_number == null) return [];
+  const run = db.prepare('SELECT number FROM automation_runs WHERE automation_id=? AND number=?').get(r.automation_id, r.run_number);
+  return run ? [automationRunKey(db, r.automation_id, r.run_number)] : [];
+};
+const destinationKeys = (r: Row, db: DatabaseSync): ChangeKey[] => db.prepare(
+  'SELECT external_id FROM automations WHERE project_task_id=? AND deleted=0',
+).all(r.project_task_id!).map(row => ({ kind: 'automation', id: String(row.external_id) }));
+const keyOf: Record<string, (row: Row, db: DatabaseSync) => ChangeKey | ChangeKey[]> = {
+  automations: r => ({ kind: 'automation', id: String(r.external_id) }),
+  automation_versions: (r, db) => automationKey(db, r.automation_id!),
+  automation_destinations: destinationKeys,
+  automation_destination_secrets: destinationKeys,
+  automation_secrets: (r, db) => automationKey(db, r.automation_id!),
+  automation_changes: (r, db) => automationKey(db, r.automation_id!),
+  automation_runs: (r, db) => automationRunKey(db, r.automation_id!, r.number!),
+  automation_run_data: (r, db) => automationRunKey(db, r.automation_id!, r.run_number!),
+  automation_signal_items: (r, db) => automationRunKey(db, r.automation_id!, r.run_number!),
+  automation_previews: (r, db) => r.automation_id == null || r.result == null ? [] : [automationKey(db, r.automation_id)],
+  automation_operations: operationKeys,
+  automation_operation_data: (r, db) => operationKeys(db.prepare('SELECT * FROM automation_operations WHERE id=?').get(r.operation_id!)!, db),
+  automation_task_inputs: r => ({ kind: 'task', id: String(r.task_id) }),
   tasks: r => ({ kind: 'task', id: String(r.external_id) }),
   task_log: r => ({ kind: 'log', id: String(r.id) }),
   task_log_question: r => ({ kind: 'log', id: String(r.log_id) }),
@@ -33,7 +60,7 @@ const keyOf: Record<string, (row: Row) => ChangeKey> = {
   project_fields: r => ({ kind: 'project_field', id: JSON.stringify([r.project_task_id, r.position]) }),
 };
 const identify = (key: ChangeKey) => JSON.stringify([key.kind, key.id]);
-type Snapshot = Map<string, Map<string, { text: string; key: ChangeKey }>>;
+type Snapshot = Map<string, Map<string, { text: string; keys: ChangeKey[] }>>;
 function snapshot(root: string): Snapshot {
   const db = new DatabaseSync(controlDatabasePath(root), { readOnly: true });
   try {
@@ -44,11 +71,12 @@ function snapshot(root: string): Snapshot {
     assert.deepEqual(tables.filter(t => keyOf[t]).sort(), Object.keys(keyOf).sort(), 'tracked tables must exist');
     const all: Snapshot = new Map();
     for (const table of tables.filter(t => keyOf[t])) {
-      const rows = new Map<string, { text: string; key: ChangeKey }>();
+      const rows = new Map<string, { text: string; keys: ChangeKey[] }>();
       for (const row of db.prepare(`SELECT rowid AS __rowid, * FROM "${table}"`).all()) {
         const ignored = new Set(unobservedColumns[table] ?? []);
         const data = Object.fromEntries(Object.entries(row).filter(([column]) => column !== '__rowid' && !ignored.has(column)));
-        rows.set(String(row.__rowid), { text: JSON.stringify(data), key: keyOf[table]!(row) });
+        const keys = keyOf[table]!(row, db);
+        rows.set(String(row.__rowid), { text: JSON.stringify(data), keys: Array.isArray(keys) ? keys : [keys] });
       }
       all.set(table, rows);
     }
@@ -72,11 +100,11 @@ export function changeAudit(root: string, log: ChangeLog) {
         for (const id of new Set([...oldRows.keys(), ...rows.keys()])) {
           const old = oldRows.get(id), next = rows.get(id);
           if (old?.text === next?.text) continue;
-          const changedKeys = new Map([old, next].filter(row => row !== undefined).map(row => [identify(row!.key), row!]));
-          for (const row of changedKeys.values()) {
-            if (touched.has(identify(row.key))) continue;
-            const message = `${++serial}: ${name}: missing ${table} ${identify(row.key)}`;
-            if (pendingKinds.includes(row.key.kind)) pending.push(message);
+          const changedKeys = new Map([...(old?.keys ?? []), ...(next?.keys ?? [])].map(key => [identify(key), key]));
+          for (const [identity, key] of changedKeys) {
+            if (touched.has(identity)) continue;
+            const message = `${++serial}: ${name}: missing ${table} ${identity}`;
+            if (pendingKinds.includes(key.kind)) pending.push(message);
             else assert.fail(message);
           }
         }

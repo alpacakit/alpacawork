@@ -1,3 +1,4 @@
+import { deliveryRetryDelay } from './delivery-retry.js';
 /**
  * Web Push from serve: the VAPID keys, the subscribed devices, and the events
  * sent to them. serve is the only writer of
@@ -23,6 +24,7 @@ import { isFinished } from '@alpacawork/contract/branch';
 import { serverText, type ServerLocale, type ServerText } from '@alpacawork/i18n/server';
 import { defaultUiLocale, uiLocaleOrDefault } from '@alpacawork/core/ui-language';
 import type { PresenceStatus } from './presence.js';
+import { isAutomationPushKey } from '../automations/push.js';
 import type { ControlTaskDTO, ControlTreeDTO } from '@alpacawork/contract/control';
 
 const PUSH_FILE = 'push.json';
@@ -31,7 +33,6 @@ const EVENT_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 /** After this, an undelivered event is stale: the person has moved on or read the screen. */
 const DELIVERY_WINDOW_MS = 24 * 60 * 60 * 1000;
 const MAX_ATTEMPTS = 3;
-const RETRY_BASE_MS = 30_000;
 const SEND_TIMEOUT_MS = 10_000;
 export { endpointAllowed } from '@alpacawork/contract';
 
@@ -195,6 +196,7 @@ export class PushStore {
   private sending: Promise<void> | undefined;
   private holding: ReturnType<typeof holdingKeys> = new Map();
   private hostHolding: string | null = null;
+  private automationHolding = new Set<string>();
   private readonly seen = new Set<string>();
   private readonly taskKeys = new Map<string, ReadonlySet<string>>();
   private writes: Promise<void> = Promise.resolve();
@@ -372,6 +374,18 @@ export class PushStore {
     }
     return fresh;
   }
+  /** Replace the automation notices that may still be delivered and durably record newly held events. */
+  observeAutomations(events: readonly Derived[], now: number): Promise<void> {
+    this.ensureOpen();
+    return this.enqueue(async () => {
+      this.automationHolding = new Set(events.map(event => event.key));
+      const unseen = events.filter(event => Date.parse(event.occurredAt) >= now - DELIVERY_WINDOW_MS &&
+        !this.data.events.some(record => record.key === event.key));
+      if (unseen.length) await this.commit(draft => {
+        for (const event of unseen) this.append(draft, event, now);
+      });
+    });
+  }
   /** The tight host episode whose event may still be sent (`hostPushKey`); null once the machine is calm again. */
   holdHost(key: string | null): void { this.hostHolding = key; }
   /** Every pending delivery whose turn has come. One pass at a time. */
@@ -397,13 +411,13 @@ export class PushStore {
       }
       for (const [id, delivery] of Object.entries(event.deliveries)) {
         if (!('attempts' in delivery) || delivery.attempts >= MAX_ATTEMPTS) continue;
-        // A host event holds while its episode is tight; a Task event while its transition holds and is unread.
-        const host = event.key.startsWith(HOST_PUSH_PREFIX);
-        const current = host ? undefined : this.holding.get(event.key);
+        const current = this.holding.get(event.key);
         const baseline = current && (notices?.reads[current.task.id] ?? notices?.checkpoint.tasks[current.task.id]);
         const opened = !!current && !!baseline && baseline.state === current.task.state &&
           baseline.log >= event.log_count && (!baseline.turnKey || event.key.endsWith(`:${baseline.turnKey}`));
-        if (host ? event.key !== this.hostHolding : !current || opened) {
+        const held = event.key.startsWith(HOST_PUSH_PREFIX) ? event.key === this.hostHolding
+          : isAutomationPushKey(event.key) ? this.automationHolding.has(event.key) : !!current && !opened;
+        if (!held) {
           await this.event(event.key, current => { current.deliveries[id] = { closed_at: new Date(now).toISOString() }; });
           continue;
         }
@@ -433,7 +447,7 @@ export class PushStore {
         title: t('server:push.groupTitle', { updateCount: group.length }),
         body: clip(group.map(({ event }) => {
           const current = this.holding.get(event.key);
-          // Host events (or a missing Task context) use their existing title alone.
+          // Non-task events use their existing title.
           return clip(current ? `${words[current.reason].short} ${event.payload.title}` : event.payload.title, 40);
         }).join('\n'), 180),
         url: '/', tag: `pending:${createHash('sha256').update(group.map(({ event }) => event.key).join(',')).digest('hex').slice(0, 16)}`,
@@ -455,7 +469,7 @@ export class PushStore {
         else {
           const attempts = status >= 400 && status < 500 && status !== 429 ? MAX_ATTEMPTS : delivery.attempts + 1;
           const message = error || `HTTP ${status}`;
-          const wait = Math.max(RETRY_BASE_MS * 2 ** delivery.attempts, (retryAfter ?? 0) * 1000);
+          const wait = deliveryRetryDelay(delivery.attempts, retryAfter);
           await this.event(event.key, current => {
             if (current.deliveries[id]) current.deliveries[id] = { attempts, next_at: new Date(Date.now() + wait).toISOString(), error: message };
           });

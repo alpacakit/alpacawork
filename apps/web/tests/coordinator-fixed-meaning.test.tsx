@@ -89,7 +89,7 @@ for (const kind of ['answer', 'intent'] as const) for (const matches of [false, 
     expect(freeze(root, fixed, { ...words(), doc: JSON.stringify(doc) }, { from: key }, capture.reader)).toBe(id);
     capture(); const attempt = begin(root, id)!; expect(attempt.check()).toBe('posted'); attempt.finish();
     const result = coordinatorResultSchema.parse({ writes: [{ task: 'T1', record: 'result-log', toState: null, kind: kind === 'answer' ? 'answered' : 'request_accepted',
-      ...(kind === 'answer' ? { question: 'Q1' } : {}) }], refused: [] });
+      ...(kind === 'answer' ? { question: 'Q1' } : {}) }], refused: [], automations: [] });
     const incoming = snapshot({ ...(kind === 'answer' ? answer(matches ? 'Q1' : 'Q2') : intent(matches ? 'continue' : 'retry')),
       status: 'succeeded', waiting: false, answer: 'done', answeredAt: '2026-10-23T08:01:00Z', result });
     const fetcher = vi.fn().mockImplementation(() => Promise.resolve(new Response(snapshotJson(incoming)))); vi.stubGlobal('fetch', fetcher);

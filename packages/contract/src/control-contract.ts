@@ -1,3 +1,4 @@
+import { automationOriginSchema } from '@alpacawork/raw/automation';
 import { aiStackPrefixSchema } from './ai-stack.js';
 import { contextViewSchema } from './agent-context.js';
 import { agentSettingShapeSchema, selectionSchema } from './agent-settings.js';
@@ -91,7 +92,8 @@ const projectSettingsRule = (task: { kind: string; settings?: unknown }, context
 /** A Task as a write leaves it: everything but its History, which only the Task's reads carry. */
 export const controlTaskHeadSchema = z.object(controlTaskHeadFields).strict().superRefine(projectSettingsRule);
 /** A read Task: its head and its History. */
-export const controlTaskSchema = z.object({ ...controlTaskHeadFields, log: z.array(taskLogSchema) }).strict().superRefine(projectSettingsRule);
+export const controlTaskSchema = z.object({ ...controlTaskHeadFields, log: z.array(taskLogSchema),
+  origin: automationOriginSchema.optional() }).strict().superRefine(projectSettingsRule);
 
 /** A person's hold and its restoration pause one wait rather than begin another: the state changes with
  * each restored pause left out, so the wait reads as begun by the report that asked for it. */
@@ -373,7 +375,7 @@ const isoSchema = z.iso.datetime({ offset: true });
 /** List facts for state, estimates and progress; full report text belongs to detail. */
 export const stateLogEntrySchema = z.object({
   id: z.string().min(1), kind: taskLogSchema.shape.kind, at: isoSchema,
-  actor: z.object({ kind: z.enum(['human', 'main', 'placement']) }).strict(),
+  actor: z.object({ kind: z.enum(['human', 'main', 'placement', 'automation']) }).strict(),
   causeAt: isoSchema.optional(),
   stage: taskLogSchema.shape.stage,
   startsEstimateRound: z.boolean().optional(),
@@ -441,6 +443,11 @@ export const taskRowSchema = z.object({
       title: z.string().nullable(), at: isoSchema }).strict().nullable() }).strict(),
   /** The title of the Task's oldest open question (its `asked` record's), so a list shows what it asks; "" when none. */
   question: z.string(),
+  /**
+   * The automation that created it, as it was named then, when one created it itself: the list marks its row. A Task
+   * an agent created below one carries its origin in its History, not here.
+   */
+  madeBy: automationOriginSchema.optional(),
 }).strict();
 /** A closed Task's list row. Chronology is fetched for the visible time range. */
 export const taskPageRowSchema = taskRowSchema.omit({ stateLog: true, ball: true, question: true, startOrder: true }).extend({
@@ -511,6 +518,8 @@ const indexFields = {
    * above it), with its subtree's menu numbers.
    */
   projectShelfVersion: digestSchema,
+  /** Moves whenever an automation or one of its runs is written: a screen rereads the automations it shows. */
+  automationsVersion: z.string(),
   projects: z.array(z.object({ id: projectIdSchema, title: z.string().min(1), parentId: projectIdSchema.nullable(),
     color: projectColorSchema, cwd: z.string().nullable(), depth: z.number().int().nonnegative(), counts: menuCountsSchema }).strict()),
   profiles: controlTreeSchema.shape.profiles,
@@ -662,6 +671,8 @@ export function taskRowFields(task: ControlTaskDTO) {
   return {
     ...(Object.fromEntries(TASK_ROW_COPIED.map(key => [key, task[key]])) as Pick<ControlTaskDTO, typeof TASK_ROW_COPIED[number]>),
     createdAt: task.log[0]?.at ?? null, updatedAt: task.log.at(-1)?.at ?? null,
+    ...(() => { const created = task.log.find(entry => entry.kind === 'created');
+      return created?.actor.kind === 'automation' && created.origin ? { madeBy: created.origin } : {}; })(),
     stateLog: task.log.filter(entry => entry.toState !== null || entry.estimateMinutes !== undefined ||
       STATE_LOG_KINDS.has(entry.kind) || entry.startsEstimateRound === true).map(entry => ({
       id: entry.id, kind: entry.kind, at: entry.at, actor: { kind: entry.actor.kind }, fromState: entry.fromState, toState: entry.toState,

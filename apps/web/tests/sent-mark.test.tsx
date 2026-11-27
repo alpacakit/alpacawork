@@ -40,7 +40,7 @@ test('an ended turn ends the send even while this device still holds the request
 
 test('a joined turn ends when its result arrives, though its status stays joined', () => {
   expect(way(null, conversation({ status: 'joined' }))).toBe(true);
-  expect(way(null, conversation({ status: 'joined', result: { writes: [], refused: [] } }))).toBe(false);
+  expect(way(null, conversation({ status: 'joined', result: { writes: [], refused: [], automations: [] } }))).toBe(false);
 });
 
 test('a withdrawn turn, or a request gone from both sides, ends the send', () => {

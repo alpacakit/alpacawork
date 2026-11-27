@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { eq, openDatabase, sql, controlConnectionLease, type Database } from '@alpacawork/db';
 import { episodes, minutes } from '@alpacawork/db/host/schema';
 import { META_DIRECTORY } from '@alpacawork/raw';
-import { hostEpisodeSchema, type HostEpisode, type HostEpisodeMinutes } from '@alpacawork/contract';
+import { hostEpisodeSchema, hostKindSchema, type HostEpisode, type HostEpisodeMinutes, type HostKind } from '@alpacawork/contract';
 
 const HOST_DATABASE = 'host.sqlite';
 const DAY = 86_400_000;
@@ -16,9 +16,12 @@ const MINUTE_RETENTION_MS = 7 * DAY;
 export type EpisodeDraft = Omit<HostEpisode, 'id'>;
 export type MinuteRow = HostEpisodeMinutes['minutes'][number];
 
-const detailOf = (episode: EpisodeDraft) => JSON.stringify({ kinds: episode.kinds, peak: episode.peak, runs: episode.runs });
-const parseEpisode = (row: typeof episodes.$inferSelect): HostEpisode =>
-  hostEpisodeSchema.parse({ id: row.id, start: row.startAt, end: row.endAt, ...JSON.parse(row.detail) });
+const detailOf = (episode: EpisodeDraft, currentKinds: readonly HostKind[]) =>
+  JSON.stringify({ kinds: episode.kinds, currentKinds, peak: episode.peak, runs: episode.runs });
+const parseEpisode = (row: typeof episodes.$inferSelect, detail = JSON.parse(row.detail)): HostEpisode => {
+  const { kinds, peak, runs } = detail;
+  return hostEpisodeSchema.parse({ id: row.id, start: row.startAt, end: row.endAt, kinds, peak, runs });
+};
 
 export class HostStore {
   private readonly db: Database;
@@ -31,9 +34,12 @@ export class HostStore {
   }
 
   /** The newest episode a stopped server left open, with the last sample folded into it. */
-  lastOpen(): { id: number; episode: HostEpisode; lastAt: number } | null {
+  lastOpen(): { id: number; episode: HostEpisode; lastAt: number; currentKinds: HostKind[] | null } | null {
     const row = this.db.select().from(episodes).where(sql`${episodes.endAt} IS NULL`).orderBy(sql`${episodes.startAt} DESC`).get();
-    return row ? { id: row.id, lastAt: row.lastAt, episode: parseEpisode(row) } : null;
+    if (!row) return null;
+    const detail = JSON.parse(row.detail);
+    const currentKinds = hostKindSchema.array().min(1).safeParse(detail.currentKinds);
+    return { id: row.id, lastAt: row.lastAt, episode: parseEpisode(row, detail), currentKinds: currentKinds.data ?? null };
   }
 
   /** Every other open episode ends at the last sample it saw. */
@@ -43,8 +49,8 @@ export class HostStore {
   }
 
   /** Inserts the episode when it has no id yet; returns its id. */
-  saveEpisode(id: number | null, episode: EpisodeDraft, lastAt: number): number {
-    const values = { startAt: episode.start, endAt: episode.end, lastAt, detail: detailOf(episode) };
+  saveEpisode(id: number | null, episode: EpisodeDraft, lastAt: number, currentKinds: readonly HostKind[]): number {
+    const values = { startAt: episode.start, endAt: episode.end, lastAt, detail: detailOf(episode, currentKinds) };
     if (id !== null) {
       this.db.update(episodes).set(values).where(eq(episodes.id, id)).run();
       return id;
@@ -55,7 +61,7 @@ export class HostStore {
   /** Newest first. */
   episodes(since: number): HostEpisode[] {
     return this.db.select().from(episodes).where(sql`${episodes.startAt} >= ${since}`).orderBy(sql`${episodes.startAt} DESC`).all()
-      .map(parseEpisode);
+      .map(row => parseEpisode(row));
   }
 
   episode(id: number): HostEpisode | null {

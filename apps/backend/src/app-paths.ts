@@ -7,6 +7,7 @@ export const BACKEND_ENTRIES = {
   'installation/skills-update': 'installation/skills-update',
   'installation/local-cli': 'installation/local-cli',
   'run-manager': 'run-manager',
+  'automation-bundle': 'automations/bundle-entry',
   'receiver/read-thread-worker': 'receiver/read-thread-worker',
   'analysis/tally-worker': 'analysis/tally-worker',
   'receiver/workspace-file-worker': 'receiver/workspace-file-worker',

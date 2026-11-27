@@ -12,7 +12,7 @@ import { memberBasis, noOutputs, noProduced, stepTotals } from '../runs/step-evi
 import { JsonlReader, STEP_LINE_LIMIT } from '../runs/readers/jsonl.js';
 import { writeRunFile } from '../runs/files.js';
 import { tallyEligible, TALLY_STDOUT_BYTES } from './tally-scope.js';
-import { ordinaryFile, readRunTally } from './tally-file.js';
+import { ordinaryFile, readRunTallyObservation, type TallyObservation, type RunTallyObservation } from './tally-file.js';
 
 const BATCH_SIZE = 32;
 const { root, tallySince } = workerData as { root: string; tallySince: number };
@@ -25,10 +25,10 @@ const runSource = `SELECT 'R' || id AS id, json_extract(record,'$.agent') AS pro
 const pending = new Set<string>(), done = new Set<string>();
 let history: TallyRun[] = [], recent: TallyRun[] = [], running = false, stopped = false;
 
-function tally({ id, provider, adapter, session, cwd, memberReply }: TallyRun): Tally | undefined {
+function tally({ id, provider, adapter, session, cwd, memberReply }: TallyRun): TallyObservation | undefined {
   const folder = runFolder(root, id);
   if (!lstatSync(dirname(folder)).isDirectory() || !lstatSync(folder).isDirectory()) return;
-  const existing = readRunTally(folder);
+  const existing = readRunTallyObservation(folder);
   if (existing) return existing;
 
   const parser = new TallyParser(adapter, provider, session), reader = runtimeAdapter(adapter);
@@ -52,7 +52,7 @@ function tally({ id, provider, adapter, session, cwd, memberReply }: TallyRun): 
   const result = parser.finish(state === 'complete' && totals.truncated ? 'partial' : state,
     { outputs: totals.outputs, produced: totals.produced, basis: memberBasis(memberReply ?? '') });
   writeRunFile(folder, RUN_FILES.tally, JSON.stringify(result));
-  return result;
+  return { tally: result, observedAt: Math.ceil(lstatSync(join(folder, RUN_FILES.tally)).mtimeMs) };
 }
 
 function loadPending() {
@@ -76,13 +76,13 @@ function work() {
   if (!recent.length && pending.size) recent = loadPending();
   // Each turn works for 20 ms and sends at most a batch of tallies; a Run with no output to read costs little and
   // takes no place in the batch, so a record of many such Runs is gone through as fast as one of few.
-  const batch: [string, Tally][] = [], until = performance.now() + 20;
+  const batch: RunTallyObservation[] = [], until = performance.now() + 20;
   while (batch.length < BATCH_SIZE && (recent.length || !pending.size && history.length) && performance.now() < until) {
     const run = recent.pop() ?? history.pop()!;
     if (done.has(run.id)) continue;
     try {
       const value = tally(run);
-      if (value) { done.add(run.id); batch.push([run.id, value]); }
+      if (value) { done.add(run.id); batch.push({ id: run.id, ...value }); }
     } catch (error) {
       // Usage remains available if a Run folder disappeared or could not be tallied.
       if (!hasCode(error, 'ENOENT')) port.postMessage({ issue: run.id });

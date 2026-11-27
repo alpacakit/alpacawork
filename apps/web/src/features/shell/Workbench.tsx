@@ -14,7 +14,10 @@ import { useFrameSelector, WorkspaceContext } from "@/data/workspace-store";
 import { Loadable } from "@/components/ui/loadable";
 import { RegionSkeleton } from "@/components/ui/skeleton";
 import { NoProjects } from "@/features/archive/NoProjects";
-import { openSettings, useDialogStore } from "@/state/dialog-store";
+import { useDialogStore } from "@/state/dialog-store";
+import { openSettings } from "@/state/dialog-store";
+import { AutomationsFace } from "@/features/automations/AutomationsFace";
+import { useInputAwayFromAutomations } from "@/features/automations/input-badge";
 import { AwaitedLookup } from "@/features/reader/AwaitedLookup";
 import { useOpenFromNotification } from "@/data/push";
 import { useUrlBootstrap } from "@/state/bootstrap";
@@ -98,7 +101,10 @@ export function Workbench() {
   const narrow = useNarrow();
   const noneSelected = useViewStore((state) => shownInReader(state) === null);
   const project = useViewStore(state => state.project);
-  const analysis = useViewStore(state => state.analysis);
+  const automations = useViewStore(state => state.automations), analysis = useViewStore(state => state.analysis);
+  // The input talks about the automation open in the window, on any face.
+  const automationOpen = useViewStore(state => state.automation !== null);
+  useInputAwayFromAutomations(!automations && !automationOpen);
   const place = useDeferredValue(useListPlace());
   const ready = useFrameSelector((data) => data !== null);
   const navigationReady = useViewStore(state => state.navigationReady);
@@ -170,8 +176,10 @@ export function Workbench() {
             : <RegionSkeleton shape="reader" className={readerBox(mode)} />)}
         </>}>{() => <>
           <div inert={covered || listAway} className={cn("contents", listAway && AWAY)}>
-            {/* The analysis face stands in the list's place whatever the list would show (a search ends as it opens). */}
-            {analysisShown ? <AnalysisView place={analysisShown} mode={mode} canDock={canDock} />
+            {/* The automations or analysis face stands in the list's place whatever the list would show (a search ends as
+                it opens); the automations from edge to edge. */}
+            {automations && !(place === "lookup" && project) ? <div className="-mx-6 flex min-h-75 flex-1 basis-0 flex-col narrow:-mx-3 narrow:min-h-67.5"><BarRoom /><AutomationsFace place={automations} /></div>
+              : analysisShown ? <AnalysisView place={analysisShown} mode={mode} canDock={canDock} />
               : place === "search" ? <ListScroll room><BarRoom /><SearchResults /></ListScroll>
               : place === "lookup" && project ? <div className="flex min-h-75 flex-1 flex-col narrow:min-h-67.5"><BarRoom /><AwaitedLookup address={project} placement="list" reason={{ kind: "scope_lookup_unavailable" }} skeleton={<RegionSkeleton shape="time" />} /></div>
               : place === "no-projects" ? <div className="flex-1"><BarRoom /><NoProjects onOpenArchive={() => openSettings("projects")} onCreateProject={() => useDialogStore.getState().openProject()} /></div>
@@ -203,7 +211,9 @@ function useReaderOpen() {
   }, [frame, client]);
   return useSyncExternalStore(subscribe, () => {
     const data = frame?.getState(), view = useViewStore.getState();
-    if (!data) return !!urlValue("task");
+    // An automation stands in the reader's window as a task does.
+    if (view.automation) return true;
+    if (!data) return !!urlValue("task") || !!urlValue("automation");
     const selected = shownInReader(view);
     return awaitedTask(view) !== null || selected !== null && readerHasTask(client, data, selected);
   });

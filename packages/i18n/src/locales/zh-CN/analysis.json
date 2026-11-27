@@ -36,17 +36,17 @@
     "more": "其他​应用",
     "numbers": "显示的数字（最多 {{limit}} 个）",
     "passed": "无需返工即完成",
+    "postCancel": "取消",
+    "postClose": "知道了",
     "postCopied": "已将图片复制到剪贴板。请在 {{name}} 的发帖页面粘贴",
     "postFinished_other": "最近 {{days}} 天，我交给 AI 的工作完成了 {{value}} 件",
     "postFinishedAll_other": "到目前为止，我交给 AI 的工作完成了 {{value}} 件",
     "postHintCopy": "图片会复制到剪贴板。请在发帖页面粘贴后再发布。",
     "postHintSave": "图片会被保存。请在发帖页面添加后再发布。",
-    "postPreparing": "正在准备图片…",
-    "postOpensIn": "{{count}} 秒后打开 {{name}}",
-    "postOpenNow": "立即打开",
     "postOpen": "打开 {{name}}",
-    "postCancel": "取消",
-    "postClose": "知道了",
+    "postOpenNow": "立即打开",
+    "postOpensIn": "{{count}} 秒后打开 {{name}}",
+    "postPreparing": "正在准备图片…",
     "postSave": "已保存图片。请在 {{name}} 的发帖页面添加",
     "postShare": "最近 {{days}} 天，我交给 AI 的工作有 {{value}} 无需返工即完成",
     "postShareAll": "到目前为止，我交给 AI 的工作有 {{value}} 无需返工即完成",
@@ -80,8 +80,8 @@
     "laterTip": "各任务首次审阅之后返工和等待的部分",
     "meant": "是否符合预期",
     "noFixes": "此期间没有已分类的修改。",
-    "noQuestions": "无提问即直接采用",
     "none": "此期间没有可显示的内容。",
+    "noQuestions": "无提问即直接采用",
     "ofFixes_one": "你要求的 {{count}} 项修改中（按类别）",
     "ofFixes_other": "你要求的 {{count}} 项修改中（按类别）",
     "ofItems_one": "已回答的 {{count}} 项中",
@@ -176,10 +176,7 @@
     "youText": "等待确认（等你确认的时间）和等待回答（等你回答问题的时间）"
   },
   "face": {
-    "empty": "还没有记录。委托任务后，从当天起，完成的任务和 AI 使用量会显示在这里。",
-    "analysis": "分析",
-    "label": "画面",
-    "use": "使用"
+    "empty": "还没有记录。委托任务后，从当天起，完成的任务和 AI 使用量会显示在这里。"
   },
   "history": {
     "accepted": "已接受",
@@ -210,9 +207,9 @@
     "empty": "没有任务",
     "more_other": "显示其余 {{count}} 个",
     "outcome": "结果",
+    "resize": "宽度（左右方向键）",
     "task": "任务",
-    "usedTitle": "{{name}}的任务",
-    "resize": "宽度（左右方向键）"
+    "usedTitle": "{{name}}的任务"
   },
   "look": {
     "label": "显示",
@@ -225,12 +222,12 @@
     "change": "条件变更",
     "command-stopped": "命令达上限被中止",
     "compacted": "对话压缩",
-    "test": "测试命令",
-    "produced": "提交、拉取请求或已关联的交付物",
     "instruction": "指示",
     "moved": "移动",
+    "produced": "提交、拉取请求或已关联的交付物",
     "question-withdrawn": "撤回提问",
     "report": "报告",
+    "test": "测试命令",
     "values-changed": "值变更"
   },
   "outcome": {
@@ -272,17 +269,17 @@
     "failed-run": "失败的运行",
     "fan-out": "本可一次完成却逐个执行",
     "idle": "无任何进展",
+    "large-output": "较大的工具输出",
     "limit-hit": "达到时间上限被中止",
     "long-step": "耗时的步骤",
     "long-wait": "长时间等待回答",
+    "outputChars": "{{count, number}} 个字符",
     "queue-wait": "排队等待",
     "repeated-failure": "重复同一失败",
     "repeated-question": "重复同一提问",
     "rework": "返工",
-    "large-output": "较大的工具输出",
-    "same-test-same-commit": "在同一工作树上重复测试",
-    "outputChars": "{{count, number}} 个字符",
-    "same-result": "重复读取相同结果"
+    "same-result": "重复读取相同结果",
+    "same-test-same-commit": "在同一工作树上重复测试"
   },
   "same": "±0",
   "sep": "・",

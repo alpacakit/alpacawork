@@ -27,6 +27,11 @@
     "title": "Este PC está com carga alta"
   },
   "push": {
+    "automationConsecutiveFailures": "Falhou três vezes seguidas.",
+    "automationDefinitionChanged": "A definição mudou.",
+    "automationFailed": "{{automation}} não pôde ser executada",
+    "automationFailureAction": "Abra a automação para verificar por que ela falhou.",
+    "automationOff": "{{automation}} desativada",
     "groupTitle": "{{updateCount}} atualizações",
     "reason": {
       "blocked": {

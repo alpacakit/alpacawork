@@ -25,6 +25,11 @@
     "title": "PC の負荷が高い"
   },
   "push": {
+    "automationConsecutiveFailures": "自動実行が続けて3回失敗しました。",
+    "automationDefinitionChanged": "自動実行の中身が変わりました。",
+    "automationFailed": "{{automation}} の実行に失敗しました",
+    "automationFailureAction": "自動実行を開いて理由を確認してください。",
+    "automationOff": "{{automation}} がオフになりました",
     "groupTitle": "{{updateCount}}件の知らせ",
     "reason": {
       "blocked": {

@@ -27,7 +27,7 @@ test("bytes are text in UTF-8 or Shift_JIS; a NUL byte or bytes neither reads ar
 });
 
 test("the viewer moving to another document is a step of its own, as opening and closing it are not alike", () => {
-  const at = (view: string | null): Navigation => ({ project: null, task: "T1", taskAddress: null, full: false, pane: "files", path: "", query: "", image: null, view, event: null, analysis: null });
+  const at = (view: string | null): Navigation => ({ project: null, task: "T1", taskAddress: null, full: false, pane: "files", path: "", query: "", image: null, view, event: null, automations: null, automation: null, analysis: null });
   const url = (view: string | null) => new URL(`http://x/?task=T1&tab=files${view ? `&view=${encodeURIComponent(view)}` : ""}`);
   const step = (from: string | null, to: string | null) => isStep(at(from), at(to), url(from), url(to));
   expect([step(null, "T1/a.md"), step("T1/a.md", "T1/b.yml"), step("T1/a.md", null), step("T1/a.md", "T1/a.md")]).toEqual([true, true, false, false]);

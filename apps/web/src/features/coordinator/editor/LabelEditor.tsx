@@ -40,7 +40,7 @@ import { useInputDraft, registerCoordinatorField, labelContent } from './draft';
 import { VOICE_TRANSACTION } from '@/features/reader/VoiceInput';
 import { resolveReference, taskAtAddress } from '@/domain/tasks';
 import { skillStanding, skillsUnverified, type SkillCatalog } from './skills';
-import { LabelFace, SkillMark, TaskLabelText, AnswerLabelText, ProjectLabelText, projectFace } from '../LabelFace';
+import { AUTOMATION_FACE, LabelFace, SkillMark, TaskLabelText, AnswerLabelText, AutomationLabelText, ProjectLabelText, projectFace } from '../LabelFace';
 import { useProjectMarks, type ProjectMark } from '@/data/project-marks';
 import { choose, sideways } from './insert-choice';
 import { useProjects } from '@/data/queries';
@@ -113,6 +113,17 @@ function AnswerBadge({ node, editor, getPos }: LabelProps) {
     </LabelFace>
   </span>;
 }
+/** The automation the draft is about: its face and its own way out. */
+function AutomationBadge({ node, editor, getPos }: LabelProps) {
+  const { t } = useTranslation('ui');
+  const id = String(node.attrs.id), name = id === 'new' ? t('input.newAutomation') : id;
+  return <span className="inline" data-label="automation" data-automation={id}>
+    <LabelFace kind="task" contentEditable={false} className={AUTOMATION_FACE} title={id === 'new' ? name : formatTask(id, String(node.attrs.name))}>
+      <AutomationLabelText id={id} name={String(node.attrs.name)} />
+      <LabelRemove name={t('coordinatorCard.removeTask', { id: name })} remove={() => removeLabel(editor, getPos)} />
+    </LabelFace>
+  </span>;
+}
 const SkillAvailability = createContext<SkillCatalog | null>(null);
 function SkillBadge({ node }: LabelProps) {
   const { t } = useTranslation('ui');
@@ -136,6 +147,7 @@ const TaskLabel = labelNode('taskLabel', { id: '', title: '' }, TaskBadge, a => 
 const AnswerLabel = labelNode('answerLabel', { question: '', task: '', n: '', name: '', answer: '' }, AnswerBadge, a => `${a.task} ${a.answer}`);
 const ReplyNode = labelNode('replyLabel', { id: '', answeredAt: '' }, ReplyBadge, () => '');
 const SkillLabel = labelNode('skillLabel', { name: '', invocation: '/' }, SkillBadge, a => `${a.invocation}${a.name}`);
+const AutomationNode = labelNode('automationLabel', { id: '', name: '' }, AutomationBadge, a => a.id === 'new' ? '' : a.id);
 
 export const composing = (event: KeyboardEvent, view?: EditorView) => !!view?.composing || isComposingKey(event);
 // Tiptap's Mac Ctrl+A/E move to the textblock's ends, skipping hardBreaks.
@@ -287,7 +299,7 @@ export function LabelEditor({ draft, catalog, onSend, disabled, attaching, tall,
   const editor = useEditor({ immediatelyRender: true, content: draft.doc, autofocus: false,
     enableCoreExtensions: { keymap: false },
     extensions: [inputKeymap, StarterKit.configure({ heading: false, bold: false, italic: false, strike: false, code: false, codeBlock: false, blockquote: false, bulletList: false, orderedList: false, listItem: false, listKeymap: false, horizontalRule: false, link: false, underline: false, dropcursor: false, gapcursor: false, trailingNode: false }),
-      TaskLabel, AnswerLabel, SkillLabel, ReplyNode,
+      TaskLabel, AnswerLabel, SkillLabel, ReplyNode, AutomationNode,
       Extension.create({ name: 'atomSurface', addProseMirrorPlugins() { const editor = this.editor; return [new Plugin({ view: view => {
         const surface = atomSurface(editor, view);
         return { update: () => surface.schedule(), destroy: () => surface.disconnect() };

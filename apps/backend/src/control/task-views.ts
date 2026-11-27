@@ -1,3 +1,4 @@
+import { taskOrigin } from '@alpacawork/raw/task-log-schema';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import type { DatabaseSync } from 'node:sqlite';
@@ -234,6 +235,7 @@ export function taskView(source: ControlSource, id: string, options: TaskViewOpt
   if (!task) throw new Problem(PROBLEM_CODE.notFound, 'Task does not exist', undefined, { reason: { kind: 'task_does_not_exist' } });
   const shelf = new ProjectShelf(source.tree.tasks.filter(item => item.meta.kind === 'project')).of(source.tree.owningProject(id));
   const values = taskValues(task);
+  const origin = taskOrigin(task.log);
   const include = new Set(options.include);
   const usage = include.has('usage') ? (() => {
     const now = Date.now();
@@ -270,7 +272,7 @@ export function taskView(source: ControlSource, id: string, options: TaskViewOpt
       ...(task.analysisSubject ? { analysisSubject: task.analysisSubject } : {}),
       // Its values, and the fields of the schema it uses in order with where that comes from (field get reads them).
       ...(Object.keys(values).length ? { values } : {}), ...(include.has('fields') ? { fields: schemaFor(source.tree, source.fields.schemas, task.id) } : {}),
-      ...(options.log === undefined ? {} : { log: latest(task.log, options.log) }),
+      ...(origin ? { origin } : {}), ...(options.log === undefined ? {} : { log: latest(task.log, options.log) }),
       ...(include.has('files') ? { files: folderFiles(source, task) } : {}) },
     questions,
     incomingQuestions: source.errors.length ? null : incomingQuestions(task.id, questionTasks),

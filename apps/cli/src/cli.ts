@@ -1,3 +1,4 @@
+import { readAutomationBundle, writeAutomationBundle, writeAutomationTypes } from './automation-bundle-files.js';
 import { readPackageVersion } from '@alpacawork/core/package-version';
 import { pinRestore } from './restore-pin.js';
 import { accessHelp, accessHelpPointer } from '@alpacawork/contract/access-help';
@@ -10,7 +11,7 @@ import { realpathSync } from 'node:fs';
 import { appRoot } from '../../../scripts/app-root.mjs';
 import { Command, CommanderError } from 'commander';
 import {
-  byteRequest, commandFlag, commandRuleHelp, commandTree, cliWriteHelp, type Command as RemoteCommand, type CommandOption,
+  byteRequest, commandCliOptions, commandFlag, commandRuleHelp, commandTree, cliWriteHelp, type Command as RemoteCommand, type CommandOption,
 } from '@alpacawork/contract/commands';
 import { commandPath } from '@alpacawork/contract/command-path';
 import { RESTORE_HEADER, recoveryIdentitySchema } from '@alpacawork/contract/recovery';
@@ -20,6 +21,8 @@ import { DEFAULT_SERVER_ORIGIN } from '@alpacawork/contract/default-server';
 import { errorBody, parseInput, PROBLEM_CODE, Problem } from '@alpacawork/core';
 import { operationId, writeAttempt } from './write-attempt.js';
 import { actorHeaders, LostAnswer, RemoteProblem, prepareRequest, request, requestBytes } from './transport.js';
+import { automationProgramCommands } from '@alpacawork/contract/command-access';
+import { automationPullResultSchema } from '@alpacawork/contract/automation-program';
 import { saveServer, selectServer, unsetServer, verifyServer } from './endpoint.js';
 import { boundedFile, tooLarge, prepareByteUpload } from './byte-upload.js';
 import { relayMcp } from './mcp.js';
@@ -29,11 +32,11 @@ import { controlRunFilesSchema } from '@alpacawork/contract/control';
 import { taskIdSchema } from '@alpacawork/contract/fields';
 import { prepareReportDiffs, diffUploadId, type DiffSummary } from './report-diffs.js';
 
-/** A file option's text: the UTF-8 file at its absolute path, or stdin for `-`, at most the option's `max` bytes. */
+/** A file option's bounded UTF-8 text, read from a file or stdin. */
 async function document(path: string, option: CommandOption): Promise<unknown> {
   const name = commandFlag(option), max = option.max;
   if (max === undefined) throw new Error(`${name} has no size limit`);
-  if (path !== '-' && !isAbsolute(path))
+  if (path !== '-' && !option.relativePath && !isAbsolute(path))
     throw new Problem(PROBLEM_CODE.invalidInput, `${name} needs an absolute path`);
   let bytes: Uint8Array;
   try { bytes = path === '-' ? await readStdin(max, name) : await boundedFile(path, max, name); }
@@ -68,11 +71,18 @@ async function readStdin(max: number, name: string): Promise<Uint8Array> {
   return Buffer.concat(chunks);
 }
 
-const optionKey = (option: CommandOption) => option.kind === 'file' ? option.key + 'File' : option.key;
-async function inputFor(spec: RemoteCommand, values: Record<string, unknown>): Promise<Record<string, unknown>> {
-  const given = spec.options.filter(option => !option.local && values[optionKey(option)] !== undefined);
+const optionKey = (option: CommandOption) => option.kind === 'file' ? (option.cliKey ?? option.key) + 'File' : (option.cliKey ?? option.key);
+async function inputFor(options: readonly CommandOption[], values: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const given = options.filter(option => !option.local && values[optionKey(option)] !== undefined);
   if (given.filter(option => option.kind === 'file' && values[optionKey(option)] === '-').length > 1)
     throw new Problem(PROBLEM_CODE.invalidInput, 'Only one option can read stdin');
+  const sources = new Map<string, CommandOption>();
+  for (const option of given) {
+    const previous = sources.get(option.key);
+    if (previous)
+      throw new Problem(PROBLEM_CODE.invalidInput, `${commandFlag(previous)} and ${commandFlag(option)} cannot be used together`);
+    sources.set(option.key, option);
+  }
   const input: Record<string, unknown> = {};
   for (const option of given) {
     const value = values[optionKey(option)];
@@ -96,6 +106,12 @@ type CommandContext = { origin: string; options: Record<string, unknown>; opId?:
 
 async function execute(spec: RemoteCommand, input: Record<string, unknown>, { origin, options, opId }: CommandContext): Promise<unknown> {
   const headers = actorHeaders(process.env);
+  if (process.env.ALPACAWORK_PROGRAM_TOKEN !== undefined) {
+    const expected = process.env.ALPACAWORK_SERVER;
+    if (!expected || new URL(origin).origin !== new URL(expected).origin || !/^https?:\/\/127\.0\.0\.1:\d+$/.test(new URL(origin).origin) ||
+        !automationProgramCommands.some(command => command === spec.id))
+      throw new Problem(PROBLEM_CODE.forbidden, 'Automation programs use only their own server and allowed commands');
+  }
   headers.set('X-Alpacawork-Client', 'cli');
   headers.set(CONTRACT_HEADER, String(CLI_CONTRACT));
   sendWorkingDirectory(headers);
@@ -207,6 +223,13 @@ async function runMain(args: string[], installedServer?: string): Promise<number
     .exitOverride().allowExcessArguments(false).enablePositionalOptions()
     .addHelpText('after', '\n' + accessHelpPointer + '\n\n' + cwdRuleHelp + '\n\n' + exitCodeHelp + '\n\n' + cliWriteHelp + '\n\nLocal commands:\n  alpacawork deploy <from>  Install or update from path[#ref] or npm:name[@version]\n  alpacawork setup          Install or repair this server; run again to change its port, public host or Node.js path\n  alpacawork skills update  Update only the distributed skills\n  alpacawork uninstall      Remove alpacawork from this PC; the data folder stays\n  alpacawork telemetry      This PC\'s usage reporting: status, show or off\n  alpacawork start          Start this server\n  alpacawork stop           Stop this server\n  alpacawork restart        Restart this server\n  alpacawork status         Show whether this server is running and its URL\n  alpacawork --version      Show the version');
   program.option('--server <url>', 'Use this server for one command (overrides environment and saved server)');
+  program.hook('preAction', (_command, active) => {
+    if (process.env.ALPACAWORK_PROGRAM_TOKEN === undefined) return;
+    const path: string[] = [];
+    for (let item = active; item.parent; item = item.parent) path.unshift(item.name());
+    if (!automationProgramCommands.some(command => command === path.join('/')))
+      throw new Problem(PROBLEM_CODE.forbidden, 'This command is outside the automation program grant');
+  });
   const bound = commandTree<CommandContext>(spec => (input, context) => execute(spec, input, context));
   const selectedServer = () => selectServer(program.opts().server as string | undefined, process.env, installedServer);
   program.command('mcp').description('Relay a stdio MCP client to the selected server')
@@ -274,7 +297,8 @@ async function runMain(args: string[], installedServer?: string): Promise<number
     if (spec.rules?.length) command.addHelpText('after', '\n' + commandRuleHelp(spec, true).join('\n'));
     if (spec.help) command.addHelpText('after', spec.help);
     if (spec.cliHelp) command.addHelpText('after', spec.cliHelp);
-    for (const option of spec.options) {
+    const cliOptions = commandCliOptions(spec);
+    for (const option of cliOptions) {
       const syntax = commandFlag(option);
       const ending = /[.!?]$/.test(option.description) ? ' ' : '. ';
       const description = option.cliDetail ? option.description + ending + option.cliDetail : option.description;
@@ -301,8 +325,23 @@ async function runMain(args: string[], installedServer?: string): Promise<number
     if (writes) command.option('--op-id <id>', 'Operation ID (new UUID if omitted). See alpacawork -h for retry rules.');
     command.action(async (options: Record<string, unknown>) => {
       const opId = writes ? operationId(options.opId) : undefined;
-      const input = spec.parse(await inputFor(spec, options));
-      const result = await spec.handler(input, { origin: (await selectedServer()).server, options, opId });
+      const dirRequired = spec.id === 'automation/types' || spec.id === 'automation/pull'
+        || spec.id === 'automation/new' || spec.id === 'automation/save';
+      if (dirRequired && typeof options.dir !== 'string')
+        throw new Problem(PROBLEM_CODE.invalidInput, 'Provide --dir');
+      if (spec.id === 'automation/types' && typeof options.dir === 'string') {
+        process.stdout.write(JSON.stringify(await writeAutomationTypes(options.dir)) + '\n');
+        return;
+      }
+      const values = await inputFor(cliOptions, options);
+      if (typeof options.dir === 'string' && (spec.id === 'automation/new' || spec.id === 'automation/save' || spec.id === 'automation/preview'))
+        values.files = await readAutomationBundle(options.dir);
+      const input = spec.parse(values);
+      let result = await spec.handler(input, { origin: (await selectedServer()).server, options, opId });
+      if (spec.id === 'automation/pull' && typeof options.dir === 'string') {
+        const pulled = parseInput(automationPullResultSchema, result);
+        result = { digest: pulled.digest, ...await writeAutomationBundle(options.dir, pulled.files, pulled.declarations) };
+      }
       if (result !== undefined) process.stdout.write(JSON.stringify(result) + '\n');
       process.exitCode = defaultPolicy.exitCode(result);
     });

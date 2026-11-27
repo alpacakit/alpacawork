@@ -18,6 +18,7 @@ import { DraftPreview, previewContent } from './DraftPreview';
 import { inputPlaceholder } from './editor/placeholder';
 import { useProjectMarks } from '@/data/project-marks';
 import { useSteadyControl } from '@/lib/steady-control';
+import { useViewStore } from '@/state/view-store';
 
 /* Hallmark · component: the coordinator's input, folded to one line · genre: modern-minimal · theme: the app's own tokens
  * states: draft (what is written, kept) · empty (its placeholder; also after a failed read, which its toast says)
@@ -35,6 +36,7 @@ const SAY_LOADING_MS = 400;
 export const CoordinatorCapsule = memo(function CoordinatorCapsule() {
   const { t, i18n } = useTranslation('ui');
   const marks = useProjectMarks();
+  const onAutomations = useViewStore((state) => state.automations !== null);
   const draft = useInputDraft();
   // Writing is the device's own: serve out of reach, the line still brings the input up (only sending waits). Before the
   // conversation is read, or with a workspace that takes no writes at all, there is nothing to write toward.
@@ -87,7 +89,7 @@ export const CoordinatorCapsule = memo(function CoordinatorCapsule() {
       {waiting ? <span className="min-w-0 flex-1 truncate text-muted motion-safe:animate-pulse">{said}</span>
         : populated ? <DraftPreview doc={draft.doc} preview={preview} />
         : draftName ? <span className="min-w-0 flex-1 truncate text-ink">{draftName}</span>
-        : <span className="min-w-0 flex-1 truncate text-muted">{inputPlaceholder(draft.doc, t, (id) => marks.has(id), true)}</span>}
+        : <span className="min-w-0 flex-1 truncate text-muted">{inputPlaceholder(draft.doc, t, (id) => marks.has(id), true, onAutomations)}</span>}
     </button>
     {/* What the line says while it waits is also put in a status region beside the button, for a screen reader (a button's name changing is not announced). */}
     <span role="status" className="sr-only">{said || ''}</span>

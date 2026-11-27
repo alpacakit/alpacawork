@@ -7,7 +7,7 @@ import { ChartHead, PointerTip, Rule, RuleCard, Rules } from "../src/features/an
 import { BarChart, ChartGroup, changesByBin, Parts, Row } from "../src/features/analysis/rows";
 import { afterEach, beforeAll, expect, onTestFinished, test, vi } from "vitest";
 import { i18n, startI18n } from "@alpacawork/i18n";
-import { TodayMarks } from "../src/features/analysis/FaceSwitch";
+import { TodayMarks } from "../src/features/analysis/TodayMarks";
 import { FaceSkeleton } from "../src/features/analysis/FaceSkeleton";
 import { FRESH_AFTER_MS } from "../src/features/analysis/data";
 import { queryClient } from "../src/data/query-client";

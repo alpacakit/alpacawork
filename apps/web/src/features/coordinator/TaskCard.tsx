@@ -34,9 +34,11 @@ export function useTaskCard(id: string, open: () => void, written?: string) {
 /**
  * One task card for read references, the same wherever a task's ID stands. Where the pointer can hover, resting
  * on the ID shows the card and pressing it opens the task; where it cannot (a finger), pressing it shows the card, whose
- * Open opens the task. `trigger` goes on the ID's button: its handlers and what a reader hears it does.
+ * Open opens the task. `trigger` goes on the ID's button: its handlers and what a reader hears it does. Where a press is
+ * the way to the task itself (`opens`: a run's task, read there to be opened), a press opens it on any screen, and only
+ * a resting pointer shows the card.
  */
-export function useTaskCardOn<T extends HTMLElement>(id: string, open: (anchor: T | null) => void) {
+export function useTaskCardOn<T extends HTMLElement>(id: string, open: (anchor: T | null) => void, { opens = false }: { opens?: boolean } = {}) {
   const anchor = useRef<T>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const canHover = useCanHover();
@@ -45,12 +47,12 @@ export function useTaskCardOn<T extends HTMLElement>(id: string, open: (anchor: 
   const hover = useHoverCardInteraction<T>({ enabled: canHover && mode !== 'press',
     shown: mode === 'hover', card: cardRef, open: () => setMode('hover'), close });
   const { cancel } = hover;
-  const press = canHover ? () => { cancel(); close(); open(anchor.current); }
+  const press = canHover || opens ? () => { cancel(); close(); open(anchor.current); }
     : () => { cancel(); setMode(mode === 'press' ? null : 'press'); };
   return {
     anchor,
     trigger: { onPointerEnter: hover.handlers.onPointerEnter, onPointerLeave: hover.handlers.onPointerLeave,
-      onClick: press, 'aria-haspopup': canHover ? undefined : 'dialog' as const },
+      onClick: press, 'aria-haspopup': canHover || opens ? undefined : 'dialog' as const },
     card: mode && <TaskCard id={id} anchor={anchor} cardRef={cardRef} hovering={mode === 'hover'}
       onEnter={cancel} onLeave={hover.leave} open={() => open(anchor.current)} close={close} />,
   };

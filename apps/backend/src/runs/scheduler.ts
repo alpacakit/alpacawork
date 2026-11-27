@@ -131,7 +131,21 @@ export function decide(tx: RunTransaction, context: SettleContext): SettleSummar
   if (!settings.ok) return result;
   const { limits } = settings.config;
   // A coordinator Run answers the person at the screen: it takes no slot and never waits for one.
-  let occupied = runs.filter(r => r.role !== 'coordinator' && (usesSlot(r) || blocked.has(runNumber(r.id)))).length;
+  const occupiesSlot = (run: RuntimeRunRecord) => run.role !== 'coordinator' && (usesSlot(run) || blocked.has(runNumber(run.id)));
+  let occupied = runs.filter(occupiesSlot).length;
+  const urgentRequest = store.connection.prepare('SELECT 1 FROM automation_operations WHERE request_id=? AND urgent=1');
+  let reserveHeld: boolean | undefined;
+  const holdsReserve = () => runs.some(run => run.role !== 'coordinator' &&
+    (occupiesSlot(run) || reservations.has(runNumber(run.id))) && urgentRequest.get(run.requestId)) ||
+    // An ended Run's uncertain delivery holds the reserve while a person can retry to the receiving seat.
+    Boolean(store.connection.prepare(`SELECT 1 FROM run_inputs i JOIN runs r ON r.id=i.instruction_run_no
+      JOIN automation_operations a ON a.request_id=r.request_id
+      JOIN run_attempts attempt ON attempt.attempt_id=i.attempt_id
+      JOIN runs receiver ON receiver.id=attempt.run_no
+      JOIN placements seat ON seat.id=receiver.placement_id AND seat.task_id=receiver.task_id
+      JOIN tasks t ON t.external_id=seat.task_id
+      WHERE i.state='uncertain' AND a.urgent=1 AND seat.ended_at IS NULL
+        AND seat.responsible=1 AND t.lifecycle='active' LIMIT 1`).get());
   const queued = runs.filter(r => r.state === 'queued').sort(compareRequestOrder);
   for (let run of queued) {
     if(releaseAdmission(store.root)!=='accepting')break;
@@ -154,7 +168,8 @@ export function decide(tx: RunTransaction, context: SettleContext): SettleSummar
         }
         continue;
       }
-      if (occupied >= limits.parallel) continue;
+      if (occupied >= limits.parallel && (occupied > limits.parallel || !urgentRequest.get(run.requestId) ||
+        (reserveHeld ??= holdsReserve()))) continue;
       const placement = tx.getPlacement(run.placementId);
       if (!placement || !placement.active || placement.taskId !== run.task ||
         (run.role === 'owner' && !placement.responsible)) {

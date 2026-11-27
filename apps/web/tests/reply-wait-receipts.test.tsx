@@ -28,8 +28,8 @@ test('late answers, open answers, send-back and a refusal are matched from real 
   expect(readerResult({kind:'intent',taskId:data.reviewTask,expectedWrites:[{kind:'request_accepted'}]},coordinatorResultSchema.parse(data.sendbackResult)).status).toBe('confirmed');
   expect(readerResult(answer,coordinatorResultSchema.parse(data.refused)).status).toBe('confirmed');
   // Choices identify context; only an explicit operation needs an effect record.
-  expect(readerResult(answer,{writes:[],refused:[]}).status).toBe('confirmed');
-  expect(readerResult({kind:'intent',taskId:data.reviewTask,expectedWrites:[{kind:'request_accepted'}]},{writes:[],refused:[]}).status).toBe('refused');
+  expect(readerResult(answer,{writes:[],refused:[],automations:[]}).status).toBe('confirmed');
+  expect(readerResult({kind:'intent',taskId:data.reviewTask,expectedWrites:[{kind:'request_accepted'}]},{writes:[],refused:[],automations:[]}).status).toBe('refused');
 },100_000);
 
 // The payloads below come from the actual HTTP task/view route above. Only transport is stubbed

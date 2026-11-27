@@ -500,10 +500,10 @@
         "attachment_mib": "添付ファイル1つの上限（MiB）",
         "automatic_per_placement": "1つのタスクで1エージェントへ自動で届く依頼の上限",
         "children_per_run": "1回の実行が出せる依頼の数",
-        "coordinator_command_seconds": "入力欄で話す AI のコマンドの上限（秒）",
-        "coordinator_reset_tokens": "コーディネーターをリセットする目安（トークン）",
-        "coordinator_reset_percent": "コーディネーターをリセットする目安（%）",
         "coordinator_attachment_days": "コーディネーターの添付の保存期間（日）",
+        "coordinator_command_seconds": "入力欄で話す AI のコマンドの上限（秒）",
+        "coordinator_reset_percent": "コーディネーターをリセットする目安（%）",
+        "coordinator_reset_tokens": "コーディネーターをリセットする目安（トークン）",
         "coordinator_run_minutes": "入力欄で話す AI の実行の上限（分）",
         "depth": "依頼をたどれる深さ",
         "parallel": "同時に動かす数",
@@ -519,6 +519,23 @@
       "runMinutesHint": "0 は上限なし・既定 {{value}}",
       "save": "保存",
       "yamlExample": "保存する内容（YAML）"
+    },
+    "skills": {
+      "install": "インストール",
+      "installing": "インストール中",
+      "retry": "再試行",
+      "update": "更新する",
+      "updating": "更新中",
+      "upToDate": "最新",
+      "versions": {
+        "checking": "最新を確かめています…",
+        "day": "{{date}} 更新",
+        "installed": "入っている版 {{version}}",
+        "latest": "最新 {{version}}",
+        "unchecked": "最新を確かめられませんでした",
+        "unknown": "不明"
+      },
+      "withApp": "alpacawork と一緒に更新"
     },
     "status": {
       "dirty": "未保存の変更があります",
@@ -538,24 +555,7 @@
       "update": "アップデート"
     },
     "title": "設定",
-    "up": "上へ",
-    "skills": {
-      "install": "インストール",
-      "installing": "インストール中",
-      "retry": "再試行",
-      "update": "更新する",
-      "updating": "更新中",
-      "upToDate": "最新",
-      "versions": {
-        "checking": "最新を確かめています…",
-        "day": "{{date}} 更新",
-        "installed": "入っている版 {{version}}",
-        "latest": "最新 {{version}}",
-        "unchecked": "最新を確かめられませんでした",
-        "unknown": "不明"
-      },
-      "withApp": "alpacawork と一緒に更新"
-    }
+    "up": "上へ"
   },
   "telemetry": {
     "blocked": {
@@ -574,49 +574,49 @@
     "delete": "送信済みのデータを削除",
     "deleteBody": "この PC の番号で送信したデータを送信先から削除します。番号を含まない集計は削除できません。",
     "deleteConfirm": "削除する",
+    "deleted": "送信済みのデータを削除しました",
     "deleteElsewhere": "この番号を控えておくと、alpacawork を開けなくなったあとも、削除のページに入れて削除できます。",
     "deleteFailed": "送信済みのデータを削除できませんでした。",
     "deleteKeepSending": "送信を続けると、これからの分は同じ番号で送られます。",
     "deletePage": "削除のページ",
     "deleteRequest": "送信済みのデータの削除の依頼",
-    "deleted": "送信済みのデータを削除しました",
     "empty": "まだ送信できる使用統計データはありません。",
     "example": "例: {{value}}",
     "fields": {
-      "schema": "報告の形の番号",
-      "id": "この PC の使用統計データ専用のランダムな番号",
-      "day": "報告の対象の日（UTC）",
-      "version": "alpacawork のバージョン",
-      "os": "OS の種類",
+      "agents": "使った AI の種類（claude・codex など決まった名前だけ）",
       "arch": "CPU の種類",
-      "node": "Node のメジャーバージョン",
+      "day": "報告の対象の日（UTC）",
       "events": "操作の種類ごとの回数",
       "events_device": "操作した機器の種類と OS",
-      "events_via": "操作した人の種類（画面の人・AI・ターミナル）",
       "events_lang": "画面の表示言語",
       "events_theme": "画面のテーマ",
+      "events_via": "操作した人の種類（画面の人・AI・ターミナル）",
       "failures": "AI の作業が途中で失敗した回数（おおよその範囲）",
+      "failures_attachment_save": "添付ファイルを保存できなかった回数",
+      "failures_conversation_busy": "会話が使用中で続けられなかった回数",
       "failures_exit": "AI の処理が異常終了した回数",
+      "failures_launch": "AI を起動できなかった回数",
+      "failures_manager_lost": "AI の作業の管理が途切れた回数",
       "failures_output": "AI の出力を読み取れなかった回数",
       "failures_timeout": "AI の作業が時間切れになった回数",
-      "failures_launch": "AI を起動できなかった回数",
-      "failures_conversation_busy": "会話が使用中で続けられなかった回数",
-      "failures_attachment_save": "添付ファイルを保存できなかった回数",
-      "failures_manager_lost": "AI の作業の管理が途切れた回数",
+      "id": "この PC の使用統計データ専用のランダムな番号",
+      "node": "Node のメジャーバージョン",
+      "os": "OS の種類",
+      "schema": "報告の形の番号",
       "shape": "作業の規模（おおよその範囲）",
-      "shape_projects": "プロジェクトの数",
-      "shape_tasks": "タスクの数",
-      "shape_open": "終わっていないタスクの数",
-      "shape_depth": "タスクの階層の最大の深さ",
       "shape_children": "1つのタスクの下の子タスクの最大の数",
+      "shape_depth": "タスクの階層の最大の深さ",
+      "shape_open": "終わっていないタスクの数",
+      "shape_parallel": "同時に動いていた AI の最大の数",
+      "shape_projects": "プロジェクトの数",
+      "shape_talk": "1つの会話の最大の長さ（やり取りの回数）",
+      "shape_tasks": "タスクの数",
       "shape_top": "1つのプロジェクトの直下のタスクの最大の数",
       "shape_turns": "1つのタスクで AI が作業した最大の回数",
-      "shape_talk": "1つの会話の最大の長さ（やり取りの回数）",
-      "shape_parallel": "同時に動いていた AI の最大の数",
       "times": "画面の表示にかかった時間（おおよその範囲）",
       "times_open": "画面を開いてから一覧が出るまでの時間（ふつう・最も遅い）",
       "times_task": "タスクを開いてから中身が出るまでの時間（ふつう・最も遅い）",
-      "agents": "使った AI の種類（claude・codex など決まった名前だけ）"
+      "version": "alpacawork のバージョン"
     },
     "fieldsNote": "各項目の意味:",
     "hintAsk": "まだ選択されていません。選択するまで送信しません。",
@@ -627,16 +627,16 @@
     "idLabel": "この PC の番号",
     "label": "使用統計データを送信して alpacawork の機能向上に役立てる",
     "more": "詳細",
-    "notSendingUpcoming": "送信していないため、これから送る分はありません。",
     "nothingSent": "まだ何も送っていません。",
+    "notSendingUpcoming": "送信していないため、これから送る分はありません。",
     "olderReport": "以前の形の報告",
     "outcome": {
       "accepted": "届きました",
-      "notAccepted": "受け付けられませんでした",
-      "noResponse": "応答なし（届いたかもしれません）",
       "deleted": "削除されました",
       "deleteFailed": "削除できませんでした",
-      "deleteNoResponse": "応答なし（削除されたか分かりません）"
+      "deleteNoResponse": "応答なし（削除されたか分かりません）",
+      "noResponse": "応答なし（届いたかもしれません）",
+      "notAccepted": "受け付けられませんでした"
     },
     "readFailed": "使用統計データの設定を読み込めませんでした。",
     "reaskAdded": "送信する情報に次の項目が加わりました。同意すると、これらも含めて送信を続けます。同意しない場合は送信を止めます。答えるまで何も送りません。",
@@ -656,6 +656,33 @@
     "waiting": "送信待ち（{{time}} 以降に送ります）"
   },
   "update": {
+    "card": {
+      "afterRuns": "エージェントの作業が終わると入れられます",
+      "afterRunsBody_other": "この版は、作業中のエージェント（{{count}}件）が止まってから入れられます。止める指示をコーディネーターに送ると、切りの良いところで止めてくれます。",
+      "applying": "新しい版に切り替えています…",
+      "applyingBody": "しばらく画面が使えなくなり、終わると戻ります。",
+      "attention": "切り替えが途中で止まっています",
+      "attentionBody": "続けると、止まったところから進めます。",
+      "available": "新しい版があります",
+      "done": "新しい版になりました",
+      "doneBody": "再読み込みすると画面も新しい版になります。エージェントを止めて更新した場合は、コーディネーターに再開を頼んでください。",
+      "doneHeld": "画面を新しい版に読み込み直します。保存していない入力があるため止めています。保存するか破棄してから、再読み込みしてください。",
+      "failed": "アップデートできませんでした",
+      "failedBody": {
+        "disk": "この PC のディスクの空きが足りません。空きを作ってから再試行してください。今の版のまま使えます。",
+        "network": "ダウンロードできませんでした。インターネット接続を確かめてから再試行してください。今の版のまま使えます。",
+        "other": "もう一度お試しください。今の版のまま使えます。"
+      },
+      "fetching": "ダウンロードしています…",
+      "latest": "最新の版です",
+      "recovering": "切り替えを元に戻しています…",
+      "runsActive": "エージェントの作業中は切り替えられません",
+      "runsActiveBody_other": "作業中のエージェント（{{count}}件）が終わると切り替えられます。止める指示をコーディネーターに送り、止まったら再試行してください。今の版のまま使えます。",
+      "waiting": "エージェントの作業が終わるのを待っています",
+      "waitingBody_other": "作業中のエージェント（{{count}}件）が終わると、自動で切り替わります。",
+      "withdrawn": "{{version}} は取り下げられたため、今の版のままです。",
+      "withdrawnBefore": "前に出ていた {{version}} は取り下げられました。"
+    },
     "changed": "アップデートの状態が変わりました。今の表示を確かめてください。",
     "confirm": {
       "body": "切り替えのあいだ、画面はしばらく使えません。",
@@ -677,6 +704,14 @@
       "wait": "終わると画面が戻ります。"
     },
     "notes": "リリースノート",
+    "page": {
+      "app": "alpacawork 本体",
+      "appSkill": "alpacawork を使うためのスキル",
+      "handEdits": "これらのスキルを手で書き換えていた場合、その内容は新しい版で上書きされます。",
+      "skill": "スキル",
+      "targets": "アップデートで新しくなるもの",
+      "targetsNote": "alpacawork と、一緒に入っているスキルがまとめて新しい版になります。スキルをひとつずつ更新する必要はありません。"
+    },
     "pauseInstruction": "alpacawork を {{version}} に更新します。作業中のエージェントがいるタスクを保留にして、切りの良いところで止めてください（走っているものは今の作業を終えるまで待つ）。",
     "postpone": "延期する",
     "reload": "再読み込み",
@@ -687,42 +722,7 @@
       "on": "「次回もこの確認を表示する」を付けたことを保存できませんでした。前の保存を確かめてから、一般タブの「アップデート前に確認する」をオンにしてください。"
     },
     "start": "アップデート",
-    "unavailable": "今はアップデートを始められません。しばらくして、もう一度お試しください。",
-    "card": {
-      "afterRuns": "エージェントの作業が終わると入れられます",
-      "afterRunsBody_other": "この版は、作業中のエージェント（{{count}}件）が止まってから入れられます。止める指示をコーディネーターに送ると、切りの良いところで止めてくれます。",
-      "applying": "新しい版に切り替えています…",
-      "applyingBody": "しばらく画面が使えなくなり、終わると戻ります。",
-      "attention": "切り替えが途中で止まっています",
-      "attentionBody": "続けると、止まったところから進めます。",
-      "available": "新しい版があります",
-      "done": "新しい版になりました",
-      "doneBody": "再読み込みすると画面も新しい版になります。エージェントを止めて更新した場合は、コーディネーターに再開を頼んでください。",
-      "doneHeld": "画面を新しい版に読み込み直します。保存していない入力があるため止めています。保存するか破棄してから、再読み込みしてください。",
-      "failed": "アップデートできませんでした",
-      "fetching": "ダウンロードしています…",
-      "latest": "最新の版です",
-      "recovering": "切り替えを元に戻しています…",
-      "runsActive": "エージェントの作業中は切り替えられません",
-      "runsActiveBody_other": "作業中のエージェント（{{count}}件）が終わると切り替えられます。止める指示をコーディネーターに送り、止まったら再試行してください。今の版のまま使えます。",
-      "waiting": "エージェントの作業が終わるのを待っています",
-      "waitingBody_other": "作業中のエージェント（{{count}}件）が終わると、自動で切り替わります。",
-      "withdrawn": "{{version}} は取り下げられたため、今の版のままです。",
-      "withdrawnBefore": "前に出ていた {{version}} は取り下げられました。",
-      "failedBody": {
-        "network": "ダウンロードできませんでした。インターネット接続を確かめてから再試行してください。今の版のまま使えます。",
-        "disk": "この PC のディスクの空きが足りません。空きを作ってから再試行してください。今の版のまま使えます。",
-        "other": "もう一度お試しください。今の版のまま使えます。"
-      }
-    },
-    "page": {
-      "app": "alpacawork 本体",
-      "appSkill": "alpacawork を使うためのスキル",
-      "handEdits": "これらのスキルを手で書き換えていた場合、その内容は新しい版で上書きされます。",
-      "skill": "スキル",
-      "targets": "アップデートで新しくなるもの",
-      "targetsNote": "alpacawork と、一緒に入っているスキルがまとめて新しい版になります。スキルをひとつずつ更新する必要はありません。"
-    }
+    "unavailable": "今はアップデートを始められません。しばらくして、もう一度お試しください。"
   },
   "workspaceStop": {
     "failed": "画面を表示できませんでした。",

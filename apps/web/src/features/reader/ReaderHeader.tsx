@@ -167,7 +167,7 @@ function PathProject({ task }: { task: Task }) {
  * ring shows whole. The reader's mode picks the box, not a style sheet's selector on it: a still copy keeps the marks
  * style sheets select on (lib/motion.ts), and a copy is no reader.
  */
-const HEAD_ROW = "min-h-head narrow:min-h-11";
+export const HEAD_ROW = "min-h-head narrow:min-h-11";
 export const readerHeadBox = (mode: ReaderMode) => `reader-header flex-none border-b px-4 narrow:px-3 ${{
   sheet: "", docked: "pt-head-room pb-1.5", overlay: "pt-head pb-1.5" }[mode]}`;
 
@@ -214,7 +214,7 @@ function useGrow(canDock: boolean) {
   return null;
 }
 
-function FrameButton({ icon, label, title = label, pressed, disabled, onPress, ...data }: { icon: IconName; label: string; title?: string; pressed?: boolean; disabled?: boolean; onPress: () => void; [data: `data-${string}`]: unknown }) {
+export function FrameButton({ icon, label, title = label, pressed, disabled, onPress, ...data }: { icon: IconName; label: string; title?: string; pressed?: boolean; disabled?: boolean; onPress: () => void; [data: `data-${string}`]: unknown }) {
   // Every one is the head's 32px circle (HEAD_MARK). The last, ×, ends its circle on the title's right edge, clear of
   // the window's round corner, as a related list's × ends on its rows' edge.
   return <Button variant="ghost" size="icon" {...data} disabled={disabled} aria-pressed={pressed} aria-label={label} title={title} onClick={onPress}
@@ -240,13 +240,13 @@ export function ReaderTitle({ task, titleRef }: { task: Task; titleRef?: Ref<HTM
  * left of it.
  */
 function PathStep({ task, onFollow }: { task: Pick<Task, "id" | "title">; onFollow: (id: string) => void }) {
-  const { anchor, trigger, card } = useTaskCardOn<HTMLButtonElement>(task.id, () => onFollow(task.id));
+  const { anchor, trigger, card } = useTaskCardOn<HTMLButtonElement>(task.id, () => onFollow(task.id), { opens: true });
   return <><Button ref={anchor} variant="ghost" aria-label={`${task.id} ${task.title}`} className="relative min-h-6 flex-none justify-start px-1 text-xs tabular-nums text-muted after:absolute after:inset-y-0 after:left-0 after:w-[max(100%+0.5rem,2.75rem)] after:content-[''] hover:bg-transparent hover:underline narrow:min-h-11 narrow:px-0"
-    onPointerEnter={trigger.onPointerEnter} onPointerLeave={trigger.onPointerLeave} onClick={() => onFollow(task.id)}>{task.id}</Button>{card}</>;
+    {...trigger}>{task.id}</Button>{card}</>;
 }
 
 /** The current list's ordinary row-opening action, in its displayed order. */
-function ListPager({ id }: { id: string }) {
+export function ListPager({ id }: { id: string }) {
   const { t } = useTranslation("reader");
   const list = useListNavigation();
   const { at, previous, next } = listNeighbours(list.ids, id);

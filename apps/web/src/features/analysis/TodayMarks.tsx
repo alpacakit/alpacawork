@@ -1,31 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { NARROW_QUERY, readerShows, useViewStore } from "@/state/view-store";
-import { closeAnalysisLayer } from "@/state/history-step";
+import { NARROW_QUERY, useViewStore } from "@/state/view-store";
 import { cn } from "@/lib/utils";
-import { Seg, Shown } from "./parts";
-import { analysisHome, analysisSurfaces, belowLayer, type AnalysisPlace } from "./place";
+import { Shown } from "./parts";
+import { analysisHome } from "./place";
 import { useTodayFinished } from "./data";
 import { CapCentred } from "@/components/ui/text-mark";
-
-/** Where the analysis was left, for coming back to it: one place for every switch that shows it (the bar's, its menu's). */
-let leftAnalysis: AnalysisPlace | null = null;
-
-/**
- * The bar's faces, beside the project's name: the list of tasks to work with (Use), and what the records count
- * (Analysis). A face to come (Settings) is one more item here. Coming back to the analysis finds it as it was left.
- * `onChose` follows a choice (the folded bar's menu closes).
- */
-export function FaceSwitch({ className, onChose }: { className?: string; onChose?: () => void }) {
-  const { t } = useTranslation("analysis");
-  const analysis = useViewStore(state => state.analysis);
-  if (analysis) leftAnalysis = belowLayer(analysis, 0);
-  return <Seg className={cn("narrow:gap-0", className)} label={t("face.label")} value={analysis ? "analysis" : "use"}
-    onChange={face => { useViewStore.getState().showAnalysis(face === "analysis" ? leftAnalysis ?? analysisHome() : null); onChose?.(); }}
-    // Analysis pressed while something is open over it (a list, the card, a task): they close as × closes them.
-    onAgain={() => { if (analysisSurfaces(analysis).length || readerShows(useViewStore.getState())) closeAnalysisLayer(0); onChose?.(); }}
-    items={[["use", t("face.use")], ["analysis", t("face.analysis")]]} />;
-}
 
 const MARK = { passed: "bg-done", reworked: "bg-reworked", stopped: "bg-stopped" } as const;
 

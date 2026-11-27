@@ -45,8 +45,8 @@ export type ReportEvent = {
   released?: Released;
   /** A dialogue's reply as a row of its own: the dialogue's key, which its gallery and its address stay on. */
   replyTo?: string;
-  /** Who wrote it when not a placement, as the backend recorded it: you on the screen, or the Coordinator. */
-  by?: "human" | "main";
+  /** Authorship of a record written by a person, the coordinator or an automation. */
+  by?: NonNullable<HistoryEvent["by"]>;
   /** The state a person's or the Coordinator's act alone set (a hold, its return, a confirmation, a stop). */
   changed?: TaskState;
   /** The state the record set, as the server says (the History's `state`); absent when it kept the state. */

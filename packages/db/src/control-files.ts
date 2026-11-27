@@ -22,3 +22,5 @@ export function controlRootFromDatabasePath(filename: string): string {
   }
   return root;
 }
+
+export const automationSecretsTables: readonly string[] = ['automation_secrets', 'automation_destination_secrets'];

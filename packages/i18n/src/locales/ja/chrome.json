@@ -15,6 +15,13 @@
     "waiting_other": "$t(tree:home.turn) {{count}}件",
     "withCounts": "({{counts}}) {{page}}"
   },
+  "face": {
+    "analysis": "分析",
+    "automations": "自動実行",
+    "automationsAttention_other": "見てほしい自動実行 {{count}}件",
+    "label": "画面",
+    "use": "使う"
+  },
   "gathered": {
     "markAllRead": "すべて既読に"
   },

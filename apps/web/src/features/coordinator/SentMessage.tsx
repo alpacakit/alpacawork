@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { readAnswer } from '@/domain/questions';
 import { followTask } from './follow-task';
 import { useTaskCardOn } from './TaskCard';
-import { SkillMark } from './LabelFace';
+import { AutomationLabelText, SkillMark } from './LabelFace';
 import { badgeClass, labelPlaceClass, taskTitleClass } from './label-style';
 import { cn } from '@/lib/utils';
 import { piecesClip, writeClip } from '@/lib/clipboard';
@@ -13,9 +13,11 @@ import { useLongPress } from '@/lib/long-press';
 import { useSurfaceDocument } from '@/lib/surface';
 import { messagePieces } from './editor/clip';
 import type { TaskIndex } from '@/domain/tasks';
+import type { SentTurn } from './shown';
 const names = new WeakMap<TaskIndex, Map<string, string>>();
 /** Parts shared by a sent message's display and copy; history stays plain text except explicit labels. */
-export function useMessageParts(text: string, skills: readonly { name: string }[]): readonly MessagePart[] {
+export function useMessageParts(text: string, skills: readonly { name: string }[],
+  badge: Pick<SentTurn, 'automation' | 'automationName'> = {}): readonly MessagePart[] {
   const index = useEveryTaskIndex();
   let titles = names.get(index);
   if (!titles) {
@@ -23,7 +25,9 @@ export function useMessageParts(text: string, skills: readonly { name: string }[
     for (const task of index.byId.values()) titles.set(task.id, task.title);
     names.set(index, titles);
   }
-  return useMemo(() => splitMessage(text, new Set(skills.map(skill => skill.name)), titles), [text, skills, titles]);
+  const { automation, automationName } = badge;
+  return useMemo(() => splitMessage(text, new Set(skills.map(skill => skill.name)), titles,
+    new Map(automation && automationName !== undefined ? [[automation, automationName]] : [])), [text, skills, titles, automation, automationName]);
 }
 
 /**
@@ -55,9 +59,16 @@ function SentAnswer({ token }: { token: string }) {
     {answer ? <><span className="text-xs text-turn">{answer.n}</span>{" "}{answer.word}</> : token}</span>;
 }
 
-export function SentMessage({ parts }: { parts: readonly MessagePart[] }) {
-  return <span className="whitespace-pre-wrap">{parts.map((part, at) => {
+/** An automation's badge in a sent message reads as it did in the input. */
+const SentAutomation = ({ id, name }: { id: string; name: string }) => <span className={labelPlaceClass}>
+  <span data-label="automation" data-automation={id} title={id === 'new' ? undefined : `${id} ${name}`.trim()}
+    className={`${badgeClass} max-w-44 bg-hover text-muted`}><AutomationLabelText id={id} name={name} /></span></span>;
+
+/** `automation`: the message's badge. A new automation's has no words of its own, so it is drawn first. */
+export function SentMessage({ parts, automation }: { parts: readonly MessagePart[]; automation?: string }) {
+  return <span className="whitespace-pre-wrap">{automation === 'new' && <SentAutomation id="new" name="" />}{parts.map((part, at) => {
     const token = part.text;
+    if (part.kind === 'automation') return <SentAutomation key={at} id={part.id!} name={part.title ?? ''} />;
     if (part.kind === 'task') return <span key={at} className={labelPlaceClass}><SentTaskLabel id={part.id!} title={part.title} token={token} /></span>;
     if (part.kind === 'skill') return <span key={at} className={labelPlaceClass}><span data-label="skill" className={cn(badgeClass, 'border border-lit-line bg-lit pl-0.5 text-ink')}><SkillMark />{token.slice(1)}</span></span>;
     if (part.kind === 'answer') return <span key={at} className={labelPlaceClass}><SentAnswer token={token} /></span>;

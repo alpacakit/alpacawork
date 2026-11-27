@@ -29,7 +29,7 @@ import { useConversation } from './coordinator';
 import { useShared, acknowledgeShared } from './shared';
 import { focusCoordinator, useInputDraft } from './editor/draft';
 import { writtenIn } from './editor/document';
-import { inlines, answeredQuestions, replyIn, hasContent, taskReferencesIn, serialize, draftDocument, textDocument, type Document } from './editor/document';
+import { inlines, answeredQuestions, replyIn, automationIn, hasContent, taskReferencesIn, serialize, draftDocument, textDocument, type Document } from './editor/document';
 import { LabelEditor, typeTrigger } from './editor/LabelEditor';
 import { skillMark, useCoordinatorSkills } from './editor/skills';
 import { deliverOutgoing, SEND_ERROR, sendError } from './deliver';
@@ -39,7 +39,7 @@ import { /* VoiceInput, */ useVoiceInput } from '@/features/reader/VoiceInput';
 import { cn } from '@/lib/utils';
 import { COLUMN } from '@/features/reader/reading-column';
 import { SurfaceDocument } from '@/lib/surface';
-import { useNarrow } from '@/state/view-store';
+import { useNarrow, useViewStore } from '@/state/view-store';
 import { FieldError } from '@/components/ui/field';
 import { inputFinger, /* inputSpeak, */ inputTool } from './task-action-slot';
 import { inputPlaceholder } from './editor/placeholder';
@@ -172,7 +172,7 @@ export const CoordinatorInput = memo(function CoordinatorInput({ launch }: { lau
     const tasks = [...new Set([...taskReferencesIn(doc, workspace.getState().tasks), ...(meaning.intent ? [meaning.intent.task] : [])])].sort();
     const fixed: Fixed = { conversationId, text: serialize(doc, skillMark(catalog)), ...(tasks.length ? { tasks } : {}),
       skills: [...new Set(inlines(doc).flatMap(node => node.type === 'skillLabel' ? [node.attrs.name] : []))].sort(),
-      attachments, ...(replyIn(doc) ? { replyTo: replyIn(doc)!.id } : {}), ...meaning };
+      attachments, ...(replyIn(doc) ? { replyTo: replyIn(doc)!.id } : {}), ...(automationIn(doc) ? { automation: automationIn(doc)!.id } : {}), ...meaning };
     const requestId = values.requestId!, scope = { root, conversationId };
     const accept = captureReaderSubmission(fixed, doc, serverTasksFor(client) ?? [], requestId, scope, recheck(requestId, scope), card);
     if (accept.reader.some(reader => holdsReaderTurn(useDraftStore.getState().entries, root, reader))) return null;
@@ -288,7 +288,8 @@ export const CoordinatorInput = memo(function CoordinatorInput({ launch }: { lau
   const content = hasContent(draft.doc, files.attachments.attached);
   const narrow = useNarrow();
   const marks = useProjectMarks();
-  const placeholder = inputPlaceholder(draft.doc, t, (id) => marks.has(id));
+  const onAutomations = useViewStore((state) => state.automations !== null);
+  const placeholder = inputPlaceholder(draft.doc, t, (id) => marks.has(id), false, onAutomations);
   // One height for the whole row (inputTool): its marks, the model and the round action stand on one centre line, 4px
   // apart under a pointer; a finger's 44px faces already keep their room. Too narrow for them all (large text on a
   // phone), what is at the end goes onto a line of its own, on the right, rather than the model narrowing to nothing.

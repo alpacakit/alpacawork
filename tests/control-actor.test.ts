@@ -3,8 +3,8 @@ import { commandFetch as fetch } from './helpers/command-fetch.ts';
  * Who may do what, through the public HTTP entries: every HTTP act of authorize's table (ACTIONS, its only source)
  * tried by every caller over HTTP, as the server identifies them: a Run by its credential, the coordinator by its
  * conversation, with or without the user's words quoted, and a person. An act the table lets a caller do gets past
- * authorize and is refused, if at all, for the Task's own facts: each write here names a version that is no longer
- * current, so no allowed write changes the fixture. The pure decision is authorize.test.ts's.
+ * authorize and is refused, if at all, for facts the command checks after authorization. Versioned writes use a
+ * stale version wherever possible. The pure decision is authorize.test.ts's.
  */
 import { currentTaskLog } from './helpers/control-fixture.ts';
 import { taskFlow, type Responsible, type Seat } from './task-flow.fixture.ts';
@@ -16,6 +16,7 @@ import { tmpdir } from 'node:os';
 import { randomUUID } from 'node:crypto';
 import { stringify } from 'yaml';
 import { problemSchema } from '@alpacawork/contract';
+import { automationProgramListResultSchema, automationProgramSaveResultSchema } from '@alpacawork/contract/automation-program';
 import { ACTIONS } from '@alpacawork/backend/test-dist/control/authorize.js';
 import { ControlTaskCommands } from '@alpacawork/backend/test-dist/control/task-commands.js';
 import { PlacementCommands } from '@alpacawork/backend/test-dist/control/placement-commands.js';
@@ -102,7 +103,9 @@ async function actors(t: TestContext) {
   globalThis.setInterval = ((callback: Parameters<typeof setInterval>[0], ms?: number, ...args: unknown[]) =>
     interval(callback, ms === POLL_INTERVAL_MS ? 3_600_000 : ms, ...args)) as typeof setInterval;
   let server: Awaited<ReturnType<typeof startServer>>;
-  try { server = await startServer(f.root, 0); } finally { globalThis.setInterval = interval; }
+  try { server = await startServer(f.root, 0, {
+    verifyAutomationHttp: async url => url.hostname === 'example.invalid' ? null : 'http_destination_unreachable',
+  }); } finally { globalThis.setInterval = interval; }
   t.after(() => server.close());
   const runs: Record<(typeof RUNS)[number], Seat> = { A: a, C: c, W: w, S: s, H: h, R: r, F: runF };
   /** Who calls: a Run by its credential, the coordinator by its conversation, or a person. */
@@ -149,7 +152,63 @@ test('every HTTP act of the table lets exactly its callers through the public en
     { ...task(id), instruction: 'Do the work', opId: randomUUID(), expectedPlacementRevision: 1, ...fields }, true);
   const settings = await (await fetch(new URL('/api/commands/config/get', h.server.url))).json() as
     { limits: Record<string, unknown>; agentsText: string };
-  const rows: { act: string; call: Call; allow: readonly Who[]; note?: string; proxyAct?: string; runAct?: string }[] = [
+  const files = [{ path: 'main.ts', source: `
+export const config = { on: { event: 'signal' }, limits: { perDay: 1 } };
+/** Review the result. */
+export function run() { return { summary: 'Reviewed' }; }
+` }];
+  const draft = { under: f.project, name: 'Review completed tasks', files };
+  const create = async (under: string) => {
+    const result = await h.call('human', post('/api/commands/automation/new', { ...draft, under }));
+    assert.equal(result.status, 200, result.text);
+    return automationProgramSaveResultSchema.parse(JSON.parse(result.text)).automation;
+  };
+  const { id: automation, latest } = await create(f.project);
+  const { id: foreignAutomation } = await create(h.other);
+  const automationVersion = { automation, expectedHash: STALE };
+  const getAutomation = get(`/api/commands/automation/get?automation=${automation}`);
+  const automationRuns = get(`/api/commands/automation/runs?automation=${automation}`);
+  const automationList = get('/api/commands/automation/list');
+  const scoped = await h.call('F', automationList);
+  assert.equal(scoped.status, 200, scoped.text);
+  assert.deepEqual(automationProgramListResultSchema.parse(JSON.parse(scoped.text)).automations.map(item => item.id), [foreignAutomation]);
+  const rows: { act: string; call: Call; allow: readonly Who[]; notFound?: Who; note?: string; proxyAct?: string; runAct?: string }[] = [
+    { act: 'automation.signal', call: post('/api/commands/automation/signal', { automation }), allow: ['A', 'C', 'W', 'S', 'R', ...proxies] },
+    { act: 'automation.input', call: { ...get(`/api/commands/automation/input?task=${C.id}`), allowed: [404] },
+      allow: everyone.filter(who => who !== 'F') },
+    { act: 'automation.destination-set', call: { ...post('/api/commands/automation/destination-set', {
+      under: f.project, name: 'Synthetic', url: 'https://example.invalid/fixture',
+    }), allowed: [200] }, allow: ['human'] },
+    { act: 'automation.destination-set.from_request', call: post('/api/commands/automation/destination-set', {
+      under: f.project, name: 'Synthetic', sourceRequest: randomUUID(),
+    }), allow: [], note: 'only the running screen coordinator, requires a delivered message' },
+    { act: 'automation.hook-create', call: post('/api/commands/automation/hook-create', automationVersion), allow: proxies },
+    { act: 'automation.hook-rotate', call: post('/api/commands/automation/hook-rotate', automationVersion), allow: ['human'] },
+    { act: 'automation.hook-delete', call: post('/api/commands/automation/hook-delete', automationVersion), allow: ['human'] },
+    { act: 'automation.hook-read', call: { ...get(`/api/automations/${automation}/hook`), allowed: [404] }, allow: ['human'] },
+    { act: 'automation.operate', call: post('/api/commands/automation/operate', { operation: 'disable', input: {} }), allow: [] },
+    { act: 'automation.run-stop', call: { ...post('/api/commands/automation/run-stop', {
+      automation, number: 1, expectedRunVersion: 1,
+    }), allowed: [404] }, allow: proxies },
+    { act: 'automation.run-now', call: post('/api/commands/automation/run-now', { automation }), allow: ['human'] },
+    { act: 'automation.types', call: get('/api/commands/automation/types'), allow: everyone },
+    { act: 'automation.get', call: getAutomation, allow: everyone, notFound: 'F' },
+    { act: 'automation.list', call: automationList, allow: everyone },
+    { act: 'automation.runs', call: automationRuns, allow: everyone, notFound: 'F' },
+    { act: 'automation.preview', call: { ...post('/api/commands/automation/preview', { automation }), allowed: [200] }, allow: everyone, notFound: 'F' },
+    { act: 'automation.run', call: { ...get(`/api/commands/automation/run?automation=${automation}&number=1`), allowed: [404] }, allow: everyone, notFound: 'F' },
+    { act: 'automation.try', call: post('/api/commands/automation/try', { automation, previewHash: STALE }), allow: ['human'] },
+    { act: 'automation.new', call: { ...post('/api/commands/automation/new', draft), allowed: [200] }, allow: proxies },
+    { act: 'automation.save', call: post('/api/commands/automation/save', { ...automationVersion, files }), allow: proxies },
+    { act: 'automation.rename', call: post('/api/commands/automation/rename', { ...automationVersion, name: 'New name' }), allow: proxies },
+    { act: 'automation.versions', call: get(`/api/commands/automation/versions?automation=${automation}`), allow: everyone, notFound: 'F' },
+    { act: 'automation.pull', call: get(`/api/commands/automation/pull?automation=${automation}`), allow: everyone, notFound: 'F' },
+    { act: 'automation.review', call: { ...post('/api/commands/automation/review', { automation, version: latest.digest }), allowed: [200] }, allow: proxies },
+    { act: 'automation.destination-list', call: get(`/api/commands/automation/destination-list?under=${f.project}`), allow: everyone.filter(who => who !== 'F') },
+    { act: 'automation.enable', call: post('/api/commands/automation/enable', automationVersion), allow: ['human'] },
+    { act: 'automation.disable', call: { ...post('/api/commands/automation/disable', { automation }), allowed: [200] }, allow: proxies },
+    { act: 'automation.restore', call: post('/api/commands/automation/restore', { ...automationVersion, version: latest.digest }), allow: proxies },
+    { act: 'automation.delete', call: post('/api/commands/automation/delete', automationVersion), allow: proxies },
     { act: 'task.read', call: get(`/api/commands/task/get?task=${C.id}`), allow: everyone.filter(who => who !== 'F'),
       note: 'a Run reads its own project only' },
     { act: 'task.list', call: get('/api/commands/task/list'), allow: everyone },
@@ -306,12 +365,13 @@ test('every HTTP act of the table lets exactly its callers through the public en
     { act: 'admin', call: { ...post('/api/commands/workspace/returns', {}), allowed: [200] }, allow: ['human'] },
     { act: 'runtime', call: { ...post('/api/runtime/quiesce', {}), allowed: [200] }, allow: ['human'] },
   ];
-  for (const { act, call, allow, note, proxyAct, runAct } of rows) {
+  for (const { act, call, allow, notFound, note, proxyAct, runAct } of rows) {
     // The allowed go last, so that a stop or the quiesce does not change what the refused are tried on.
     for (const who of [...everyone.filter(who => !allow.includes(who)), ...allow]) {
       const label = `${act}${note ? ` (${note})` : ''} as ${who}`;
       const result = await h.call(who, call);
-      if (allow.includes(who)) assert.ok((call.allowed ?? [409]).includes(result.status), `${label}: ${result.status} ${result.text}`);
+      if (who === notFound) assert.equal(result.status, 404, `${label}: ${result.text}`);
+      else if (allow.includes(who)) assert.ok((call.allowed ?? [409]).includes(result.status), `${label}: ${result.status} ${result.text}`);
       else assert.deepEqual([result.status, result.refused?.code, result.refused?.detail], [403, 'forbidden',
         { action: RUNS.includes(who as typeof RUNS[number]) ? runAct ?? act : proxyAct ?? act }],
         `${label}: ${result.text}`);

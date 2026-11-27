@@ -7,6 +7,7 @@ import { ACTIONS, decide, runMayDo, type Action, type Act, type Caller } from '.
 import { resolveCaller, type CallerClaim } from '../control/credentials.js';
 
 const RUN_CREDENTIAL = new RegExp(`^Alpacawork-Run (${RUN_ID_PATTERN}):(${DIGEST_PATTERN})$`);
+const PROGRAM_CREDENTIAL = new RegExp(`^Alpacawork-Program (${DIGEST_PATTERN})$`);
 /**
  * What a request's headers claim about its caller, for resolveCaller: a Run's credential (`Authorization`) or the agent
  * conversation it comes from (`X-Alpacawork-Provider` with `X-Alpacawork-Conversation`), never both. A CLI `task report`
@@ -18,19 +19,21 @@ export function claimOf(headers: Headers, report = false, internalMcp = false): 
       { reason: { kind: 'invalid_direct_conversation_headers' } });
   const authorization = headers.get('authorization');
   const credential = authorization ? RUN_CREDENTIAL.exec(authorization) : null;
-  if (authorization && !credential)
+  const program = authorization ? PROGRAM_CREDENTIAL.exec(authorization) : null;
+  if (authorization !== null && !credential && !program)
     throw new Problem(PROBLEM_CODE.forbidden, 'Invalid Run authorization header', undefined, { reason: { kind: 'invalid_run_authorization_header' } });
   const provider = headers.get('x-alpacawork-provider');
   const conversationId = headers.get('x-alpacawork-conversation');
   if ((provider === null) !== (conversationId === null) ||
       provider !== null && provider !== 'claude' && provider !== 'codex' ||
       conversationId !== null && (!conversationId || conversationId.length > 256) ||
-      credential && provider !== null)
+      (credential || program) && provider !== null || program && internalMcp)
     throw new Problem(PROBLEM_CODE.forbidden, 'Invalid direct conversation headers', undefined, { reason: { kind: 'invalid_direct_conversation_headers' } });
   const replayOpId = report ? headers.get('x-alpacawork-op-id') : null;
   return {
     ...(internalMcp ? { mcp: true as const } : {}),
     ...(credential ? { run: { runId: credential[1]!, token: credential[2]! } } : {}),
+    ...(program ? { program: program[1]! } : {}),
     ...((provider === 'claude' || provider === 'codex') && conversationId ? { direct: { provider, conversationId } } : {}),
     ...(replayOpId ? { replayOpId } : {}),
   };

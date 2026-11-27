@@ -31,6 +31,16 @@ type UserQuestionFacts = { openUserQuestion?: boolean };
 export type OperationFacts = TaskStage & UserQuestionFacts & { action: Operation; explicit: boolean; userRequested: boolean;
   observedStart?: boolean; stopFactsKnown?: boolean; operationId?: string;
   end?: { known: boolean; reported: boolean; questions: number; requests: number; awaitingAtEnd: boolean } };
+/** Whether the policy can record the base-state change for some admitted task operation. */
+export function mayChangeTaskBaseState(from: TaskBaseState, to: TaskBaseState, userRequestedOnly = false): boolean {
+  if (from === to) return false;
+  const actions = ['report_doing', 'report_done', 'submit_review', 'confirm', 'stop', 'resume',
+    'run_started', 'run_failed', 'run_no_report'] as const satisfies readonly Operation[];
+  return (userRequestedOnly ? [true] : [true, false]).some(userRequested => (from !== 'waiting' || userRequested) && actions.some(action =>
+    evaluate(TASK_POLICY.transition, { baseState: from, hold: false, action, userRequested, explicit: true,
+      openUserQuestion: true, observedStart: true, stopFactsKnown: true, operationId: 'operation',
+      end: { known: true, reported: false, questions: 0, requests: 0, awaitingAtEnd: false } }).baseState === to));
+}
 type ReportIntentFacts = TaskStage & UserQuestionFacts & { state: TaskState; reporter: 'outside' | 'own' | 'other'; confirmation: boolean };
 type RowStatusFacts = { state: TaskState; running: boolean; troubled: boolean; queued: boolean; below: number; since: boolean; reason: boolean };
 type PairFacts = { parentBase: TaskBaseState; childBase: TaskBaseState;

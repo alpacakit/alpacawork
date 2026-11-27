@@ -73,6 +73,6 @@ export function rowTask(task: TaskRowDTO, change: TaskChange | null = null): Tas
     baseState: task.baseState, hold: task.hold, allowedActions: task.allowedActions, policyVersion: task.policyVersion,
     ball: task.ball, rowFacts: task.rowFacts, startOrder: task.startOrder ?? null, hash: task.hash, version: task.version, path: task.path, stateLog: task.stateLog, usage: task.usage, usageBelow: task.usageBelow, runsBelow: task.runsBelow, updatedAt: task.updatedAt ?? "", createdAt: task.createdAt,
     movedAt: task.movedAt,
-    change, question: task.question,
+    change, question: task.question, ...task.madeBy ? { madeBy: task.madeBy } : {},
   };
 }

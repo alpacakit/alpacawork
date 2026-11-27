@@ -80,11 +80,14 @@ function shown(db: DatabaseSync, tx: RunTransaction, conversation: Conversation,
   return run;
 }
 /**
- * What the coordinator is given for a message: its words, what a press meant, the questions
- * the words answer, the files.
+ * What the coordinator is given for a message: its words, the automation its badge names, what a press meant, the
+ * questions the words answer, the files.
  */
 function launchText(id: string, message: CoordinatorMessage, body: string, files: readonly (readonly [string, string])[]) {
   return [`Request ID of this input: ${id}. Add --source-request ${id} to the records of what you do for this input.`, body,
+    message.automation === undefined ? '' : message.automation === 'new'
+      ? 'Automation badge: new (the person asks for a new automation).'
+      : `Automation badge: ${message.automation} (the person's words are about this automation).`,
     message.intent === null ? '' : `Screen action: ${JSON.stringify(message.intent)}`,
     message.answers === undefined ? '' : `Questions being answered: ${JSON.stringify(message.answers)}`,
     ...files.map(([name, file]) => `![${name}](${file})`)].filter(Boolean).join('\n');

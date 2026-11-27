@@ -1,11 +1,11 @@
 /**
  * The serve's view of this machine: one sample every 10 s, the last hour in memory, tight episodes and minute values
- * in the host record. It tells the server two things: the small tight state for the index (when it changes, and once a
- * minute while tight) and the start of each episode (for its one push). A failing record never stops the sampling.
+ * in the host record. It publishes pressure samples, the small tight state for the index, and one push per episode.
+ * A failing record never stops the sampling.
  */
-import type { HostEpisodeMinutes, HostNotice, HostStatus } from '@alpacawork/contract';
+import type { HostEpisodeMinutes, HostKind, HostNotice, HostStatus } from '@alpacawork/contract';
 import { failure, errorBody, faultReason, Problem, PROBLEM_CODE, type ProblemReason } from '@alpacawork/core';
-import { createHostSource, type HostSource, type HostSample, type RunRoot } from './measure.js';
+import { createHostSource, type HostSource, type HostSample, type RunLoad, type RunRoot } from './measure.js';
 import { gpuStatus } from './gpu-status.js';
 import { PRESSURE_LIMITS, Pressure } from './pressure.js';
 import { EPISODE_RETENTION_MS, HostStore, type EpisodeDraft, type MinuteRow } from './store.js';
@@ -23,6 +23,17 @@ const EPISODE_MARGIN_MS = 10 * MINUTE_MS;
 /** A restart within this of the last sample (a release, a crash) continues the open episode instead of starting another. */
 const RESUME_WINDOW_MS = 5 * MINUTE_MS;
 
+export interface HostPressureObservation {
+  at: number;
+  episodeStart: number | null;
+  kinds: readonly HostKind[];
+  entered: readonly HostKind[];
+  cpu: number | null;
+  memoryFreePercent: number;
+  diskFreeBytes: number;
+  runs: readonly Pick<RunLoad, 'runId' | 'taskId' | 'cpu' | 'memoryBytes'>[];
+}
+
 interface HostMonitorOptions {
   root: string;
   /** Running Runs with their agent PIDs. */
@@ -34,6 +45,8 @@ interface HostMonitorOptions {
   episodeStarted: (episode: EpisodeDraft, sample: HostSample) => void;
   /** The episode that was tight ended or a new one began (null while calm). */
   episodeHeld?: (start: number | null) => void;
+  /** Every pressure sample, including calm ones. Null invalidates a failed sample. */
+  pressureObserved?: (observation: HostPressureObservation | null) => void;
   log?: (line: string) => void;
   /** Replace the entire measurement source, including its capability and facts. */
   source?: HostSource;
@@ -71,6 +84,8 @@ export class HostMonitor {
     this.timer.unref?.();
   }
 
+  get supportsPressure(): boolean { return this.source.supported; }
+
   /** One sample; exposed for tests, which drive time themselves. */
   tick(now = Date.now()): void {
     if (!this.source.supported) return;
@@ -84,6 +99,7 @@ export class HostMonitor {
       const next = hostFailure('', 'sample', error);
       if (this.sampleError?.message !== next.message) this.options.log?.(`Host sample failed: ${next.message}`);
       this.sampleError = next;
+      this.publishPressure(null);
       return;
     }
     this.latest = sample;
@@ -92,23 +108,33 @@ export class HostMonitor {
     this.history.push({ at: sample.at, cpu: sample.cpu, memoryFreePercent });
     while (this.history.length && this.history[0]!.at <= now - HOUR_MS) this.history.shift();
 
-    const wasTight = this.pressure.current !== null;
+    const previousKinds = this.pressure.tightKinds();
     const episode = this.pressure.observe(now, { cpu: sample.cpu, memoryFreePercent, diskFreeBytes: sample.disk.freeBytes }, sample.runs);
+    const currentKinds = this.pressure.tightKinds();
     this.record(store => {
       if (episode) {
-        try { this.currentId = store.saveEpisode(this.currentId, episode, now); }
+        try { this.currentId = store.saveEpisode(this.currentId, episode, now, currentKinds); }
         // An ended episode never takes another write, so a failed closing write cannot overwrite it with the next one.
         finally { if (episode.end !== null) this.currentId = null; }
       }
       this.foldMinute(store, now, sample.cpu, memoryFreePercent);
       if (now - this.lastPrune >= HOUR_MS) { store.prune(now); this.lastPrune = now; }
     });
-    if (!wasTight && this.pressure.current) {
+    if (!previousKinds.length && this.pressure.current) {
       this.options.episodeHeld?.(this.pressure.current.start);
       // Recording the push writes push.json; a full disk (one reason to be tight) must not stop serve.
       try { this.options.episodeStarted(this.pressure.current, sample); }
       catch (error) { this.options.log?.(`Host push could not be recorded: ${failure(error).message}`); }
-    } else if (wasTight && !this.pressure.current) this.options.episodeHeld?.(null);
+    } else if (previousKinds.length && !this.pressure.current) this.options.episodeHeld?.(null);
+
+    // CPU can be unmeasured in an otherwise valid sample, for example the first sample after a restart.
+    const kinds = sample.cpu === null ? currentKinds.filter(kind => kind !== 'cpu') : currentKinds;
+    if (this.options.pressureObserved) {
+      this.publishPressure({ at: sample.at, episodeStart: this.pressure.current?.start ?? null, kinds,
+        entered: kinds.filter(kind => !previousKinds.includes(kind)), cpu: sample.cpu, memoryFreePercent,
+        diskFreeBytes: sample.disk.freeBytes,
+        runs: sample.runs.map(({ runId, taskId, cpu, memoryBytes }) => ({ runId, taskId, cpu, memoryBytes })) });
+    }
 
     const notice = this.notice(sample, memoryFreePercent);
     const key = notice ? `${notice.since}|${notice.kinds.join()}|${Math.floor(now / MINUTE_MS)}` : '';
@@ -124,7 +150,7 @@ export class HostMonitor {
   }
 
   async status(now = Date.now()): Promise<HostStatus> {
-    if (!this.source.supported) return this.source;
+    if (this.source.supported === false) return this.source;
     const gpus = this.latest && this.readGpuStatus ? await this.readGpuStatus() : undefined;
     const sample = this.latest && gpus !== undefined ? { ...this.latest, gpus } : this.latest;
     const current = this.pressure.current;
@@ -181,13 +207,17 @@ export class HostMonitor {
     this.resumed = true;
     this.record(store => {
       const open = store.lastOpen();
-      if (open && now - open.lastAt <= RESUME_WINDOW_MS) {
-        this.pressure.resume(open.episode);
+      if (open?.currentKinds && now >= open.lastAt && now - open.lastAt <= RESUME_WINDOW_MS) {
+        this.pressure.resume(open.episode, open.currentKinds);
         this.currentId = open.id;
         this.options.episodeHeld?.(open.episode.start);
       }
       store.closeOpen(this.currentId);
     });
+  }
+  private publishPressure(observation: HostPressureObservation | null): void {
+    try { this.options.pressureObserved?.(observation); }
+    catch (error) { this.options.log?.(`Host pressure observation could not be published: ${failure(error).message}`); }
   }
   private record(write: (store: HostStore) => void): void {
     const store = this.open();

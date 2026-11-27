@@ -59,6 +59,8 @@ export type Task = {
   updatedAt: string;
   createdAt?: string | null;
   movedAt: number;
+  /** The automation that created it itself, as it was named then; absent for one a person or an agent created. */
+  madeBy?: ProjectedIndexDTO["tasks"][number]["madeBy"];
 };
 
 /** An opened task: the row with what `GET /api/task/view` adds. */
@@ -117,5 +119,7 @@ export type WorkspaceInfo = {
   host: ProjectedIndexDTO["host"];
   /** The reader's last check; the unread baseline starts here. */
   checkpointAt: string;
+  /** Moves whenever an automation or one of its runs is written: the automation reads are keyed by it. */
+  automationsVersion: string;
 };
 

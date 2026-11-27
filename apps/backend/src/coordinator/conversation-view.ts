@@ -64,7 +64,8 @@ function drawnTurn(request: Record<string, unknown>, run: CoordinatorRunRecord, 
     ...run.message.skills === undefined ? {} : { skills: run.message.skills },
     ...run.message.intent === null ? {} : { intent: run.message.intent },
     ...run.message.answers === undefined ? {} : { answers: run.message.answers }, answer: null, answeredAt: null, error: null,
-    ...run.message.tasks === undefined ? {} : { tasks: run.message.tasks }, result: done, seen: false, waiting };
+    ...run.message.tasks === undefined ? {} : { tasks: run.message.tasks },
+    ...run.message.automation === undefined ? {} : { automation: run.message.automation }, result: done, seen: false, waiting };
   if (run.state === 'queued') {
     if (handover && inputUnsettled(handover.state)) return { ...turn, status: 'sending', ...into(handover.into) };
     const deliveryError: CoordinatorTurn['deliveryError'] = handover?.state !== 'not_sent' ? undefined
@@ -169,6 +170,10 @@ function draw(db: DatabaseSync, store: RunStore, conversation: string, requests:
       if (row) messageOf.set(id, String(row.request_id));
     }
   }
+  // A badge's automation is named as it is called now; the message's words carry only its number.
+  const badges = [...new Set(last.flatMap(({ run }) => run.message.automation && run.message.automation !== 'new' ? [run.message.automation] : []))];
+  const automationNames = new Map(badges.length ? db.prepare(`SELECT external_id,name FROM automations
+    WHERE external_id IN (SELECT value FROM json_each(?))`).all(JSON.stringify(badges)).map(row => [String(row.external_id), String(row.name)]) : []);
   return last.map(({ request, run, row }) => {
     const handover = inputs.get(run.id);
     const waiting = run.state === 'queued' && (!!handover && inputUnsettled(handover.state) || !!laneAhead(lane, run, blocked, reservations));
@@ -182,7 +187,8 @@ function draw(db: DatabaseSync, store: RunStore, conversation: string, requests:
     const failure = failed ? readRunFailure(store.root, run) : undefined;
     const again = failed && !!row.sent_again;
     const workedBy = readable(turn) && isEnded(run) && endedRunTookSteps(store.root, run.id) ? run.id : undefined;
-    return { ...turn,
+    const automationName = turn.automation === undefined ? undefined : automationNames.get(turn.automation);
+    return { ...turn, ...(automationName === undefined ? {} : { automationName }),
       ...(attempts.length < 2 && !run.availability ? {} : { attempts: attempts.map(({ run: trial }) => ({
         agent: trial.agent, values: trial.launch.values, ...(trial.availability ? { availability: trial.availability } : {}),
       })) }),

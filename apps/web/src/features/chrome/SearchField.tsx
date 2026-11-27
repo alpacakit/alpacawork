@@ -1,7 +1,7 @@
 import { startTransition, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Icon } from "@/components/ui/icon";
-import { isSearchShown, useViewStore } from "@/state/view-store";
+import { faceOf, isSearchShown, useViewStore } from "@/state/view-store";
 import { cn } from "@/lib/utils";
 import { registerSearchClose } from "./search-ref";
 
@@ -28,13 +28,13 @@ export function SearchField({ className }: { className?: string }) {
     }, 150);
   };
   useEffect(() => { if (!composing.current) { cancel(); setDraft(query); } }, [query]);
-  // The screen's face changing (Use, Analysis, today's marks, a task opened from the analysis, Back or Forward: every one
-  // goes through the store's `analysis`) drops an edit not yet applied, so a search typed just before cannot show its
-  // results over the face just chosen.
+  // The screen's face changing (Use, Analysis, Settings, today's marks, a task opened from the analysis, a notification,
+  // Back or Forward: every one goes through the store's face, `faceOf`) drops an edit not yet applied, so a search typed
+  // just before cannot show its results over the face just chosen.
   // A conversion under way when it changes is dropped too: its confirmation then runs no search.
   const dropped = useRef(false);
   useEffect(() => useViewStore.subscribe((state, before) => {
-    if (!!state.analysis === !!before.analysis || timer.current === null && !composing.current) return;
+    if (faceOf(state) === faceOf(before) || timer.current === null && !composing.current) return;
     cancel();
     if (composing.current) dropped.current = true;
     setDraft(state.query);

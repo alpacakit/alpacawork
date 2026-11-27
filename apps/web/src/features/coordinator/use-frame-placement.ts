@@ -97,7 +97,8 @@ export function useFramePlacement({ surfaces, frame, setHeld, open, expanded, ow
   frame: Frame; setHeld: (next: Frame | null) => void; open: boolean; expanded: boolean; own: Window | null; narrow: boolean; bar: number;
 }) {
   const { card, panel, outline, entrance } = surfaces;
-  const selectedTask = useViewStore(shownInReader);
+  // What the reader's window shows: a task, or an automation in its place (either moves what stands docked).
+  const selectedTask = useViewStore((state) => shownInReader(state) ?? (state.automation ? `automation:${state.automation.id}` : null));
   // What decides which panels stand docked on the page (Workbench): a file or diff read beside the reader, and the
   // reader taken to the whole window or back.
   const docking = useViewStore((state) => `${state.view !== null}|${state.readerFull}|${analysisSurfaces(state.analysis).length > 0}`);

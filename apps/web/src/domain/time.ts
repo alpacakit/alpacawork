@@ -23,12 +23,14 @@ function dates(locale: string) {
   dateFormats.set(locale, formats);
   return formats;
 }
-function logTimeOf(date: Date, locale: string): string {
+function logDayOf(date: Date, locale: string): string {
   const { padded, zero } = dates(locale);
   // Some date patterns leave single-digit fields even when asked for two digits.
-  const day = padded.formatToParts(localCalendarTime(date)).map(({ type, value }) =>
+  return padded.formatToParts(localCalendarTime(date)).map(({ type, value }) =>
     (type === "month" || type === "day") && [...value].length === 1 ? zero + value : value).join("");
-  return `${day} ${clockOf(date)}`;
+}
+function logTimeOf(date: Date, locale: string): string {
+  return `${logDayOf(date, locale)} ${clockOf(date)}`;
 }
 const sameDayOf = (a: Date, b: Date) =>
   a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
@@ -69,6 +71,13 @@ export function formatLogTime(iso: string, locale: string): string {
   const date = new Date(iso);
   if (!Number.isFinite(date.getTime())) return "";
   return logTimeOf(date, locale);
+}
+
+/** "09/25": the day of a history entry's time, for a heading over that day's times. */
+export function formatLogDay(iso: string, locale: string): string {
+  const date = new Date(iso);
+  if (!Number.isFinite(date.getTime())) return "";
+  return logDayOf(date, locale);
 }
 
 /** The localized month and day followed by a 24-hour clock time. */

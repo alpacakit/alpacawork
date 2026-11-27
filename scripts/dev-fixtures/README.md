@@ -82,6 +82,16 @@ New samples use the current settings and Run contracts. Do not reuse old cache e
 
 The seed affects IDs. Identical source, counts, and seed produce identical logical data. Workspace identifiers differ per generation/copy, so database files need not be byte-identical.
 
+## Control database for a production-data rehearsal
+
+Stop the source before preparing a rehearsal with approved production data. In a separate private directory, copy only the non-database files needed for the rehearsal. Leave out the source control database and its sidecars, release/recovery backups, and connection files. From a checkout that matches the source schema, build the packages and backend, then run:
+
+```sh
+node scripts/dev-fixtures/rehearsal-control-copy.ts /absolute/stopped-source /absolute/private-rehearsal
+```
+
+The command publishes an independent control database with its own workspace identity, all automations off, pending signals cancelled, and an empty secrets table. It refuses a destination that already contains a control database. Use a separate rehearsal configuration and keep it off the production VPN address.
+
 ## Measurements on this PC (2026-10-28)
 
 Measured three times per operation using Node v24.16.0, local storage, built packages, and a warm OS cache. Times cover the full script operation, including original validation and post-copy consistency checks; they exclude Node startup/imports, builds, and server startup. MB is decimal.

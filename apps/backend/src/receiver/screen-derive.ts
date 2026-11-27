@@ -528,8 +528,11 @@ function keyRelations(key: ChangeKey, change: RecordsChange, gather: Gather, own
       gather.addAll(new Set([...before.taskIds(), ...after.taskIds()]), [...BALL, 'view', 'history']);
       gather.meta = true;
       return;
-    case 'person': case 'conversation':
+    case 'person': case 'conversation': case 'automation': case 'automation_run':
       gather.meta = true;
+      return;
+    case 'automation_signal':
+      // The receipt wakes the engine. The automation and run keys already cover its screen changes.
       return;
     case 'files':
       gather.add(key.id, ['files', 'view']);

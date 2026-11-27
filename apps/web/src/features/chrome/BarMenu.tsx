@@ -5,7 +5,7 @@ import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from "@/compone
 import { Icon } from "@/components/ui/icon";
 import { menuRow } from "@/components/ui/menu-rows";
 import { Switch } from "@/components/ui/switch";
-import { FaceSwitch } from "@/features/analysis/FaceSwitch";
+import { FaceSwitch } from "./FaceSwitch";
 import { UpdateMark, useGearLabel, useOpenSettingsFromGear } from "@/features/update/UpdateView";
 import { countUse } from "@/features/telemetry/count";
 import { useTimeView } from "@/state/time-view";

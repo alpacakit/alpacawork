@@ -16,6 +16,12 @@
       "title": "尝试过的 AI",
       "tookOver": "{{agent}} 接手了"
     },
+    "automationResult": {
+      "created": "已创建 <open>{{id}}</open>",
+      "edited": "已修改 <open>{{id}}</open>",
+      "notBadge": "（不是标签上的 {{id}}，是另一项）",
+      "notNew": "（标签要求的是新的自动执行）"
+    },
     "clear": "清空对话",
     "clearAbout": "清除消息和备忘，变为空对话。无法撤销",
     "clearConfirm": "再点一次即可清空",
@@ -301,11 +307,15 @@
     "copyProject": "复制 {{id}}",
     "enterHint": "Enter 发送 · Shift+Enter 换行（⌘/Ctrl+Enter 也可发送）",
     "expand": "增加输入框高度",
+    "newAutomation": "新的自动执行",
     "noMatches": "没有匹配的项",
     "openProject": "在列表中查看",
     "openTask": "打开",
     "placeholder": "管理任务、委托工作，都在这里",
+    "placeholderAutomation": "关于 {{id}} 的指示或问题（例如：改到 8:30）",
+    "placeholderAutomations": "用文字创建或修改自动执行（例如：每天早上 9 点，汇总待确认的任务并报告）",
     "placeholderFolded": "有什么需求都写在这里",
+    "placeholderNewAutomation": "写下要在何时做什么（例如：每天早上 9 点，汇总待确认的任务并报告）",
     "placeholderProject": "关于此项目的指示或问题",
     "placeholderTask": "关于 {{id}} 的指示或问题",
     "placeholderTasks": "关于 {{id}} 等任务的指示或问题",

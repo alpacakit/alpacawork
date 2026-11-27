@@ -1,5 +1,6 @@
 /** Public Task events. Request events are assembled at the repository boundary, never stored as logs. */
 import { z } from 'zod';
+import { automationActorSchema, automationOriginSchema } from './automation.js';
 import { actionReasonSchema } from './reasons.js';
 import { conversationCheckpointSchema } from './conversation-context.js';
 import { LOG_KIND, TASK_STATE, TASK_BASE_STATES } from './task-enums.js';
@@ -33,6 +34,7 @@ export const taskActorSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('main'), provider: z.enum(['claude', 'codex', 'mcp']),
     conversationId: nonempty(200), quote: nonempty(MAX_QUOTE_LENGTH).optional(), message: nonempty(128).optional() }).strict(),
   z.object({ kind: z.literal('placement'), placementId: nonempty(128) }).strict(),
+  automationActorSchema,
 ]);
 export type TaskActor = z.infer<typeof taskActorSchema>;
 /** Acting for the user is a person or coordinator; recorded words confer no authority. */
@@ -71,6 +73,7 @@ export const taskLogSchema = z.object({
     boundary: z.enum(['accepted_start', 'rejected_start', 'settled_end']).optional(),
     action: z.enum(['report_doing', 'report_done', 'submit_review', 'confirm', 'stop', 'hold', 'unhold', 'link']) }).strict().optional(),
   originCauseId: nonempty(128).optional(),
+  origin: automationOriginSchema.optional(),
   estimateMinutes: z.preprocess(value => typeof value === 'bigint' ? Number(value) : value,
     z.number().int().min(ESTIMATE_MINUTES.min).max(ESTIMATE_MINUTES.max)).optional(),
   operationFingerprint: digest.optional(),
@@ -116,6 +119,11 @@ export const taskLogSchema = z.object({
 }).strict().superRefine((entry, ctx) => {
   const issue = (path: string, message: string) =>
     ctx.addIssue({ code: 'custom', path: [path], message });
+  if (entry.origin && entry.kind !== 'created') issue('origin', 'Only a creation records automation origin');
+  if (entry.kind === 'created' && entry.actor.kind === 'automation' &&
+      (!entry.origin || entry.origin.automationId !== entry.actor.automationId ||
+       entry.origin.revision !== entry.actor.revision || entry.origin.runNumber !== entry.actor.runNumber))
+    issue('origin', 'An automation creation requires its own run origin');
   if ((entry.kind === 'dependencies_changed') !== (entry.dependencies !== undefined))
     issue('dependencies', 'Only a dependency change carries after and previous IDs');
   if (entry.kind === 'dependencies_changed' && (entry.fromState !== null || entry.toState !== null))
@@ -180,6 +188,7 @@ export const taskLogSchema = z.object({
     issue('launchValues', 'Launch choices belong only to a placement creation record');
 });
 export type TaskLog = z.infer<typeof taskLogSchema>;
+export const taskOrigin = (log: readonly TaskLog[]) => log.find(entry => entry.kind === 'created')?.origin;
 
 /** Ordinary stored records cannot carry a Request's header or its derived estimate classification. */
 export const storedTaskLogSchema = taskLogSchema.refine(entry =>

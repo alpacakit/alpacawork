@@ -18,6 +18,7 @@ import { firstSentence } from "./foot";
 import { answerBodyFiles, MessageFiles, type OpenMessageImages } from "./MessageFiles";
 import { SentMessage, useMessageCopy, useMessageParts } from "./SentMessage";
 import { Attempts, coordinatorErrorReason, Thinking, TurnWork } from "./parts";
+import { AutomationResults } from "./AutomationResults";
 import { partitionTurns, useShownConversation, type LocalTurn, type SentTurn } from "./shown";
 import { ReplyLabel } from './ReplyLabel';
 import { messageTime } from './message-time';
@@ -51,12 +52,12 @@ function MessageHead({ turn, mark, more }: { turn: SentTurn; mark?: ReactNode; m
 
 /** One message sent, in full. */
 function Message({ turn, open, skills, mark, fold }: { turn: SentTurn; open: OpenMessageImages; skills: readonly { name: string }[]; mark?: ReactNode; fold?: ReactNode }) {
-  const parts = useMessageParts(turn.ask, skills);
+  const parts = useMessageParts(turn.ask, skills, turn);
   const copy = useMessageCopy(parts);
   return <div data-coordinator-said className="mt-type-block first:mt-0">
     <MessageHead turn={turn} mark={mark} more={fold} />
     <div data-coordinator-origin={turn.id} data-held={copy.held || undefined} className={cn("w-fit max-w-full rounded-md bg-bg px-2.5 py-1.5", HELD)}>
-      {(turn.ask || turn.replyTo) && <p {...copy.props} data-sent-message className="m-0 whitespace-pre-wrap">{turn.replyTo && <ReplyLabel reply={turn.replyTo} origin={{ id: turn.id, at: turn.at }} />}<SentMessage parts={parts} /></p>}
+      {(turn.ask || turn.replyTo || turn.automation === 'new') && <p {...copy.props} data-sent-message className="m-0 whitespace-pre-wrap">{turn.replyTo && <ReplyLabel reply={turn.replyTo} origin={{ id: turn.id, at: turn.at }} />}<SentMessage parts={parts} automation={turn.automation} /></p>}
       {!!turn.attachments.length && <div className={turn.ask ? "mt-1.5" : undefined}><MessageFiles turn={turn} open={open} /></div>}
     </div>
   </div>;
@@ -118,9 +119,9 @@ function Answer({ turn, retry }: { turn: CoordinatorTurn; retry: (turn: Coordina
 const HELD = "pointer-coarse:select-none pointer-coarse:[-webkit-touch-callout:none] transition-colors data-held:bg-hover";
 /** A folded exchange's message: its first two lines, held long to copy it whole as the open one is. */
 function FoldedMessage({ turn, skills }: { turn: SentTurn; skills: readonly { name: string }[] }) {
-  const parts = useMessageParts(turn.ask, skills);
+  const parts = useMessageParts(turn.ask, skills, turn);
   const copy = useMessageCopy(parts);
-  return <p {...copy.props} data-sent-message className={cn("m-0 line-clamp-2 rounded-sm text-muted", HELD)}>{turn.replyTo && <ReplyLabel reply={turn.replyTo} origin={{ id: turn.id, at: turn.at }} />}<SentMessage parts={parts} /></p>;
+  return <p {...copy.props} data-sent-message className={cn("m-0 line-clamp-2 rounded-sm text-muted", HELD)}>{turn.replyTo && <ReplyLabel reply={turn.replyTo} origin={{ id: turn.id, at: turn.at }} />}<SentMessage parts={parts} automation={turn.automation} /></p>;
 }
 
 /** What one exchange came to, for its folded line: its answer's first sentence, or that it is at work, failed or stopped. */
@@ -239,7 +240,7 @@ const ThreadRow = memo(function ThreadRow({ served, local, waiting, open, joined
     return <li data-action-focus-place tabIndex={-1} data-coordinator-turn={turn.status} data-coordinator-waiting={turn.waiting ? turn.id : undefined} data-coordinator-message={turn.id} data-exchange={open ? "open" : "folded"}
       className="relative animate-rise border-b border-rule py-3 pl-(--gutter) last:border-b-0">
       {open ? <Exchange key={EXCHANGE} turn={turn} open={viewer} skills={skills} joined={joined} mark={mark} fold={turn.waiting ? undefined : button}
-        reply={<><TurnWork turn={turn} />{delivering(turn) ? <MessageDelivery turn={turn} /> : <Answer turn={turn} retry={retry} />}<Attempts turn={turn} /></>} />
+        reply={<><TurnWork turn={turn} />{delivering(turn) ? <MessageDelivery turn={turn} /> : <Answer turn={turn} retry={retry} />}<Attempts turn={turn} /><AutomationResults turns={[turn, ...joined]} /></>} />
       : <div className="cursor-pointer" onClick={event => {
         // A press opens it; a press on what it holds (a task's label), or a drag that selects its words, does not.
         if (!(event.target as Element).closest("button, a") && (event.currentTarget.ownerDocument.defaultView?.getSelection()?.isCollapsed ?? true)) toggle(turn.id, true);

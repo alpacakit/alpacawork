@@ -239,7 +239,7 @@ test('actual facts, Reader, row gate, detail, personal/notice and useQuery share
   receipt(resources.notices(f.index.root).queryKey, { state: { version: NOTICE_VERSION, checkpoint: { at: '2026-10-20T00:00:00.000Z', tasks: {} }, reads: {} }, revision: f.index.person.notices });
   const index = f.index, baseline = store.getState();
   const workspace = createWorkspaceStore({ ...mapWorkspace(index, { checkpoint: baseline.checkpoint!, reads: baseline.reads, firstSeen: baseline.firstSeen }), people: indexPeople(index), drawing: { root: index.root, restoredAt: null },
-    info: { root: index.root, rev: index.rev, checkpointAt: baseline.checkpoint!.at, writable: index.writable, errors: index.errors, staleIds: index.staleIds, runs: index.runs, profiles: index.profiles,
+    info: { root: index.root, rev: index.rev, checkpointAt: baseline.checkpoint!.at, automationsVersion: index.automationsVersion, writable: index.writable, errors: index.errors, staleIds: index.staleIds, runs: index.runs, profiles: index.profiles,
       attachmentBytes: index.attachmentBytes, projects: index.projects, presence: index.presence, host: index.host, coordinatorWork: index.coordinatorWork, counts: index.counts, home: index.home } });
   const withWorkspace = ({ children }: any) => <QueryClientProvider client={queryClient}><WorkspaceContext value={workspace}>{children}</WorkspaceContext></QueryClientProvider>;
   const commits: any[] = [];

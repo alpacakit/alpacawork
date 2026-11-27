@@ -10,8 +10,8 @@ import { useStoredDraft, useDraftStore, draftKey, transferDraft, writeDrafts } f
 import { useWorkspaceInfo } from '@/data/queries';
 import { useConversation, type AnswerAt } from '../coordinator';
 import { NARROW_QUERY } from '@/state/view-store';
-import { draftDocument, emptyDocument, hasReaderOperation, filterDocument, inlines, toggleAnswer, replyIn, replyTo, documentSchema, taskLabel, sameAnswer, type Document, type Inline } from './document';
-import { closed, composing, edited, observed, offered, withLine } from './lifecycle';
+import { draftDocument, emptyDocument, hasReaderOperation, filterDocument, inlines, toggleAnswer, replyIn, replyTo, documentSchema, taskLabel, sameAnswer, automationIn, aboutAutomation, type AutomationBadge, type Document, type Inline } from './document';
+import { badged, closed, composing, edited, observed, offered, unbadged, withLine } from './lifecycle';
 import { projectInput, editProjectedInput, type InputEdit } from './input-ownership';
 
 const useVoiceLock = create<{ key: string | null }>(() => ({ key: null }));
@@ -42,17 +42,21 @@ export function useInputDraft() {
       if (!target || target.status === 'saved') return source;
       const incoming = draftDocument(source.values);
       const current = draftDocument(target.values);
-      if (!composing(source.values)) return target;
+      const badge = automationIn(incoming);
+      // A badge chosen while loading, with nothing written yet, joins a draft that has none.
+      if (!composing(source.values)) return !badge || automationIn(current) ? target
+        : { ...target, values: composing(target.values) ? edited(target.values, doc => aboutAutomation(doc, badge))!.values : badged(target.values, badge) ?? target.values };
       const answers = inlines(incoming).filter(node => node.type === 'answerLabel');
       let merged = filterDocument(current, node => node.type !== 'answerLabel' || !answers.some(next => next.type === 'answerLabel' && sameAnswer(next.attrs, node.attrs)));
       for (const next of answers) if (next.type === 'answerLabel') {
         const task = inlines(incoming).find(node => node.type === 'taskLabel' && node.attrs.id === next.attrs.task);
         merged = toggleAnswer(merged, task?.type === 'taskLabel' ? task.attrs : { id: next.attrs.task, title: '' }, next.attrs);
       }
-      const words = filterDocument(incoming, node => node.type !== 'replyLabel' && node.type !== 'answerLabel' && (node.type !== 'taskLabel' || !answers.some(answer => answer.type === 'answerLabel' && answer.attrs.task === node.attrs.id)));
+      const words = filterDocument(incoming, node => node.type !== 'replyLabel' && node.type !== 'automationLabel' && node.type !== 'answerLabel' && (node.type !== 'taskLabel' || !answers.some(answer => answer.type === 'answerLabel' && answer.attrs.task === node.attrs.id)));
       if (inlines(words).some(node => node.type !== 'hardBreak')) merged = { ...merged, content: [...merged.content, ...words.content] };
       const reply = replyIn(incoming);
       if (reply && !replyIn(merged)) merged = replyTo(merged, reply);
+      if (badge && !automationIn(merged)) merged = aboutAutomation(merged, badge);
       return { ...target, values: { ...target.values, phase: 'composing', doc: JSON.stringify(documentSchema.parse(merged)) } };
     });
   }, [root, id]);
@@ -196,6 +200,31 @@ export function replyInDraft(reply: { id: string; answeredAt: string }) {
   const key = draftKey(root, 'coordinator', conversation.id), entry = writableEntry(key);
   if (!entry) return;
   if (mutateInput(key, values => edited(values, current => replyTo(current, reply))?.values ?? null)) focusCoordinator();
+}
+
+/**
+ * The one way the screen says which automation the input is about: an automation opened (`{ id, name }`), or `'new'`
+ * for one to ask for. Its badge goes in at the input's start (see `badged`). An opening fills only an input with
+ * nothing of the person's in it and leaves focus where it is; a press for that automation (`pressed`: "ask to create",
+ * or asking about the one open) puts its badge in place of another even beside their words, and brings the input up
+ * with focus. False when the input cannot be written to now (sending, voice).
+ */
+export function automationInDraft(target: { id: string; name: string } | 'new', { pressed = false }: { pressed?: boolean } = {}): boolean {
+  const { root, conversation } = useConversation.getState();
+  const key = draftKey(root, 'coordinator', conversation?.id ?? 'loading');
+  if (!writableEntry(key)) return false;
+  const badge: AutomationBadge = target === 'new' ? { id: 'new', name: '' } : { id: target.id as AutomationBadge['id'], name: target.name };
+  mutateInput(key, values => badged(values, badge, pressed));
+  if (pressed) focusCoordinator();
+  return true;
+}
+/**
+ * The screen shows no automation but `kept` (its ID, `'new'` for the page asking for one, null for none): a draft
+ * holding only another's badge empties, whenever and by whatever page that badge was put in.
+ */
+export function automationLeftDraft(kept: string | null) {
+  const { root, conversation } = useConversation.getState();
+  mutateInput(draftKey(root, 'coordinator', conversation?.id ?? 'loading'), values => unbadged(values, kept));
 }
 
 /**

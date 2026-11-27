@@ -1,6 +1,10 @@
 import { parseTaskId } from '@alpacawork/raw/task-id';
+import { automationIdSchema } from '@alpacawork/raw/automation';
 
-const taskNumber = /[TtＴｔPpＰｐ][0-9０-９]+/;
+/** Task and project numbers (any case), and automation numbers (capital A only: a lower-case `a1` is prose). */
+const taskNumber = /[TtＴｔPpＰｐAＡ][0-9０-９]+/;
+/** A public number the words may name: a Task's or project's, or an automation's. An agent's internal `A`+UUID is not one. */
+const referenceId = (id: string) => !!parseTaskId(id) || automationIdSchema.safeParse(id).success;
 const whitespace = /\s/;
 const unsafePrefixCharacter = /[:?=#@]/;
 
@@ -83,7 +87,7 @@ function scanTaskTokens(text: string, lookup: (id: string) => { id: string; titl
       const eligible = !(/[A-Za-z0-9_./\\:$#@-]/.test(text[from - 1] ?? '') || /[A-Za-z0-9_./\\:-]/.test(text[to] ?? '') ||
         unsafePrefix || /[?=#@]/.test(text[to] ?? ''));
       const normalized = match[0].normalize('NFKC').toUpperCase();
-      const task = eligible && parseTaskId(normalized) ? lookup(normalized) : undefined;
+      const task = eligible && referenceId(normalized) ? lookup(normalized) : undefined;
       let end = to;
       if (text[to] === '（') {
         const title = task && formatTask(match[0], task.title);
