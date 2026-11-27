@@ -50,14 +50,19 @@ test('a withdrawn turn, or a request gone from both sides, ends the send', () =>
 
 const T4 = (over: { since?: string; status?: string } = {}) => ({ id: 'T4', ...row(over) });
 
-const write = (status: WriteIntent['status'], operationId = 'w1') => ({ status, operationId } as WriteIntent);
+const write = (status: WriteIntent['status'], operationId = 'w1') => ({ status, operationId, payload: { task: 'T4', state: 'held' } } as WriteIntent);
 
-test('a state change is on its way through its undo time and delivery, and any answer ends it', () => {
-  expect(writeOnItsWay(write('waiting'), 'w1')).toBe(true);
-  expect(writeOnItsWay(write('pending'), 'w1')).toBe(true);
-  for (const status of ['confirmed', 'refused', 'conflict', 'unconfirmed', 'cancelled'] as const) expect(writeOnItsWay(write(status), 'w1')).toBe(false);
-  expect(writeOnItsWay(write('pending', 'w2'), 'w1')).toBe(false);
-  expect(writeOnItsWay(undefined, 'w1')).toBe(false);
+test('a state change is on its way through its undo time and delivery, and until the row shows the state it reported', () => {
+  expect(writeOnItsWay(write('waiting'), 'w1', 'doing')).toBe(true);
+  expect(writeOnItsWay(write('pending'), 'w1', 'doing')).toBe(true);
+  expect(writeOnItsWay(write('confirmed'), 'w1', 'doing')).toBe(true);
+  expect(writeOnItsWay(write('confirmed'), 'w1', 'held')).toBe(false);
+});
+
+test('a failed, unknown or undone state change ends at once, as does one replaced by a newer write', () => {
+  for (const status of ['refused', 'conflict', 'unconfirmed', 'cancelled'] as const) expect(writeOnItsWay(write(status), 'w1', 'doing')).toBe(false);
+  expect(writeOnItsWay(write('pending', 'w2'), 'w1', 'doing')).toBe(false);
+  expect(writeOnItsWay(undefined, 'w1', 'doing')).toBe(false);
 });
 
 test('a state change sent to a running Task keeps its arc until the new state shows', () => {
@@ -67,9 +72,14 @@ test('a state change sent to a running Task keeps its arc until the new state sh
   expect(sentVerdict(T4({ status: 'running' }), sends, [false])).toEqual({ marked: null, settle: [], ended: ['w1'] });
 });
 
-test('the latest send on its way gives the baseline; ended sends are to be forgotten', () => {
+test('a message sent after a state change does not end the state change\'s arc when a Run starts', () => {
+  const sends: SentHere[] = [{ requestId: 'w1', tasks: { T4: PRESS }, write: 'key' }, { requestId: 'm1', tasks: { T4: PRESS } }];
+  expect(sentVerdict(T4({ status: 'running' }), sends, [true, true])).toEqual({ marked: 'state', settle: ['m1'], ended: [] });
+});
+
+test('each send on its way is judged against its own press; ended sends are to be forgotten', () => {
   const sends: SentHere[] = [{ requestId: 'a', tasks: { T4: 'other' } }, { requestId: 'b', tasks: { T4: PRESS } }];
-  expect(sentVerdict(T4(), sends, [true, true])).toEqual({ marked: 'instruction', settle: [], ended: [] });
+  expect(sentVerdict(T4(), sends, [true, true])).toEqual({ marked: 'instruction', settle: ['a'], ended: [] });
   expect(sentVerdict(T4(), sends, [true, false])).toEqual({ marked: null, settle: ['a'], ended: ['b'] });
   expect(sentVerdict(T4(), sends, [false, false])).toEqual({ marked: null, settle: [], ended: ['a', 'b'] });
 });
