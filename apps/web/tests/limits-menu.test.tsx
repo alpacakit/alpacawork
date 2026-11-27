@@ -23,22 +23,26 @@ function open(limits: AgentLimitsResponse) {
   return { bar, trigger };
 }
 
-test("the bar names only the agent, without the window or the percent, but says them aloud; the menu marks the window the bar shows", () => {
-  const { bar, trigger } = open({ agents: [agent("claude", [week(85), week(100, "Fable")]), agent("codex", [week(25)])],
-    stack: [{ adapter: "claude", model: "opus" }, { adapter: "codex", model: null }] });
-  expect(bar?.trim()).toBe("Claude");
-  expect(trigger.getAttribute("aria-label")).toMatch(/85%/);
-  expect(screen.getByRole("dialog").querySelector("[data-limit-shown]")?.closest("[data-limit-agent]")?.getAttribute("data-limit-agent")).toBe("claude");
-  expect(document.querySelectorAll("[data-limit-shown]")).toHaveLength(1);
-});
-
-test("with the first agent spent, the bar shows only the next one, the agent work goes on with", () => {
+test("the bar shows each agent as its mark and ring, without names, and says the windows aloud; the menu marks the window of the agent work goes on with", () => {
   const { bar, trigger } = open({ agents: [agent("claude", [week(100)]), agent("codex", [week(25)])],
     stack: [{ adapter: "claude", model: "opus" }, { adapter: "codex", model: null }] });
-  expect(bar?.trim()).toBe("Codex");
-  expect(trigger.getAttribute("aria-label")).toMatch(/Codex.*25%/);
-  expect(trigger.getAttribute("aria-label")).not.toMatch(/Claude/);
+  expect(bar).not.toMatch(/Claude|Codex/);
+  expect([...trigger.querySelectorAll("[data-limits-agent]")].map(slot => slot.getAttribute("data-limits-agent"))).toEqual(["claude", "codex"]);
+  expect(trigger.getAttribute("aria-label")).toMatch(/Claude[\s\S]*Codex.*25%/);
+  expect(document.querySelectorAll("[data-limit-shown]")).toHaveLength(1);
   expect(document.querySelector("[data-limit-shown]")?.closest("[data-limit-agent]")?.getAttribute("data-limit-agent")).toBe("codex");
+});
+
+test("with every agent stopped, the bar shows only the one that works again first, with its time; one whose limits are unknown is said so aloud", () => {
+  const until = (hours: number): LimitWindow => ({ ...week(100), resetsAt: new Date(Date.now() + hours * 3_600_000).toISOString() });
+  const { trigger } = open({ agents: [agent("claude", [until(30)]), agent("codex", [until(3)])],
+    stack: [{ adapter: "claude", model: "opus" }, { adapter: "codex", model: null }] });
+  expect([...trigger.querySelectorAll("[data-limits-agent]")].map(slot => slot.getAttribute("data-limits-agent"))).toEqual(["codex"]);
+  expect(trigger.textContent).toMatch(/\d/);
+  cleanup(); queryClient.clear();
+  const unknown: AgentLimits = { adapter: "codex", state: "unavailable", windows: [], account: null, observedAt: null };
+  const second = open({ agents: [agent("claude", [week(30)]), unknown], stack: [{ adapter: "claude", model: "opus" }, { adapter: "codex", model: null }] });
+  expect(second.trigger.getAttribute("aria-label")).toMatch(/Codex.*could not be read/);
 });
 
 test("the menu says which agents tasks use, and drops a reset window's old figure", () => {
