@@ -47,6 +47,7 @@
     "earlierLimit": "Você pode voltar até {{limit}} mensagens anteriores",
     "earlierMore": "Carregar anteriores",
     "earlierReading": "Carregando…",
+    "earlierTitle": "Mensagens anteriores",
     "error": {
       "attachment": "Não foi possível ler o anexo",
       "attachmentSave": "Não foi possível salvar os anexos da resposta",

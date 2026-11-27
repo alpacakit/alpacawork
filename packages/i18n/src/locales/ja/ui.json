@@ -45,6 +45,7 @@
     "earlierLimit": "以前のメッセージは {{limit}}件までさかのぼれます",
     "earlierMore": "さらに前を読む",
     "earlierReading": "読み込み中…",
+    "earlierTitle": "以前のメッセージ",
     "error": {
       "attachment": "添付を読めませんでした",
       "attachmentSave": "返答の添付を保存できませんでした",

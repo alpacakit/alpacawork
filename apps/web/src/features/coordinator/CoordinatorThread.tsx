@@ -1,5 +1,5 @@
 import { Fragment, memo, useCallback, useEffect, useLayoutEffect, useMemo, useState, useRef, type ReactNode } from "react";
-import { COORDINATOR_HISTORY_LIMIT } from "@alpacawork/contract/coordinator";
+import { COORDINATOR_HISTORY_LIMIT } from "@/data/coordinator-history";
 import { useShallow } from "zustand/react/shallow";
 import { useTranslation } from "react-i18next";
 import { CopyButton } from "@/components/ui/copy-button";
@@ -149,13 +149,14 @@ function EarlierRow({ count, reveal }: { count: number; reveal: () => void }) {
   </li>;
 }
 /**
- * At the top of the opened history: it folds the history again. While older turns are still to be read, the next page
- * of them is read as this comes near the reading (or the thread is short enough to show it): it says it is reading
- * meanwhile, and that it could not, with a press to try again. Once the history holds as many as the screen keeps,
- * it says nothing older is shown.
+ * At the top of the opened history, the entrance's counterpart: "earlier messages" and the press that folds them again.
+ * While older turns are still to be read, the next page of them is read while this is still screens above the reading
+ * (a reader dragging on to the top would otherwise pull a phone's sheet down instead): in its words' place it says it
+ * is reading meanwhile, and that it could not, with a press to try again. Once the history holds as many as the screen
+ * keeps, it says how far back it goes.
  */
-function EarlierHead({ held, more, full, reading, failed, read, fold }: { held: number; more: boolean; full: boolean; reading: boolean;
-  failed: boolean; read: () => void; fold: () => void }) {
+function EarlierHead({ held, more, full, reading, failed, read, retry, fold }: { held: number; more: boolean; full: boolean; reading: boolean;
+  failed: boolean; read: () => void; retry: () => void; fold: () => void }) {
   const { t } = useTranslation("ui");
   const place = useRef<HTMLLIElement>(null);
   const latest = useRef(read);
@@ -170,18 +171,18 @@ function EarlierHead({ held, more, full, reading, failed, read, fold }: { held: 
     const sight = new IntersectionObserver(entries => {
       if (asked || !entries.some(entry => entry.isIntersecting)) return;
       asked = true; latest.current();
-    }, { root: row.closest("[data-card-scroll]"), rootMargin: "400px 0px 0px 0px" });
+    }, { root: row.closest("[data-card-scroll]"), rootMargin: "1000% 0px 0px 0px" });
     sight.observe(row);
     return () => sight.disconnect();
   }, [waiting, held]);
-  const said = reading ? t("coordinatorCard.earlierReading") : failed ? t("coordinatorCard.earlierFailed")
-    : full ? t("coordinatorCard.earlierLimit", { limit: COORDINATOR_HISTORY_LIMIT }) : null;
+  const [said, tone] = reading ? [t("coordinatorCard.earlierReading"), "motion-safe:animate-pulse"] : failed ? [t("coordinatorCard.earlierFailed"), "text-error"]
+    : full ? [t("coordinatorCard.earlierLimit", { limit: COORDINATOR_HISTORY_LIMIT }), ""] : [t("coordinatorCard.earlierTitle"), "font-medium text-ink"];
   return <li ref={place} data-earlier-head data-earlier-more={reading ? "reading" : failed ? "failed" : full ? "full" : more ? "" : "none"}
     className="relative border-b border-rule pl-(--gutter)">
     <div className="flex min-h-11 items-center gap-1.5 py-2 text-xs text-muted narrow:min-h-12">
       <span className={`${ON_RAIL} top-1/2 flex -translate-y-1/2`}><Icon name="fold" className={cn("size-3.5 text-muted", ON_DISC)} /></span>
-      <span role={said ? "status" : undefined} className={cn("min-w-0", failed && "text-error", reading && "motion-safe:animate-pulse")}>{said}</span>
-      {failed && <button type="button" data-earlier-read onClick={read} className={LINE_ACTION}>{t("coordinatorCard.earlierMore")}</button>}
+      <span role={reading || failed || full ? "status" : undefined} className={cn("min-w-0", tone)}>{said}</span>
+      {failed && <button type="button" data-earlier-read onClick={retry} className={LINE_ACTION}>{t("coordinatorCard.earlierMore")}</button>}
       <button type="button" data-earlier-fold aria-expanded aria-label={t("coordinatorCard.earlierFold")} onClick={fold}
         className="ml-auto flex-none rounded-sm px-2 underline decoration-line underline-offset-3 hover:text-ink hover:decoration-ink">
         {t("coordinatorCard.exchangeFold")}</button>
@@ -297,9 +298,11 @@ export const CoordinatorThread = memo(function CoordinatorThread({ turns: recent
     return 'here';
   });
   const readOlder = () => { if (thread.current) keepThreadPosition(thread.current); void earlier.readMore(); };
-  // Opened or folded by hand, the history's head and its entrance take each other's place, and the focus goes with it.
+  // A press that leaves with what it did hands the focus on: folding the history, to its entrance; trying a read again,
+  // to the fold beside it. (Opening it hands the focus to the next operation, as any operation that leaves does.)
   const refocus = useRef<string | null>(null);
-  const handEarlier = (open: boolean) => { refocus.current = open ? "[data-earlier-fold]" : "[data-earlier=folded] button"; toggle(EARLIER, open); };
+  const foldEarlier = () => { refocus.current = "[data-earlier=folded] button"; toggle(EARLIER, false); };
+  const readAgain = () => { refocus.current = "[data-earlier-fold]"; readOlder(); };
   useLayoutEffect(() => {
     const target = refocus.current && thread.current?.querySelector<HTMLButtonElement>(refocus.current);
     if (!target) return;
@@ -355,8 +358,8 @@ export const CoordinatorThread = memo(function CoordinatorThread({ turns: recent
   return <>
     <ol ref={thread} data-action-focus-scope tabIndex={-1} data-coordinator-thread className={cn("relative m-0 list-none px-3 pt-1 pb-2 [overflow-wrap:anywhere] [--gutter:--spacing(6)] [--rail:7px] before:absolute before:top-5 before:bottom-5 before:left-[calc(--spacing(3)+var(--rail))] before:w-px before:bg-rule", empty && "before:hidden")}>
       {empty && <ConversationStart />}
-      {hidden > 0 && !earlierOpen && <EarlierRow count={hidden} reveal={() => handEarlier(true)} />}
-      {earlierOpen && (start > 0 || !!served.earlier) && <EarlierHead held={earlier.turns.length} more={earlier.more} full={earlier.full} reading={earlier.reading} failed={earlier.failed} read={readOlder} fold={() => handEarlier(false)} />}
+      {hidden > 0 && !earlierOpen && <EarlierRow count={hidden} reveal={() => toggle(EARLIER, true)} />}
+      {earlierOpen && (start > 0 || !!served.earlier) && <EarlierHead held={earlier.turns.length} more={earlier.more} full={earlier.full} reading={earlier.reading} failed={earlier.failed} read={readOlder} retry={readAgain} fold={foldEarlier} />}
       {rows}
       {!shown.tail.length && resetLines(null)}
     </ol>

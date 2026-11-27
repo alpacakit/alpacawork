@@ -156,12 +156,6 @@ export type CoordinatorNextLaunch = z.infer<typeof coordinatorNextLaunchSchema>;
 const coordinatorMessageId = z.string().min(1).max(256);
 export const COORDINATOR_RECENT_TURNS = 20;
 export const COORDINATOR_HISTORY_PAGE = 50;
-/**
- * The most turns older than the snapshot's that the screen holds: reading back stops there, so a long conversation's
- * thread stays light to scroll and to change. Measured on a phone-sized screen at a quarter of the CPU, 300 held
- * scrolled at full frame rate and 600 did not.
- */
-export const COORDINATOR_HISTORY_LIMIT = 300;
 export const COORDINATOR_MEMO_LIMIT = 2000;
 
 export const coordinatorResetReasonSchema = z.object({

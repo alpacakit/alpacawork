@@ -47,20 +47,23 @@ test("opening reads folded history without unfolding it; its entrance counts mes
   expect(calls.flatMap(([, init]) => JSON.parse(String(init?.body)).seen)).toEqual(['turn-4', 'turn-5']);
 });
 
-test("revealing history puts its head in the entrance's place, shows earlier exchanges, and folding it again goes back, the focus with each", async () => {
+test("revealing history puts its head in the entrance's place and hands focus to the next operation; folding it from the head hands focus back to the entrance", async () => {
   show(five.map(turn => ({ ...turn, seen: true })));
   expect(shape()).toBe('Eo');
   const button = document.querySelector<HTMLButtonElement>('[data-earlier] button')!;
+  const next = document.querySelector<HTMLButtonElement>('[data-coordinator-message="turn-5"] button')!;
+  const focus = vi.spyOn(next, 'focus');
   button.focus();
   fireEvent.click(button);
   await act(async () => {});
   expect(document.querySelector('[data-earlier]')).toBeNull();
   expect(shape()).toBe('Hffffo');
+  expect(document.querySelector('[data-earlier-head]')?.textContent).toContain('Earlier messages');
   expect([...document.querySelectorAll<HTMLElement>('[data-coordinator-message]')].map(row => row.dataset.coordinatorMessage))
     .toEqual(five.map(turn => turn.id));
-  const fold = document.querySelector<HTMLButtonElement>('[data-earlier-fold]')!;
-  expect(document.activeElement).toBe(fold);
-  fireEvent.click(fold);
+  expect(document.activeElement).toBe(next);
+  expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+  fireEvent.click(document.querySelector<HTMLButtonElement>('[data-earlier-fold]')!);
   await act(async () => {});
   expect(shape()).toBe('Eo');
   expect(document.activeElement).toBe(document.querySelector('[data-earlier] button'));

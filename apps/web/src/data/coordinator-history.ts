@@ -1,5 +1,4 @@
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
-import { COORDINATOR_HISTORY_LIMIT } from "@alpacawork/contract/coordinator";
 import { readCoordinatorTurns, type CoordinatorReset, type CoordinatorTurn } from "./coordinator";
 
 /**
@@ -72,6 +71,12 @@ async function readOlder(conversationId: string, held: CoordinatorHistory, signa
   return { ...held, turns: [...page.turns, ...held.turns], resets: joinResets(page.resets, held.resets), more: page.more };
 }
 
+/**
+ * The most turns older than the snapshot's that the screen holds: reading back stops there, so a long conversation's
+ * thread stays light to scroll and to change. Measured on a phone-sized screen at a quarter of the CPU, 300 held
+ * scrolled at full frame rate and 600 did not.
+ */
+export const COORDINATOR_HISTORY_LIMIT = 300;
 /** The window holds as many turns as the screen keeps, with older ones still in the conversation: it reads no further. */
 export const historyFull = (history: CoordinatorHistory) => history.more !== null && history.turns.length >= COORDINATOR_HISTORY_LIMIT;
 /**

@@ -46,6 +46,7 @@
     "earlierLimit": "You can go back up to {{limit}} earlier messages",
     "earlierMore": "Load earlier",
     "earlierReading": "Loading…",
+    "earlierTitle": "Earlier messages",
     "error": {
       "attachment": "Could not read the attachment",
       "attachmentSave": "Could not save the reply attachments",
