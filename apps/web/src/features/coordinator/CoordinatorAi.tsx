@@ -27,6 +27,6 @@ export function CoordinatorAi({ next, className }: { next: CoordinatorNextLaunch
     {/* The AI's own mark leads its model's name (AgentLabel); a warning keeps the warning's mark. */}
     {!label && <Icon name="caution" className="size-3.5 flex-none text-warn" />}
     {label ? <AgentLabel label={label} agent={next!.agent} />
-      : <span className="truncate">{t("coordinatorCard.ai.setUp")}</span>}
+      : <span className="min-w-0 cap-truncate">{t("coordinatorCard.ai.setUp")}</span>}
   </button>;
 }

@@ -34,6 +34,7 @@ type Inners = ReactNode[][];
 import { usePrefetch } from "@/data/prefetch";
 import { resources } from "@/data/resources";
 import { PROSE_MEASURE } from "@/components/ui/prose";
+import { CapCentred } from "@/components/ui/text-mark";
 import { useTaskCardOn } from "@/features/coordinator/TaskCard";
 import { useImageViewer, useOpenUrlImage, type SliderImage } from "./ImageSlider";
 
@@ -451,8 +452,8 @@ function InlineMarkdown({ content, html: block, task, onFollow, sourceFile, repo
     // The place flows with the sentence: the path folds at any letter but keeps its copy beside its last one, and
     // on a phone the copy's 44px press reaches past its 20px mark instead of making its line taller.
     if (target.kind === "outside") {
-      const copy = <Button variant="quiet" size="icon" className="relative ms-0.5 min-h-5 w-5 align-middle narrow:min-h-5 narrow:w-5 narrow:after:absolute narrow:after:-inset-3 narrow:after:content-['']" aria-label={`${t("files.copyPath")}: ${target.path}`} title={target.path}
-        onClick={() => void writeClip(textClip(target.path), { view })}><Icon name="copy" className="size-3" /></Button>;
+      const copy = <CapCentred className="ms-0.5"><Button variant="quiet" size="icon" className="relative min-h-5 w-5 narrow:min-h-5 narrow:w-5 narrow:after:absolute narrow:after:-inset-3 narrow:after:content-['']" aria-label={`${t("files.copyPath")}: ${target.path}`} title={target.path}
+        onClick={() => void writeClip(textClip(target.path), { view })}><Icon name="copy" className="size-3" /></Button></CapCentred>;
       // A file in the task's code places opens in the viewer; any other place is its path to copy.
       const opens = !!task && !target.path.endsWith("/") && codeRoots.some(top => target.path.startsWith(top.endsWith("/") ? top : `${top}/`));
       const press = (inner: ReactNode, named: boolean) => opens ? <button type="button" onClick={() => openView(task!.id, target.path)}

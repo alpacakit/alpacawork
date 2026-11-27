@@ -31,8 +31,8 @@ export const TAB_COUNT = "rounded-full bg-hover px-1.5 py-0.5 text-xs tabular-nu
  * capitals and the baseline, it is what the eye reads as the text, on any font.
  */
 export function TabLabel({ children }: { children: string }) {
-  return <span data-text={children} className="inline-grid after:invisible after:font-semibold after:content-[attr(data-text)_/_''] after:[grid-area:1/1] after:[text-box:trim-both_cap_alphabetic]">
-    <span className="[grid-area:1/1] [text-box:trim-both_cap_alphabetic]">{children}</span>
+  return <span data-text={children} className="inline-grid after:invisible after:font-semibold after:content-[attr(data-text)_/_''] after:[grid-area:1/1] after:cap-box">
+    <span className="[grid-area:1/1] cap-box">{children}</span>
   </span>;
 }
 

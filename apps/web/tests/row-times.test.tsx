@@ -47,7 +47,7 @@ test("a phone's expected report has a flag and a clock, with a suffix only for n
       const time = row(id).querySelector<HTMLElement>("[data-row-report]")!;
       expect(time.dataset.rowReport).toBe(kind);
       expect(time.textContent).toBe(text);
-      expect(time.firstElementChild?.getAttribute("data-icon")).toBe("flag");
+      expect(time.querySelector('[data-icon="flag"]')).not.toBeNull();
       expect(time.classList.contains("text-muted")).toBe(kind !== "over");
       expect(time.classList.contains("text-ink")).toBe(kind === "over");
       expect(time.classList.contains("text-working")).toBe(false);

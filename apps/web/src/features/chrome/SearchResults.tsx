@@ -22,6 +22,7 @@ import { ApiError } from "@/data/client";
 import { TaskId } from "@/components/ui/task-id";
 import { useListNavigationSource } from "@/features/tree/list-navigation";
 import { ReadFailure } from "@/components/ui/loadable";
+import { TextMark } from "@/components/ui/text-mark";
 
 /** All task based entrances render the same list and selection. */
 export function SearchResults() {
@@ -123,8 +124,8 @@ const ResultRow = memo(function ResultRow({ task, current, hit, needle, place }:
   return <li><Button variant="ghost" data-result={task.id} aria-current={current || undefined}
     className="relative flex w-full scroll-mt-(--bar-in) items-start justify-normal gap-2.5 rounded-none border-b border-solid border-line px-2 py-2.5 text-left whitespace-normal before:absolute before:inset-y-0 before:left-0 before:w-0.5 aria-[current]:bg-hover aria-[current]:before:bg-ink"
     onClick={() => openGathered(task.id)} {...prefetch}>
-    <TaskIcon task={task} className="mt-0.5 size-3.5 flex-none" />
-    <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+    <TextMark className="self-baseline"><TaskIcon task={task} className="size-3.5" /></TextMark>
+    <span className="flex min-w-0 flex-1 flex-col gap-0.5 self-baseline">
       <span className="flex min-w-0 items-center gap-2 text-xs tabular-nums text-muted">
         <span className={cn("min-w-0 truncate text-sm", TONE[finish?.tone ?? tone])}>{finish?.short ?? word}</span>
         <TaskId id={task.id} className="flex-none" />

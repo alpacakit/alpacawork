@@ -6,6 +6,29 @@
 @utility border-t-hairline {
   border-top-width: 0.5px;
 }
+/* Words boxed from their capitals to their baseline, so a row that centres its items (items-center, place-items-center)
+   centres the letters as drawn, not their line box with the font's room above and below. Its baseline stays the words'
+   own, so it lines up on a baseline too. A browser without text-box keeps the whole line box, about 1px lower. */
+@utility cap-box {
+  text-box: trim-both cap alphabetic;
+}
+/* `truncate` for words boxed to their capitals: cut across only, since cut all round their box cuts off what stands over
+   the capitals and under the baseline (g, p, kana). */
+@utility cap-truncate {
+  text-box: trim-both cap alphabetic;
+  overflow-x: clip;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* A strut as high as the capitals of the words round it, over their baseline (TextMark, CapStrut). Its one character
+   is drawn, not written, so the words round it read and copy without it. */
+@utility cap-strut {
+  width: 0;
+  text-box: trim-both cap alphabetic;
+  &::before {
+    content: "\200b";
+  }
+}
 /* An icon at a line's end: its icon's drawing square (4 to 20 of its 24, icon.tsx; the line a list's names start
    on, tokens.css list-text) ends where the line's words and rules end, so its box reaches past that end by the room round
    the icon. --edge-press is the box's width (2rem when unset: a 32px press; an icon alone gives its own size), --edge-icon the

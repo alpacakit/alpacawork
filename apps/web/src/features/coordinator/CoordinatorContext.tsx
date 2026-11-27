@@ -8,6 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useWriteDisabled } from "@/data/queries";
 import { recordFailure } from "@/lib/notify";
 import { cn } from "@/lib/utils";
+import { TextMark } from "@/components/ui/text-mark";
 import { countUse } from "@/features/telemetry/count";
 import { ContextFace, ContextFigures, useContextWords } from "@/features/people/ContextMeter";
 import { useConversation } from "./coordinator";
@@ -77,9 +78,9 @@ export function CoordinatorContext({ className }: { className?: string }) {
 function MenuAction({ icon, name, about, danger = false, disabled, onPress, ...data }: {
   icon: "reload" | "clear"; name: string; about: string; danger?: boolean; disabled: boolean; onPress: (pressed: HTMLElement) => void } & Record<`data-${string}`, unknown>) {
   return <button type="button" {...data} disabled={disabled} onClick={event => onPress(event.currentTarget)}
-    className={cn("grid w-full cursor-pointer grid-cols-[auto_1fr] gap-x-2 rounded-sm px-1.5 py-2 text-left outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-ink/40 disabled:cursor-default disabled:hover:bg-transparent",
-      danger ? "text-error" : "text-ink", disabled && "[&>[data-name]]:text-muted [&>svg]:text-muted")}>
-    <Icon name={icon} className="mt-0.5 size-4 flex-none" />
+    className={cn("grid w-full cursor-pointer grid-cols-[auto_1fr] items-baseline gap-x-2 rounded-sm px-1.5 py-2 text-left outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-ink/40 disabled:cursor-default disabled:hover:bg-transparent",
+      danger ? "text-error" : "text-ink", disabled && "[&>[data-name]]:text-muted [&_svg]:text-muted")}>
+    <TextMark><Icon name={icon} className="size-4" /></TextMark>
     <span data-name className="font-medium">{name}</span>
     <span className="col-start-2 text-xs text-muted">{about}</span>
   </button>;

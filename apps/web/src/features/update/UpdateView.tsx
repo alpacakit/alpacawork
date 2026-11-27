@@ -18,6 +18,7 @@ import { Icon, type IconName } from "@/components/ui/icon";
 import { APP_VERSION } from "@/lib/app-version";
 import { cn } from "@/lib/utils";
 import { CopyButton } from "@/components/ui/copy-button";
+import { TextMark } from "@/components/ui/text-mark";
 import { textClip } from "@/lib/clipboard";
 import { approveStart, continueUpdate, postponeUpdate, pressUpdate, retryUpdate, updateHasNews, useReloadHolds, useUpdateLocal, useUpdateStatus, useUpdateStatusKnown, useUpdateTargets, useWaitingForUpdate,
   type Confirmation, type UpdateStatus } from "./update-state";
@@ -184,7 +185,7 @@ export function UpdateSettingsTab() {
             {item.kind && <span className="flex-none rounded-full border border-line px-1.5 text-xs text-muted">{item.kind}</span>}
           </span>
           <span className="w-28 flex-none text-end text-xs text-soft tabular-nums">
-            {status.kind === "done" ? status.version : next ? <>{APP_VERSION}<Icon name="arrowRight" className="mx-1 inline size-3 align-[-1px]" /><span className="font-semibold text-ink">{next}</span></> : APP_VERSION}</span>
+            {status.kind === "done" ? status.version : next ? <>{APP_VERSION}<TextMark className="mx-1"><Icon name="arrowRight" className="size-3" /></TextMark><span className="font-semibold text-ink">{next}</span></> : APP_VERSION}</span>
         </li>)}
       </ul>}
       <p className="m-0 mt-3 text-xs text-soft [word-break:auto-phrase]">{t("update.page.handEdits")}</p>
@@ -251,10 +252,10 @@ export function UpdateCard({ quiet = false }: { quiet?: boolean }) {
       <Icon name={mark.icon} className={cn("size-4.5", card.tone === "busy" && "animate-spin [animation-duration:1.4s]")} strokeWidth={2.25} /></span>
     <div className="min-w-0 flex-1 basis-56">
       <div data-update-state><h4 className={cn("m-0 text-base font-semibold [word-break:auto-phrase]", card.tone === "warn" && "text-warn")}>
-        <span className={cn("me-2 hidden size-6 place-items-center rounded-full align-[-5px] narrow:inline-grid", mark.className)}>
-          <Icon name={mark.icon} className={cn("size-3.5", card.tone === "busy" && "animate-spin [animation-duration:1.4s]")} strokeWidth={2.5} /></span>{card.title}</h4>
+        <TextMark className="me-2 hidden narrow:inline-grid"><span className={cn("grid size-6 place-items-center rounded-full", mark.className)}>
+          <Icon name={mark.icon} className={cn("size-3.5", card.tone === "busy" && "animate-spin [animation-duration:1.4s]")} strokeWidth={2.5} /></span></TextMark>{card.title}</h4>
       <p className="m-0 mt-0.5 flex flex-wrap items-baseline gap-x-3 text-sm text-muted tabular-nums">
-        <span>alpacawork {card.from ? <>{card.from}<Icon name="arrowRight" className="mx-1 inline size-3.5 align-[-2px]" /><span className="font-semibold text-ink">{card.to}</span></> : card.to}</span>
+        <span>alpacawork {card.from ? <>{card.from}<TextMark className="mx-1"><Icon name="arrowRight" className="size-3.5" /></TextMark><span className="font-semibold text-ink">{card.to}</span></> : card.to}</span>
         {card.to && <ReleaseNotes version={card.to} />}
       </p>
       {card.body && <p className="m-0 mt-2 text-sm text-muted [word-break:auto-phrase]">{card.body}</p>}</div>

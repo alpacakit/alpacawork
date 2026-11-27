@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button } from "./button";
 import { Icon, type IconName } from "./icon";
 import { cn } from "@/lib/utils";
+import { TextMark } from "./text-mark";
 
 /**
  * What a message is about, said by one icon and colour everywhere:
@@ -85,8 +86,8 @@ export function Message({ tone, size = "region", title, description, action, sec
   const common = { ...data, role, "aria-live": live ? "polite" as const : undefined, "data-message": tone, "data-message-size": size };
   if (!block) return <div {...common} className={cn("flex min-w-0 flex-wrap items-start gap-x-2.5 gap-y-2 text-sm",
       size === "band" && "border border-line bg-[color:color-mix(in_oklab,var(--ink)_4%,transparent)] px-3 py-2", className)}>
-    <span className="mt-0.5 flex">{mark}</span>
-    <div className="min-w-0 flex-1 basis-48 [overflow-wrap:anywhere]">
+    <TextMark className="self-baseline">{mark}</TextMark>
+    <div className="min-w-0 flex-1 basis-48 self-baseline [overflow-wrap:anywhere]">
       <span className="text-ink">{title}</span>
       {description && (typeof description === "string" ? <span className="text-muted"> {description}</span> : <div className="mt-1 text-muted">{description}</div>)}
     </div>

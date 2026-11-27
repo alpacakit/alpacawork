@@ -34,13 +34,13 @@ function WindowRow({ window, now, scoped, shown }: { window: LimitWindow; now: n
   // centres what is drawn: the bar stands level with the words, not with their line boxes (which sit about 1px lower).
   // The window the bar shows is marked in the padding at its left and named in bold, so the bar's figure is found here.
   return <li data-limit-window={window.kind} data-limit-shown={shown || undefined} className="grid grid-cols-[minmax(0,7.5rem)_minmax(0,1fr)_2.5rem] items-center gap-x-3 gap-y-2">
-    <span className={cn("relative [text-box:trim-both_cap_alphabetic]", shown && "font-semibold")}>
+    <span className={cn("relative cap-box", shown && "font-semibold")}>
       {shown && <span aria-hidden className={cn("absolute -inset-y-1 -left-2.5 w-[3px] rounded-full", TONE_FILL[tone])} />}
       {windowLabel(window, t, scoped)}</span>
     <span aria-hidden className="h-1.5 overflow-hidden rounded-full bg-line">
       {current && <span className={cn("block h-full rounded-full", TONE_FILL[tone])} style={{ width: `${Math.min(100, window.usedPercent)}%` }} />}
     </span>
-    <span className={cn("text-right font-medium tabular-nums [text-box:trim-both_cap_alphabetic]", current ? TONE_TEXT[tone] : "text-muted")}>
+    <span className={cn("text-right font-medium tabular-nums cap-box", current ? TONE_TEXT[tone] : "text-muted")}>
       {current ? percentText(window.usedPercent) : "—"}</span>
     {reset && <span className="col-span-full text-xs text-muted">{reset}</span>}
   </li>;
