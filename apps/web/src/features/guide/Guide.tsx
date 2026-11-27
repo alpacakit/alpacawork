@@ -485,7 +485,9 @@ function BalloonBody({ screen, entry, facts, again, placed }: { screen: GuideScr
       side === "top" || side === "bottom" ? "-translate-x-1/2" : "-translate-y-1/2", side === "top" ? "-translate-y-1/2" : side === "bottom" ? "translate-y-1/2" : side === "left" ? "-translate-x-1/2" : "translate-x-1/2")} />
     {entry.roles && !again && <RolesPicture lit={entry.roles} />}
     <div className="flex items-start gap-1">
-      <p ref={words} className="m-0 flex-1 py-1.5 text-sm">
+      {/* A little room between sentences, so a sentence's own second line reads as part of it; a lead bold as a whole
+          stands a little further apart. */}
+      <p ref={words} className="m-0 flex-1 py-1.5 text-sm [&>span]:py-0.5 [&>span[data-bold]:first-child]:mb-1">
         <Sentences words={say} />
       </p>
       <CloseGuide screen={screen} className="pointer-events-auto text-bg/75 hover:bg-bg/15 hover:text-bg" />

@@ -7,11 +7,12 @@ export const sentences = (words: string) => [...words.matchAll(/([^。！？.!?]
 /**
  * A few words to be read at a glance, each sentence kept whole on a line where it fits: a line breaks between sentences
  * before it breaks inside one, and inside one at a phrase's end, its lines of even length. Each sentence is its own
- * `span`. What the words mark `<b>…</b>` (inside one sentence) is set in bold: what the reader must not miss.
+ * `span`. What the words mark `<b>…</b>` (inside one sentence) is set in bold: what the reader must not miss. A sentence
+ * bold as a whole is marked `data-bold`, so a place can set it apart as the words' lead.
  */
 export function Sentences({ words }: { words: string }) {
   return <>{sentences(words).map(({ sentence, gap }, at) =>
-    <Fragment key={at}><span className="inline-block text-balance [word-break:auto-phrase]">{bold(sentence)}</span>{gap && " "}</Fragment>)}</>;
+    <Fragment key={at}><span data-bold={/^<b>.*<\/b>$/.test(sentence.trim()) || undefined} className="inline-block text-balance [word-break:auto-phrase]">{bold(sentence)}</span>{gap && " "}</Fragment>)}</>;
 }
 
 /** A sentence's words, those marked `<b>…</b>` in bold (every other piece as it is). */
