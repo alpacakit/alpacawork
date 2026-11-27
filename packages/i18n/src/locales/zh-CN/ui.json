@@ -41,11 +41,9 @@
     "draft": "草稿",
     "earlierCount_other": "更早的 {{count}} 条消息",
     "earlierFailed": "无法加载。",
-    "earlierFold": "收起更早的消息",
-    "earlierLimit": "最多可回看 {{limit}} 条更早的消息",
+    "earlierLimit": "无法加载更早的内容（最多 {{limit}} 条）",
     "earlierMore": "加载更早的内容",
     "earlierReading": "加载中…",
-    "earlierTitle": "更早的消息",
     "error": {
       "attachment": "无法读取附件",
       "attachmentSave": "无法保存回复中的附件",

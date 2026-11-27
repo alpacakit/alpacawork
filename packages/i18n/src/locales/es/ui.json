@@ -43,11 +43,9 @@
     "earlierCount_many": "{{count}} mensajes anteriores",
     "earlierCount_other": "{{count}} mensajes anteriores",
     "earlierFailed": "No se pudo cargar.",
-    "earlierFold": "Contraer mensajes anteriores",
-    "earlierLimit": "Puedes retroceder hasta {{limit}} mensajes anteriores",
+    "earlierLimit": "No se puede cargar más atrás (máx. {{limit}} mensajes)",
     "earlierMore": "Cargar anteriores",
     "earlierReading": "Cargando…",
-    "earlierTitle": "Mensajes anteriores",
     "error": {
       "attachment": "No se pudo leer el archivo adjunto",
       "attachmentSave": "No se pudieron guardar los archivos adjuntos de la respuesta",

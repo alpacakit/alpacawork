@@ -7,9 +7,8 @@ const NONE: readonly never[] = [];
 
 /**
  * The turns older than the snapshot's, read once the history is opened (`open`) and let go when it is folded: serve's
- * window that ends where the snapshot starts, read again when the snapshot has moved on. `unread`: how many the
- * snapshot counts before it while none are read. `full`: the window holds as many as the screen keeps, and older ones
- * are not read.
+ * window that ends where the snapshot starts, read again when the snapshot has moved on. `full`: the window holds as
+ * many as the screen keeps, and older ones are not read.
  */
 export function useEarlierHistory(root: string, id: string | null, earlier: CoordinatorConversation['earlier'], open: boolean) {
   const client = useQueryClient();
@@ -26,7 +25,6 @@ export function useEarlierHistory(root: string, id: string | null, earlier: Coor
   return {
     turns: (range?.turns ?? NONE) as readonly CoordinatorTurn[], resets: (range?.resets ?? NONE) as readonly CoordinatorReset[],
     more: range ? range.more !== null && !full : !!boundary, full, reading: query.isFetching, failed: query.isError && !query.isFetching,
-    unread: range ? null : earlier?.count ?? 0,
     // The next page, or the first again after it could not be read: the Query decides which.
     readMore: () => id && boundary ? readOlderTurns(client, root, id) : Promise.resolve(),
   };
