@@ -185,3 +185,16 @@ test('two creation records for one placement are an explicit storage fault', asy
   assert.throws(() => placementLaunchValues([entry, { ...entry, id: 'another-creation' }], placement.id),
     { code: 'runs_unavailable' });
 });
+
+test('an AI chosen when placing stays the starting AI of each new conversation', async t => {
+  const h = await setup(t);
+  writeFileSync(join(h.root, 'config.yaml'), stringify({ agents: { choice: setting },
+    aiStack: [{ agent: 'choice', values: { model: 'large', effort: 'high' } }] }));
+  const { placement } = await h.commands.placeNewResponsible({ taskId: h.task.id, profileKey: 'choice',
+    expectedTaskHash: h.hash(), aiStack: [{ agent: 'choice', values: { model: 'small', effort: 'low' } }] }, human);
+  const first = await h.instruct(placement);
+  assert.deepEqual(h.values(first.outcome.request.runId), { model: 'small', effort: 'low' });
+  h.finish(first.outcome.request.runId);
+  const restarted = await h.instruct(placement, undefined, true);
+  assert.deepEqual(h.values(restarted.outcome.request.runId), { model: 'small', effort: 'low' });
+});
