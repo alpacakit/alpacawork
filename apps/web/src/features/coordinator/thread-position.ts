@@ -168,12 +168,13 @@ export function useThreadPosition(body: HTMLElement, host: HTMLElement | null, a
       // A disclosure moving in the thread (a turn's work, pressed by the person) is not new words to follow: what is read
       // stays where it is while it moves; still at the end once it has, the end is followed again.
       if (following && sized && !(anchor && pastFollow()) && !unfolding()) {
-        const from = area.scrollTop;
-        area.scrollTop = followTop();
-        // What it follows comes into sight by gliding there, not by a jump: as far as it moved on screen. What came in
-        // above it (older history read in) moved it down as far as the scroll takes it back, so the words in sight
-        // stand still rather than sweep past.
-        const said = lastSaid(), above = said && followed?.said === said ? topIn(said) - followed.top : 0;
+        // What came in above the followed words (older history read in, an image above taking its height) moved them
+        // down: the reading goes down as far, so they stand where they were. Only what grew under them, or a new size of
+        // the pane, is followed, and following only ever goes on toward the end, never back; what it follows comes into
+        // sight by gliding there, as far as it moved on screen.
+        const from = area.scrollTop, said = lastSaid(), above = said && followed?.said === said ? topIn(said) - followed.top : 0;
+        const grown = area.scrollHeight - rememberedHeight - above > 0 || area.clientHeight !== rememberedRoom;
+        area.scrollTop = grown ? Math.max(from + above, followTop()) : from + above;
         glideReading(body, area.scrollTop - from - above);
       }
       else if (anchor && body.contains(anchor.block)) {

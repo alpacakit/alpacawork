@@ -153,9 +153,10 @@ function EarlierRow({ count, open, toggle }: { count: number; open: boolean; tog
 }
 /**
  * How close to the top of what is read the reader comes before the next page is read: once the message this many from
- * the top is in sight (or passed), the next page is asked for. A page brings far more than this, so each comes as the
- * reader gets near it, never several at once, however tall the screen or the messages; and it is far enough ahead
- * that a reader flinging on to the top on a phone gets there after the page does, not into the sheet's pull.
+ * the top is in sight (or passed), the next page is asked for. A page brings more than this, so each page read leaves
+ * the next one waiting for the reader to come near it again, rather than several being read at once on a tall screen.
+ * It is far enough ahead that a reader flinging on to the top usually gets there after the page; one who gets there
+ * first finds the thread still reading (aria-busy), which a phone's sheet does not take for its top to pull down from.
  */
 const READ_AHEAD = 40;
 /**
@@ -206,7 +207,7 @@ function ReadOlder({ held, full, reading, failed, read }: { held: number; full: 
  * (its turn, whether it is open or waits, what joined it, the day it is read on), not when another row or the
  * conversation's usage does. One component for both, so a message sent from here keeps its row when serve takes it.
  */
-const NONE_TURNS: readonly CoordinatorTurn[] = [], NO_SKILLS: readonly { name: string }[] = [];
+const NONE_TURNS: readonly CoordinatorTurn[] = [], NO_SKILLS: readonly { name: string }[] = [], NO_RESETS: readonly CoordinatorReset[] = [];
 const ThreadRow = memo(function ThreadRow({ served, local, waiting, open, joined, skills, retry, toggle, viewer }: {
   /** Serve's turn, or (`local`) a message sent from here that serve has not shown yet. */
   served?: CoordinatorTurn; local?: LocalTurn; waiting: boolean; open: boolean;
@@ -274,7 +275,7 @@ export const CoordinatorThread = memo(function CoordinatorThread({ turns: recent
   const setHand = (next: (map: ReadonlyMap<string, boolean>) => ReadonlyMap<string, boolean>) => setHands(state => ({ of: state.of, map: next(state.map) }));
   const earlierOpen = hand.get(EARLIER) ?? false;
   // Turns older than the snapshot's, serve's window ending where the snapshot starts, read once the history is open.
-  const earlier = useEarlierHistory(root, served.id ?? null, served.earlier ?? null, earlierOpen, recent);
+  const earlier = useEarlierHistory(root, served.id ?? null, served.earlier ?? null, earlierOpen, recent, served.resets ?? NO_RESETS);
   const shown = useShownConversation(recent);
   // The window and the snapshot are joined by ID in serve's order (the window first), then grouped once: a message
   // sent into another across the snapshot's first turn stands under it.
@@ -372,7 +373,7 @@ export const CoordinatorThread = memo(function CoordinatorThread({ turns: recent
   // Empty is no message at all: the first one sent stands in the greeting's place as any message does.
   const empty = !!served.id && !work.length && !shown.tail.length && !served.earlier;
   return <>
-    <ol ref={thread} data-action-focus-scope tabIndex={-1} data-coordinator-thread className={cn("relative m-0 list-none px-3 pt-1 pb-2 [overflow-wrap:anywhere] [--gutter:--spacing(6)] [--rail:7px] before:absolute before:top-5 before:bottom-5 before:left-[calc(--spacing(3)+var(--rail))] before:w-px before:bg-rule", empty && "before:hidden")}>
+    <ol ref={thread} data-action-focus-scope tabIndex={-1} data-coordinator-thread aria-busy={earlierOpen && earlier.reading || undefined} className={cn("relative m-0 list-none px-3 pt-1 pb-2 [overflow-wrap:anywhere] [--gutter:--spacing(6)] [--rail:7px] before:absolute before:top-5 before:bottom-5 before:left-[calc(--spacing(3)+var(--rail))] before:w-px before:bg-rule", empty && "before:hidden")}>
       {empty && <ConversationStart />}
       {earlierOpen && (earlier.more || earlier.full) && <ReadOlder held={earlier.turns.length} full={earlier.full} reading={earlier.reading} failed={earlier.failed} read={readOlder} />}
       {rows}
