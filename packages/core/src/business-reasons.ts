@@ -394,6 +394,7 @@ export const businessReasonOptions = [
   z.object({ kind: z.literal('checkpoint_requires_owner_report') }).strict(),
   z.object({ kind: z.literal('reason_required'), flag: z.string(), choices: z.string() }).strict(),
   z.object({ kind: z.literal('placement_reason_needs_selection') }).strict(),
+  z.object({ kind: z.literal('placement_default_names_an_ai') }).strict(),
   z.object({ kind: z.literal('cause_requires_child_stop') }).strict(),
   z.object({ kind: z.literal('request_reasons_differ') }).strict(),
   z.object({ kind: z.literal('value_change_not_found') }).strict(),

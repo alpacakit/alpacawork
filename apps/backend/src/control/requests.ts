@@ -30,7 +30,7 @@ import { verifyRequestAttachments } from './task-files.js';
 import { launchDirectory } from './launch-directory.js';
 import { launchCwd } from './project-settings.js';
 import { freezeAiStack } from '../ai-stack.js';
-import { placementReason, priorResult, resultDecision, type DecisionOptions, type PlacementOptions } from './action-reasons.js';
+import { givesLaunchValues, placementReason, priorResult, resultDecision, type DecisionOptions, type PlacementOptions } from './action-reasons.js';
 import { initialPlacementValues } from './placement-launch-values.js';
 import { requestAiPlan } from './request-ai.js';
 import { deliverable, isServerRequest, seatFactsOf, seatSettings, seatSourceOf } from './wake.js';
@@ -285,7 +285,8 @@ export class RequestService {
             speaksForUser(context.actor) && currentReview(task.meta, unfinished) !== null;
           const aboutRun = review ? reviewTarget(task.meta, head, unfinished) : null;
           const reasons = context.purpose === 'instruction' && !context.answersQuestion ? context.reasons ?? {} : undefined;
-          const placed = reasons && placementReason(reasons, author, input.selected !== undefined || input.aiStack !== undefined);
+          const given = givesLaunchValues(input);
+          const placed = reasons && placementReason(reasons, author, { given, asked: given });
           const taken = reasons && resultDecision(reasons, author,
             priorResult(tx, task, placement.id, author, callerRun?.task ?? null, aboutRun));
           const request: NewRequest = { id: input.requestId, taskId: task.id, placementId: placement.id,
