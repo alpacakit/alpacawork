@@ -1,4 +1,5 @@
 import { useLineClip, wholeLinesHeight } from "@/lib/use-line-clip";
+import { AgentMark, INLINE_MARK } from "@/components/ui/agent-mark";
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { orderRecordWords } from './StartOrder';
 import { readQuery } from '@/data/read-model';
@@ -774,9 +775,9 @@ function RowName({ row, kindWord, open }: { row: HistoryRow; kindWord: string; o
     {/* On a phone the tags are a step smaller than the words beside them, so two long agents stay whole on one line. */}
     {/* Cut across only: cut all round, a phone's tight small line cut the agents' g and p off below. */}
     {!open && <span data-row-ends className="-my-px ml-1.5 flex min-w-0 items-baseline overflow-x-clip gap-x-1 narrow:my-0 narrow:ml-0.5 narrow:gap-x-0.5 narrow:text-micro">
-      <PartyTag end={"own" in name ? name.own : name.ends[0]} />
+      <PartyTag end={"own" in name ? name.own : name.ends[0]} tight={"ends" in name && name.ends.every(end => end.agent)} />
       {"ends" in name && <><TextMark className="narrow:mx-px"><Icon name="arrowRight" data-row-arrow className="size-3.5 narrow:size-3 text-muted group-hover/row:text-ink group-data-lit/row:text-ink" /></TextMark>
-        <PartyTag end={name.ends[1]} /></>}
+        <PartyTag end={name.ends[1]} tight={name.ends.every(end => end.agent)} /></>}
     </span>}
   </span>;
 }
@@ -798,7 +799,7 @@ function PartyMark({ party }: { party: NameEnd["party"] }) {
  * agent, and no title (the title is the Task's own page, said only in the tag's label). A tag naming another Task
  * is the way to it (`onOpen`): the whole tag is the one button, and all its words are underlined as one link.
  */
-function PartyTag({ end, whole, onOpen }: { end: NameEnd; whole?: boolean; onOpen?: (button: HTMLElement) => void }) {
+function PartyTag({ end, whole, tight, onOpen }: { end: NameEnd; whole?: boolean; tight?: boolean; onOpen?: (button: HTMLElement) => void }) {
   const { reader: t } = useFeedWords();
   const agentNames = useContext(AgentNames);
   const agent = end.agent && modelLabel(end.agent, agentNames);
@@ -809,8 +810,9 @@ function PartyTag({ end, whole, onOpen }: { end: NameEnd; whole?: boolean; onOpe
   const parts = [
     word && <span key="party" data-row-party className={`flex-none ${end.party === "self" ? "" : "font-semibold"}`}>{word}</span>,
     task && end.taskId && (whole || !kin) && <span key="task" data-row-task className="flex-none font-semibold tabular-nums">{end.taskId}</span>,
-    agent && (whole ? <span key="agent" data-row-agent title={agent.full} className="whitespace-nowrap">{agent.full}</span>
-      : <AgentLabel key="agent" data-row-agent label={agent} />),
+    agent && (whole ? <span key="agent" data-row-agent title={agent.full} className="whitespace-nowrap"><AgentMark model={agent.name} className={INLINE_MARK} />{agent.full}</span>
+      // A phone's row between two AIs has room for their names only: the names stay, the marks give way.
+      : <AgentLabel key="agent" data-row-agent label={agent} markClassName={tight ? "narrow:hidden" : undefined} />),
   ].filter(Boolean);
   // The mark stands on the words' baseline, so whole it centres on their first line, even when they wrap below it; the
   // words are one run of text (spaces between them, not gaps), so a link's underline runs unbroken from its kind's word
@@ -1015,7 +1017,7 @@ function WorkingPerson({ run, task, onFollow, open, lead, others }: { run: Contr
     <span className="col-start-2 row-start-1 flex min-w-0 items-baseline gap-x-2 text-xs text-soft group-hover/row:text-ink">
     <span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-1.5">
       <span className="font-medium">{t(`reportFeed.row.party.${member ? "member" : "self"}`)}</span>
-      <AgentLabel data-working-model label={model} /><span>{t("reportFeed.row.working")}</span>{others && <>·{others}</>}
+      <AgentLabel data-working-model label={model} agent={run.agent} /><span>{t("reportFeed.row.working")}</span>{others && <>·{others}</>}
       {before && <span data-working-took-over>· {t("reportFeed.working.tookOver", { agent: `${before.agent} ${modelLabel(runAgentLabel(before), names).short}`,
         reason: beforeCause ? limitName(beforeCause, ui) : t("reportFeed.row.carriedOn.limit") })}</span>}
       </span>
@@ -1089,7 +1091,7 @@ function ChildWorkLine({ item, mark, onFollow }: { item: ChildWork; mark: boolea
       <span data-row-end="child" className="party-tag inline-flex items-baseline gap-1 font-medium">
         <PartyMark party="child" />
         <span>{t(item.path.length > 1 ? "reportFeed.childWorking.grandchild" : "reportFeed.row.party.child")}</span><span className="tabular-nums">{item.id}</span></span>
-      <AgentLabel data-child-work-model label={model} />{mark && <span>{t("reportFeed.row.working")}</span>}
+      <AgentLabel data-child-work-model label={model} agent={run.agent} />{mark && <span>{t("reportFeed.row.working")}</span>}
       {others > 0 && <span data-child-work-others className="whitespace-nowrap">·&nbsp;{t("reportFeed.working.others", { count: others })}</span>}
       </span>
       {run.activity?.context && <span className="flex-none self-center"><ContextMeter context={run.activity.context} press={false} /></span>}</span>
@@ -1226,7 +1228,7 @@ function AssignedRow({ task }: { task: TaskDetail }) {
       <RailTime mark={WORKING_MARK} live>{duration(owner.startedAt)}</RailTime>
       <span className="col-start-2 row-start-1 flex min-w-0 flex-wrap items-baseline gap-x-1.5 text-xs text-soft">
         <span className="font-medium">{t("reportFeed.row.party.self")}</span>
-        <AgentLabel label={model} /><span>{t("reportFeed.row.working")}</span></span>
+        <AgentLabel label={model} agent={owner.profileKey} /><span>{t("reportFeed.row.working")}</span></span>
     </div>
   </div></li>;
 }

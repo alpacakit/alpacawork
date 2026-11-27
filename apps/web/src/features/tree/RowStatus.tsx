@@ -6,7 +6,9 @@ import { useTranslation } from "react-i18next";
 import { Icon } from "@/components/ui/icon";
 import { TimeTipPopover } from "./time-tip";
 import type { Task } from "@/data/types";
-import { AGENT_SLOT, NarrowTokenSpeed, TIME_SLOT } from "./token-speed";
+import { AgentCounts, NarrowTokenSpeed, TIME_SLOT } from "./token-speed";
+import { AgentMark } from "@/components/ui/agent-mark";
+import { crewOf } from "@/domain/people";
 import { useNarrow } from "@/state/view-store";
 import { useConnection } from "@/data/connection";
 import { usePeopleFor, useTaskIndexFor } from "@/data/queries";
@@ -84,18 +86,15 @@ export function StatusTime({ task }: { task: Task }) {
 }
 
 /**
- * How many Runs run now on a Working row and under it, a square and its number just before the row's working time, in
- * grey: the time beside it is the one word of the row in the working colour. The server counts them, so a child no page
- * has loaded counts too. Out of reach it is what was last received. A reader hears it in words.
+ * Which agents run now on a Working row and under it, and how many of each (AgentCounts), just before the row's working
+ * time, in grey: the time beside it is the one word of the row in the working colour. The server counts them, so a child
+ * no page has loaded counts too. Out of reach it is what was last received.
  */
 export function RunningRuns({ task }: { task: Task }) {
-  const { t } = useTranslation("tree");
-  const count = runningRunsSaid(task);
   const narrow = useNarrow();
-  if (!count) return null;
-  return <span data-row-running-runs={count} className="flex flex-none items-baseline gap-1.5 whitespace-nowrap tabular-nums text-muted">
-    <span aria-hidden="true" className={AGENT_SLOT}><Icon name="runningRuns" className="mr-0.5 inline size-[0.7em] align-[-0.02em]" />{count}</span>
-    <span className="sr-only">{t("status.runningRuns", { count })}</span>
+  if (!runningRunsSaid(task)) return null;
+  return <span data-row-running-runs={runningRunsSaid(task)} className="ml-1.5 flex min-w-0 shrink items-center gap-1.5 self-center whitespace-nowrap">
+    <AgentCounts tasks={[task]} />
     {narrow && <NarrowTokenSpeed task={task} />}
   </span>;
 }
@@ -275,6 +274,18 @@ function RowChildren({ childCount, word }: { childCount: string; word: boolean }
  * The line's weights still add up to at least one (the strut before the times), so once they are gone it does give way.
  */
 export function RowKindWord({ task }: { task: Task }) {
+  // A stop says which AI stopped, by its logo, faded in its own colours: what it takes to set it going again (a limit, a sign-in) is that
+  // AI's. Other rows that wait on the reader show no AI: a logo on the list says one is at work.
+  return task.rowFacts.kind?.kind === "stopped" ? <><StoppedAgent task={task} /><KindWord task={task} /></> : <KindWord task={task} />;
+}
+
+function StoppedAgent({ task }: { task: Task }) {
+  const people = usePeopleFor(task.id, true);
+  const owner = crewOf(task.id, people).responsible;
+  return owner ? <AgentMark name={owner.profileKey} label className="mr-[-0.1em] size-[1em] flex-none self-center opacity-55" /> : null;
+}
+
+function KindWord({ task }: { task: Task }) {
   const { t } = useTranslation("tree");
   const { t: ut } = useTranslation("ui");
   const kind = task.rowFacts.kind;

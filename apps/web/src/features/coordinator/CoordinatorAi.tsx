@@ -24,9 +24,9 @@ export function CoordinatorAi({ next, className }: { next: CoordinatorNextLaunch
     onClick={() => openSettings("ai", "coordinatorAi")}
     className={cn("inline-flex self-start min-h-control-xs min-w-0 max-w-full cursor-pointer items-center gap-1.5 narrow:gap-1 rounded-sm border border-line bg-lit px-2 text-sm text-ink hover:bg-hover active:bg-line",
       className, !label && "text-warn hover:text-warn")}>
-    {/* Where the row is narrow the model's name alone says which AI; a warning keeps its mark. */}
-    <Icon name={label ? "agent" : "caution"} className={cn("size-3.5 flex-none", label ? "text-muted narrow:hidden pointer-coarse:hidden" : "text-warn")} />
-    {label ? <AgentLabel label={label} />
+    {/* The AI's own mark leads its model's name (AgentLabel); a warning keeps the warning's mark. */}
+    {!label && <Icon name="caution" className="size-3.5 flex-none text-warn" />}
+    {label ? <AgentLabel label={label} agent={next!.agent} />
       : <span className="truncate">{t("coordinatorCard.ai.setUp")}</span>}
   </button>;
 }
