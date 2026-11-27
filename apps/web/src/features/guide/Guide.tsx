@@ -124,15 +124,20 @@ function standing(target: Box, size: { width: number; height: number }, view: { 
  * Where a balloon of `size` stands in a view of `view`, pointing at `target`: beside it, clear of every box of `clear`
  * (the parts whose content stays read), on the side where it stands nearest the target; the side asked for when it is
  * as near there as anywhere, then the opposite one, then either side across. Lined up with the target as `align` says,
- * kept inside the view whatever happens, its arrow on the target's middle. With no side to stand clear on (a detail
- * taking the whole screen), it stands by the target alone: never pushed back over the very part it points at.
+ * kept inside the view whatever happens, its arrow on the target's middle. With no side to stand clear on, it stands
+ * clear of the boxes the target is not in (a detail taking the whole screen holds the target: it stands by the target
+ * alone, never pushed back over the very part it points at); with none of those either (a conversation taking all the
+ * room over the input), it stands on the asked side as far as the view lets it, over the target's own edge rather than
+ * over a part it was told to keep clear.
  */
 export function placeBalloon(target: Box, size: { width: number; height: number }, view: { width: number; height: number }, asked: GuideSide,
   align: GuideAlign = "middle", clear: readonly Box[] = []): Placed {
   const sides = [asked, OPPOSITE[asked], ...ACROSS[asked]];
   const stands = (boxes: readonly Box[]) => sides.map(side => standing(target, size, view, side, align, boxes)).filter(each => each.inView)
     .reduce<Standing | null>((best, each) => best && best.away <= each.away ? best : each, null);
-  const stood = stands(clear) ?? stands([]) ?? standing(target, size, view, asked, align, []);
+  const holds = (box: Box) => box.left <= target.left && box.top <= target.top
+    && box.left + box.width >= target.left + target.width && box.top + box.height >= target.top + target.height;
+  const stood = stands(clear) ?? stands(clear.filter(box => !holds(box))) ?? standing(target, size, view, asked, align, []);
   const x = clamp(stood.x, MARGIN, view.width - size.width - MARGIN), y = clamp(stood.y, MARGIN, view.height - size.height - MARGIN);
   const middleX = target.left + target.width / 2, middleY = target.top + target.height / 2;
   return stood.side === "top" || stood.side === "bottom"

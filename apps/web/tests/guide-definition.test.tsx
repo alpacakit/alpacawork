@@ -98,8 +98,9 @@ test("through a first Task the guide always has a step: each explained once, the
   expect(round({ settling: true })).toEqual([undefined, false]);
   // Nor is the coordinator said to have a message that can still be taken back, the conversation open or not.
   expect(round({ busy: true, soon: true })).toEqual([undefined, false]);
-  // Nor, while one more sent from an open report is still with the coordinator, is that report said to be finished.
+  // Nor, while what was sent from an open question or report is still with the coordinator, is it said to await them.
   expect(round({ results: 1, open: "result", busy: true, soon: true })).toEqual([undefined, false]);
+  expect(round({ questions: 1, open: "question", busy: true, soon: true })).toEqual([undefined, false]);
   // Once a Task is finished here, nothing is said again: the close is read whatever else awaits the person (another
   // Task's question), and the guide is over with it.
   expect(round({ doneHere: true, questions: 1, seen: read("working", "question", "answer", "received") })).toEqual(["conversation", false]);
@@ -269,6 +270,14 @@ test("a balloon stands right by its part, clear of the boxes it is told to, on t
   // A detail taking the whole screen leaves no room round it: the balloon stands by the question, not over it.
   const whole = placeBalloon(asked, { width: 496, height: 68 }, view, "left", "start", [{ left: 0, top: 0, ...view }]);
   expect(whole.x + 496).toBeLessThanOrEqual(asked.left);
+  // A conversation taking all the room over the input: never over the input it was told to keep clear; with no room
+  // anywhere round it but over the input, over its own head.
+  const conversation = { left: 8, top: 12, width: 1344, height: 636 }, across = { ...foot, left: 0, width: view.width };
+  const head = placeBalloon(conversation, size, view, "top", "middle", [across]);
+  expect(head).toMatchObject({ side: "top", y: 8 });
+  const aside = placeBalloon({ ...conversation, left: 380, width: 600 }, size, view, "top", "middle", [foot]);
+  const overlap = aside.x < foot.left + foot.width && aside.x + size.width > foot.left && aside.y + size.height > foot.top;
+  expect(overlap).toBe(false);
 });
 
 test("shown again from its first screen, the guide points at the input whatever the work, until something is written or sent", () => {
