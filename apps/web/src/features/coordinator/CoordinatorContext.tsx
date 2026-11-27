@@ -55,7 +55,7 @@ export function CoordinatorContext({ className }: { className?: string }) {
   return <Popover open={open} onOpenChange={setOpen}>
     <PopoverTrigger data-coordinator-context aria-label={`${t("coordinatorCard.context.tip")} ${words.label}`} title={t("coordinatorCard.context.tip")}
       className={cn("inline-flex flex-none cursor-pointer items-center outline-none focus-visible:ring-2 focus-visible:ring-ink/40", className)}>
-      <ContextFace words={words} />
+      <ContextFace words={words} figure="cap-box" />
     </PopoverTrigger>
     <PopoverContent data-coordinator-context-menu side="top" align="end" collisionPadding={8} className="w-80 max-w-[calc(100vw-1rem)] p-0 text-sm">
       <div className="p-3">

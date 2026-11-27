@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
  * row's id (RowLines). A browser without text-box keeps the strut a whole line high and centres the marks on the line.
  */
 export function CapStrut({ className }: { className?: string }) {
-  return <span className={cn("w-0 [text-box:trim-both_cap_alphabetic]", className)}>{"​"}</span>;
+  return <span className={cn("w-0 cap-box", className)}>{"​"}</span>;
 }
 
 /**

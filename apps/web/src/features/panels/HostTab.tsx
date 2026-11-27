@@ -1,5 +1,5 @@
 import { apiError, errorText } from "@/data/client";
-import { AgentMark, INLINE_MARK } from "@/components/ui/agent-mark";
+import { InlineAgentMark } from "@/components/ui/agent-mark";
 import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -200,7 +200,7 @@ function RunRow({ run, cpu, memory, detail, mark }: { run: { taskId: string | nu
       className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-baseline justify-stretch gap-x-2.5 gap-y-0 rounded-none border-t border-line px-0 py-1.5 text-left text-base whitespace-normal">
       <span className="truncate">{run.taskId !== null && <span className="mr-1.5 text-muted tabular-nums">{run.taskId}</span>}{runName(run, t("ui:role.coordinator"))}</span>
       <span className="text-right tabular-nums">{formatPercent(cpu, i18n.language)} · {formatGigabytes(memory, i18n.language)}</span>
-      <span title={detail.full} aria-label={detail.full} className="col-span-2 truncate text-xs text-muted">{detail.model && <AgentMark model={detail.model} className={INLINE_MARK} />}{detail.short}</span>
+      <span title={detail.full} aria-label={detail.full} className="col-span-2 truncate text-xs text-muted">{detail.model && <InlineAgentMark model={detail.model} />}{detail.short}</span>
     </Button>
   );
 }

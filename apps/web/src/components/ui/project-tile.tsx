@@ -42,7 +42,7 @@ export const ProjectTile = memo(function ProjectTile({ name, color, size, label,
     title={label} style={style}
     className={cn("inline-flex flex-none items-center justify-center font-bold ring-1 ring-line ring-inset select-none", className)}>
     {/* Drawn, not written: the letters stay out of the text around them (a row's or the list name's words, a copy). */}
-    <span data-letters={letters} className={cn("[text-box:trim-both_cap_alphabetic] before:content-[attr(data-letters)]",
+    <span data-letters={letters} className={cn("cap-box before:content-[attr(data-letters)]",
       !latin && "relative top-[0.03em]")} />
   </span>;
 });

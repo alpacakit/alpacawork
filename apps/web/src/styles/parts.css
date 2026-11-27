@@ -6,6 +6,12 @@
 @utility border-t-hairline {
   border-top-width: 0.5px;
 }
+/* Words boxed from their capitals to their baseline, so a row that centres its items (items-center, place-items-center)
+   centres the letters as drawn, not their line box with the font's room above and below. Its baseline stays the words'
+   own, so it lines up on a baseline too. A browser without text-box keeps the whole line box, about 1px lower. */
+@utility cap-box {
+  text-box: trim-both cap alphabetic;
+}
 /* An icon at a line's end: its icon's drawing square (4 to 20 of its 24, icon.tsx; the line a list's names start
    on, tokens.css list-text) ends where the line's words and rules end, so its box reaches past that end by the room round
    the icon. --edge-press is the box's width (2rem when unset: a 32px press; an icon alone gives its own size), --edge-icon the

@@ -251,9 +251,9 @@ export function AgentCounts({ tasks }: { tasks: readonly Task[] }) {
     {/* A logo and its count share one middle: the count's box is trimmed to its figures, so their middle is the logo's. */}
     {shown.map(([agent, count]) => <span key={agent ?? ""} data-agent aria-hidden="true" className="flex flex-none items-center gap-1">
       {agent === null ? <Icon name="runningRuns" className="size-[0.7em] text-muted" /> : <AgentMark name={agent} className="size-[1.05em]" />}
-      {(count > 1 || agent === null) && <span className="text-[0.8em] font-medium text-ink/70 [text-box:trim-both_cap_alphabetic]">{count}</span>}
+      {(count > 1 || agent === null) && <span className="text-[0.8em] font-medium text-ink/70 cap-box">{count}</span>}
     </span>)}
-    {rest > 0 && <span aria-hidden="true" className="text-[0.8em] text-muted [text-box:trim-both_cap_alphabetic]">+{rest}</span>}
+    {rest > 0 && <span aria-hidden="true" className="text-[0.8em] text-muted cap-box">+{rest}</span>}
   </span>;
 }
 

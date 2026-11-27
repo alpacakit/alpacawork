@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { textClip } from "@/lib/clipboard";
 import { AGENT_LOGOS } from "@/components/ui/agent-logos";
 import { AgentMark } from "@/components/ui/agent-mark";
+import { TextMark } from "@/components/ui/text-mark";
 import { KIND_LETTERS } from "@/domain/agent-mark";
 import { cn } from "@/lib/utils";
 import { recordFailure } from "@/lib/notify";
@@ -161,7 +162,7 @@ function AgentRow({ row, on, name, onChange, onRecheck, checking }: {
     <span className="min-w-0">
       <span className="block font-semibold">{name}</span>
       <span className={cn("flex items-baseline gap-1.5 text-sm text-muted", row.status === "ready" && "text-done", row.status === "missing" && "text-soft")}>
-        <i className="size-1.5 flex-none -translate-y-px rounded-full bg-current" />
+        <TextMark><i className="size-1.5 rounded-full bg-current" /></TextMark>
         <span className="min-w-0 [word-break:auto-phrase]">{row.status === "missing" ? t("agents.missing", { command: row.command ?? row.name })
           : t(row.status === "ready" ? "agents.ready" : row.status === "found" ? "agents.found" : row.status === "checking" ? "agents.checking" : "agents.signedOut")}</span></span>
     </span>

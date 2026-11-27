@@ -3,6 +3,7 @@ import { useServerSettings } from "@/data/queries";
 import { agentColor, agentKind, agentLetters, modelAgent } from "@/domain/agent-mark";
 import { cn } from "@/lib/utils";
 import { AGENT_LOGOS } from "./agent-logos";
+import { TextMark } from "./text-mark";
 
 /**
  * An agent's mark, one part for every place that names an agent: before its name where the name is written, or in its
@@ -10,11 +11,6 @@ import { AGENT_LOGOS } from "./agent-logos";
  * Copilot) wears that logo; any other, a round badge of two letters in a colour of its own (domain/agent-mark). Its
  * size follows the text around it, so it sits on the line wherever it stands.
  */
-/**
- * A mark set in running text (a table's name, a line of words): a step over the text, its middle on the capitals'
- * middle, and a little room before the name.
- */
-export const INLINE_MARK = "me-[0.4em] inline-block size-[1.07em] align-[-0.2em]";
 
 export const AgentMark = memo(function AgentMark({ name, model, kind: given, label, className }: {
   /** The agent's name as configured (claude, codex, inkling), or a kind's own id where only the kind is known. */
@@ -48,3 +44,11 @@ export const AgentMark = memo(function AgentMark({ name, model, kind: given, lab
     <text x={12} y={12} dy="0.35em" textAnchor="middle" fontSize={13} fontWeight={600} fill="#fff" letterSpacing={-0.4}>{letters}</text>
   </svg>;
 });
+
+/**
+ * An agent's mark set in running text (a table's name, a line of words): a step over the text, centred on its capitals
+ * (TextMark), with a little room before the name. With no agent to mark, nothing takes room.
+ */
+export function InlineAgentMark({ name, model }: { name?: string; model?: string }) {
+  return <TextMark><AgentMark name={name} model={model} className="me-[0.4em] size-[1.07em]" /></TextMark>;
+}

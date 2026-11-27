@@ -8,6 +8,7 @@ import { TimeTipPopover } from "./time-tip";
 import type { Task } from "@/data/types";
 import { AgentCounts, NarrowTokenSpeed, TIME_SLOT } from "./token-speed";
 import { AgentMark } from "@/components/ui/agent-mark";
+import { TextMark } from "@/components/ui/text-mark";
 import { crewOf } from "@/domain/people";
 import { useNarrow } from "@/state/view-store";
 import { useConnection } from "@/data/connection";
@@ -232,7 +233,7 @@ function ReportWords({ task, people, className }: { task: Task; people: PeopleIn
     : label;
   const long = facts.kind === "pending" ? t("status.report.pending.long") : words.long;
   return <TimeTip data={{ "data-row-report": over ? "over" : facts.kind }} shown={shown} heading={t("status.tip.report")} long={long}
-    mark={<Icon name="flag" className="mr-0.5 inline size-3.5 align-[-0.15em]" />} className={cn(over ? "text-ink" : "text-muted", className)} />;
+    mark={<TextMark className="mr-0.5"><Icon name="flag" className="size-3.5" /></TextMark>} className={cn(over ? "text-ink" : "text-muted", className)} />;
 }
 
 /**

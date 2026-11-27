@@ -1,5 +1,5 @@
 import { useLineClip, wholeLinesHeight } from "@/lib/use-line-clip";
-import { AgentMark, INLINE_MARK } from "@/components/ui/agent-mark";
+import { InlineAgentMark } from "@/components/ui/agent-mark";
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { orderRecordWords } from './StartOrder';
 import { readQuery } from '@/data/read-model';
@@ -810,7 +810,7 @@ function PartyTag({ end, whole, tight, onOpen }: { end: NameEnd; whole?: boolean
   const parts = [
     word && <span key="party" data-row-party className={`flex-none ${end.party === "self" ? "" : "font-semibold"}`}>{word}</span>,
     task && end.taskId && (whole || !kin) && <span key="task" data-row-task className="flex-none font-semibold tabular-nums">{end.taskId}</span>,
-    agent && (whole ? <span key="agent" data-row-agent title={agent.full} className="whitespace-nowrap"><AgentMark model={agent.name} className={INLINE_MARK} />{agent.full}</span>
+    agent && (whole ? <span key="agent" data-row-agent title={agent.full} className="whitespace-nowrap"><InlineAgentMark model={agent.name} />{agent.full}</span>
       // A phone's row between two AIs has room for their names only: the names stay, the marks give way.
       : <AgentLabel key="agent" data-row-agent label={agent} markClassName={tight ? "narrow:hidden" : undefined} />),
   ].filter(Boolean);
@@ -1180,7 +1180,7 @@ const WORKING_MARK = { kind: "start", tone: "working" } as const satisfies NonNu
  * row's one quiet colour, as what it is and who it was between, under its words.
  */
 function RailTime({ mark, live, children }: { mark?: ReportEvent["mark"]; live?: boolean; children: ReactNode }) {
-  return <span data-rail-time className="relative min-w-[4.6ch] flex-none text-xs whitespace-nowrap tabular-nums text-soft group-hover/row:text-ink group-data-lit/row:text-ink [text-box:trim-both_cap_alphabetic]">
+  return <span data-rail-time className="relative min-w-[4.6ch] flex-none text-xs whitespace-nowrap tabular-nums text-soft group-hover/row:text-ink group-data-lit/row:text-ink cap-box">
     {/* A quiet mark darkens with its row's words; one that says what you act on keeps its colour. */}
     {mark && <TimelineMark kind={mark.kind} tone={mark.tone} live={live} className={`${ON_RAIL} -ml-(--gutter) top-1/2 -translate-y-1/2 ${mark.tone === "quiet" ? "group-hover/row:text-ink group-data-lit/row:text-ink" : ""}`} />}
     {children}</span>;
