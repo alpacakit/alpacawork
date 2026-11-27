@@ -34,7 +34,7 @@
   </picture>
 </p>
 
-O alpacawork é um orquestrador para os agentes de programação com IA que você já tem no PC, como Claude Code e Codex: ele distribui o trabalho entre eles e acompanha o andamento. Escreva o que você quer em um único campo de mensagem, e o coordenador, a IA que é seu ponto de contato, transforma isso em tarefas e as atribui a outras IAs. Você faz três coisas: pede, responde às perguntas e revisa os resultados. Pelo celular, você usa do mesmo jeito.
+O alpacawork é uma ferramenta de orquestração de IA: ele distribui o trabalho entre os agentes de programação com IA que você já tem no PC, como Claude Code e Codex, e acompanha o andamento. Escreva o que você quer em um único campo de mensagem, e o coordenador, a IA que é seu ponto de contato, transforma isso em tarefas e as atribui a outras IAs. Você faz três coisas: pede, responde às perguntas e revisa os resultados. Pelo celular, você usa do mesmo jeito.
 
 <p align="center">
   <img src="docs/images/demo-dark-pt-BR.webp" alt="Um pedido digitado na caixa de chat do celular vira três tarefas que avançam em paralelo na lista do PC; um resultado é conferido e concluído com um deslize, e uma pergunta da IA é respondida escolhendo uma opção; no fim, o celular e o PC lado a lado" width="800">
