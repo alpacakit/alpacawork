@@ -8,7 +8,6 @@ import { Message } from '@/components/ui/message';
 import { FieldError } from '@/components/ui/field';
 import { useChoiceText } from '@/features/forms/choice-text';
 import { cn } from '@/lib/utils';
-import { useNarrow } from '@/state/view-store';
 import type { AgentDraft } from './agent-settings-draft';
 import { coordinatorStart, startValues, moveRow, newStackRow, repeatedRow, rowChoices, stackIssues, withRowAgent, withRowValue, type StackIssue, type StackRowDraft } from './ai-stack-draft';
 
@@ -32,11 +31,6 @@ export function AiStack({ kind, rows, agents, onChange, refusedRows, refused }: 
 }) {
   const { t } = useTranslation('panels');
   const issues = stackIssues(rows, agents);
-  const narrow = useNarrow();
-  // Sample switch: ?stack=b shows the list to read, opening one row to change it.
-  const sampleB = typeof location !== 'undefined' && new URLSearchParams(location.search).get('stack') === 'b';
-  const [openRow, setOpenRow] = useState<string | null>(null);
-  const Row = narrow ? StackRow : sampleB ? SummaryRow : CompactRow;
   const enabled = agents.filter(agent => agent.enabled !== false);
   const added = newStackRow(agents, rows, kind === 'coordinator' ? coordinatorStart : startValues);
   // A row just added is edited from its first choice (its model), which takes the focus.
@@ -50,22 +44,18 @@ export function AiStack({ kind, rows, agents, onChange, refusedRows, refused }: 
   }, [focusRow]);
   return <div className="flex flex-col gap-2">
     {/* Brought into view with room above it, so its edge stands clear of the tabs' rule. */}
-    <section aria-labelledby={stackHeadingId(kind)} data-ai-stack={kind} className="@container/ai-stack min-w-0 scroll-mt-4 rounded-lg border border-line bg-raised">
+    <section aria-labelledby={stackHeadingId(kind)} data-ai-stack={kind} className="min-w-0 scroll-mt-4 rounded-lg border border-line bg-raised">
       <div className="px-4 pt-4 pb-3 narrow:px-3">
         {/* Focusable by the screen alone: the input's AI opens the settings onto it. */}
         <h3 id={stackHeadingId(kind)} tabIndex={-1} className="text-base font-semibold">{t(stackTitleKey(kind))}</h3>
         <p className="mt-1 text-sm text-pretty text-muted [word-break:auto-phrase]">{t(kind === 'tasks' ? 'agentSettings.aiStack.lead' : 'agentSettings.coordinatorStack.lead')}</p>
       </div>
-      {/* On a PC the rows share their columns, so each one's role is as wide as the longest, and the agents as the longest
-          name they offer (up to a limit), and every agent and value starts on one line; where the list is too narrow
-          for that, each row's choices go on the line under its agent. */}
-      <ol ref={list} aria-labelledby={stackHeadingId(kind)} className={cn("m-0 list-none p-0", narrow ? "block" : "block")}>
-        {rows.map((row, index) => <Row key={row.id} row={row} index={index} count={rows.length} agents={agents} enabled={enabled}
+      <ol ref={list} aria-labelledby={stackHeadingId(kind)} className="m-0 list-none p-0">
+        {rows.map((row, index) => <StackRow key={row.id} row={row} index={index} count={rows.length} agents={agents} enabled={enabled}
           issues={issues.filter(issue => issue.rowId === row.id)} refused={refusedRows?.[index]} repeats={repeatedRow(rows, index, agents)}
           onChange={next => onChange(rows.map(was => was.id === row.id ? next : was))}
           onMove={by => onChange(moveRow(rows, index, by))}
-          onRemove={() => onChange(rows.filter(was => was.id !== row.id))}
-          open={openRow === row.id || issues.some(issue => issue.rowId === row.id)} onOpen={(next: boolean) => setOpenRow(next ? row.id : null)} />)}
+          onRemove={() => onChange(rows.filter(was => was.id !== row.id))} />)}
       </ol>
       <div className="border-t border-line px-4 py-3 narrow:px-3">
         <Button type="button" variant="outline" disabled={!added} data-ai-stack-add onClick={() => { if (added) { onChange([...rows, added]); setFocusRow(added.id); } }}>
@@ -79,6 +69,13 @@ export function AiStack({ kind, rows, agents, onChange, refusedRows, refused }: 
   </div>;
 }
 
+/**
+ * One AI in the order: its place (the primary, or which fallback), the AI itself — its agent and the values it runs with,
+ * on one line, each value named inside its own box as wide as what it holds — and its controls, at the end of the line.
+ * Values follow the agent when the line is full. A move the row cannot make is not offered; its room is kept, so the
+ * controls line up. What is wrong with the row is said under the AI. On a phone the place and the controls head the row,
+ * the AI goes under them.
+ */
 function StackRow({ row, index, count, agents, enabled, issues, refused, repeats, onChange, onMove, onRemove }: {
   row: StackRowDraft; index: number; count: number; agents: AgentDraft[]; enabled: AgentDraft[]; issues: StackIssue[]; refused?: string;
   repeats: number | null; onChange: (row: StackRowDraft) => void; onMove: (by: -1 | 1) => void; onRemove: () => void;
@@ -96,121 +93,38 @@ function StackRow({ row, index, count, agents, enabled, issues, refused, repeats
   const issueText = (issue: StackIssue) => issue.kind === 'missing' ? t('agentSettings.aiStack.issue.missing', { agent: row.agent })
     : issue.kind === 'disabled' ? t('agentSettings.aiStack.issue.disabled', { agent: row.agent })
     : issue.kind === 'value' ? t('agentSettings.aiStack.issue.value', { row: text.row(issue.key), value: shown(issue.value), agent: row.agent }) : '';
-  // One line on a PC: its role (the primary, or which fallback), its agent, two choices to a line in columns, and its
-  // controls. In a narrower list the choices start on the next line, under the agent (one to a line where narrower still). On a phone the role and controls head the row, the agent and its choices go under them, one to a line.
+  const move = (by: -1 | 1, can: boolean) => {
+    const label = t(by < 0 ? 'agentSettings.aiStack.up' : 'agentSettings.aiStack.down', { role: name });
+    return <Button type="button" variant="quiet" size="icon" disabled={!can} aria-label={label} title={label} className="disabled:invisible"
+      onClick={() => onMove(by)}><Icon name={by < 0 ? 'up' : 'down'} className="size-4" /></Button>;
+  };
   return <li data-ai-stack-row={row.agent} data-ai-stack-row-id={row.id} data-invalid={issues.length || refused ? '' : undefined} data-repeats={repeats === null ? undefined : repeats + 1}
-    className="col-span-4 grid grid-cols-subgrid items-baseline gap-x-2 border-t border-line px-4 py-3 narrow:grid-cols-[minmax(0,1fr)_auto] narrow:gap-x-2 narrow:px-3">
-    <span aria-hidden className={cn('whitespace-nowrap narrow:self-center', index === 0 ? 'font-semibold' : 'text-muted')}>{name}</span>
-    {/* The agent's logo stands inside its box, before its name (a choice's own words cannot carry a drawing). */}
-    <div className="relative min-w-28 narrow:col-span-2 narrow:row-start-2 narrow:mt-1">
-    <AgentMark name={row.agent} className="pointer-events-none absolute top-1/2 left-2.5 z-1 size-4 -translate-y-1/2" />
-    <NativeSelect variant="field" className="w-full pl-[1.8rem] font-semibold" value={row.agent} aria-invalid={issues.some(issue => issue.kind !== 'value') || !!refused || undefined}
-      aria-label={t('agentSettings.aiStack.agentFor', { role: name })}
-      onChange={event => { const next = agents.find(each => each.name === event.target.value); if (next) onChange(withRowAgent(next, row)); }}>
-      {!listed && <option value={row.agent}>{row.agent}</option>}
-      {enabled.map(each => <option key={each.id} value={each.name}>{each.name}</option>)}
-    </NativeSelect>
-    </div>
-    {choices.length > 0 && <div className="grid min-w-0 grid-cols-[max-content_minmax(0,9rem)_max-content_minmax(0,9rem)] items-baseline gap-x-2 gap-y-2 stackwrap:col-span-2 stackwrap:col-start-2 stackwrap:row-start-2 stackwrap:mt-2 stackwrap:grid-cols-[max-content_minmax(0,1fr)_max-content_minmax(0,1fr)] stacksingle:grid-cols-[max-content_minmax(0,14rem)] narrow:col-span-2 narrow:row-start-3 narrow:mt-2 narrow:grid-cols-[4.5rem_minmax(0,1fr)] narrow:gap-x-2">
-      {choices.map((choice, at) => {
-        const { value, refused } = choice;
-        return <label key={choice.key} data-ai-stack-choice={choice.key} className="contents">
-          <span className={cn('text-sm text-muted', at % 2 === 1 && 'ml-2 stacksingle:ml-0 narrow:ml-0')}>{text.row(choice.key)}</span>
-          <NativeSelect variant="field" className="w-full font-mono" value={optionValue(value)} aria-invalid={refused || undefined}
-            aria-label={t('agentSettings.aiStack.valueFor', { role: name, row: text.row(choice.key) })}
-            onChange={event => onChange(withRowValue(row, choice.key, event.target.value === '-' ? null : event.target.value))}>
-            {refused && <option value={optionValue(value)}>{t('agentSettings.aiStack.notOffered', { value: shown(value) })}</option>}
-            {choice.candidates.map(each => <option key={optionValue(each)} value={optionValue(each)}>{shown(each)}</option>)}
-          </NativeSelect>
-        </label>;
-      })}
-    </div>}
-    <div className="col-start-4 row-start-1 flex min-h-control-md items-center self-start narrow:col-start-2">
-      <Button type="button" variant="quiet" size="icon" disabled={index === 0} aria-label={t('agentSettings.aiStack.up', { role: name })} title={t('agentSettings.aiStack.up', { role: name })}
-        onClick={() => onMove(-1)}><Icon name="up" className="size-4" /></Button>
-      <Button type="button" variant="quiet" size="icon" disabled={index === count - 1} aria-label={t('agentSettings.aiStack.down', { role: name })} title={t('agentSettings.aiStack.down', { role: name })}
-        onClick={() => onMove(1)}><Icon name="down" className="size-4" /></Button>
-      <Button type="button" variant="quiet" size="icon" aria-label={t('agentSettings.aiStack.remove', { role: name })} title={t('agentSettings.aiStack.remove', { role: name })}
-        onClick={onRemove}><Icon name="close" className="size-4" /></Button>
-    </div>
-    {(issues.length > 0 || refused || repeats !== null) && <div className="col-span-2 col-start-2 mt-2 flex flex-col gap-1 self-start narrow:col-start-1">
-      {issues.map((issue, at) => <FieldError key={at}>{issueText(issue)}</FieldError>)}
-      {refused && <FieldError>{refused}</FieldError>}
-      {repeats !== null && <Message size="line" tone="info" quiet title={t('agentSettings.aiStack.repeated', { role: role(repeats) })} />}
-    </div>}
-  </li>;
-}
-
-/** Sample A: one line per AI — its place, the AI (agent and its values, each value named inside its own small box), and its controls. */
-type RowProps = {
-  row: StackRowDraft; index: number; count: number; agents: AgentDraft[]; enabled: AgentDraft[]; issues: StackIssue[]; refused?: string;
-  repeats: number | null; onChange: (row: StackRowDraft) => void; onMove: (by: -1 | 1) => void; onRemove: () => void;
-  open?: boolean; onOpen?: (open: boolean) => void;
-};
-
-/** Sample B: a line to read — its place, the AI and its values as words — and the row opens into its choices to change them. */
-function SummaryRow(props: RowProps) {
-  const { row, index, count, agents, repeats, onMove, open, onOpen } = props;
-  const { t } = useTranslation('panels');
-  const name = index === 0 ? t('agentSettings.aiStack.first') : t('agentSettings.aiStack.fallback', { n: index });
-  if (open) return <CompactRow {...props} done={() => onOpen?.(false)} />;
-  const agent = agents.find(each => each.name === row.agent);
-  const values = agent ? rowChoices(agent, row.values).map(choice => choice.value).filter(value => value !== null) : [];
-  return <li data-ai-stack-row={row.agent} data-ai-stack-row-id={row.id} className="flex items-center gap-3 border-t border-line px-4 py-1.5">
-    <span aria-hidden className={cn('w-12 flex-none whitespace-nowrap', index === 0 ? 'font-semibold' : 'text-muted')}>{name}</span>
-    <button type="button" onClick={() => onOpen?.(true)} className={cn('flex min-w-0 flex-1 cursor-pointer flex-wrap items-baseline gap-x-2 rounded-sm py-1.5 text-left hover:text-ink', repeats !== null && '[&>span:not(:last-child)]:text-soft [&>span:not(:last-child)]:line-through')}>
-      <span className="flex items-center gap-1.5 self-center font-semibold"><AgentMark name={row.agent} className="size-4" />{row.agent}</span>
-      <span className="font-mono">{values.join(' · ')}</span>
-      {repeats !== null && <span className="basis-full text-sm text-muted no-underline [text-decoration:none]">{t('agentSettings.aiStack.repeated', { role: repeats === 0 ? t('agentSettings.aiStack.first') : t('agentSettings.aiStack.fallback', { n: repeats }) })}</span>}
-    </button>
-    <div className="flex h-control-md flex-none items-center">
-      <Button type="button" variant="quiet" size="icon" className={cn(index === 0 && 'invisible')} aria-label={t('agentSettings.aiStack.up', { role: name })} onClick={() => onMove(-1)}><Icon name="up" className="size-4" /></Button>
-      <Button type="button" variant="quiet" size="icon" className={cn(index === count - 1 && 'invisible')} aria-label={t('agentSettings.aiStack.down', { role: name })} onClick={() => onMove(1)}><Icon name="down" className="size-4" /></Button>
-      <Button type="button" variant="quiet" className="ms-2 text-muted" onClick={() => onOpen?.(true)}>変更</Button>
-    </div>
-  </li>;
-}
-
-function CompactRow({ row, index, count, agents, enabled, issues, refused, repeats, onChange, onMove, onRemove, done }: RowProps & { done?: () => void }) {
-  const { t } = useTranslation('panels');
-  const text = useChoiceText();
-  const role = (at: number) => at === 0 ? t('agentSettings.aiStack.first') : t('agentSettings.aiStack.fallback', { n: at });
-  const name = role(index);
-  const agent = agents.find(each => each.name === row.agent);
-  const listed = enabled.some(each => each.name === row.agent);
-  const choices = agent ? rowChoices(agent, row.values) : [];
-  const shown = (value: string | null) => value === null ? text(null) : value;
-  const optionValue = (value: string | null) => value === null ? '-' : value;
-  const issueText = (issue: StackIssue) => issue.kind === 'missing' ? t('agentSettings.aiStack.issue.missing', { agent: row.agent })
-    : issue.kind === 'disabled' ? t('agentSettings.aiStack.issue.disabled', { agent: row.agent })
-    : issue.kind === 'value' ? t('agentSettings.aiStack.issue.value', { row: text.row(issue.key), value: shown(issue.value), agent: row.agent }) : '';
-  return <li data-ai-stack-row={row.agent} data-ai-stack-row-id={row.id} data-invalid={issues.length || refused ? '' : undefined}
-    className={cn("group flex items-start gap-3 border-t border-line px-4 py-2.5", done && "bg-[color:color-mix(in_oklab,var(--ink)_4%,transparent)]")}>
-    <span aria-hidden className={cn('w-12 flex-none whitespace-nowrap leading-9', index === 0 ? 'font-semibold' : 'text-muted')}>{name}</span>
-    <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+    className="flex flex-wrap items-start gap-x-3 gap-y-1 border-t border-line px-4 py-2.5 narrow:px-3">
+    <span aria-hidden className={cn('min-w-12 flex-none leading-9 whitespace-nowrap narrow:flex-1', index === 0 ? 'font-semibold' : 'text-muted')}>{name}</span>
+    <div className="flex min-w-0 flex-1 flex-col gap-1.5 narrow:order-last narrow:basis-full">
       <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-        <div className="relative">
+        {/* The agent's logo stands inside its box, before its name (a choice's own words cannot carry a drawing). */}
+        <div className="relative max-w-full">
           <AgentMark name={row.agent} className="pointer-events-none absolute top-1/2 left-2.5 z-1 size-4 -translate-y-1/2" />
-          <NativeSelect variant="field" className="w-auto border-line bg-transparent pr-1.5 pl-[1.8rem] [field-sizing:content] font-semibold hover:border-lit-line" value={row.agent} aria-invalid={issues.some(issue => issue.kind !== 'value') || !!refused || undefined}
+          <NativeSelect variant="field" className="w-auto border-line bg-transparent pr-1.5 pl-[1.8rem] font-semibold [field-sizing:content] hover:border-lit-line"
+            value={row.agent} aria-invalid={issues.some(issue => issue.kind !== 'value') || !!refused || undefined}
             aria-label={t('agentSettings.aiStack.agentFor', { role: name })}
             onChange={event => { const next = agents.find(each => each.name === event.target.value); if (next) onChange(withRowAgent(next, row)); }}>
             {!listed && <option value={row.agent}>{row.agent}</option>}
             {enabled.map(each => <option key={each.id} value={each.name}>{each.name}</option>)}
           </NativeSelect>
         </div>
-        {choices.map(choice => {
-          const { value, refused } = choice;
-          return <label key={choice.key} data-ai-stack-choice={choice.key}
-            className={cn('flex h-control-md flex-none items-center rounded-sm border border-line hover:border-lit-line focus-within:border-muted', refused && 'border-warn')}>
-            <span className="ps-2.5 font-mono text-xs text-soft">{choice.key}</span>
-            <NativeSelect className={cn('h-full min-h-0 border-0 bg-transparent ps-1.5 pe-1.5 font-mono text-base [field-sizing:content]', value === null && 'text-soft')} value={optionValue(value)} aria-invalid={refused || undefined}
-              aria-label={t('agentSettings.aiStack.valueFor', { role: name, row: text.row(choice.key) })}
-              onChange={event => onChange(withRowValue(row, choice.key, event.target.value === '-' ? null : event.target.value))}>
-              {refused && <option value={optionValue(value)}>{t('agentSettings.aiStack.notOffered', { value: shown(value) })}</option>}
-              {choice.candidates.map(each => <option key={optionValue(each)} value={optionValue(each)}>{shown(each)}</option>)}
-            </NativeSelect>
-          </label>;
-        })}
+        {/* Each value is named by its key as the agent's settings write it, the same for every agent. */}
+        {choices.map(({ key, value, refused, candidates }) => <label key={key} data-ai-stack-choice={key}
+          className={cn('flex h-control-md max-w-full items-center rounded-sm border border-line focus-within:border-muted hover:border-lit-line', refused && 'border-warn hover:border-warn')}>
+          <span className="ps-2.5 font-mono text-xs text-soft">{key}</span>
+          <NativeSelect className={cn('h-full min-h-0 min-w-0 border-0 bg-transparent ps-1.5 pe-1.5 font-mono [field-sizing:content] narrow:text-md', value === null && 'text-soft')}
+            value={optionValue(value)} aria-invalid={refused || undefined} aria-label={t('agentSettings.aiStack.valueFor', { role: name, row: text.row(key) })}
+            onChange={event => onChange(withRowValue(row, key, event.target.value === '-' ? null : event.target.value))}>
+            {refused && <option value={optionValue(value)}>{t('agentSettings.aiStack.notOffered', { value: shown(value) })}</option>}
+            {candidates.map(each => <option key={optionValue(each)} value={optionValue(each)}>{shown(each)}</option>)}
+          </NativeSelect>
+        </label>)}
       </div>
       {(issues.length > 0 || refused || repeats !== null) && <div className="flex flex-col gap-1">
         {issues.map((issue, at) => <FieldError key={at}>{issueText(issue)}</FieldError>)}
@@ -218,16 +132,11 @@ function CompactRow({ row, index, count, agents, enabled, issues, refused, repea
         {repeats !== null && <Message size="line" tone="info" quiet title={t('agentSettings.aiStack.repeated', { role: role(repeats) })} />}
       </div>}
     </div>
-    {done ? <div className="flex h-control-md flex-none items-center gap-1">
-      <Button type="button" variant="quiet" className="text-warn" onClick={onRemove}>{t('agentSettings.aiStack.remove', { role: name })}</Button>
-      <Button type="button" variant="outline" onClick={done}>閉じる</Button>
-    </div> : <div className="flex h-control-md flex-none items-center">
-      <Button type="button" variant="quiet" size="icon" className={cn(index === 0 && 'invisible')} aria-label={t('agentSettings.aiStack.up', { role: name })} title={t('agentSettings.aiStack.up', { role: name })}
-        onClick={() => onMove(-1)}><Icon name="up" className="size-4" /></Button>
-      <Button type="button" variant="quiet" size="icon" className={cn(index === count - 1 && 'invisible')} aria-label={t('agentSettings.aiStack.down', { role: name })} title={t('agentSettings.aiStack.down', { role: name })}
-        onClick={() => onMove(1)}><Icon name="down" className="size-4" /></Button>
-      <Button className="ms-2" type="button" variant="quiet" size="icon" aria-label={t('agentSettings.aiStack.remove', { role: name })} title={t('agentSettings.aiStack.remove', { role: name })}
+    {/* Moving is kept apart from removing, which ends the row. */}
+    <div className="flex h-control-md flex-none items-center">
+      {move(-1, index > 0)}{move(1, index < count - 1)}
+      <Button type="button" variant="quiet" size="icon" className="ms-2" aria-label={t('agentSettings.aiStack.remove', { role: name })} title={t('agentSettings.aiStack.remove', { role: name })}
         onClick={onRemove}><Icon name="close" className="size-4" /></Button>
-    </div>}
+    </div>
   </li>;
 }

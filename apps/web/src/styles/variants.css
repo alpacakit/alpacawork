@@ -10,23 +10,6 @@
 /* App bar and list have the same content width; search moves below both when that width is tight: under 48rem the bar
    keeps its room for the project name, which goes before the search box. */
 @custom-variant compactbar (@container (width < 48rem));
-/* An AI stack's list on a computer too narrow for a row's agent, its choices and its controls on one line (settings beside its
-   side list): the choices go under the agent, two to a line; under 35rem, one to a line. Asked of the list itself; a phone
-   keeps its own layout (narrow). */
-@custom-variant stackwrap {
-  @media (min-width: 701px) {
-    @container ai-stack (width < 52rem) {
-      @slot;
-    }
-  }
-}
-@custom-variant stacksingle {
-  @media (min-width: 701px) {
-    @container ai-stack (width < 35rem) {
-      @slot;
-    }
-  }
-}
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 /* While the keyboard is in use (input-mode.ts writes data-input): for a focus a part shows in its own way, not the ring. */
 @custom-variant keys (&:where(:root[data-input="keyboard"] *));
