@@ -234,20 +234,28 @@ const KIND_ORDER: readonly string[] = ["claude", "codex", "grok", "copilot", "pi
 /** A column's width: a logo and a one-figure count beside it, so every row's logos stand one over another. */
 const AGENT_COLUMN = "w-[2.2em]";
 
-/** The agents of every Run running now, each once: the columns the heading and the rows share. */
-const runningAgentNames = (data: WorkspaceData) =>
-  [...new Set([...data.people.runs.values()].filter((run) => run.state === "running").map((run) => run.agent))].sort();
+/**
+ * The columns the heading and its rows share: the agents running on the In progress rows the heading counts (as the
+ * bars' scale reads them), with the row's own, so a row drawn before the heading has set them still names its AIs.
+ */
+const columnAgents = (own: readonly [string | null, number][], data: WorkspaceData) => [...new Set([
+  ...runningAgents(scaleTasks, data).flatMap(([agent]) => agent === null ? [] : [agent]),
+  ...own.flatMap(([agent]) => agent === null ? [] : [agent]),
+])].sort();
 
 /**
- * Which AIs run and how many, as one grid with the heading and every row: a column for each AI running anywhere, in
- * the kinds' order, each holding its logo and, past one, how many of it, or nothing where this row has none; past three
+ * Which AIs run and how many, as one grid with the heading and every row: a column for each AI running on the In
+ * progress rows, in the kinds' order, each holding its logo and, past one, how many of it, or nothing where this row has none; past three
  * AIs, a "+count" of the rest. Logos stand side by side as their makers draw them. Its press lists each agent's count,
  * and a reader hears the total and each agent's name and count. Runs no read has brought count in the "+count".
  */
 export function AgentCounts({ tasks }: { tasks: readonly Task[] }) {
   const { t } = useTranslation("tree");
   const settings = useServerSettings().data?.agents;
-  const key = useWorkspaceSelector((data) => JSON.stringify([runningAgents(tasks, data), runningAgentNames(data)]));
+  const key = useWorkspaceSelector((data) => {
+    const own = runningAgents(tasks, data);
+    return JSON.stringify([own, columnAgents(own, data)]);
+  });
   const [agents, names] = JSON.parse(key) as [[string | null, number][], string[]];
   if (!agents.length) return null;
   const total = agents.reduce((sum, [, count]) => sum + count, 0);
