@@ -941,7 +941,7 @@ test('a follow-up to a returned member result needs a decision and links it to t
         const owner = responsibleOf(h.root, h.top.id);
         const { placement } = await new PlacementCommands(h.root).placeMember({ taskId: h.top.id,
             profileKey: 'codex', expectedTaskHash: (await tasks.get(h.top.id)).hash,
-            expectedResponsibleRevision: owner.revision, placedAs: 'lighter' }, actor);
+            expectedResponsibleRevision: owner.revision, placedAs: 'default' }, actor);
         const send = async (opId: string, taken?: 'fix') => service.request({
             task: h.top.id, body: taken ? 'Correct the handling of empty input' : 'Check this change',
             agent: placement.id, opId, newConversation: true, expectedTaskHash: (await tasks.get(h.top.id)).hash,
