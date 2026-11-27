@@ -14,6 +14,7 @@ import { useDeviceValue } from "@/lib/device-storage";
 import { closeGuide, going, guideStages, moveGuide, putAway, type GoingStage } from "./guide-state";
 import { GUIDE, PARTS, SCREENS, doneOnShowing, shownAgainAt, stepsLeft, type GuideAlign, type GuideEntry, type GuideFacts, type GuideScreen, type GuideSide } from "./guide-definition";
 import { RolesPicture } from "./RolesPicture";
+import { PhoneSwipePicture } from "./PhoneSwipePicture";
 import { useGoingGuide, useGuide, useGuideScreen, useGuideStage, useGuideStart } from "./use-guide";
 
 /**
@@ -480,6 +481,7 @@ function BalloonBody({ screen, entry, facts, again, placed }: { screen: GuideScr
       </p>
       <CloseGuide screen={screen} className="pointer-events-auto text-bg/75 hover:bg-bg/15 hover:text-bg" />
     </div>
+    {entry.picture === "phone-swipe" && !again && <PhoneSwipePicture />}
     {/* Its buttons side by side at the right; one under the other where they do not fit beside each other. */}
     {(next || entry.action) && <div className="mt-1.5 flex flex-wrap justify-end gap-2 pr-1">
       {entry.action && <Button variant="outline" data-guide-action className="pointer-events-auto border-bg/40 bg-transparent text-bg hover:bg-bg/15"

@@ -157,3 +157,41 @@
 /* Room at the end of a box that scrolls while the getting-started guide's balloon stands over it, as tall as the balloon
    reaches into it from its foot, so what the balloon covers can be scrolled out from under it (Guide.tsx, keepRoom). */
 [data-guide-room]::after { content: ""; display: block; flex: none; height: var(--guide-room); }
+
+/* The getting-started guide's picture of answering on a phone (PhoneSwipePicture), one loop: the finger touches a
+   choice and it is picked, the finger drags the card right, the send's stamp is pressed on, the card goes, and the next
+   comes. Each part plays the same loop, so they keep in step. With motion reduced, all stand still at the swipe. */
+[data-guide-phone-swipe] { --guide-swipe: 5s; }
+[data-guide-swipe-card] { animation: guide-swipe-card var(--guide-swipe) var(--ease-in-out) infinite; transform-origin: 50% 120%; }
+[data-guide-swipe-choice] { animation: guide-swipe-choice var(--guide-swipe) linear infinite; }
+[data-guide-swipe-stamp] { animation: guide-swipe-stamp var(--guide-swipe) var(--ease-out) infinite; }
+[data-guide-swipe-finger] { animation: guide-swipe-finger var(--guide-swipe) var(--ease-in-out) infinite; }
+@keyframes guide-swipe-card {
+  0%, 30% { translate: 0 0; rotate: 0deg; opacity: 1; scale: 1; }
+  50%, 64% { translate: 26px 0; rotate: 8deg; opacity: 1; }
+  72% { translate: 110px 0; rotate: 16deg; opacity: 0; scale: 1; }
+  73% { translate: 0 0; rotate: 0deg; opacity: 0; scale: 0.9; }
+  84%, 100% { translate: 0 0; rotate: 0deg; opacity: 1; scale: 1; }
+}
+@keyframes guide-swipe-choice {
+  0%, 15% { background-color: transparent; }
+  17%, 72% { background-color: color-mix(in oklab, var(--color-ink) 55%, transparent); }
+  73%, 100% { background-color: transparent; }
+}
+@keyframes guide-swipe-stamp {
+  0%, 40% { opacity: 0; scale: 1.4; }
+  46%, 66% { opacity: 1; scale: 1; }
+  72%, 100% { opacity: 0; scale: 1; }
+}
+@keyframes guide-swipe-finger {
+  0%, 4% { translate: 36px 70px; opacity: 0; scale: 1; }
+  10% { translate: 36px 58px; opacity: 1; scale: 1; }
+  14% { scale: 0.8; }
+  18% { translate: 36px 58px; scale: 1; }
+  30% { translate: 34px 80px; opacity: 1; }
+  50% { translate: 60px 82px; opacity: 1; }
+  58%, 100% { translate: 60px 82px; opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-guide-phone-swipe] * { animation-delay: calc(-0.55 * var(--guide-swipe)) !important; animation-play-state: paused !important; }
+}

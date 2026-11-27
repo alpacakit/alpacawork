@@ -98,6 +98,8 @@ test("through a first Task the guide always has a step: each explained once, the
   expect(round({ settling: true })).toEqual([undefined, false]);
   // Nor is the coordinator said to have a message that can still be taken back, the conversation open or not.
   expect(round({ busy: true, soon: true })).toEqual([undefined, false]);
+  // Nor, while one more sent from an open report is still with the coordinator, is that report said to be finished.
+  expect(round({ results: 1, open: "result", busy: true, soon: true })).toEqual([undefined, false]);
   // Once a Task is finished here, nothing is said again: the close is read whatever else awaits the person (another
   // Task's question), and the guide is over with it.
   expect(round({ doneHere: true, questions: 1, seen: read("working", "question", "answer", "received") })).toEqual(["conversation", false]);
