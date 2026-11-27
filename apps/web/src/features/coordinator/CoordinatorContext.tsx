@@ -79,7 +79,7 @@ function MenuAction({ icon, name, about, danger = false, disabled, onPress, ...d
   icon: "reload" | "clear"; name: string; about: string; danger?: boolean; disabled: boolean; onPress: (pressed: HTMLElement) => void } & Record<`data-${string}`, unknown>) {
   return <button type="button" {...data} disabled={disabled} onClick={event => onPress(event.currentTarget)}
     className={cn("grid w-full cursor-pointer grid-cols-[auto_1fr] items-baseline gap-x-2 rounded-sm px-1.5 py-2 text-left outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-ink/40 disabled:cursor-default disabled:hover:bg-transparent",
-      danger ? "text-error" : "text-ink", disabled && "[&>[data-name]]:text-muted [&>svg]:text-muted")}>
+      danger ? "text-error" : "text-ink", disabled && "[&>[data-name]]:text-muted [&_svg]:text-muted")}>
     <TextMark><Icon name={icon} className="size-4" /></TextMark>
     <span data-name className="font-medium">{name}</span>
     <span className="col-start-2 text-xs text-muted">{about}</span>
