@@ -38,7 +38,7 @@ export function CountMarks({ counts, className }: { counts: ProjectCounts; class
   return <span className={cn("flex flex-none items-center gap-2.5 tabular-nums", className)}>
     {COUNT_MARKS.map(([group, mark, tone]) => counts[group] > 0 &&
       <span key={group} data-count={group} title={`${group === "turn" ? t("home.turn") : t("home.running")} ${counts[group]}`} className={cn("flex items-center gap-1", tone)}>
-        <i aria-hidden="true" className={cn("size-2 rounded-xs", mark)} />{counts[group]}
+        <i aria-hidden="true" className={cn("size-2 rounded-xs", mark)} /><span className="cap-box">{counts[group]}</span>
       </span>)}
   </span>;
 }
@@ -95,7 +95,7 @@ export function ProjectMenu({ className, onOpen }: { className?: string; onOpen?
         className="flex max-w-full min-w-0 items-center gap-1 rounded-sm text-left hover:bg-hover narrow:min-h-11">
         {headMark && <ProjectTile name={headMark.name} color={headMark.color} size={24} className="mr-2.5" />}
         <span className="relative flex min-w-0">
-          <span dir="auto" className="min-w-0 truncate">{name}</span>
+          <span dir="auto" className="min-w-0 cap-truncate">{name}</span>
           {elsewhere && <i data-turn-elsewhere aria-hidden="true" className="absolute -end-2 -top-0.5 size-2.5 rounded-full bg-turn ring-2 ring-bg" />}
         </span>
         {!onOpen && <Icon name="down" className={cn("size-4 flex-none text-muted", elsewhere && "ml-2")} />}
@@ -132,7 +132,7 @@ export function ProjectChoices({ onDone, focusBack }: { onDone: () => void; focu
       {/* A project is always marked here: the menu shows projects themselves. */}
       <span dir="auto" className="flex min-w-0 flex-1 items-center gap-2 text-start" style={depth ? { paddingInlineStart: `${depth}em` } : undefined}>
         {mark && marks.get(mark) && <ProjectTile name={marks.get(mark)!.name} color={marks.get(mark)!.color} size={20} />}
-        {label}
+        <span className="cap-box">{label}</span>
       </span>
       <CountMarks counts={count} className="text-sm" />
       {projects.length > 1 && shortcut <= 9 && <kbd className="w-8 flex-none text-right font-sans text-xs text-soft narrow:hidden">{key}{shortcut}</kbd>}

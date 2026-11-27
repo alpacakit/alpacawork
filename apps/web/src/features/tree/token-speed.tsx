@@ -13,6 +13,7 @@ import { AgentMark } from "@/components/ui/agent-mark";
 import { useServerSettings } from "@/data/queries";
 import { agentKind } from "@/domain/agent-mark";
 import { Icon } from "@/components/ui/icon";
+import { CapCentred } from "@/components/ui/text-mark";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { Task } from "@/data/types";
 import { useWorkspaceSelector, useWorkspaceStore, type WorkspaceData } from "@/data/workspace-store";
@@ -193,18 +194,19 @@ const totalKey = (tops: readonly Task[]) => (data: WorkspaceData, now: number) =
  * What the speed column means, behind a small mark in its heading: the card opens on a press, phones included, and
  * says that a 0 may only be an agent waiting on a command.
  */
-function SpeedHelp({ bars, className }: { bars: boolean; className?: string }) {
+function SpeedHelp({ bars }: { bars: boolean }) {
   const { t } = useTranslation("tree");
-  return <Popover>
+  // Centred on the capitals of the words before it (CapCentred), in a row that lines its words up on their baseline.
+  return <CapCentred><Popover>
     <PopoverTrigger data-speed-help aria-label={t("speed.help")} onClick={event => event.stopPropagation()}
-      className={cn("relative inline-flex size-4 flex-none cursor-pointer items-center justify-center rounded-full text-muted outline-none before:absolute before:-inset-3 before:content-[''] pointer-fine:hover:bg-hover pointer-fine:hover:text-ink focus-visible:ring-2 focus-visible:ring-ink/40", className)}>
+      className={cn("relative inline-flex size-4 flex-none cursor-pointer items-center justify-center rounded-full text-muted outline-none before:absolute before:-inset-3 before:content-[''] pointer-fine:hover:bg-hover pointer-fine:hover:text-ink focus-visible:ring-2 focus-visible:ring-ink/40")}>
       <Icon name="help" className="size-3.5" /></PopoverTrigger>
     <PopoverContent align="end" className="w-64 p-3 text-xs font-normal" onClick={event => event.stopPropagation()}>
       <p className="m-0">{t("speed.helpSpeed")}</p>
       {bars && <p className="m-0 mt-1">{t("speed.helpBars")}</p>}
       <p className="m-0 mt-2 border-t border-rule pt-2">{t("speed.helpZero")}</p>
     </PopoverContent>
-  </Popover>;
+  </Popover></CapCentred>;
 }
 
 /**
@@ -221,7 +223,7 @@ export function HeadingTokenSpeed({ tops, compact }: { tops: readonly Task[]; co
     <span title={t("speed.totalTip", { count: tops.length })} className="contents">
       <RateNumber rate={Number(key)} live className="font-medium" />
     </span>
-    {!compact && <span style={{ width: BARS_WIDTH }} className="flex flex-none items-center gap-1 text-[11px] text-muted">
+    {!compact && <span style={{ width: BARS_WIDTH }} className="flex flex-none items-baseline gap-1 text-[11px] text-muted">
       <span title={t("speed.totalTip", { count: tops.length })}>{t("speed.unit")}</span>
       <SpeedHelp bars />
     </span>}
@@ -273,7 +275,8 @@ export function AgentCounts({ tasks }: { tasks: readonly Task[] }) {
   };
   const ordered = [...agents].sort(([a], [b]) => place(a) - place(b));
   const shown = ordered.slice(0, KINDS_SHOWN), rest = ordered.slice(KINDS_SHOWN).reduce((sum, [, count]) => sum + count, 0);
-  return <span data-agent-counts title={words} className="flex flex-none items-center gap-x-2.5 self-center whitespace-nowrap tabular-nums">
+  // Centred on the capitals of the words round it (CapCentred), in a row that lines its words up on their baseline.
+  return <CapCentred data-agent-counts title={words}><span className="flex items-center gap-x-2.5 whitespace-nowrap tabular-nums">
     <span className="sr-only">{`${t("status.runningRuns", { count: total })}: ${words}`}</span>
     {/* A logo and its count share one middle: the count's box is trimmed to its figures, so their middle is the logo's. */}
     {shown.map(([agent, count]) => <span key={agent ?? ""} data-agent aria-hidden="true" className="flex flex-none items-center gap-1">
@@ -281,7 +284,7 @@ export function AgentCounts({ tasks }: { tasks: readonly Task[] }) {
       {(count > 1 || agent === null) && <span className="font-medium text-ink/70 cap-box">{count}</span>}
     </span>)}
     {rest > 0 && <span aria-hidden="true" className="text-muted cap-box">+{rest}</span>}
-  </span>;
+  </span></CapCentred>;
 }
 
 /** The heading's agents in all, as the rows say theirs (with, on a phone, the total speed and the speed's help). */
@@ -293,7 +296,7 @@ export function HeadingAgents({ tops, narrow, timeApart }: { tops: readonly Task
   return <span data-heading-agents className="flex min-w-0 items-baseline gap-1.5 whitespace-nowrap text-xs font-normal tabular-nums text-muted">
     <AgentCounts tasks={tops} />
     {narrow && <NarrowTotal tops={tops} />}
-    {narrow ? <span className={cn(TIME_SLOT, "self-center text-left")}><SpeedHelp bars={false} className="align-middle" /></span>
+    {narrow ? <span className={cn(TIME_SLOT, "text-left")}><SpeedHelp bars={false} /></span>
       : !timeApart && <span aria-hidden="true" className={cn(TIME_SLOT, "invisible")}>0</span>}
   </span>;
 }

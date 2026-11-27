@@ -127,8 +127,8 @@ const ResultRow = memo(function ResultRow({ task, current, hit, needle, place }:
     <TextMark className="self-baseline"><TaskIcon task={task} className="size-3.5" /></TextMark>
     <span className="flex min-w-0 flex-1 flex-col gap-0.5 self-baseline">
       <span className="flex min-w-0 items-center gap-2 text-xs tabular-nums text-muted">
-        <span className={cn("min-w-0 truncate text-sm", TONE[finish?.tone ?? tone])}>{finish?.short ?? word}</span>
-        <TaskId id={task.id} className="flex-none" />
+        <span className={cn("min-w-0 cap-truncate text-sm", TONE[finish?.tone ?? tone])}>{finish?.short ?? word}</span>
+        <TaskId id={task.id} className="flex-none cap-box" />
         {unread && <i aria-hidden="true" className="size-1.5 flex-none rounded-full bg-changed" />}
       </span>
       <strong className="block truncate text-md font-medium text-ink narrow:line-clamp-2 narrow:whitespace-normal">{task.title}</strong>

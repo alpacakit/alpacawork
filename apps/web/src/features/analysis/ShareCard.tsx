@@ -1,3 +1,4 @@
+import { TextMark } from "@/components/ui/text-mark";
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import icon from "../../../public/icons/icon-192-2c.png?inline";
@@ -169,9 +170,9 @@ function PostLead({ leaving: { to, url, picture }, card, done }: { leaving: Leav
   // The time left runs down as a line along the foot of the box, so the words and the two ways keep one line even on a
   // phone. Only what became of the picture is read out; the seconds are not read each time they change.
   return <div className="relative mt-3 grid gap-1.5 overflow-hidden rounded-md border border-line px-3 pt-2.5 pb-2">
-    <p role="status" className="flex items-start gap-2 text-sm text-ink">
-      {picture === "copied" ? <CopiedMark picture={card} className="mt-0.5 size-4" />
-        : picture === "saved" ? <Icon name="check" className="mt-0.5 size-4 flex-none" /> : null}{said}</p>
+    <p role="status" className="flex items-baseline gap-2 text-sm text-ink">
+      {picture === "copied" ? <TextMark><CopiedMark picture={card} className="size-4" /></TextMark>
+        : picture === "saved" ? <TextMark><Icon name="check" className="size-4 flex-none" /></TextMark> : null}<span>{said}</span></p>
     <div className="flex flex-wrap items-center gap-x-1 gap-y-1">
       {phase === "byHand" && picture !== null
         ? <button type="button" onClick={open} className="me-auto rounded-sm bg-scrim px-3 py-1 text-xs font-semibold text-paper dark:bg-paper dark:text-scrim narrow:min-h-10">{t("card.postOpen", { name: to.name })}</button>

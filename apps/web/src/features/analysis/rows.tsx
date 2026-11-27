@@ -1,3 +1,4 @@
+import { TextMark } from "@/components/ui/text-mark";
 import type { LaunchFilter } from "./series";
 import { isTokenUnit } from "@/domain/tokens";
 import { createContext, memo, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -76,7 +77,7 @@ export function Parts({ items = [], line }: { items?: PartItem[]; line?: { name:
     <div className="grid w-full grid-cols-[minmax(0,1fr)_var(--part-value,auto)_var(--part-share,auto)] gap-x-2 gap-y-1">
       {items.map(item => {
         const cells = <>
-          <span className={name}>{item.color && <i aria-hidden className={cn("me-2 inline-block size-2 flex-none self-center rounded-xs", item.color)} />}{item.name}</span>
+          <span className={name}>{item.color && <TextMark className="me-2"><i aria-hidden className={cn("inline-block size-2 flex-none rounded-xs", item.color)} /></TextMark>}{item.name}</span>
           <span data-part-col="value" className={value}>{item.value}{item.onOpen ? <OpenMark /> : <i aria-hidden className="inline-block size-3 flex-none" />}</span>
           <span data-part-col="share" className={cn(share, "text-soft tabular-nums")}>{item.share ?? ""}</span>
         </>;
@@ -547,7 +548,7 @@ function DayWindow({ day, say, room, at, box, onList, onPart, onStep, first, las
       })}
     </div>}
     {say.line && <div className="mt-2 border-t border-rule pt-2">
-      <div className="flex items-baseline justify-between gap-6"><span className="flex items-center text-muted"><LineMark />{say.line.name}</span>
+      <div className="flex items-baseline justify-between gap-6"><span className="flex items-baseline text-muted"><LineMark />{say.line.name}</span>
         <b className="font-semibold text-ink tabular-nums">{say.line.value(at)}</b></div>
       <div className="ps-5 text-soft">{say.line.base(at)}</div>
     </div>}
@@ -583,10 +584,10 @@ function Total({ written, className }: { written: string; className?: string }) 
     <b className="text-heading font-semibold tabular-nums">{value}</b>{unit && <span className="text-base text-muted">{unit}</span>}</span>;
 }
 
-/** The mark of a per-task line (─●), as its name is drawn wherever the line is named. */
-export const LineMark = () => <svg aria-hidden viewBox="0 0 16 8" className="me-2 h-2 w-4 flex-none overflow-visible">
+/** The mark of a per-task line (─●), as its name is drawn wherever the line is named, centred on the name's capitals. */
+export const LineMark = () => <TextMark className="me-2"><svg viewBox="0 0 16 8" className="h-2 w-4 flex-none overflow-visible">
   <line x1="0" y1="4" x2="16" y2="4" className="stroke-trend [stroke-width:1.5]" /><circle cx="8" cy="4" r="2.5" className="fill-trend stroke-bg [stroke-width:1]" />
-</svg>;
+</svg></TextMark>;
 
 /* ── a chart: the scale's one mark over its top line, a line across its middle, bins over the group's days ── */
 type Scale = { top: number; label: string };

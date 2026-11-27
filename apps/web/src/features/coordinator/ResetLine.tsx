@@ -23,7 +23,8 @@ export function ResetLine({ reset }: { reset: CoordinatorReset }) {
   const reason = resetReason(reset.reason, t);
   return <li data-coordinator-reset-line={reset.reason.kind} className="relative flex min-h-11 items-center border-b border-rule py-2 pl-(--gutter)">
     <span className="relative flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-xs text-muted">
-      <span className={`${ON_RAIL} -ml-(--gutter) top-[0.5lh] flex -translate-y-1/2`}><Icon name="reload" className={`size-3.5 ${ON_DISC}`} /></span>
+      {/* The mark hangs on the rail from a strut as high as the first line's capitals, so it centres on them. */}
+      <span className="relative -mr-2 cap-strut"><span className={`${ON_RAIL} -ml-(--gutter) top-1/2 flex -translate-y-1/2`}><Icon name="reload" className={`size-3.5 ${ON_DISC}`} /></span></span>
       <span>{t("coordinatorCard.reset.done")}{reason && <> · {reason}</>}</span>
       <MemoLink reset={reset} />
     </span>

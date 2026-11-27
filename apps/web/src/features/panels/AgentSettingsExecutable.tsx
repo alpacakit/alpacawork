@@ -1,3 +1,4 @@
+import { CapCentred } from "@/components/ui/text-mark";
 import { createContext, useContext, useEffect, useId, useState, type ReactNode } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { AGENT_ADAPTERS, type BuiltinAdapterId } from '@alpacawork/contract/agent-adapters';
@@ -76,14 +77,14 @@ export function AgentExecutableRow({ agent, onChange, issues }: { agent: AgentDr
   const name = `${id}-executable`;
   return <SettingRow id={`${id}-other`} label={t('agentSettings.executable')} className="grid-cols-[10rem_minmax(0,1fr)] items-start narrow:grid-cols-1 narrow:gap-y-2">
     <div role="radiogroup" aria-labelledby={`${id}-other-label`} className="min-w-0 space-y-2">
-      <label className="flex items-start gap-2">
-        <input type="radio" name={name} className={cn(RADIO, 'mt-1')} checked={selected === 'automatic'} onChange={() => choose('automatic')} />
+      <label className="flex items-baseline gap-2">
+        <CapCentred><input type="radio" name={name} className={RADIO} checked={selected === 'automatic'} onChange={() => choose('automatic')} /></CapCentred>
         <span className="shrink-0">{t('agentSettings.automatic')}</span>
         {choices.automatic && <Candidate path={choices.automatic.path} version={choices.automatic.version} />}
         {detected && !choices.automatic && <span className="text-sm text-muted">{t('agentSettings.notFoundShort')}</span>}
       </label>
-      {choices.others.map(candidate => <label key={candidate.path} className="flex items-start gap-2">
-        <input type="radio" name={name} className={cn(RADIO, 'mt-1')} checked={selected === candidate.path} onChange={() => choose(candidate.path)} />
+      {choices.others.map(candidate => <label key={candidate.path} className="flex items-baseline gap-2">
+        <CapCentred><input type="radio" name={name} className={RADIO} checked={selected === candidate.path} onChange={() => choose(candidate.path)} /></CapCentred>
         <Candidate path={candidate.path} version={candidate.version} />
       </label>)}
       <div className="flex items-start gap-2 narrow:flex-wrap">

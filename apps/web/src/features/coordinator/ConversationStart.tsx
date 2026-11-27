@@ -27,7 +27,7 @@ export function ConversationStart() {
     <div className="w-[min(100%,26rem)]">
       <div className="mb-3 flex items-center gap-2.5">
         <UnreadMark className={`${ON_DISC} size-4.5 flex-none`} />
-        <h2 className="m-0 text-lg font-semibold text-ink [word-break:auto-phrase] narrow:text-md">{t("coordinatorCard.start.greeting")}</h2>
+        <h2 className="m-0 text-lg font-semibold text-ink cap-box [word-break:auto-phrase] narrow:text-md">{t("coordinatorCard.start.greeting")}</h2>
       </div>
       <ExampleList examples={examples} onPick={words => exampleInDraft(words)} />
     </div>

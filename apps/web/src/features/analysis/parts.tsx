@@ -123,7 +123,7 @@ export function Num({ label, square, kind, value, previous, length, onOpen, afte
   label: string; square?: string; kind: Kind; value: number | null; previous: number | null; length: number; onOpen?: () => void; after?: ReactNode; className?: string;
 }) {
   return <div className={cn("min-w-0", className)}>
-    <div className="mb-1 flex items-center text-base whitespace-nowrap text-muted">{square && <Square className={square} />}{label}</div>
+    <div className="mb-1 flex items-center text-base whitespace-nowrap text-muted">{square && <Square className={square} />}<span className="cap-box">{label}</span></div>
     <Value kind={kind} value={value} onOpen={value ? onOpen : undefined} />
     {value !== null && <Compare kind={kind} value={value} previous={previous} length={length} />}
     {after}

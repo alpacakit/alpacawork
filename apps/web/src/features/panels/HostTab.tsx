@@ -142,7 +142,7 @@ function Tile({ label, value, side, tight, chart, note = [], gpu }: { label: str
       className={cn("flex min-w-0 flex-col rounded-lg border px-3 pt-2 pb-2.5", tight ? "border-warn bg-strain" : "border-line")}>
       <span className={cn("flex min-w-0 items-center gap-1 text-xs", tight ? "text-warn" : "text-muted")}>
         {tight && <Icon name="caution" className="size-3.5 shrink-0" />}
-        <span data-host-label className="truncate">{label}</span>
+        <span data-host-label className="cap-truncate">{label}</span>
         {tight && <span className="sr-only">{t("host.tight")}</span>}</span>
       <span className={cn("truncate text-xl font-semibold tabular-nums", tight && "text-warn")}>{value}
         {side && <span className="ml-1.5 text-sm font-normal text-muted">{side}</span>}</span>
