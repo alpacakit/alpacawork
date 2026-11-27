@@ -59,6 +59,7 @@
     "postOpenNow": "Abrir ya",
     "postOpen": "Abrir {{name}}",
     "postCancel": "Cancelar",
+    "postClose": "Aceptar",
     "postSave": "Imagen guardada. Adjúntala a tu publicación en {{name}}",
     "postShare": "En los últimos {{days}} días, el {{value}} del trabajo que le encargué a la IA se completó sin correcciones",
     "postShareAll": "Hasta ahora, el {{value}} del trabajo que le encargué a la IA se ha completado sin correcciones",

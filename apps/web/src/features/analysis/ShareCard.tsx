@@ -124,44 +124,52 @@ type Leaving = { to: Destination; url: string; picture: "copied" | "saved" | "lo
 const LEAD_SECONDS = 3;
 
 /**
- * What the press did, standing where the hint was until the service opens: the picture copied (or saved), then the service
- * opening in a few seconds, with a bar running down, a way to open it now and a way not to. Where the browser still
- * stops the tab (Safari counts a press only for a moment), the way to open it stays for a press of the person's own.
+ * What the press did, standing where the hint was: the picture copied (or saved), then, once that is known, the service
+ * opening in a few seconds, with a line running down, a way to open it now and a way not to. It stays after the tab
+ * opens, saying what to do there, until it is closed. The service is opened by hand instead where the picture could not
+ * be made, and where the browser no longer counts the press as the person's (Safari counts it only for a moment), so
+ * the tab is not stopped as a pop-up.
  */
 function PostLead({ leaving: { to, url, picture }, done }: { leaving: Leaving; done: () => void }) {
   const { t } = useTranslation("analysis");
   const [left, setLeft] = useState(LEAD_SECONDS);
-  const [stopped, setStopped] = useState(false);
+  const [phase, setPhase] = useState<"counting" | "byHand" | "opened">("counting");
+  const counting = phase === "counting" && (picture === "copied" || picture === "saved");
   const open = () => {
     const tab = window.open(url, "_blank");
-    if (!tab) { setStopped(true); return; }
-    tab.opener = null;
-    done();
+    if (!tab) { setPhase("byHand"); return; }
+    try { tab.opener = null; } catch { /* Already gone elsewhere: nothing of this page stays reachable from it. */ }
+    setPhase("opened");
   };
   const opener = useRef(open);
   opener.current = open;
+  useEffect(() => { if (picture === "lost") setPhase("byHand"); }, [picture]);
   useEffect(() => {
-    if (stopped) return;
+    if (!counting) return;
+    if (navigator.userActivation && !navigator.userActivation.isActive) { setPhase("byHand"); return; }
     if (left <= 0) { opener.current(); return; }
     const tick = setTimeout(() => setLeft(left - 1), 1000);
     return () => clearTimeout(tick);
-  }, [left, stopped]);
+  }, [left, counting]);
   const said = picture === "copied" ? t("card.postCopied", { name: to.name }) : picture === "saved" ? t("card.postSave", { name: to.name })
     : picture === "lost" ? t("card.drawFailed") : t("card.postPreparing");
   const quiet = "rounded-sm px-1.5 py-0.5 text-xs text-muted hover:bg-hover hover:text-ink narrow:min-h-10 narrow:px-3";
-  // The time left runs down as a line along the foot of the box, so the words and the two ways keep one line even on a phone.
-  return <div role="status" className="relative mt-3 grid gap-1.5 overflow-hidden rounded-md border border-line px-3 pt-2.5 pb-2">
-    <p className="flex items-start gap-2 text-sm text-ink">
+  // The time left runs down as a line along the foot of the box, so the words and the two ways keep one line even on a
+  // phone. Only what became of the picture is read out; the seconds are not read each time they change.
+  return <div className="relative mt-3 grid gap-1.5 overflow-hidden rounded-md border border-line px-3 pt-2.5 pb-2">
+    <p role="status" className="flex items-start gap-2 text-sm text-ink">
       {picture === "copied" || picture === "saved" ? <Icon name="check" className="mt-0.5 size-4 flex-none" /> : null}{said}</p>
     <div className="flex flex-wrap items-center gap-x-1 gap-y-1">
-      {stopped ? <button type="button" onClick={open} className="rounded-sm bg-scrim px-3 py-1 text-xs font-semibold text-paper dark:bg-paper dark:text-scrim narrow:min-h-10">{t("card.postOpen", { name: to.name })}</button>
-        : <>
-          <span className="me-auto text-xs text-muted tabular-nums">{t("card.postOpensIn", { name: to.name, count: Math.max(left, 0) })}</span>
-          <button type="button" onClick={open} className={quiet}>{t("card.postOpenNow")}</button>
-        </>}
-      <button type="button" onClick={done} className={quiet}>{t("card.postCancel")}</button>
+      {phase === "byHand" && picture !== null
+        ? <button type="button" onClick={open} className="me-auto rounded-sm bg-scrim px-3 py-1 text-xs font-semibold text-paper dark:bg-paper dark:text-scrim narrow:min-h-10">{t("card.postOpen", { name: to.name })}</button>
+        : phase === "opened" ? <span className="me-auto" />
+          : <>
+            <span aria-hidden className="me-auto text-xs text-muted tabular-nums">{t("card.postOpensIn", { name: to.name, count: Math.max(left, 1) })}</span>
+            <button type="button" onClick={open} disabled={picture === null} className={cn(quiet, "disabled:opacity-38")}>{t("card.postOpenNow")}</button>
+          </>}
+      <button type="button" onClick={done} className={quiet}>{phase === "opened" ? t("card.postClose") : t("card.postCancel")}</button>
     </div>
-    {!stopped && <span aria-hidden className="absolute inset-x-0 bottom-0 h-0.5 origin-left bg-ink motion-safe:animate-lead" style={{ animationDuration: `${LEAD_SECONDS}s` }} />}
+    {counting && <span aria-hidden className="absolute inset-x-0 bottom-0 h-0.5 origin-left bg-ink motion-reduce:hidden motion-safe:animate-lead" style={{ animationDuration: `${LEAD_SECONDS}s` }} />}
   </div>;
 }
 

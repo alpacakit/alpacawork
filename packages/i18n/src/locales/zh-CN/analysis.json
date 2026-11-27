@@ -47,6 +47,7 @@
     "postOpenNow": "立即打开",
     "postOpen": "打开 {{name}}",
     "postCancel": "取消",
+    "postClose": "知道了",
     "postSave": "已保存图片。请在 {{name}} 的发帖页面添加",
     "postShare": "最近 {{days}} 天，我交给 AI 的工作有 {{value}} 无需返工即完成",
     "postShareAll": "到目前为止，我交给 AI 的工作有 {{value}} 无需返工即完成",

@@ -100,8 +100,11 @@ test("a service's button says what became of the picture, then opens that servic
   let opened = page.waitForEvent("popup", { timeout: 6000 });
   await card.getByRole("button", { name: "Post to X" }).click();
   await expect(card.getByRole("status")).toContainText(/Image (copied|saved)/);
-  await expect(card.getByRole("status")).toContainText("Opening X in");
+  await expect(card.getByText(/^Opening X in/)).toBeVisible();
   await posted(opened, "https://x.com/intent/post?text=");
+  // What to do there stays said on the page until it is closed.
+  await expect(card.getByRole("status")).toContainText(/Image (copied|saved)/);
+  await card.getByRole("button", { name: "OK", exact: true }).click();
   await expect(card.getByRole("status")).toHaveCount(0);
   // Cancel keeps the page where it is.
   await card.getByRole("button", { name: "Post to Bluesky" }).click();
@@ -112,7 +115,13 @@ test("a service's button says what became of the picture, then opens that servic
     await card.getByRole("button", { name: `Post to ${name}` }).click();
     await card.getByRole("button", { name: "Open now" }).click();
     await posted(opened, start);
+    await card.getByRole("button", { name: "OK", exact: true }).click();
   }
+  // Where the browser stops the tab, the service is offered to open by hand.
+  await page.evaluate(() => { window.open = () => null; });
+  await card.getByRole("button", { name: "Post to Threads" }).click();
+  await card.getByRole("button", { name: "Open now" }).click();
+  await expect(card.getByRole("button", { name: "Open Threads" })).toBeVisible();
 });
 
 test("the share card keeps room at its foot for the coordinator only where the coordinator stands over it", async ({ page, runtime }) => {

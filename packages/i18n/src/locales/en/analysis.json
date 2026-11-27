@@ -53,6 +53,7 @@
     "postOpenNow": "Open now",
     "postOpen": "Open {{name}}",
     "postCancel": "Cancel",
+    "postClose": "OK",
     "postSave": "Image saved. Attach it to your post on {{name}}",
     "postShare": "In the last {{days}} days, {{value}} of the work I handed AI was done without rework",
     "postShareAll": "So far, {{value}} of the work I handed AI has been done without rework",
