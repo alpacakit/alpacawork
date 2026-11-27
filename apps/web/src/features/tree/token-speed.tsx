@@ -252,7 +252,7 @@ const KINDS_SHOWN = 3;
 const KIND_ORDER: readonly string[] = ["claude", "codex", "grok", "copilot", "pi"];
 
 /**
- * Which AIs run and how many: each AI's logo with how many of it beside, on the text's line, past one ("✳2 ◎2 In"),
+ * Which AIs run and how many: each AI's logo with how many of it beside, at the speed's size, past one ("✳2 ◎2 In"),
  * in the kinds' order and packed to the right, so they end where the heading's and every row's end, before the time;
  * past three kinds, a "+count" of the rest. Logos stand side by side as their makers draw them. Its press lists each
  * agent's count, and a reader hears the total and each agent's name and count. Runs no read has brought stand as the
@@ -278,9 +278,9 @@ export function AgentCounts({ tasks }: { tasks: readonly Task[] }) {
     {/* A logo and its count share one middle: the count's box is trimmed to its figures, so their middle is the logo's. */}
     {shown.map(([agent, count]) => <span key={agent ?? ""} data-agent aria-hidden="true" className="flex flex-none items-center gap-1">
       {agent === null ? <Icon name="runningRuns" className="size-[0.7em] text-muted" /> : <AgentMark name={agent} className="size-[1.05em]" />}
-      {(count > 1 || agent === null) && <span className="text-[0.8em] font-medium text-ink/70 cap-box">{count}</span>}
+      {(count > 1 || agent === null) && <span className="font-medium text-ink/70 cap-box">{count}</span>}
     </span>)}
-    {rest > 0 && <span aria-hidden="true" className="text-[0.8em] text-muted cap-box">+{rest}</span>}
+    {rest > 0 && <span aria-hidden="true" className="text-muted cap-box">+{rest}</span>}
   </span>;
 }
 
