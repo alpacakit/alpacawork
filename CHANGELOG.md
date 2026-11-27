@@ -26,6 +26,37 @@ GitHub Release text, and folds the full list of pull requests below it by itself
 - Do not edit a section after its version is released.
 -->
 
+## 0.1.9
+
+This version is about seeing at a glance which AIs are working and whether they are moving: In progress shows each AI's logo with how many of it run and how fast they write, from the first moment, and the limits bar shows two agents' limits side by side, such as Claude's and Codex's.
+
+**Update:** Settings → Update, or `alpacawork deploy npm:alpacawork@0.1.9`. The database schema and Run execution format did not change from 0.1.8. From 0.1.0-beta.9 or earlier, follow the [older-beta update instructions](https://github.com/alpacakit/alpacawork/blob/v0.1.1/CHANGELOG.md#011), using `alpacawork@0.1.9` in step 4.
+
+### Highlights
+- **See which AIs work on a task, and how many.** Places that name an agent or a model show that AI's logo before the name. In progress rows and their heading show each AI as its logo and a count, at the size of the speed beside it. Other sections' titles get the room the speed column used to keep. ([#172](https://github.com/alpacakit/alpacawork/pull/172), [#187](https://github.com/alpacakit/alpacawork/pull/187))
+- **See that a working agent is moving.** A working row says 0 tok/s with silent bars from the moment its agents start, instead of staying empty. An agent that is only waiting for a command it started (a recording, a long check) reads 0 rather than "No output", and a help mark in the heading explains a lasting 0. The help mark follows the speed, and the row's time now ends the row. ([#171](https://github.com/alpacakit/alpacawork/pull/171), [#179](https://github.com/alpacakit/alpacawork/pull/179), [#181](https://github.com/alpacakit/alpacawork/pull/181), [#184](https://github.com/alpacakit/alpacawork/pull/184))
+- **Two agents' limits side by side.** The limits bar shows up to two agents, each as its logo and a ring without its name, so Codex can be seen next to Claude without opening the menu. ([#192](https://github.com/alpacakit/alpacawork/pull/192))
+- **Scroll back through a long coordinator conversation.** Older messages load as you scroll up, up to 300, instead of pressing "Load earlier" each time, and the opened history can be collapsed again. Reading back no longer moves or blinks what is in view. ([#193](https://github.com/alpacakit/alpacawork/pull/193))
+- **Agents choose the AI for the work they hand out.** When the coordinator or a task's AI places another agent, it chooses the agent, model and effort from your words for that work, or else from the project policy; when neither names one, the AI order in Settings decides as before. The choice lasts across that agent's conversations. ([#190](https://github.com/alpacakit/alpacawork/pull/190))
+
+### Screens
+- When you change a task's state from the screen (hold, restore, stop, review OK), the row's icon turns until the row shows the new state, instead of showing nothing for a few seconds. ([#194](https://github.com/alpacakit/alpacawork/pull/194))
+- Closing a panel at the right (the task reader, a file, Analysis) no longer moves the coordinator across the screen; it stays where it was. ([#178](https://github.com/alpacakit/alpacawork/pull/178))
+- In Settings beside its side list, the AI order rows read as one AI per line where there is room, their menus no longer cut off model and effort names, and the Resources disk tile no longer cuts off its sizes. ([#186](https://github.com/alpacakit/alpacawork/pull/186))
+- Analysis keeps its charts and calendar with zeros when a project has nothing recorded yet, and says that the first task starts the record. ([#175](https://github.com/alpacakit/alpacawork/pull/175))
+- The expected report time in the list's time view opens a popover when pressed, like the row's other times. ([#176](https://github.com/alpacakit/alpacawork/pull/176))
+- The share card's post buttons first say that the image was copied, then open the service after 3 seconds unless you cancel or open it sooner. ([#183](https://github.com/alpacakit/alpacawork/pull/183))
+- History names agents in words, without logos, so they do not stand out over the rows' content. ([#185](https://github.com/alpacakit/alpacawork/pull/185))
+- Icons and marks beside words, in the coordinator input and across the screen, now sit on the words' centre line. ([#177](https://github.com/alpacakit/alpacawork/pull/177), [#180](https://github.com/alpacakit/alpacawork/pull/180), [#195](https://github.com/alpacakit/alpacawork/pull/195))
+- The getting-started guide rings the whole open conversation, words its label step more plainly, shows its Done hint only when it applies, and gives its phone step a picture. ([#182](https://github.com/alpacakit/alpacawork/pull/182))
+
+### Fixes
+- A task mark left in the coordinator's input no longer sends your words to that task when they are about another one; the coordinator decides the task from what you wrote. ([#188](https://github.com/alpacakit/alpacawork/pull/188))
+- Opening the work behind a coordinator answer no longer jumps the conversation or slides the line you pressed out of view. ([#189](https://github.com/alpacakit/alpacawork/pull/189))
+- With usage data sending on, days when the server ran with `DO_NOT_TRACK=1` (or `ALPACAWORK_TELEMETRY_DISABLED=1`, `CI=1`) are no longer reported after the variable is removed. The telemetry docs now describe consent, the ID and when consent is asked again as the app does. ([#173](https://github.com/alpacakit/alpacawork/pull/173), [#174](https://github.com/alpacakit/alpacawork/pull/174))
+
+If alpacawork helps you, a ⭐ on GitHub is welcome.
+
 ## 0.1.8
 
 This version is about seeing how your work with AI is going: a new Analysis view counts how many finished tasks passed without rework, where the time went and how much AI ran, and shares it as a card. While agents work, you can watch what each one is doing and how fast it writes, and long conversations, the coordinator's included, can start fresh without losing their thread.
