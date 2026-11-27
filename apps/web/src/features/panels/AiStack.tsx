@@ -45,7 +45,9 @@ export function AiStack({ kind, rows, agents, onChange, refusedRows, refused }: 
     const row = focus.row === null ? null : list.current?.querySelector<HTMLElement>(`[data-ai-stack-row-id="${focus.row}"]`);
     if (!row) { add.current?.focus(); return; }
     if (focus.part === 'choice') (row.querySelector<HTMLElement>('[data-ai-stack-choice] select') ?? row.querySelector<HTMLElement>('select'))?.focus();
-    else if (!row.contains(document.activeElement)) row.querySelector<HTMLElement>('[data-ai-stack-controls] button:not(:disabled)')?.focus();
+    // A control the move made unusable still holds the focus for a moment (the other row moved past it): that is lost too.
+    else if (!row.contains(document.activeElement) || (document.activeElement as HTMLButtonElement).disabled)
+      row.querySelector<HTMLElement>('[data-ai-stack-controls] button:not(:disabled)')?.focus();
   }, [focus]);
   return <div className="flex flex-col gap-2">
     {/* Brought into view with room above it, so its edge stands clear of the tabs' rule. */}
@@ -106,7 +108,7 @@ function StackRow({ row, index, count, agents, enabled, issues, refused, repeats
   };
   return <li data-ai-stack-row={row.agent} data-ai-stack-row-id={row.id} data-invalid={issues.length || refused ? '' : undefined} data-repeats={repeats === null ? undefined : repeats + 1}
     className="flex flex-wrap items-start gap-x-3 gap-y-1 border-t border-line px-4 py-2.5 narrow:px-3">
-    <span aria-hidden className={cn('min-w-12 flex-none leading-9 whitespace-nowrap @max-[36.5rem]/ai-stack:flex-1', index === 0 ? 'font-semibold' : 'text-muted')}>{name}</span>
+    <span aria-hidden className={cn('flex h-control-md min-w-12 flex-none items-center whitespace-nowrap @max-[36.5rem]/ai-stack:flex-1', index === 0 ? 'font-semibold' : 'text-muted')}>{name}</span>
     <div className="flex min-w-0 flex-1 flex-col gap-1.5 @max-[36.5rem]/ai-stack:order-last @max-[36.5rem]/ai-stack:basis-full">
       <div className="flex min-w-0 flex-wrap items-center gap-1.5">
         {/* The agent's logo stands inside its box, before its name (a choice's own words cannot carry a drawing). */}
