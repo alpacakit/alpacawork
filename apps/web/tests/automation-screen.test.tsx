@@ -216,3 +216,23 @@ test("a review says how many of its findings must be fixed, in one line led by a
   expect(line).toMatch(/^3 findings \(1 to fix\): Counts done tasks too/);
   expect(line).not.toContain("A long summary");
 });
+
+test("one by the clock with a trigger asks nothing on opening: its next time is shown only once asked", async () => {
+  const clocked = automation({ id: "A4", latest: version({ facts: { ...version().facts, when: { event: "schedule", where: { cron: "0 9 * * *" }, textKey: "trigger.schedule", filter: null } },
+    docs: { run: { summary: "Sums up", body: "", params: [], returns: null, throws: [] }, trigger: { summary: "Only on weekdays", body: "", params: [], returns: null, throws: [] } } }) });
+  const data = screenData(tree());
+  seedAutomations(data, listOf([clocked]), { A4: [] });
+  const sent: string[] = [];
+  vi.spyOn(api, "request").mockImplementation(async (path: string) => {
+    sent.push(path);
+    if (path.includes("automation/preview")) return { events: [], preview: null };
+    return new Promise(() => {});
+  });
+  opened("A4");
+  windowOn(data, "A4");
+  fireEvent.click(document.querySelector("[data-automation-try]")!);
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 30)); });
+  expect(sent.some(path => path.includes("automation/preview"))).toBe(false);
+  fireEvent.click(document.querySelector("[data-automation-try-next]")!);
+  await waitFor(() => expect(sent.some(path => path.includes("automation/preview"))).toBe(true));
+});

@@ -207,10 +207,10 @@ export function useUpcoming(automation: Pick<Automation, "next">, shown = true):
  * Showing it, first step: `trigger` alone, at one past event (the newest when none is chosen; a written one when the
  * person wrote it), and the events it can be shown at. Writing nothing, it runs whenever the event or the version moves.
  */
-export function usePreview(automation: Pick<Automation, "id" | "latest">, event: string | null, written: string | null) {
+export function usePreview(automation: Pick<Automation, "id" | "latest">, event: string | null, written: string | null, asked = true) {
   const root = useWorkspaceInfo(info => info.root);
   const digest = automation.latest.digest;
-  return useQuery<PreviewResult>({ queryKey: ["automation-preview", root, automation.id, digest, event, written], enabled: !!root, staleTime: Infinity, retry: false,
+  return useQuery<PreviewResult>({ queryKey: ["automation-preview", root, automation.id, digest, event, written], enabled: !!root && asked, staleTime: Infinity, retry: false,
     meta: { errorToast: false }, placeholderData: (previous, query) => query?.queryKey[2] === automation.id ? previous : undefined,
     // Showing runs `trigger`, which may ask an AI: the server takes it as a write, so it goes with the write basis.
     queryFn: () => api.request(commandRoute("automation/preview"), automationProgramPreviewResultSchema, undefined,

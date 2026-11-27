@@ -143,7 +143,7 @@ export function outsideText(t: T, facts: Facts): string {
   // A program that reaches the network itself does so whatever it names to send to: said beside it.
   const reaches = !!facts.directNetwork;
   return [hosts.length ? t("outside.sends", { hosts: hosts.join(t("trigger.or")) }) : reaches ? null : t("outside.none"),
-    reaches ? t("outside.direct") : null,
+    reaches ? hosts.length ? t("outside.direct") : t("outside.directFirst") : null,
     facts.limits.tasksPerRun ? t("outside.tasks", { count: facts.limits.tasksPerRun }) : t("outside.noTasks")].filter(Boolean).join(t("join"));
 }
 

@@ -31,7 +31,10 @@ export function TryDialog({ automation, onClose }: { automation: Automation; onC
   const [writing, setWriting] = useState(false);
   const [written, setWritten] = useState(() => eventTemplate(automation.latest.facts.when.event));
   const [sentWritten, setSentWritten] = useState<string | null>(null);
-  const preview = usePreview(automation, writing ? null : event, writing ? sentWritten : null);
+  // By the clock, the server shows its next time as soon as it is asked (`trigger` runs then): asked only on a press.
+  const byClock = automation.latest.facts.when.event === "schedule" && !!automation.latest.docs.trigger;
+  const [asked, setAsked] = useState(!byClock);
+  const preview = usePreview(automation, writing ? null : event, writing ? sentWritten : null, asked || writing);
   const run = usePreviewRun();
   const go = useTry();
   const writeDisabled = useWriteDisabled();
@@ -43,8 +46,7 @@ export function TryDialog({ automation, onClose }: { automation: Automation; onC
   const candidates = seen.current.slice(0, CANDIDATES_SHOWN);
   // Opening it runs nothing: `trigger` runs once an event is chosen (it may ask an AI, which costs).
   const triggerAsks = !!automation.latest.docs.trigger && facts.ai.some(row => row.use !== "task");
-  // By the clock, the server shows its next time as soon as it is asked: `trigger` runs on opening.
-  const onOpening = facts.when.event === "schedule" && !!automation.latest.docs.trigger;
+
   // What was shown, only once it is the answer for what is chosen now: while another event's answer is still on its
   // way, the last one's is no answer for it, and nothing can be done from it.
   // Writing what arrives, nothing is shown until it is sent: the newest event's answer is no answer for it.
@@ -68,9 +70,9 @@ export function TryDialog({ automation, onClose }: { automation: Automation; onC
         {/* Its newest version is what is tried: said while another one runs. */}
         {automation.awaitingEnable && <span data-automation-try-version className="block">{t("try.newVersion")}</span>}</>} />
       <DialogBody>
-        {onOpening ? <p data-automation-try-cost className="m-0 mb-2 text-sm text-muted">{t(triggerAsks ? "try.scheduleAi" : "try.schedule")}</p>
-          : triggerAsks && <p data-automation-try-cost className="m-0 mb-2 text-sm text-muted">{facts.ai.some(row => row.use === "ask")
+        {triggerAsks && <p data-automation-try-cost className="m-0 mb-2 text-sm text-muted">{facts.ai.some(row => row.use === "ask")
           ? cost !== undefined ? t("try.triggerCost", { usd: usd(cost) }) : t("try.triggerAi") : t("try.triggerMayAi")}</p>}
+        {!asked && !writing && <Button variant="outline" data-automation-try-next className="mb-2 narrow:min-h-11" onClick={() => setAsked(true)}>{t("try.next")}</Button>}
         <div role="radiogroup" aria-label={t("try.events")} className="flex flex-col gap-0.5">
           {preview.isPending && !preview.data ? <PendingRegion pending shape="rows" />
             : !candidates.length && <p className="m-0 py-1 text-sm text-muted">{t("try.noEvent")}</p>}
