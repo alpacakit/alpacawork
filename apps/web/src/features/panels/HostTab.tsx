@@ -71,13 +71,13 @@ function Measured({ status }: { status: Measured }) {
 }
 
 /**
- * The last frame widens over what its row leaves empty, three across on a wide screen and two on a phone: 4 frames
+ * The last frame widens over what its row leaves empty, three across where the page is wide and two where it is narrow: 4 frames
  * end a row of three with one, 5 with two; an odd count ends a row of two with one.
  */
 function lastSpan(count: number) {
   const wide = count % 3 === 1 ? "col-span-3" : count % 3 === 2 ? "col-span-2" : "";
-  const narrow = count % 2 === 1 ? "narrow:col-span-2" : wide ? "narrow:col-span-1" : "";
-  return cn(wide, narrow);
+  const two = count % 2 === 1 ? "@max-[36rem]/host-tiles:col-span-2" : wide ? "@max-[36rem]/host-tiles:col-span-1" : "";
+  return cn(wide, two);
 }
 
 /** The numbers, one small frame each: CPU, memory, each GPU, disk and the Runs. */
@@ -107,8 +107,12 @@ function Tiles({ status, sample, now }: { status: Measured; sample: Sample; now:
   ];
   const span = lastSpan(tiles.length);
   return (
-    <div className="grid grid-cols-3 gap-2 narrow:grid-cols-2">
-      {tiles.map((tile, index) => index === tiles.length - 1 && span ? <div key="last" className={cn("grid", span)}>{tile}</div> : tile)}
+    // Three to a line where the page has room for a value and its whole beside it ("178 GB / 915 GB"), else two: asked of
+    // the page's width, which Settings' side list narrows on a computer as a phone's screen does.
+    <div className="@container/host-tiles">
+      <div className="grid grid-cols-3 gap-2 @max-[36rem]/host-tiles:grid-cols-2">
+        {tiles.map((tile, index) => index === tiles.length - 1 && span ? <div key="last" className={cn("grid", span)}>{tile}</div> : tile)}
+      </div>
     </div>
   );
 }

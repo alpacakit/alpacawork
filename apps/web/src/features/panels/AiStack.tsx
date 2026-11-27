@@ -51,8 +51,8 @@ export function AiStack({ kind, rows, agents, onChange, refusedRows, refused }: 
         <p className="mt-1 text-sm text-pretty text-muted [word-break:auto-phrase]">{t(kind === 'tasks' ? 'agentSettings.aiStack.lead' : 'agentSettings.coordinatorStack.lead')}</p>
       </div>
       {/* On a PC the rows share their columns, so each one's role is as wide as the longest, and the agents as the longest
-          name they offer (up to a limit), and every agent and value starts on one line; where the list is too narrow for
-          that, each row's choices go on the line under its agent. */}
+          name they offer (up to a limit), and every agent and value starts on one line; where the list is too narrow
+          for that, each row's choices go on the line under its agent. */}
       <ol ref={list} aria-labelledby={stackHeadingId(kind)} className="m-0 grid list-none grid-cols-[max-content_fit-content(12rem)_minmax(0,1fr)_auto] p-0 narrow:block">
         {rows.map((row, index) => <StackRow key={row.id} row={row} index={index} count={rows.length} agents={agents} enabled={enabled}
           issues={issues.filter(issue => issue.rowId === row.id)} refused={refusedRows?.[index]} repeats={repeatedRow(rows, index, agents)}
@@ -90,7 +90,7 @@ function StackRow({ row, index, count, agents, enabled, issues, refused, repeats
     : issue.kind === 'disabled' ? t('agentSettings.aiStack.issue.disabled', { agent: row.agent })
     : issue.kind === 'value' ? t('agentSettings.aiStack.issue.value', { row: text.row(issue.key), value: shown(issue.value), agent: row.agent }) : '';
   // One line on a PC: its role (the primary, or which fallback), its agent, two choices to a line in columns, and its
-  // controls; in a narrower list the choices start on the next line, under the agent. On a phone the role and controls head the row, the agent and its choices go under them, one to a line.
+  // controls. In a narrower list the choices start on the next line, under the agent (one to a line where narrower still). On a phone the role and controls head the row, the agent and its choices go under them, one to a line.
   return <li data-ai-stack-row={row.agent} data-ai-stack-row-id={row.id} data-invalid={issues.length || refused ? '' : undefined} data-repeats={repeats === null ? undefined : repeats + 1}
     className="col-span-4 grid grid-cols-subgrid items-baseline gap-x-2 border-t border-line px-4 py-3 narrow:grid-cols-[minmax(0,1fr)_auto] narrow:gap-x-2 narrow:px-3">
     <span aria-hidden className={cn('whitespace-nowrap narrow:self-center', index === 0 ? 'font-semibold' : 'text-muted')}>{name}</span>
@@ -104,11 +104,11 @@ function StackRow({ row, index, count, agents, enabled, issues, refused, repeats
       {enabled.map(each => <option key={each.id} value={each.name}>{each.name}</option>)}
     </NativeSelect>
     </div>
-    {choices.length > 0 && <div className="grid min-w-0 grid-cols-[max-content_minmax(0,9rem)_max-content_minmax(0,9rem)] items-baseline gap-x-2 gap-y-2 stackwrap:col-span-2 stackwrap:col-start-2 stackwrap:row-start-2 stackwrap:mt-2 stackwrap:grid-cols-[max-content_minmax(0,1fr)_max-content_minmax(0,1fr)] narrow:col-span-2 narrow:row-start-3 narrow:mt-2 narrow:grid-cols-[4.5rem_minmax(0,1fr)] narrow:gap-x-2">
+    {choices.length > 0 && <div className="grid min-w-0 grid-cols-[max-content_minmax(0,9rem)_max-content_minmax(0,9rem)] items-baseline gap-x-2 gap-y-2 stackwrap:col-span-2 stackwrap:col-start-2 stackwrap:row-start-2 stackwrap:mt-2 stackwrap:grid-cols-[max-content_minmax(0,1fr)_max-content_minmax(0,1fr)] stacksingle:grid-cols-[max-content_minmax(0,14rem)] narrow:col-span-2 narrow:row-start-3 narrow:mt-2 narrow:grid-cols-[4.5rem_minmax(0,1fr)] narrow:gap-x-2">
       {choices.map((choice, at) => {
         const { value, refused } = choice;
         return <label key={choice.key} data-ai-stack-choice={choice.key} className="contents">
-          <span className={cn('text-sm text-muted', at % 2 === 1 && 'ml-2 narrow:ml-0')}>{text.row(choice.key)}</span>
+          <span className={cn('text-sm text-muted', at % 2 === 1 && 'ml-2 stacksingle:ml-0 narrow:ml-0')}>{text.row(choice.key)}</span>
           <NativeSelect variant="field" className="w-full font-mono" value={optionValue(value)} aria-invalid={refused || undefined}
             aria-label={t('agentSettings.aiStack.valueFor', { role: name, row: text.row(choice.key) })}
             onChange={event => onChange(withRowValue(row, choice.key, event.target.value === '-' ? null : event.target.value))}>
