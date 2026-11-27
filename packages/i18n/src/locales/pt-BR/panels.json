@@ -21,7 +21,6 @@
       },
       "lead": "Só quando a IA principal para por limite de uso ou de capacidade, as alternativas assumem, de cima para baixo. Se todas pararem, o trabalho para e você é avisado.",
       "namedOnly": "Uma IA que não está aqui só é usada quando um pedido a nomeia.",
-      "notOffered": "{{value}} (não é um valor)",
       "remove": "Remover {{role}}",
       "repeated": "Igual a {{role}}, por isso esta linha nunca é usada.",
       "saveRefused": "Não foi salvo: “{{list}}” tem algo a corrigir. Corrija o que está marcado em vermelho e salve de novo.",

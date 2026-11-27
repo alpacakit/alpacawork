@@ -21,7 +21,6 @@
       },
       "lead": "Only when the primary AI stops on a usage limit or capacity do the fallbacks take over, from the top down. If they all stop, the work stops and you are told.",
       "namedOnly": "An AI not listed here is used only when a request names it.",
-      "notOffered": "{{value}} (not a value)",
       "remove": "Remove {{role}}",
       "repeated": "Same as {{role}}, so this row is never used.",
       "saveRefused": "Not saved: “{{list}}” has something to fix. Fix what is marked in red, then save again.",

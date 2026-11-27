@@ -33,18 +33,23 @@ export function AiStack({ kind, rows, agents, onChange, refusedRows, refused }: 
   const issues = stackIssues(rows, agents);
   const enabled = agents.filter(agent => agent.enabled !== false);
   const added = newStackRow(agents, rows, kind === 'coordinator' ? coordinatorStart : startValues);
-  // A row just added is edited from its first choice (its model), which takes the focus.
+  // Where the focus goes after a change takes away what held it: a row just added is edited from its first choice (its
+  // model); a row moved keeps the focus on its controls (the other arrow, once one end leaves none); a row removed hands
+  // it to the next row's controls, or to the add button when none is left.
   const list = useRef<HTMLOListElement>(null);
-  const [focusRow, setFocusRow] = useState<string | null>(null);
+  const add = useRef<HTMLButtonElement>(null);
+  const [focus, setFocus] = useState<{ row: string | null; part: 'choice' | 'control' } | null>(null);
   useEffect(() => {
-    if (!focusRow) return;
-    const row = list.current?.querySelector<HTMLElement>(`[data-ai-stack-row-id="${focusRow}"]`);
-    (row?.querySelector<HTMLElement>('[data-ai-stack-choice] select') ?? row?.querySelector<HTMLElement>('select'))?.focus();
-    setFocusRow(null);
-  }, [focusRow]);
+    if (!focus) return;
+    setFocus(null);
+    const row = focus.row === null ? null : list.current?.querySelector<HTMLElement>(`[data-ai-stack-row-id="${focus.row}"]`);
+    if (!row) { add.current?.focus(); return; }
+    if (focus.part === 'choice') (row.querySelector<HTMLElement>('[data-ai-stack-choice] select') ?? row.querySelector<HTMLElement>('select'))?.focus();
+    else if (!row.contains(document.activeElement)) row.querySelector<HTMLElement>('[data-ai-stack-controls] button:not(:disabled)')?.focus();
+  }, [focus]);
   return <div className="flex flex-col gap-2">
     {/* Brought into view with room above it, so its edge stands clear of the tabs' rule. */}
-    <section aria-labelledby={stackHeadingId(kind)} data-ai-stack={kind} className="min-w-0 scroll-mt-4 rounded-lg border border-line bg-raised">
+    <section aria-labelledby={stackHeadingId(kind)} data-ai-stack={kind} className="@container/ai-stack min-w-0 scroll-mt-4 rounded-lg border border-line bg-raised">
       <div className="px-4 pt-4 pb-3 narrow:px-3">
         {/* Focusable by the screen alone: the input's AI opens the settings onto it. */}
         <h3 id={stackHeadingId(kind)} tabIndex={-1} className="text-base font-semibold">{t(stackTitleKey(kind))}</h3>
@@ -54,11 +59,11 @@ export function AiStack({ kind, rows, agents, onChange, refusedRows, refused }: 
         {rows.map((row, index) => <StackRow key={row.id} row={row} index={index} count={rows.length} agents={agents} enabled={enabled}
           issues={issues.filter(issue => issue.rowId === row.id)} refused={refusedRows?.[index]} repeats={repeatedRow(rows, index, agents)}
           onChange={next => onChange(rows.map(was => was.id === row.id ? next : was))}
-          onMove={by => onChange(moveRow(rows, index, by))}
-          onRemove={() => onChange(rows.filter(was => was.id !== row.id))} />)}
+          onMove={by => { onChange(moveRow(rows, index, by)); setFocus({ row: row.id, part: 'control' }); }}
+          onRemove={() => { onChange(rows.filter(was => was.id !== row.id)); setFocus({ row: (rows[index + 1] ?? rows[index - 1])?.id ?? null, part: 'control' }); }} />)}
       </ol>
       <div className="border-t border-line px-4 py-3 narrow:px-3">
-        <Button type="button" variant="outline" disabled={!added} data-ai-stack-add onClick={() => { if (added) { onChange([...rows, added]); setFocusRow(added.id); } }}>
+        <Button ref={add} type="button" variant="outline" disabled={!added} data-ai-stack-add onClick={() => { if (added) { onChange([...rows, added]); setFocus({ row: added.id, part: 'choice' }); } }}>
           {t(rows.length ? 'agentSettings.aiStack.add' : 'agentSettings.aiStack.addFirst')}</Button>
         {issues.some(issue => issue.kind === 'empty') && <FieldError className="mt-2">{t('agentSettings.aiStack.issue.empty')}</FieldError>}
         {refused && <FieldError className="mt-2">{refused}</FieldError>}
@@ -72,9 +77,10 @@ export function AiStack({ kind, rows, agents, onChange, refusedRows, refused }: 
 /**
  * One AI in the order: its place (the primary, or which fallback), the AI itself — its agent and the values it runs with,
  * on one line, each value named inside its own box as wide as what it holds — and its controls, at the end of the line.
- * Values follow the agent when the line is full. A move the row cannot make is not offered; its room is kept, so the
- * controls line up. What is wrong with the row is said under the AI. On a phone the place and the controls head the row,
- * the AI goes under them.
+ * Values follow the agent when the line is full. In a list too narrow for that (Settings beside its side list in a small
+ * window, a phone) the place and the controls head each row and the AI takes the whole width under them, its values under
+ * its agent, so every row keeps one shape. A move the row cannot make is not offered; its room is kept, so the controls
+ * line up. What is wrong with the row is said under the AI, and a refused value's box is marked.
  */
 function StackRow({ row, index, count, agents, enabled, issues, refused, repeats, onChange, onMove, onRemove }: {
   row: StackRowDraft; index: number; count: number; agents: AgentDraft[]; enabled: AgentDraft[]; issues: StackIssue[]; refused?: string;
@@ -100,11 +106,11 @@ function StackRow({ row, index, count, agents, enabled, issues, refused, repeats
   };
   return <li data-ai-stack-row={row.agent} data-ai-stack-row-id={row.id} data-invalid={issues.length || refused ? '' : undefined} data-repeats={repeats === null ? undefined : repeats + 1}
     className="flex flex-wrap items-start gap-x-3 gap-y-1 border-t border-line px-4 py-2.5 narrow:px-3">
-    <span aria-hidden className={cn('min-w-12 flex-none leading-9 whitespace-nowrap narrow:flex-1', index === 0 ? 'font-semibold' : 'text-muted')}>{name}</span>
-    <div className="flex min-w-0 flex-1 flex-col gap-1.5 narrow:order-last narrow:basis-full">
+    <span aria-hidden className={cn('min-w-12 flex-none leading-9 whitespace-nowrap @max-[36.5rem]/ai-stack:flex-1', index === 0 ? 'font-semibold' : 'text-muted')}>{name}</span>
+    <div className="flex min-w-0 flex-1 flex-col gap-1.5 @max-[36.5rem]/ai-stack:order-last @max-[36.5rem]/ai-stack:basis-full">
       <div className="flex min-w-0 flex-wrap items-center gap-1.5">
         {/* The agent's logo stands inside its box, before its name (a choice's own words cannot carry a drawing). */}
-        <div className="relative max-w-full">
+        <div className="relative max-w-full @max-[36.5rem]/ai-stack:basis-full">
           <AgentMark name={row.agent} className="pointer-events-none absolute top-1/2 left-2.5 z-1 size-4 -translate-y-1/2" />
           <NativeSelect variant="field" className="w-auto border-line bg-transparent pr-1.5 pl-[1.8rem] font-semibold [field-sizing:content] hover:border-lit-line"
             value={row.agent} aria-invalid={issues.some(issue => issue.kind !== 'value') || !!refused || undefined}
@@ -116,12 +122,14 @@ function StackRow({ row, index, count, agents, enabled, issues, refused, repeats
         </div>
         {/* Each value is named by its key as the agent's settings write it, the same for every agent. */}
         {choices.map(({ key, value, refused, candidates }) => <label key={key} data-ai-stack-choice={key}
-          className={cn('flex h-control-md max-w-full items-center rounded-sm border border-line focus-within:border-muted hover:border-lit-line', refused && 'border-warn hover:border-warn')}>
+                    // The box is the control: the keyboard's mark is drawn round it, not round the select inside.
+          className={cn('flex h-control-md max-w-full min-w-0 items-center rounded-sm border border-line hover:border-lit-line has-[:focus-visible]:[outline:1px_solid_var(--muted)] has-[:focus-visible]:[outline-offset:2px]', refused && 'border-warn hover:border-warn')}>
           <span className="ps-2.5 font-mono text-xs text-soft">{key}</span>
-          <NativeSelect className={cn('h-full min-h-0 min-w-0 border-0 bg-transparent ps-1.5 pe-1.5 font-mono [field-sizing:content] narrow:text-md', value === null && 'text-soft')}
+          <NativeSelect className={cn('h-full min-h-0 min-w-0 border-0 bg-transparent ps-1.5 pe-1.5 font-mono [field-sizing:content] focus-visible:outline-none narrow:text-md', value === null && 'text-soft')}
             value={optionValue(value)} aria-invalid={refused || undefined} aria-label={t('agentSettings.aiStack.valueFor', { role: name, row: text.row(key) })}
             onChange={event => onChange(withRowValue(row, key, event.target.value === '-' ? null : event.target.value))}>
-            {refused && <option value={optionValue(value)}>{t('agentSettings.aiStack.notOffered', { value: shown(value) })}</option>}
+            {/* A refused value is still shown as it is written; the box's mark and the line under the AI say why. */}
+            {refused && <option value={optionValue(value)}>{shown(value)}</option>}
             {candidates.map(each => <option key={optionValue(each)} value={optionValue(each)}>{shown(each)}</option>)}
           </NativeSelect>
         </label>)}
@@ -133,7 +141,7 @@ function StackRow({ row, index, count, agents, enabled, issues, refused, repeats
       </div>}
     </div>
     {/* Moving is kept apart from removing, which ends the row. */}
-    <div className="flex h-control-md flex-none items-center">
+    <div data-ai-stack-controls className="flex h-control-md flex-none items-center">
       {move(-1, index > 0)}{move(1, index < count - 1)}
       <Button type="button" variant="quiet" size="icon" className="ms-2" aria-label={t('agentSettings.aiStack.remove', { role: name })} title={t('agentSettings.aiStack.remove', { role: name })}
         onClick={onRemove}><Icon name="close" className="size-4" /></Button>
