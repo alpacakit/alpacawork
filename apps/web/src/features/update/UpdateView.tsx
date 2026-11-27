@@ -183,11 +183,11 @@ export function UpdateSettingsTab() {
       {targets === null ? <RegionSkeleton shape="settingRows" rows={3} className="mt-3" /> : <ul className="m-0 mt-3 list-none border-t border-line p-0">
         {items.map(item => <li key={item.key} data-update-target={item.key} className="flex min-h-12 items-center gap-3 border-b border-line py-2">
           <span className="min-w-0 flex-1">
-            <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-              <span className="text-sm [word-break:auto-phrase]">{item.title}</span>
-              {item.isSkill && <span className="flex-none rounded-full border border-line px-1.5 text-xs text-muted">{t("update.page.skill")}</span>}
-            </span>
-            {item.name && <code data-update-skill-name className="mt-0.5 block font-mono text-xs text-soft [overflow-wrap:anywhere]">{item.name}</code>}
+            <span className="block text-sm [word-break:auto-phrase]">{item.title}</span>
+            {item.isSkill && <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+              {item.name && <code data-update-skill-name className="font-mono text-xs text-soft [overflow-wrap:anywhere]">{item.name}</code>}
+              <span className="flex-none rounded-full border border-line px-1.5 text-xs text-muted">{t("update.page.skill")}</span>
+            </span>}
           </span>
           <span className="w-28 flex-none text-end text-xs text-soft tabular-nums">
             {status.kind === "done" ? status.version : next ? <>{APP_VERSION}<TextMark className="mx-1"><Icon name="arrowRight" className="size-3" /></TextMark><span className="font-semibold text-ink">{next}</span></> : APP_VERSION}</span>
@@ -259,13 +259,15 @@ export function UpdateCard({ quiet = false }: { quiet?: boolean }) {
     <span className={cn("grid size-9 place-items-center rounded-full [grid-area:mark] narrow:hidden", mark.className)}>
       <Icon name={mark.icon} className={cn("size-4.5", card.tone === "busy" && "animate-spin [animation-duration:1.4s]")} strokeWidth={2.25} /></span>
     <div data-update-state className="contents">
-      <div className="cap-box [grid-area:head]"><h4 className={cn("m-0 text-base font-semibold [word-break:auto-phrase]", card.tone === "warn" && "text-warn")}>
+      {/* Boxed to the title's capitals and the versions' baseline for the mark beside them; on a phone, where the mark
+          stands in the title's line, the lines keep their whole height. */}
+      <div className="cap-box [grid-area:head] narrow:[text-box:normal]"><h4 className={cn("m-0 text-base font-semibold [word-break:auto-phrase]", card.tone === "warn" && "text-warn")}>
         <TextMark className="me-2 hidden narrow:inline-grid"><span className={cn("grid size-6 place-items-center rounded-full", mark.className)}>
           <Icon name={mark.icon} className={cn("size-3.5", card.tone === "busy" && "animate-spin [animation-duration:1.4s]")} strokeWidth={2.5} /></span></TextMark>{card.title}</h4>
-        {/* A flex line is no last line its box trims, so its items end at their baseline themselves. */}
-        <p className="m-0 mt-0.5 flex flex-wrap items-baseline gap-x-3 text-sm text-muted tabular-nums *:[text-box:trim-end_cap_alphabetic]">
-          <span>alpacawork {card.from ? <>{card.from}<TextMark className="mx-1"><Icon name="arrowRight" className="size-3.5" /></TextMark><span className="font-semibold text-ink">{card.to}</span></> : card.to}</span>
-          {card.to && <ReleaseNotes version={card.to} />}
+        {/* Running text, not a flex line, so the box above trims its last line and a wrapped line keeps its leading. */}
+        <p className="m-0 mt-0.5 text-sm text-muted tabular-nums">
+          <span className="me-2 whitespace-nowrap">alpacawork {card.from ? <>{card.from}<TextMark className="mx-1"><Icon name="arrowRight" className="size-3.5" /></TextMark><span className="font-semibold text-ink">{card.to}</span></> : card.to}</span>
+          {card.to && <>{" "}<ReleaseNotes version={card.to} /></>}
         </p></div>
       {card.body && <p className="m-0 mt-3 text-sm text-muted [grid-area:body] [word-break:auto-phrase]">{card.body}</p>}
     </div>
