@@ -9,6 +9,7 @@ import { useOfflineShown } from "@/data/reach";
 import { RegionSkeleton } from "@/components/ui/skeleton";
 import { Icon } from "@/components/ui/icon";
 import { Caret, DisclosureSummary } from "@/components/ui/caret";
+import { TextMark } from "@/components/ui/text-mark";
 import { subscribeStep } from "@/state/history-step";
 import { useNarrow } from "@/state/view-store";
 import { comparison, parts, type Kind } from "./format";
@@ -83,9 +84,12 @@ export const Square = ({ className }: { className: string }) =>
  * stands on a ground and is underlined.
  */
 export const OPEN = "group/open inline-flex items-baseline gap-0.5 whitespace-nowrap rounded-sm -mx-1 px-1 decoration-ink underline-offset-4 hover:bg-hover hover:underline focus-visible:underline active:translate-y-px";
-/** The › of what opens tasks: faint at rest, in ink while pointed at (`OPEN`'s group). */
-export const OpenMark = ({ big }: { big?: boolean }) =>
-  <Icon name="right" aria-hidden className={cn("flex-none self-center text-soft opacity-70 group-hover/open:text-ink group-hover/open:opacity-100", big ? "size-4" : "size-3")} />;
+/**
+ * The › of what opens tasks: faint at rest, in ink while pointed at (`OPEN`'s group), centred on the capitals of the
+ * number before it (TextMark); `type` is that number's size where it is not the line's own.
+ */
+export const OpenMark = ({ big, type }: { big?: boolean; type?: string }) =>
+  <TextMark className={type}><Icon name="right" className={cn("flex-none text-soft opacity-70 group-hover/open:text-ink group-hover/open:opacity-100", big ? "size-4" : "size-3")} /></TextMark>;
 
 /**
  * A value with its unit drawn small beside it; pressed, it opens the tasks behind it. Its sizes are the analysis's
@@ -93,13 +97,14 @@ export const OpenMark = ({ big }: { big?: boolean }) =>
  */
 export function Value({ kind, value, big, small, onOpen }: { kind: Kind; value: number | null; big?: boolean; small?: boolean; onOpen?: () => void }) {
   const written = value === null ? { value: "—", unit: "" } : parts(kind, value);
+  const type = big ? "text-figure narrow:text-figure-compact" : small ? "text-base" : "text-heading";
   const body = <>
-    <b className={cn("font-semibold tabular-nums decoration-ink underline-offset-4 group-hover/open:underline group-focus-visible/open:underline", big ? "text-figure narrow:text-figure-compact" : small ? "text-base" : "text-heading")}>{written.value}</b>
+    <b className={cn("font-semibold tabular-nums decoration-ink underline-offset-4 group-hover/open:underline group-focus-visible/open:underline", type)}>{written.value}</b>
     {written.unit && <span className="text-base text-muted">{written.unit}</span>}
   </>;
   // One that could open tasks but has none (0) keeps the room of the mark, so a column of numbers stays one column.
   if (!onOpen || !value) return <span className="inline-flex items-baseline gap-0.5 whitespace-nowrap">{body}{onOpen && <i aria-hidden className={cn("inline-block flex-none", big ? "size-4" : "size-3")} />}</span>;
-  return <button type="button" onClick={onOpen} className={OPEN}>{body}<OpenMark big={big} /></button>;
+  return <button type="button" onClick={onOpen} className={OPEN}>{body}<OpenMark big={big} type={type} /></button>;
 }
 
 /** The line under a number: the same span just before, and the gap. */
@@ -123,7 +128,7 @@ export function Num({ label, square, kind, value, previous, length, onOpen, afte
   label: string; square?: string; kind: Kind; value: number | null; previous: number | null; length: number; onOpen?: () => void; after?: ReactNode; className?: string;
 }) {
   return <div className={cn("min-w-0", className)}>
-    <div className="mb-1 flex items-center text-base whitespace-nowrap text-muted">{square && <Square className={square} />}<span className="cap-box">{label}</span></div>
+    <div className="mb-1 flex items-baseline text-base whitespace-nowrap text-muted">{square && <TextMark><Square className={square} /></TextMark>}{label}</div>
     <Value kind={kind} value={value} onOpen={value ? onOpen : undefined} />
     {value !== null && <Compare kind={kind} value={value} previous={previous} length={length} />}
     {after}

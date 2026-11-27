@@ -58,7 +58,7 @@ function ProjectRow({ id, title, color, depth, archived = false }: { id: string;
       className={cn("flex min-h-control-md w-full min-w-0 cursor-pointer items-center gap-3 rounded-sm py-2 pe-2 text-start text-ink hover:bg-hover",
         "focus-visible:outline-2 focus-visible:outline-muted")}>
       <ProjectTile name={title} color={color} size={24} />
-      <span className="min-w-0 flex-1 cap-box">
+      <span className="min-w-0 flex-1">
         <span dir="auto" className="text-base [overflow-wrap:anywhere]">{title}</span>
         <span className="ml-2 text-sm text-soft tabular-nums">{id}</span>
         {archived && <ShelfMark lifecycle="archived" className="ml-2" />}

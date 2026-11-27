@@ -1,10 +1,10 @@
-import { TextMark } from "@/components/ui/text-mark";
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import icon from "../../../public/icons/icon-192-2c.png?inline";
 import { useWorked } from "@/components/ui/copy-button";
 import { Icon, shareIcon } from "@/components/ui/icon";
 import { TAB, TabLabel } from "@/components/ui/tabs";
+import { TextMark } from "@/components/ui/text-mark";
 import { deviceValue, jsonCodec, useDeviceValue } from "@/lib/device-storage";
 import { srgb } from "@/lib/mermaid-colors";
 import { carry } from "@/lib/motion";

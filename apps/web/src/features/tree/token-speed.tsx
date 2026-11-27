@@ -237,10 +237,11 @@ export function HeadingTokenSpeed({ tops, compact }: { tops: readonly Task[]; co
 export function HeadingSpeedUnit({ tops }: { tops: readonly Task[] }) {
   const { t } = useTranslation("tree");
   if (!useSpeedKey(totalKey(tops))) return null;
-  return <>
-    <span title={t("speed.totalTip", { count: tops.length })} className="text-[10px] text-muted">{t("speed.perSecond")}</span>
+  // The help's strut takes the unit's size, so the mark centres on the unit's capitals.
+  return <span className="flex items-baseline gap-0.5 text-[10px]">
+    <span title={t("speed.totalTip", { count: tops.length })} className="text-muted">{t("speed.perSecond")}</span>
     <SpeedHelp bars={false} />
-  </>;
+  </span>;
 }
 
 /** The time's slot after it on In progress rows: a fixed width so the squares line up whatever the time says. */

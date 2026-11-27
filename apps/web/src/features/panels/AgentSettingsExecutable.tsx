@@ -1,9 +1,9 @@
-import { CapCentred } from "@/components/ui/text-mark";
 import { createContext, useContext, useEffect, useId, useState, type ReactNode } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { AGENT_ADAPTERS, type BuiltinAdapterId } from '@alpacawork/contract/agent-adapters';
 import { FieldError, FieldHint } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/textarea';
+import { CapCentred } from '@/components/ui/text-mark';
 import { SettingRow } from '@/components/settings/SettingRow';
 import { useAgentExecutable } from '@/data/queries';
 import { cn } from '@/lib/utils';
@@ -90,7 +90,7 @@ export function AgentExecutableRow({ agent, onChange, issues }: { agent: AgentDr
       <div className="flex items-start gap-2 narrow:flex-wrap">
         <label className="flex min-h-control-md shrink-0 items-center gap-2">
           <input type="radio" name={name} className={RADIO} checked={selected === 'other'} onChange={() => choose('other')} />
-          <span>{t('agentSettings.otherPlace')}</span>
+          <span className="cap-box">{t('agentSettings.otherPlace')}</span>
         </label>
         {/* Grows with the path, so a long one wraps and stays readable whole instead of scrolling inside the box. */}
         <Textarea id={`${id}-other`} rows={1} className="min-h-control-md min-w-0 flex-1 resize-none font-mono [field-sizing:content] [overflow-wrap:anywhere] narrow:basis-full"

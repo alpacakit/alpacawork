@@ -57,7 +57,7 @@ export const TasksLook = memo(function TasksLook({ view, span, root, days, open,
           <i style={{ flex: now.reworked }} className="block min-w-0.5 rounded-xs bg-reworked" />
         </span>
         <button type="button" onClick={() => open({ set: "accepted", value: null })} className={OPEN}>
-          <b className="text-heading font-semibold tabular-nums">{share(now.share)}</b><OpenMark /></button>
+          <b className="text-heading font-semibold tabular-nums">{share(now.share)}</b><OpenMark type="text-heading" /></button>
       </span>}
       compare={before && <div className="flex flex-wrap gap-x-2.5 text-xs text-soft">
         <span className="whitespace-nowrap">{previousName(length)} {format("tasks", before.passed)}{before.share !== null && `${t("sep")}${share(before.share)}`}</span>

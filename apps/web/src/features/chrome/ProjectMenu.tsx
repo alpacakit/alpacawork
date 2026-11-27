@@ -96,7 +96,7 @@ export function ProjectMenu({ className, onOpen }: { className?: string; onOpen?
         {headMark && <ProjectTile name={headMark.name} color={headMark.color} size={24} className="mr-2.5" />}
         <span className="relative flex min-w-0">
           <span dir="auto" className="min-w-0 cap-truncate">{name}</span>
-          {elsewhere && <i data-turn-elsewhere aria-hidden="true" className="absolute -end-2 -top-0.5 size-2.5 rounded-full bg-turn ring-2 ring-bg" />}
+          {elsewhere && <i data-turn-elsewhere aria-hidden="true" className="absolute -end-2 bottom-full size-2.5 rounded-full bg-turn ring-2 ring-bg" />}
         </span>
         {!onOpen && <Icon name="down" className={cn("size-4 flex-none text-muted", elsewhere && "ml-2")} />}
       </button>

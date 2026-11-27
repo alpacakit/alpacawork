@@ -48,7 +48,8 @@ function WorkPicture() {
   ];
   return <ol data-welcome-picture className="m-0 mt-9 flex list-none items-start justify-center gap-2 p-0 narrow:mt-4 narrow:flex-col narrow:items-stretch narrow:gap-1">
     {parts.map((part, at) => <li key={part.name} data-welcome-picture-part={part.name} className="contents">
-      {at > 0 && <Icon name="arrowRight" aria-hidden="true" className="mt-6 size-4 flex-none text-soft narrow:mt-0 narrow:ml-[3.25rem] narrow:rotate-90" />}
+      {/* The arrow centres on the pictures beside it: a box as high as they are (PICTURE), on a computer. */}
+      {at > 0 && <span className="flex h-16 flex-none items-center narrow:h-auto narrow:ml-[3.25rem]"><Icon name="arrowRight" aria-hidden="true" className="size-4 text-soft narrow:rotate-90" /></span>}
       <div className="flex max-w-56 flex-1 flex-col items-center gap-2 text-center narrow:max-w-none narrow:flex-row narrow:gap-4 narrow:text-left">
         {part.picture}
         <span className="text-sm text-ink"><Sentences words={part.words} /></span>

@@ -1,8 +1,8 @@
-import { CapCentred } from "@/components/ui/text-mark";
 import type * as React from "react";
 import { Trans, useTranslation } from "react-i18next";
 import type { SKILL_OFFERS } from "@alpacawork/contract";
 import { BetaMark, RecommendedMark } from "./parts";
+import { CapCentred } from "@/components/ui/text-mark";
 
 type Offer = typeof SKILL_OFFERS[number];
 

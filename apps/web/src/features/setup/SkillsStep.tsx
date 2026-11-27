@@ -1,4 +1,3 @@
-import { CapCentred } from "@/components/ui/text-mark";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { SKILL_OFFERS, canSelectSkill, type SkillJob, type SkillName } from "@alpacawork/contract";
@@ -6,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field";
 import { ReadFailure } from "@/components/ui/loadable";
 import { RegionSkeleton } from "@/components/ui/skeleton";
+import { CapCentred } from "@/components/ui/text-mark";
 import { cn } from "@/lib/utils";
 import { notify } from "@/lib/notify";
 import { problemText } from "@/features/forms/problem-text";

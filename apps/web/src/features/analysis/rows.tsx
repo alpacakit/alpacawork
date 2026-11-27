@@ -1,4 +1,3 @@
-import { TextMark } from "@/components/ui/text-mark";
 import type { LaunchFilter } from "./series";
 import { isTokenUnit } from "@/domain/tokens";
 import { createContext, memo, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -10,6 +9,7 @@ import { daysBetween, dayLabel, format, splitFigure, inUnit, monthLabel, numberT
 import { axisLabels } from "./charts";
 import { OpenMark, tipAround } from "./parts";
 import { Icon } from "@/components/ui/icon";
+import { TextMark } from "@/components/ui/text-mark";
 import type { Bucket, Group, ListSet, ListValue } from "./contract";
 
 /**
@@ -532,15 +532,15 @@ function DayWindow({ day, say, room, at, box, onList, onPart, onStep, first, las
     </div>
     {parts.length > 0 && <div className="mt-1.5 -mx-1.5 grid grid-cols-[auto_auto_auto] gap-x-4">
       {(room.say.parts?.(0) ?? []).map((part, index) => <div key={`room-${index}`} aria-hidden className="invisible col-span-3 grid h-0 grid-cols-subgrid overflow-hidden px-1.5">
-        <span className="flex items-center whitespace-nowrap">{part.color && <i className="me-2 inline-block size-2" />}{part.name}</span>
+        <span className="flex items-baseline whitespace-nowrap">{part.color && <TextMark className="me-2"><i className="inline-block size-2" /></TextMark>}{part.name}</span>
         <span className="font-semibold whitespace-nowrap tabular-nums">{part.value}</span>
-        <span className="flex items-center gap-0.5 text-xs whitespace-nowrap tabular-nums">{part.share ?? ""}{part.list && <OpenMark />}</span>
+        <span className="flex items-baseline gap-0.5 text-xs whitespace-nowrap tabular-nums">{part.share ?? ""}{part.list && <OpenMark />}</span>
       </div>)}
       {parts.map(part => {
         const cells = <>
-          <span className="flex items-center whitespace-nowrap text-muted">{part.color && <i aria-hidden className={cn("me-2 inline-block size-2 rounded-xs", part.color)} />}{part.name}</span>
+          <span className="flex items-baseline whitespace-nowrap text-muted">{part.color && <TextMark className="me-2"><i className={cn("inline-block size-2 rounded-xs", part.color)} /></TextMark>}{part.name}</span>
           <span className="text-end font-semibold whitespace-nowrap text-ink tabular-nums decoration-ink underline-offset-4 group-hover/open:underline">{part.value}</span>
-          <span className="flex items-center justify-end gap-0.5 text-xs whitespace-nowrap text-soft tabular-nums">{part.share ?? ""}{part.list && <OpenMark />}</span>
+          <span className="flex items-baseline justify-end gap-0.5 text-xs whitespace-nowrap text-soft tabular-nums">{part.share ?? ""}{part.list && <OpenMark />}</span>
         </>;
         const row = "group/open col-span-3 grid grid-cols-subgrid items-center rounded-sm px-1.5 py-1.5";
         return part.list ? <button key={part.name} type="button" data-part-index={parts.indexOf(part)} onClick={() => onPart(part.list!)} className={cn(row, "text-start hover:bg-hover")}>{cells}</button>
@@ -552,7 +552,7 @@ function DayWindow({ day, say, room, at, box, onList, onPart, onStep, first, las
         <b className="font-semibold text-ink tabular-nums">{say.line.value(at)}</b></div>
       <div className="ps-5 text-soft">{say.line.base(at)}</div>
     </div>}
-    {onList && <button type="button" data-window-list="" onClick={onList} className="group/open mt-2 flex w-full items-center gap-1 border-t border-rule pt-2 text-muted hover:text-ink">{t("window.list")}<OpenMark /></button>}
+    {onList && <button type="button" data-window-list="" onClick={onList} className="group/open mt-2 flex w-full items-baseline gap-1 border-t border-rule pt-2 text-muted hover:text-ink">{t("window.list")}<OpenMark /></button>}
   </div>;
 }
 
