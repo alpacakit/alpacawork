@@ -6,7 +6,7 @@ The coordinator reads this when asked to read or change settings, when adding or
 
 | What you want to change | Where it lives | How to change it |
 |---|---|---|
-| The AI that task requests start on when the agent placing them names none, and what takes over | `aiStack` in `config.yaml` | `config set --config` with `limits` and `aiStack` together, or "Settings → AI → AI for tasks" on the screen |
+| The AI an agent launches with when whoever placed it gave none, and what takes over | `aiStack` in `config.yaml` | `config set --config` with `limits` and `aiStack` together, or "Settings → AI → AI for tasks" on the screen |
 | The AI that answers messages from the input, and what takes over | `coordinatorAiStack` in `config.yaml` | `config set --config` with `limits` and `coordinatorAiStack` together, or "Settings → AI → AI you talk to in the input (coordinator)" on the screen |
 | The number of Runs running at once, time limits, the attachment limit | `limits` in the server's `config.yaml` | `config set`, or "Settings → General → Advanced options" on the screen |
 | The AIs in use, the models and other values selectable in a request, launch options | `agents` in `config.yaml` | `config set --agents` with the full agents block, or "Settings → AI → Settings for each agent" on the screen |
@@ -32,7 +32,7 @@ coordinatorAiStack:
   - { agent: codex, values: {} }
 ```
 
-Each stack lists named, enabled agents and their launch values in order. The first row is the default, used when no one names an AI: coordinators and owners name one when they place an agent and the user's words or the project policy name one for the work ([the request procedure](request.md)). The next row takes over on a usage limit or capacity stop. If the last row stops, the request ends.
+Each stack lists named, enabled agents and their launch values in order. The first row is the default. For `aiStack`, an agent launches with it when whoever placed the agent gave no AI ([the request procedure](request.md)). The next row takes over on a usage limit or capacity stop. If the last row stops, the request ends.
 
 When `coordinatorAiStack` is missing, the coordinator uses one default row from the first agent in `aiStack`, or the first enabled agent in configuration order if the task stack has no rows. The row uses the agent's starting values, with `low` effort when its starting model uses effort and offers `low`. With an explicit `coordinatorAiStack: []` or no enabled agents, the coordinator has no AI to launch.
 

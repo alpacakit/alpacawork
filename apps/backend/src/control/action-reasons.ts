@@ -23,19 +23,25 @@ function required(option: string, choices: readonly string[], subject?: { reques
 
 const requiresActionReason = (actor: TaskActor) => actor.kind !== 'human';
 
+/** Whether a write gives its launch values with `--ai-stack` or `--selected`; without either they come from the configured AI order. */
+export const givesLaunchValues = (input: { selected?: unknown; aiStack?: unknown }) =>
+  input.selected !== undefined || input.aiStack !== undefined;
+
 /**
- * Why an AI actor launches the AI it does: `default` when it names no launch values and the configured order supplies them,
- * any other code when it names them. `named` says whether the write names an AI; `asked` whether an AI actor must say why.
+ * Why an AI actor launches the AI it does: `default` when the write gives no launch values, any other code when it gives
+ * them. `given` is left out where the write carries no launch values to match (a handover keeps the placement's AI);
+ * `asked` says whether an AI actor must say why.
  */
-export function placementReason(input: PlacementOptions, actor: TaskActor, { named, asked }: { named: boolean; asked: boolean }):
+export function placementReason(input: PlacementOptions, actor: TaskActor, { given, asked }: { given?: boolean; asked: boolean }):
   PlacedReason | undefined {
   if (asked && requiresActionReason(actor) && input.placedAs === undefined) required('placedAs', PLACED_AS);
   if (input.placedAs === undefined) return undefined;
-  if (input.placedAs === 'default' && named)
-    throw new Problem(PROBLEM_CODE.invalidInput, '--placed-as default is for naming no AI; this write names one', undefined,
+  if (input.placedAs === 'default' && given === true)
+    throw new Problem(PROBLEM_CODE.invalidInput, '--placed-as default goes with neither --ai-stack nor --selected', undefined,
       { reason: { kind: 'placement_default_names_an_ai' } });
-  if (input.placedAs !== 'default' && !named)
-    throw new Problem(PROBLEM_CODE.invalidInput, `--placed-as ${input.placedAs} needs an AI named with --ai-stack or --selected`, undefined,
+  if (input.placedAs !== 'default' && given === false)
+    throw new Problem(PROBLEM_CODE.invalidInput,
+      `--placed-as ${input.placedAs} describes a model or effort given with --ai-stack or --selected`, undefined,
       { reason: { kind: 'placement_reason_needs_selection' } });
   return { code: input.placedAs, ...(input.placedNote === undefined ? {} : { note: input.placedNote }) };
 }

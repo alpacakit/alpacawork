@@ -31,8 +31,8 @@ export const REASON_MEANINGS = {
     presentation: 'How the result is organized or presented for review.',
   } satisfies Record<typeof ASPECTS[number], string>,
   placedAs: {
-    default: 'No model or effort is named: neither the user\'s words nor the project policy names one for this work, ' +
-      'so the configured AI order for tasks supplies them.',
+    default: 'No model or effort is given with --ai-stack or --selected, because neither the user\'s words nor the project ' +
+      'policy names one for this work.',
     policy: 'The AI named is what the user\'s words or the project policy name for this work.',
     lighter: 'A lighter model or lower effort is being tried.',
     exception: 'This choice departs from policy. Give one line with --placed-note.',

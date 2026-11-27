@@ -74,13 +74,14 @@ test('an AI placing a member must give a placement reason', async t => {
   { code: 'invalid_input', reason: { kind: 'reason_required', flag: '--placed-as', choices: 'default|policy|lighter|exception' } });
 });
 
-test('an AI declares default exactly when it names no model or effort, and another reason only when it names them', () => {
+test('an AI declares default exactly when it gives no launch values, another reason only when it gives them, and either on a handover', () => {
   const ai = { kind: 'placement', placementId: 'P1' } as const;
   const refused = (kind: string) => ({ code: 'invalid_input', reason: { kind } });
-  assert.deepEqual(placementReason({ placedAs: 'default' }, ai, { named: false, asked: true }), { code: 'default' });
-  assert.deepEqual(placementReason({ placedAs: 'policy' }, ai, { named: true, asked: true }), { code: 'policy' });
-  assert.throws(() => placementReason({ placedAs: 'policy' }, ai, { named: false, asked: true }), refused('placement_reason_needs_selection'));
-  assert.throws(() => placementReason({ placedAs: 'default' }, ai, { named: true, asked: true }), refused('placement_default_names_an_ai'));
+  assert.deepEqual(placementReason({ placedAs: 'default' }, ai, { given: false, asked: true }), { code: 'default' });
+  assert.deepEqual(placementReason({ placedAs: 'policy' }, ai, { given: true, asked: true }), { code: 'policy' });
+  assert.throws(() => placementReason({ placedAs: 'policy' }, ai, { given: false, asked: true }), refused('placement_reason_needs_selection'));
+  assert.throws(() => placementReason({ placedAs: 'default' }, ai, { given: true, asked: true }), refused('placement_default_names_an_ai'));
+  assert.deepEqual(placementReason({ placedAs: 'default' }, ai, { asked: true }), { code: 'default' });
 });
 
 test('member mutations reject a current owner target and stale revision', async t => {
