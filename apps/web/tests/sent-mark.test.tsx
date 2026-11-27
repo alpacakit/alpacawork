@@ -2,8 +2,9 @@
 import { expect, test } from 'vitest';
 import type { CoordinatorConversation } from '../src/data/coordinator';
 import type { Outgoing } from '../src/features/coordinator/editor/outbox';
-import { localFlag, onItsWay, sentVerdict, tookUp, turnFlag } from '../src/features/coordinator/sent-mark';
+import { localFlag, onItsWay, sentVerdict, tookUp, turnFlag, writeOnItsWay } from '../src/features/coordinator/sent-mark';
 import { forgetSent, rememberSent, settleSent, useSentHere, type SentHere } from '../src/features/coordinator/sent-here';
+import type { WriteIntent } from '../src/data/write-intent';
 import { served, SERVED } from './conversation-fixture';
 
 const item = (over: Partial<Outgoing> = {}): Outgoing => ({ key: 'k', requestId: 'm0', stage: 'queued', at: '2026-10-29T03:00:00.000Z', refusal: null,
@@ -49,11 +50,38 @@ test('a withdrawn turn, or a request gone from both sides, ends the send', () =>
 
 const T4 = (over: { since?: string; status?: string } = {}) => ({ id: 'T4', ...row(over) });
 
-test('the latest send on its way gives the baseline; ended sends are to be forgotten', () => {
+const write = (status: WriteIntent['status'], operationId = 'w1') => ({ status, operationId, payload: { task: 'T4', state: 'held' } } as WriteIntent);
+
+test('a state change is on its way through its undo time and delivery, and until the row shows the state it reported', () => {
+  expect(writeOnItsWay(write('waiting'), 'w1', 'doing')).toBe(true);
+  expect(writeOnItsWay(write('pending'), 'w1', 'doing')).toBe(true);
+  expect(writeOnItsWay(write('confirmed'), 'w1', 'doing')).toBe(true);
+  expect(writeOnItsWay(write('confirmed'), 'w1', 'held')).toBe(false);
+});
+
+test('a failed, unknown or undone state change ends at once, as does one replaced by a newer write', () => {
+  for (const status of ['refused', 'conflict', 'unconfirmed', 'cancelled'] as const) expect(writeOnItsWay(write(status), 'w1', 'doing')).toBe(false);
+  expect(writeOnItsWay(write('pending', 'w2'), 'w1', 'doing')).toBe(false);
+  expect(writeOnItsWay(undefined, 'w1', 'doing')).toBe(false);
+});
+
+test('a state change sent to a running Task keeps its arc until the new state shows', () => {
+  const sends: SentHere[] = [{ requestId: 'w1', tasks: { T4: PRESS }, write: 'key' }];
+  expect(sentVerdict(T4({ status: 'running' }), sends, [true])).toEqual({ marked: 'state', settle: [], ended: [] });
+  expect(sentVerdict(T4({ status: 'running', since: '2026-10-29T03:00:05.000Z' }), sends, [true])).toEqual({ marked: null, settle: ['w1'], ended: [] });
+  expect(sentVerdict(T4({ status: 'running' }), sends, [false])).toEqual({ marked: null, settle: [], ended: ['w1'] });
+});
+
+test('a message sent after a state change does not end the state change\'s arc when a Run starts', () => {
+  const sends: SentHere[] = [{ requestId: 'w1', tasks: { T4: PRESS }, write: 'key' }, { requestId: 'm1', tasks: { T4: PRESS } }];
+  expect(sentVerdict(T4({ status: 'running' }), sends, [true, true])).toEqual({ marked: 'state', settle: ['m1'], ended: [] });
+});
+
+test('each send on its way is judged against its own press; ended sends are to be forgotten', () => {
   const sends: SentHere[] = [{ requestId: 'a', tasks: { T4: 'other' } }, { requestId: 'b', tasks: { T4: PRESS } }];
-  expect(sentVerdict(T4(), sends, [true, true])).toEqual({ marked: true, settle: [], ended: [] });
-  expect(sentVerdict(T4(), sends, [true, false])).toEqual({ marked: false, settle: ['a'], ended: ['b'] });
-  expect(sentVerdict(T4(), sends, [false, false])).toEqual({ marked: false, settle: [], ended: ['a', 'b'] });
+  expect(sentVerdict(T4(), sends, [true, true])).toEqual({ marked: 'instruction', settle: ['a'], ended: [] });
+  expect(sentVerdict(T4(), sends, [true, false])).toEqual({ marked: null, settle: ['a'], ended: ['b'] });
+  expect(sentVerdict(T4(), sends, [false, false])).toEqual({ marked: null, settle: [], ended: ['a', 'b'] });
 });
 
 test('the arc stays while the row is as it was at the press, and goes when a Run is queued or running', () => {
@@ -82,11 +110,11 @@ test('once a row took the work up, its arc never comes back while the turn goes 
     settleSent('T4', verdict.settle); forgetSent(verdict.ended);
     return verdict.marked;
   };
-  expect(step({})).toBe(true);
-  expect(step({ status: 'queued' })).toBe(false);
-  expect(step({ status: 'running' })).toBe(false);
-  expect(step({ status: 'still', since: '2026-10-29T03:20:00.000Z' })).toBe(false);
-  expect(step({})).toBe(false);
+  expect(step({})).toBe('instruction');
+  expect(step({ status: 'queued' })).toBe(null);
+  expect(step({ status: 'running' })).toBe(null);
+  expect(step({ status: 'still', since: '2026-10-29T03:20:00.000Z' })).toBe(null);
+  expect(step({})).toBe(null);
   expect(useSentHere.getState().sends).toEqual([{ requestId: 'r1', tasks: { T9: false } }]);
 });
 

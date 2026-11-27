@@ -64,7 +64,8 @@
     "review": "Revisar"
   },
   "sent": {
-    "pending": "Instrução enviada"
+    "pending": "Instrução enviada",
+    "stateChange": "Mudança de estado enviada"
   },
   "shelved": {
     "archived": "Arquivada",

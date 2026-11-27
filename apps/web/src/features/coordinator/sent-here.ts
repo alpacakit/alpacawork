@@ -6,20 +6,22 @@ import { stateSince } from '@/domain/tasks';
 /**
  * The sends this page made, each with the named Tasks' state as it stood at the press (the server's own
  * transition time, or null when it had none; `false` when the row was not in the index). Kept in memory only, so the
- * arc is the sending device's and a reload forgets it. `freeze` (outbox.ts) is the one place that records a send;
- * `settleSent` takes a Task out of its sends once the row took the work up, and `forgetSent` drops sends that ended.
+ * arc is the sending device's and a reload forgets it. A send is a message to the coordinator (`freeze` in outbox.ts)
+ * or, with `write`, a direct state report under that write-intent key (use-task-report.ts); those two are the only
+ * places that record one. `settleSent` takes a Task out of its sends once the row took it up, and `forgetSent` drops
+ * sends that ended.
  */
-export type SentHere = { requestId: string; tasks: Readonly<Record<string, string | null | false>> };
+export type SentHere = { requestId: string; tasks: Readonly<Record<string, string | null | false>>; write?: string };
 export const useSentHere = create<{ sends: readonly SentHere[] }>(() => ({ sends: [] }));
 
-export function rememberSent(requestId: string, taskIds: readonly string[]) {
+export function rememberSent(requestId: string, taskIds: readonly string[], write?: string) {
   if (!taskIds.length) return;
   const rows = readIndex(queryClient)?.tasks ?? [];
   const tasks = Object.fromEntries(taskIds.map(id => {
     const row = rows.find(each => each.id === id);
     return [id, row ? stateSince(row) : false] as const;
   }));
-  useSentHere.setState(state => ({ sends: [...state.sends.filter(each => each.requestId !== requestId), { requestId, tasks }] }));
+  useSentHere.setState(state => ({ sends: [...state.sends.filter(each => each.requestId !== requestId), { requestId, tasks, ...write && { write } }] }));
 }
 
 /** The row took up what these sends asked: none of them marks it again, even when its Run ends before the turn does. */

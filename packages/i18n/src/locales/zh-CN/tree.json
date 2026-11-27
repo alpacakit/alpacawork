@@ -62,7 +62,8 @@
     "review": "验收"
   },
   "sent": {
-    "pending": "指示已发送"
+    "pending": "指示已发送",
+    "stateChange": "状态变更已发送"
   },
   "shelved": {
     "archived": "已归档",
