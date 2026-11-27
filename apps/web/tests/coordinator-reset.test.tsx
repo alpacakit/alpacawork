@@ -382,3 +382,26 @@ test("folding the history again takes what was read off the screen; opened again
   await waitFor(() => expect(earlierShown()).toBe(50));
   expect(history.pages()).toEqual(["t120", "t70", "t120"]);
 });
+
+test("a message coming in keeps the one it pushed out of the snapshot on screen while the history is read again", async () => {
+  const x = answered("x", 1), a = answered("a", 10), b = answered("b", 11);
+  let release!: () => void;
+  const held = new Promise<void>(resolve => { release = resolve; });
+  let conversation = { ...empty, earlier: { count: 1, before: "a" }, turns: [a] };
+  vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+    const before = /before=(.+)$/.exec(url)?.[1];
+    if (!url.startsWith("/api/coordinator/turns?")) return json(conversation);
+    if (before === "b") await held;
+    return new Response(JSON.stringify({ turns: before === "b" ? [x, a] : [x], resets: [], more: null }), { status: 200 });
+  }));
+  setConversationState({ open: true, expanded: true, read: true, conversation });
+  card();
+  fireEvent.click(thread().querySelector("[data-earlier] button")!);
+  await waitFor(() => expect(order()).toEqual(["x", "earlier", "a"]));
+  // "b" pushes "a" out of the snapshot; until the history is read again to take it in, "a" stays where it was.
+  conversation = { ...conversation, earlier: { count: 2, before: "b" }, turns: [b] };
+  setConversationState({ conversation });
+  await waitFor(() => expect(order()).toEqual(["x", "a", "earlier", "b"]));
+  release();
+  await waitFor(() => expect(order()).toEqual(["x", "a", "earlier", "b"]));
+});

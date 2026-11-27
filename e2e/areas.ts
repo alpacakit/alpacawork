@@ -19,6 +19,7 @@ export const e2eAreas = {
     "coordinator-capsule",
     "coordinator-float",
     "coordinator-frame",
+    "coordinator-history",
     "coordinator-press-away",
     "coordinator-read-line",
     "coordinator-read-under",

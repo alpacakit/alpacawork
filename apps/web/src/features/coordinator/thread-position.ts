@@ -65,6 +65,8 @@ export function useThreadPosition(body: HTMLElement, host: HTMLElement | null, a
     let anchor: { block: HTMLElement; offset: number; text?: { range: Range; offset: number } } | null = null;
     const oldAnchoring = area.style.overflowAnchor, oldPadding = body.style.paddingBottom;
     let bottomRoom = 0, unfoldRoom = 0;
+    // What following the end keeps at the top (the last thing said) and where it was laid out when last noted.
+    let followed: { said: HTMLElement; top: number } | null = null;
     const releaseRoom = () => { bottomRoom = 0; unfoldRoom = 0; body.style.paddingBottom = oldPadding; };
     // Room lent for a jump to what is still unfolding (jump's `past`, never more) is taken back as far as it is out of
     // view, as what grows into it no longer needs it, and whatever is left once nothing unfolds any more (it opened
@@ -121,6 +123,8 @@ export function useThreadPosition(body: HTMLElement, host: HTMLElement | null, a
       rememberedTop = area.scrollTop;
       rememberedHeight = area.scrollHeight; rememberedRoom = area.clientHeight;
       following = !stayOnQuestion && atEnd();
+      const said = following ? lastSaid() : undefined;
+      followed = said ? { said, top: topIn(said) } : null;
     };
     // Where it stands and what is read at its top. Following the end, nothing there is kept (the end is), so the words
     // in sight are looked for only when the reading stands somewhere else: a pane sized by the hand settles each frame.
@@ -166,8 +170,11 @@ export function useThreadPosition(body: HTMLElement, host: HTMLElement | null, a
       if (following && sized && !(anchor && pastFollow()) && !unfolding()) {
         const from = area.scrollTop;
         area.scrollTop = followTop();
-        // What it follows comes into sight by gliding there, not by a jump.
-        glideReading(body, area.scrollTop - from);
+        // What it follows comes into sight by gliding there, not by a jump: as far as it moved on screen. What came in
+        // above it (older history read in) moved it down as far as the scroll takes it back, so the words in sight
+        // stand still rather than sweep past.
+        const said = lastSaid(), above = said && followed?.said === said ? topIn(said) - followed.top : 0;
+        glideReading(body, area.scrollTop - from - above);
       }
       else if (anchor && body.contains(anchor.block)) {
         const text = anchor.text;

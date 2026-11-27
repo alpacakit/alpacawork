@@ -152,10 +152,17 @@ function EarlierRow({ count, open, toggle }: { count: number; open: boolean; tog
   </li>;
 }
 /**
+ * How close to the top of what is read the reader comes before the next page is read: once the message this many from
+ * the top is in sight (or passed), the next page is asked for. A page brings far more than this, so each comes as the
+ * reader gets near it, never several at once, however tall the screen or the messages; and it is far enough ahead
+ * that a reader flinging on to the top on a phone gets there after the page does, not into the sheet's pull.
+ */
+const READ_AHEAD = 40;
+/**
  * At the top of the opened history, while older turns are still to be read: a press reads the next page of them, and
- * so does the row itself while it is still screens above the reading (a reader dragging on to the top would otherwise
- * pull a phone's sheet down instead). It says it is reading meanwhile, and that it could not, with the same press to
- * try again. Once the history holds as many as the screen keeps, it says nothing further back is read.
+ * so does the reader coming within READ_AHEAD messages of it. It says it is reading meanwhile, and that it could not,
+ * with the same press to try again. Once the history holds as many as the screen keeps, it says nothing further back
+ * is read.
  */
 function ReadOlder({ held, full, reading, failed, read }: { held: number; full: boolean; reading: boolean; failed: boolean; read: () => void }) {
   const { t } = useTranslation("ui");
@@ -163,17 +170,19 @@ function ReadOlder({ held, full, reading, failed, read }: { held: number; full: 
   const latest = useRef(read);
   latest.current = read;
   const waiting = !full && !reading && !failed;
-  // Seen once per wait: a wait ends with the read it starts, and the next begins with what that read brought (`held`),
-  // so a row still in sight after a read reads on.
+  // Watched once per wait: a wait ends with the read it starts, and the next begins with what that read brought
+  // (`held`), so the message watched is READ_AHEAD from the top of what is read now.
   useEffect(() => {
-    const row = place.current;
-    if (!waiting || !row || typeof IntersectionObserver === "undefined") return;
+    const row = place.current, messages = row?.closest("[data-coordinator-thread]")?.querySelectorAll("[data-coordinator-message]");
+    const mark = messages?.[Math.min(READ_AHEAD, messages.length) - 1];
+    if (!waiting || !row || !mark || typeof IntersectionObserver === "undefined") return;
     let asked = false;
+    // In sight or below it: the reader has come that far.
     const sight = new IntersectionObserver(entries => {
       if (asked || !entries.some(entry => entry.isIntersecting)) return;
       asked = true; latest.current();
-    }, { root: row.closest("[data-card-scroll]"), rootMargin: "1000% 0px 0px 0px" });
-    sight.observe(row);
+    }, { root: row.closest("[data-card-scroll]"), rootMargin: "0px 0px 1000000px 0px" });
+    sight.observe(mark);
     return () => sight.disconnect();
   }, [waiting, held]);
   if (full) return <li ref={place} data-earlier-more="full" className="relative border-b border-rule pl-(--gutter)">
@@ -265,7 +274,7 @@ export const CoordinatorThread = memo(function CoordinatorThread({ turns: recent
   const setHand = (next: (map: ReadonlyMap<string, boolean>) => ReadonlyMap<string, boolean>) => setHands(state => ({ of: state.of, map: next(state.map) }));
   const earlierOpen = hand.get(EARLIER) ?? false;
   // Turns older than the snapshot's, serve's window ending where the snapshot starts, read once the history is open.
-  const earlier = useEarlierHistory(root, served.id ?? null, served.earlier ?? null, earlierOpen);
+  const earlier = useEarlierHistory(root, served.id ?? null, served.earlier ?? null, earlierOpen, recent);
   const shown = useShownConversation(recent);
   // The window and the snapshot are joined by ID in serve's order (the window first), then grouped once: a message
   // sent into another across the snapshot's first turn stands under it.
