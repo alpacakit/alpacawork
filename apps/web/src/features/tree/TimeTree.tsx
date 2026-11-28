@@ -46,7 +46,7 @@ import { BarRoom } from "@/features/chrome/Bar";
 import { cn } from "@/lib/utils";
 import { listColumns, SPEED_LANE } from "@/state/screen-settings";
 import { useListWidth } from "@/lib/use-list-width";
-import { atOf, EDGE_HALO, EdgeLayer, buildAxis, futureBandWidth, futureWords, type FutureWords, Ground, StripGround, Lane, laneMarks, lineOf, lineReports, ProbeRule, shownScaleMs, stretchReport, stripAxis, stripKeys, TimeClock, clockHeight, textScale, rowTurn, TurnEdge, wordsW, type RowTurn, useStrip, useStripProbe, showZoom, StripPress, wholeIn, xOf, type Level, type MarkAt, type Piece, type Scale } from "./time-line";
+import { atOf, EDGE_HALO, EdgeGround, EdgeLayer, buildAxis, futureBandWidth, futureWords, type FutureWords, Ground, StripGround, Lane, laneMarks, lineOf, lineReports, ProbeRule, shownScaleMs, stretchReport, stripAxis, stripKeys, TimeClock, clockHeight, textScale, rowTurn, TurnEdge, wordsW, type RowTurn, useStrip, useStripProbe, showZoom, StripPress, wholeIn, xOf, type Level, type MarkAt, type Piece, type Scale } from "./time-line";
 import { drawnTaskIds, useListNavigationSource } from "./list-navigation";
 import { ShelvedRow } from "./ShelvedRow";
 import { PageReadFailure, type PageRead, type ReadView } from "./PageReadFailure";
@@ -624,7 +624,7 @@ const TaskRow = memo(function TaskRow({ node, shared, visibleRows }: TaskRowProp
   const look = useTaskLook(task);
   const stateWord = look.word;
   // The title column and strip have the same height; a wide row is always WIDE_ROW.
-  const h = narrow ? 22 : WIDE_ROW;
+  const h = narrow ? NARROW_STRIP_LEVEL.height : WIDE_STRIP_LEVEL.height;
   // A home row's summary is the server's: its children finished of all. A row without a home summary uses the index's child
   // counts.
   const summary = node.row?.summary ?? null;
@@ -728,9 +728,11 @@ function RowStrip({ node, shared, height, title, enter }: { node: Node; shared: 
     scale={scale} pieces={pieces} now={now} seen={seen} show={show} />;
 }
 
-// The line stands on the row's middle and rises at most to a third of the way up, so marks and words share one centre.
-const NARROW_STRIP_LEVEL: Readonly<Level> = { base: 11, unit: 5, rise: 7 };
-const WIDE_STRIP_LEVEL: Readonly<Level> = { base: WIDE_ROW / 2, unit: 6, rise: 9 };
+// One at work is a band about the row's middle, standing where the title's letters stand; more at once rise over it
+// toward the row's top. The row's marks and words keep the row's middle, beside the title, whatever the line does.
+const NARROW_STRIP_LEVEL: Readonly<Level> = { height: 22, base: 17, unit: 8, rise: 13 };
+const WIDE_STRIP_LEVEL: Readonly<Level> = { height: WIDE_ROW, base: 21, unit: 10, rise: 17 };
+export const STRIP_LEVELS = { narrow: NARROW_STRIP_LEVEL, wide: WIDE_STRIP_LEVEL };
 
 /** One row's line, drawn again only when its own history or the shared clock and scale change. */
 const Strip = memo(function Strip({ node, narrow, height, title, enter, history, scale, pieces, now, seen, show }: { node: Node; narrow: boolean; height: number;
@@ -769,10 +771,10 @@ const Strip = memo(function Strip({ node, narrow, height, title, enter, history,
     {narrow && <StripGround pieces={pieces} width={scale.width} height={height} now={now} />}
     {history && <Lane line={line} marks={marks} scale={scale} level={level} now={now} turnFrom={turn?.at ?? null}
       finish={finish} onPick={(key) => { probe.mark.hide(); open(key); }} probe={probe.mark} />}
-    {edge && seen && (edge.kind === "turn" ? <TurnEdge turn={edge.turn} x={scale.x(seen.from) + 14} y={level.base}
+    {edge && seen && (edge.kind === "turn" ? <TurnEdge turn={edge.turn} x={scale.x(seen.from) + 14} y={height / 2}
       onPick={() => { probe.mark.hide(); open(edge.turn.key); }} probe={probe.mark} words={turnNote(edge.turn.at)}
       heard={t("timeView.edge.turn", { kind: edge.turn.why === "question" ? t("ui:turn.question") : t("ui:state.waitingReview"), time: clock(edge.turn.at) })} />
-      : <EdgeNote edge={edge} x={edge.side === "left" ? scale.x(seen.from) + 6 : scale.x(seen.to) - 6} y={level.base} clock={clock}
+      : <EdgeNote edge={edge} x={edge.side === "left" ? scale.x(seen.from) + 6 : scale.x(seen.to) - 6} y={height / 2} clock={clock}
         onGo={() => show(edge.go[0], edge.go[1])} />)}
   </svg>;
 });
@@ -828,10 +830,11 @@ function EdgeNote({ edge, x, y, clock, onGo }: { edge: Exclude<Edge, { kind: "tu
   const words = edge.kind === "todo" ? since : state ? label : heard;
   const text = left ? (state ? words : `‹ ${words}`) : `${words} ›`;
   const textX = left && state ? x + 15 : x;
+  const textW = wordsW(text, textScale());
   return <EdgeLayer><StripPress onPress={onGo} attributes={{ "data-edge": edge.kind }} className="group/edge">
     <title>{t("timeView.edge.go", { note: heard })}</title>
+    <EdgeGround from={left ? x - 8 : textX - textW - 4} to={left ? textX + textW + 4 : x + 8} y={y} />
     {state && <>
-      <circle cx={x + 6} cy={y} r={7.5} className="fill-[var(--row-ground,var(--bg))]" />
       <StateIcon state={state} x={x} y={y - 6} width={12} height={12} />
     </>}
     <text x={textX} y={y + 3.5} textAnchor={left ? "start" : "end"} strokeWidth={EDGE_HALO} paintOrder="stroke" strokeLinejoin="round"

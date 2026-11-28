@@ -84,9 +84,21 @@ test("a person's step stays the same whether a short overlap is evened away or n
   // Two people at once for 8 min: wider than 6px at 1px a minute, evened into one person at half that.
   const hands = [hand(-60, -22), hand(-30, -10)];
   const half = { ...scale, x: (at: number) => scale.x(at) / 2 };
-  const level = { base: 16, unit: 6, rise: 9 };
+  const level = { height: 32, base: 16, unit: 6, rise: 9 };
   const steps = [scale, half].map((each) => heightOf(shapeOf(now - 60 * minute, now, hands, [], each, false), level)(1));
   expect(steps[0]).toBe(steps[1]);
+});
+
+test("one at work stands clear of the base on a row that has had many at once, and each one more still rises", () => {
+  const level = { height: 32, base: 21, unit: 10, rise: 17 };
+  const stretch = (count: number) => ({ from: now - 10 * minute, to: now, count, wait: null, peak: count, merged: 0 });
+  const y = heightOf([1, 2, 3, 4, 5].map(stretch), level);
+  const heights = [1, 2, 3, 4, 5].map(count => level.base - y(count));
+  expect(heights[0]).toBeGreaterThan(level.rise / 3);
+  expect(heights[4]).toBe(level.rise);
+  for (let i = 1; i < heights.length; i++) expect(heights[i]! - heights[i - 1]!).toBeGreaterThan(1);
+  // Alone on its row, one is one step.
+  expect(level.base - heightOf([stretch(1)], level)(1)).toBe(level.unit);
 });
 
 test("lone short work and the stretch a task is in now are never evened away", () => {

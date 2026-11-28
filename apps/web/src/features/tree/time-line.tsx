@@ -27,8 +27,13 @@ import { continuesDrawing, liveDrawing, sameDrawingSource, type DrawingSource } 
  */
 const BREAK_W = 32;
 export type Piece = { from: number; to: number; x0: number; x1: number; gap: boolean };
-/** The line's geometry for a row: where its base sits, one person's step, and the most it may rise. */
-export type Level = { base: number; unit: number; rise: number };
+/** How far a mark reaches above and below its centre: its ring of 9, and 1 more where its focus ring is stroked. */
+export const MARK_REACH = 10;
+/**
+ * The line's geometry for a row: the row's height, where the base sits, one person's step, and the most it may rise.
+ * The marks and words of a row keep the row's middle, as its title does, whatever the line's base is.
+ */
+export type Level = { height: number; base: number; unit: number; rise: number };
 type Wait = Exclude<Segment["kind"], "work" | "member" | "below">;
 export type Scale = { x: (at: number) => number; from: number; to: number; width: number };
 
@@ -663,7 +668,9 @@ export function lineOf(own: TaskHistory | null, now: number, scale: Scale) {
 }
 
 /**
- * How high the line stands with `count` at work: a step a person, smaller when the most at once would rise past `rise`.
+ * How high the line stands with `count` at work: a step a person while the most at once fits under `rise`. A row that
+ * has had more at once grows as the square root of the count, up to `rise` at its most, so one at work still stands
+ * clear of the base there and each one more is a smaller step.
  * The most at once is each stretch's `peak`, not its evened `count`: whether a short overlap is evened away depends on
  * the zoom, and the axis moves a little with every update, so the step would change with it and every run on the row
  * would rise and fall.
@@ -671,8 +678,7 @@ export function lineOf(own: TaskHistory | null, now: number, scale: Scale) {
 export function heightOf(stretches: Stretch[], level: Level) {
   let maximum = 1;
   for (const each of stretches) maximum = Math.max(maximum, each.peak);
-  const step = Math.min(level.unit, level.rise / maximum);
-  return (count: number) => level.base - count * step;
+  return (count: number) => level.base - Math.min(count * level.unit, level.rise * Math.sqrt(count / maximum));
 }
 
 const WAIT_LINE = { held: ["text-lit-line", 1, "2 3"], review: ["text-lit-line", 1, undefined], stuck: [TONE.error, 1.5, undefined] } as const;
@@ -781,6 +787,12 @@ function useMarkWords() {
 
 /** An edge note's ground around its text: wide enough to meet across the gaps between its characters, so the line stops at the note. */
 export const EDGE_HALO = 8;
+/**
+ * The row's ground under an edge note's icon and words, from `from` to `to`: the line runs at the row's base, under the
+ * words' middle, and stops clear of them rather than being nicked by each glyph's halo.
+ */
+export const EdgeGround = ({ from, to, y }: { from: number; to: number; y: number }) =>
+  <rect x={from} y={y - 8} width={Math.max(0, to - from)} height={16} rx={8} className="fill-[var(--row-ground,var(--bg))]" />;
 
 /**
  * What every pressable glyph on a strip that opens History (a mark, an edge note) is: one button; the band's expected
@@ -869,7 +881,7 @@ export function TurnEdge({ turn, x, y, words, heard, onPick, probe }: { turn: Ro
   return <EdgeLayer><StripPress onPress={onPick} point={turn} probe={probe} ring={{ x, y, tone: "turn", pointed: 8 }}
     attributes={{ "data-mark": turn.key, "data-edge": "turn" }} className="group/edge">
     <title>{heard}</title>
-    <circle cx={x} cy={y} r={7.5} className="fill-[var(--row-ground,var(--bg))]" />
+    <EdgeGround from={x - 16} to={x + 8 + (words ? 2 + wordsW(words, textScale()) + 4 : 0)} y={y} />
     <Icon name={turn.why} x={x - 6} y={y - 6} width={12} height={12} className={cn("size-3", TONE.turn)} />
     {words && <text x={x + 10} y={y + 4} strokeWidth={EDGE_HALO} paintOrder="stroke" strokeLinejoin="round"
       className="fill-trail stroke-[var(--row-ground,var(--bg))] text-xs tabular-nums group-hover/edge:fill-ink group-focus-visible/edge:fill-ink">{words}</text>}
@@ -902,8 +914,8 @@ export function Lane({ line, marks, scale, level, now, finish, turnFrom, onPick,
       <clipPath id={overId}><rect x={overFrom} y={0} width={Math.max(0, overTo - overFrom)} height={level.base + 4} /></clipPath>
       <g clipPath={`url(#${overId})`}><Wave stretches={line.stretches} scale={scale} level={level} drops={line.drops} turnFrom={null} late /></g>
     </g>}
-    <Marks marks={marks} scale={scale} y={level.base} onPick={onPick} probe={probe} />
-    {label && <FutureLabel words={label} long={finish!.long} x={labelX} y={level.base} over={passed !== null} />}
+    <Marks marks={marks} scale={scale} y={level.height / 2} onPick={onPick} probe={probe} />
+    {label && <FutureLabel words={label} long={finish!.long} x={labelX} y={level.height / 2} height={level.height} over={passed !== null} />}
   </g>;
 }
 
@@ -913,12 +925,11 @@ export function Lane({ line, marks, scale, level, now, finish, turnFrom, onPick,
  * its words, so a press need not land on a glyph, and its focus ring stays inside a phone's short strip. It keeps the
  * page's pointer rule: while another tip is open, a press on it only closes that tip, as on the row's other times.
  */
-function FutureLabel({ words, long, x, y, over }: { words: FutureWords; long: string; x: number; y: number; over: boolean }) {
+function FutureLabel({ words, long, x, y, height, over }: { words: FutureWords; long: string; x: number; y: number; height: number; over: boolean }) {
   const { t } = useTranslation("tree");
   const heading = t("status.tip.report");
   const k = textScale();
   const width = wordsW(words.text, k) + (words.days === 0 ? 0 : dayMarkW(words.days, k));
-  const half = Math.min(12, y - 1);
   return <TimeTipPopover heading={heading} body={<p>{long}</p>}>
     <g data-future-tip role="button" tabIndex={0} aria-label={`${heading}: ${long}`}
       className="group/future cursor-pointer outline-none"
@@ -928,7 +939,7 @@ function FutureLabel({ words, long, x, y, over }: { words: FutureWords; long: st
         event.preventDefault(); event.stopPropagation();
         event.currentTarget.dispatchEvent(new MouseEvent("click", { bubbles: true }));
       }}>
-      <rect x={x - 4} y={y - half} width={width + 8} height={2 * half} rx={3} fill="transparent"
+      <rect x={x - 4} y={1} width={width + 8} height={height - 2} rx={3} fill="transparent"
         className="group-focus-visible/future:stroke-ink/40" strokeWidth={2} />
       <text data-future-label x={x} y={y + 4} textAnchor="start"
         className={cn("text-xs tabular-nums decoration-dotted group-hover/future:underline group-data-[state=open]/future:underline",

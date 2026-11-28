@@ -6,8 +6,8 @@ import { finishWords, type FinishWords } from "../src/domain/finish-words";
 import { i18n } from "@alpacawork/i18n";
 import { formatClock } from "../src/domain/time";
 import { projectTimeHistory, timeHistoryBase, type TaskHistory } from "../src/domain/time-history";
-import { TimeTree } from "../src/features/tree/TimeTree";
-import { compactMark, futureBandWidth, futureWords, Lane, laneMarks, lineOf } from "../src/features/tree/time-line";
+import { STRIP_LEVELS, TimeTree } from "../src/features/tree/TimeTree";
+import { compactMark, futureBandWidth, futureWords, Lane, laneMarks, lineOf, MARK_REACH } from "../src/features/tree/time-line";
 import { useViewStore } from "../src/state/view-store";
 import { queryClient } from "../src/data/query-client";
 import { indexKey, resources } from "../src/data/resources";
@@ -218,7 +218,7 @@ test("a mark cannot shift the future estimate away from the no-mark column", () 
   const finish = { short: "Expected report 12:30", long: "Expected report 12:30", tone: "quiet" as const, at: now + 30 * minute, ends: true, brief: "12:30", briefDays: 0 };
   const scale = { x: (at: number) => 200 + (at - now) / minute * 3, from: now - 60 * minute, to: now + 30 * minute, width: 324 };
   const draw = (marks: typeof mark[]) => render(<svg><Lane turnFrom={null} line={{ stretches: [], hands: [], waits: [], drops: false }}
-    marks={marks} scale={scale} level={{ base: 20, unit: 8, rise: 14 }} now={now} finish={finish} onPick={() => {}} /></svg>).container;
+    marks={marks} scale={scale} level={{ height: 40, base: 20, unit: 8, rise: 14 }} now={now} finish={finish} onPick={() => {}} /></svg>).container;
   const without = draw([]);
   const x = without.querySelector("text")?.getAttribute("x");
   cleanup();
@@ -228,7 +228,7 @@ test("a mark cannot shift the future estimate away from the no-mark column", () 
   cleanup();
   const dated = { ...finish, at: Date.parse("2027-10-13T12:30:00+09:00") };
   const withPin = render(<svg><Lane turnFrom={null} line={{ stretches: [], hands: [], waits: [], drops: false }}
-    marks={[{ ...mark, display: "pin" }]} scale={scale} level={{ base: 20, unit: 8, rise: 14 }} now={now}
+    marks={[{ ...mark, display: "pin" }]} scale={scale} level={{ height: 40, base: 20, unit: 8, rise: 14 }} now={now}
     finish={dated} onPick={() => {}} /></svg>).container;
   const pin = withPin.querySelector('[data-pin="true"] rect')!;
   const words = withPin.querySelector("[data-future-label]")!;
@@ -294,7 +294,7 @@ test("a mark keeps its event time even beside the now line", () => {
     log: { ...event.source.log!, estimateMinutes: undefined } } } };
   const scale = { x: (at: number) => 200 + (at - now) / minute * 3, from: now - 60 * minute, to: now + 30 * minute, width: 324 };
   const draw = (pin: boolean) => render(<svg><Lane turnFrom={null} line={{ stretches: [], hands: [], waits: [], drops: false }}
-    marks={[pin ? { ...mark, display: "pin" } : mark]} scale={scale} level={{ base: 20, unit: 8, rise: 14 }}
+    marks={[pin ? { ...mark, display: "pin" } : mark]} scale={scale} level={{ height: 40, base: 20, unit: 8, rise: 14 }}
     now={now} finish={{ short: "Expected report 12:30", long: "Expected report 12:30", tone: "quiet", at: now + 30 * minute, ends: true, brief: "12:30", briefDays: 0 }}
     onPick={() => {}} /></svg>).container;
   const ordinary = draw(false).querySelector("[data-mark] g circle")!;
@@ -384,7 +384,7 @@ test("an overrun stays in the future band while its quiet past keeps its true ti
   const finish = { short: "~9 hours past 04:30", long: "540 of 30 min worked", tone: "late" as const, at: now - 9 * hour, ends: false, brief: "~9 hours overdue", briefDays: 0 };
   const scale = { x: (time: number) => (time - (now - 10 * hour)) / minute * 3, from: now - 10 * hour, to: now + 14 * minute, width: 1924 };
   const lane = () => render(<svg><Lane turnFrom={null} line={{ stretches: [], hands: [], waits: [], drops: false }}
-    marks={[]} scale={scale} level={{ base: 20, unit: 8, rise: 14 }} now={now} finish={finish} onPick={() => {}} /></svg>).container;
+    marks={[]} scale={scale} level={{ height: 40, base: 20, unit: 8, rise: 14 }} now={now} finish={finish} onPick={() => {}} /></svg>).container;
   // What is past the estimate is drawn from the estimate to now.
   let strip = lane();
   const clip = strip.querySelector("[data-overrun] clipPath rect")!;
@@ -410,7 +410,7 @@ test("work past the estimate is redrawn quietly on its own line, in the row's gr
   // Past the estimate: one at work, a quiet gap, then two at once up to now: a row with two concurrent workers.
   const line = { stretches: [stretch(now - 50 * minute, now - 40 * minute, 1), stretch(now - 40 * minute, now - 35 * minute, 0),
     stretch(now - 35 * minute, now - 20 * minute, 1), stretch(now - 20 * minute, now, 2)], hands: [], waits: [], drops: false };
-  const level = { base: 11, unit: 5, rise: 7 };
+  const level = { height: 22, base: 11, unit: 5, rise: 7 };
   const draw = (from: number) => {
     const scale = { x: (at: number) => (at - from) / minute * 3, from, to: now + 20 * minute, width: 400 };
     const strip = render(<svg><Lane turnFrom={null} line={line} marks={[]} scale={scale} level={level} now={now} finish={finish}
@@ -462,6 +462,15 @@ test("a phone keeps the first In progress row visible above ten open Not started
     expect(container.querySelector('[data-section="doing"] + ol > [data-row="T1"]')).toBeTruthy();
     expect(container.querySelectorAll('[data-section="todo"] + ol > [data-row]')).toHaveLength(10);
   } finally { narrow.restore(); }
+});
+
+test("on a phone and a computer, the line and the marks at the row's middle stay inside the row", () => {
+  for (const level of Object.values(STRIP_LEVELS)) {
+    // The line's 1.5px stroke at its top and on its base.
+    expect(level.base - level.rise).toBeGreaterThanOrEqual(1);
+    expect(level.base).toBeLessThanOrEqual(level.height - 1);
+    expect(level.height / 2).toBeGreaterThanOrEqual(MARK_REACH);
+  }
 });
 
 test("desktop time rows put the state icon, ID, title and child progress on one 32px line", () => {
