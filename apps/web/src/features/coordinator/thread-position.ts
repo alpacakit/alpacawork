@@ -111,8 +111,8 @@ export function useThreadPosition(body: HTMLElement, host: HTMLElement | null, a
     // Whether what is read is short of the end, for the way down (ToLatest) to read.
     const markAway = () => area.toggleAttribute('data-thread-away', !atEnd());
     // The person's hand on the reading: a finger or a mouse button held on it, or a scroll of theirs a moment ago.
-    // Meanwhile growth at the end is not followed, so nothing moves under the hand; once it is let go, it is followed.
-    let holding = false, movedAt = -Infinity, later = 0;
+    // Meanwhile growth at the end is not followed (owed), so nothing moves under the hand; once let go, it is followed.
+    let holding = false, movedAt = -Infinity, later = 0, owed = false;
     const view = area.ownerDocument.defaultView ?? window;
     const inHand = () => holding || performance.now() - movedAt < IN_HAND_AFTER;
     const settleLater = () => { view.clearTimeout(later); later = view.setTimeout(() => settle(), IN_HAND_AFTER); };
@@ -146,7 +146,8 @@ export function useThreadPosition(body: HTMLElement, host: HTMLElement | null, a
       takeBackRoom();
       rememberedTop = area.scrollTop;
       rememberedHeight = area.scrollHeight; rememberedRoom = area.clientHeight; rememberedWidth = area.clientWidth;
-      following = !stayOnQuestion && atEnd();
+      // What is owed to the end keeps it followed: the growth it waits for took it further than "at the end".
+      following = !stayOnQuestion && (atEnd() || owed);
       markAway();
       const said = following ? lastSaid() : undefined;
       followed = said ? { said, top: topIn(said) } : null;
@@ -186,15 +187,13 @@ export function useThreadPosition(body: HTMLElement, host: HTMLElement | null, a
     const settle = () => {
       if (pending) return;
       // Explicit reply jumps, focus, and native scrolling can precede their scroll event. They choose a new anchor.
-      if (movedByReader()) { remember(); return; }
-      // In the person's hand, what grows at the end waits: where it stands is kept as noted, to be followed once let go.
-      if (following && inHand()) { settleLater(); return; }
+      if (movedByReader()) { owed = false; remember(); return; }
       const sized = area.scrollHeight !== rememberedHeight || area.clientHeight !== rememberedRoom;
       // Following the end with nothing kept, a change that moves nothing and sizes nothing (a second ticking by) asks nothing.
-      if (following && !anchor && !sized) return;
+      if (following && !anchor && !sized && !owed) return;
       // A disclosure moving in the thread (a turn's work, pressed by the person) is not new words to follow: what is read
       // stays where it is while it moves; still at the end once it has, the end is followed again.
-      if (following && sized && !(anchor && pastFollow()) && !unfolding()) {
+      if (following && (sized || owed) && !(anchor && pastFollow()) && !unfolding()) {
         // What came in above the followed words (older history read in, an image above taking its height) moved them
         // down: the reading goes down as far, so they stand where they were. Only what grew under them, or a new size of
         // the pane, is followed, and following only ever goes on toward the end, never back; what it follows comes into
@@ -204,8 +203,13 @@ export function useThreadPosition(body: HTMLElement, host: HTMLElement | null, a
         // they were and they shake under the edge.
         const from = area.scrollTop, said = lastSaid(), above = said && followed?.said === said ? topIn(said) - followed.top : 0;
         const resized = area.clientHeight !== rememberedRoom || area.clientWidth !== rememberedWidth;
-        const grown = area.scrollHeight - rememberedHeight - above > 0 || resized;
-        area.scrollTop = grown ? Math.max(from + above, followTop()) : from + above;
+        const grown = area.scrollHeight - rememberedHeight - above > 0 || resized || owed;
+        // In the person's hand, what grew is owed rather than followed: what they read stays where it is (as far as what
+        // came in above moved it), and the end is followed once they let go.
+        const waits = grown && !resized && inHand();
+        owed = waits;
+        if (waits) settleLater();
+        area.scrollTop = grown && !waits ? Math.max(from + above, followTop()) : from + above;
         if (!resized) glideReading(body, area.scrollTop - from - above);
       }
       else if (anchor && body.contains(anchor.block)) {
@@ -224,7 +228,7 @@ export function useThreadPosition(body: HTMLElement, host: HTMLElement | null, a
       remember();
     };
     const takeOver = () => {
-      pending = false; stayOnQuestion = false;
+      pending = false; stayOnQuestion = false; owed = false;
       remember();
     };
     // A reply jump or scrollbar can choose a position before the browser delivers its scroll event.
@@ -267,7 +271,7 @@ export function useThreadPosition(body: HTMLElement, host: HTMLElement | null, a
       // Its own keeping (settle, end) has already remembered where it put the reading; the browser's hold is not a move.
       if (!movedByReader()) { if (held()) noteHeld(); return; }
       // A scrollbar moves no reading-move event: having left the question, the end follows growth again.
-      movedAt = performance.now();
+      movedAt = performance.now(); owed = false;
       stayOnQuestion = false;
       remember();
     };
