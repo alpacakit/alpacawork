@@ -91,9 +91,10 @@ function Answer({ turn, retry }: { turn: CoordinatorTurn; retry: (turn: Coordina
     return <div>
       <AnswerBody turn={turn} />
       <div data-coordinator-answer-meta className="mt-type-close flex flex-wrap items-center gap-x-1.5 text-xs text-muted">
-        <span className="cap-box font-medium text-ink">{t("coordinatorCard.title")}</span>
+        {/* A line high on its own, so a line it keeps when the presses wrap under it. */}
+        <span className="flex min-h-lh items-center gap-x-1.5"><span className="cap-box font-medium text-ink">{t("coordinatorCard.title")}</span>
         {turn.answeredAt && <><time dateTime={turn.answeredAt} className="cap-box tabular-nums">{messageTime(turn.answeredAt, i18n.language)}</time>
-          <span className="cap-box">· {seconds < 60 ? t("coordinatorCard.seconds", { count: seconds }) : t("coordinatorCard.minutes", { count: Math.round(seconds / 60) })}</span></>}
+          <span className="cap-box">· {seconds < 60 ? t("coordinatorCard.seconds", { count: seconds }) : t("coordinatorCard.minutes", { count: Math.round(seconds / 60) })}</span></>}</span>
         <span className="inline-flex gap-0">
           <CopyButton clip={() => textClip(turn.answer!)} label={t("coordinatorCard.copyAnswer")} className="-my-1 h-8 w-7 narrow:-my-2 narrow:h-10 narrow:w-9" />
           <Button type="button" variant="quiet" size="icon" disabled={disabled} data-reply-answer={turn.id}
