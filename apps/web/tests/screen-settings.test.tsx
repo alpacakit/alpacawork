@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { readerWidth, readSetting, titleColumnWidth, writeSetting } from "../src/state/screen-settings";
+import { listColumns, readerListReservation, readerWidth, readSetting, SPEED_LANE, titleColumnWidth, writeSetting } from "../src/state/screen-settings";
 
 beforeEach(() => { localStorage.clear(); history.replaceState(null, "", "/"); });
 afterEach(() => vi.restoreAllMocks());
@@ -67,4 +67,15 @@ test("the list's title column is a third of a wide list between its least and it
   expect(titleColumnWidth(900)).toBe(360);
   expect(titleColumnWidth(1392)).toBe(473);
   expect(titleColumnWidth(1900)).toBe(480);
+});
+
+test("the time strip gives up its room before the speed column loses its bars, even beside the widest reader", () => {
+  // A list beside a detail at its default width on a 1440px screen; then the list the widest reader leaves (24px and 36px insets).
+  expect(listColumns(833).lane).toBe(SPEED_LANE);
+  for (const viewport of [1280, 1440, 1920]) expect(listColumns(viewport - readerListReservation(4000, viewport) - 60).lane).toBe(SPEED_LANE);
+  // Narrower, the number alone, then nothing, so the strip keeps its floor.
+  const compact = listColumns(560).lane;
+  expect(compact).toBeGreaterThan(0);
+  expect(compact).toBeLessThan(SPEED_LANE);
+  expect(listColumns(500).lane).toBe(0);
 });
