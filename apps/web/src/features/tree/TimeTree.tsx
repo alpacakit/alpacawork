@@ -656,12 +656,12 @@ const TaskRow = memo(function TaskRow({ node, shared, visibleRows }: TaskRowProp
         className={cn("group relative flex border-b border-rule", narrow && "flex-col",
           picked ? "bg-row-picked [--row-ground:var(--color-row-picked-solid)]"
             : !narrow && "hover:bg-row-hover hover:[--row-ground:var(--color-row-hover-solid)]")}>
-        {/* A press anywhere on the row's words that is not a control of its own opens the task, as its title does. The title's
-            cover cannot be relied on for this: the speed column and the time stand outside it, and a mark drawn over it (a
-            stopped AI's faded logo) takes the press, while a cover laid over the speed would hide its tip. */}
+        {/* A press anywhere on the row's words that is not a control of its own opens the task, as its title does, so every
+            part keeps its own tip under the pointer (the speed, the agents at work, a stopped AI's logo). On a phone the title's
+            cover still makes the whole row one press, for its focus and its tap size. */}
         <div ref={label} data-row-label onClick={(event) => { if (pressOutsideControls(event)) openDetail(task.id); }}
           style={narrow ? frozen(shared) : { ...frozen(shared), height: h }}
-          className={cn("sticky left-0 z-2 flex flex-none items-stretch overflow-hidden", ground,
+          className={cn("sticky left-0 z-2 flex flex-none cursor-pointer items-stretch overflow-hidden", ground,
           columnEdge(shared), narrow && shared.selected === task.id && "ring-1 ring-muted ring-inset")}>
           {/* A row lifted away from its parent says that parent once, before its id. */}
           {narrow ? <RowLines task={task} people={people} unread={unread}
@@ -680,9 +680,9 @@ const TaskRow = memo(function TaskRow({ node, shared, visibleRows }: TaskRowProp
               <TaskId id={task.id} className="flex-none text-xs tabular-nums text-muted cap-box" />
               {/* The title keeps about half the line; what stands at its end (the agents first) gives way. */}
               <RowTitle title={task.title} className="min-w-[45%] flex-1 text-base text-ink" />
-            </>, "flex min-w-[45%] flex-1 items-center gap-1.5 text-left after:absolute after:inset-0 after:content-['']", timeApart ? `${endId} ${timeId}` : endId)}
+            </>, "flex min-w-[45%] flex-1 items-center gap-1.5 text-left", timeApart ? `${endId} ${timeId}` : endId)}
             {/* The row's one time at its end, with what is so of its state before it. It stands beside the press, as its time
-                is a press of its own; the press's cover lies over the rest of it, so a press there still opens the task. */}
+                is a press of its own; a press on the rest of it opens the task through the row's words. */}
             <RowEnd id={endId} task={task} childCount={progress ? `${progress.done}/${progress.total}` : null}
               timeApart={timeApart} />
           </div>}
@@ -719,12 +719,14 @@ function openDetail(id: string, key?: string, returnTo?: HTMLElement) {
 }
 
 /**
- * A press on an element's own content that no control in it took: not on a button or link, and not in what a control
- * opened elsewhere on the page (a tip's card is the row's in React, so its presses bubble here).
+ * A press on an element's own content that no control in it took: not on a button or link, not in what a control
+ * opened elsewhere on the page (a tip's card is the row's in React, so its presses bubble here), and not the end of
+ * selecting its words.
  */
 function pressOutsideControls(event: MouseEvent<HTMLElement>): boolean {
   const target = event.target as Element;
-  return event.currentTarget.contains(target) && !target.closest("button, a, [role=button]");
+  return event.currentTarget.contains(target) && !target.closest("button, a, [role=button]")
+    && window.getSelection()?.isCollapsed !== false;
 }
 
 /** A node's task as its row in the home list is drawn: with the section the row is listed in. */

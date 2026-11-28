@@ -168,7 +168,8 @@ function workWords(ms: number, t: T) {
 
 /**
  * A row's time said short ("6m", a flag and "14:30"); a press, Enter or Space opens what it means in words, as the reader
- * says it (TimeTipPopover). It is its own press, over the row's (z-1, never inside it), so it never opens the task too, and its hit area
+ * says it (TimeTipPopover). It is its own press, over the title's cover on a phone (z-1), and the row's press leaves buttons to
+ * themselves (pressOutsideControls), so it never opens the task too; its hit area
  * reaches past its words (before:), up to the row's top and 1px under them, never into the title's line, so a press on
  * the title, even at its top edge, opens the task (e2e/row-time-tip.check.ts).
  */
