@@ -323,4 +323,17 @@ test('a sent message goes to the end, under what was said; nothing moves under a
   await down.click();
   await expect.poll(end).toBeLessThan(2);
   await expect(down).toHaveCount(0);
+  // A right press opens the context menu, and its release never comes: it is no hand left on the conversation.
+  rmSync(gate('finish'));
+  await readyCoordinator(page, runtime);
+  await page.locator('[data-one-input]').click();
+  await page.keyboard.insertText('Once more');
+  await page.locator('[data-ask-send]').click();
+  await expect(page.locator('[data-coordinator-turn=running] [data-working-steps]')).toBeVisible();
+  await settleMotion(page, panel, true);
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down({ button: 'right' });
+  writeFileSync(gate('finish'), '');
+  await expect(page.locator('[data-ask-answer]')).toHaveCount(3);
+  await expect.poll(end, { message: 'followed after a right press' }).toBeLessThan(2);
 });

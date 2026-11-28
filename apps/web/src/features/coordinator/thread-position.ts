@@ -113,6 +113,9 @@ export function useThreadPosition(body: HTMLElement, host: HTMLElement | null, a
     // The person's hand on the reading: a finger or a mouse button held on it, or a scroll of theirs a moment ago.
     // Meanwhile growth at the end is not followed (owed), so nothing moves under the hand; once let go, it is followed.
     let holding = false, movedAt = -Infinity, later = 0, owed = false;
+    // A move of the person's back up the thread leaves the end, and what was owed to it with it; a move on down (a
+    // wheel's or a flick's run-on toward the end) keeps it owed.
+    const forgoIfUp = (up: boolean) => { if (up) owed = false; else if (owed) settleLater(); };
     const view = area.ownerDocument.defaultView ?? window;
     const inHand = () => holding || performance.now() - movedAt < IN_HAND_AFTER;
     const settleLater = () => { view.clearTimeout(later); later = view.setTimeout(() => settle(), IN_HAND_AFTER); };
@@ -187,7 +190,7 @@ export function useThreadPosition(body: HTMLElement, host: HTMLElement | null, a
     const settle = () => {
       if (pending) return;
       // Explicit reply jumps, focus, and native scrolling can precede their scroll event. They choose a new anchor.
-      if (movedByReader()) { owed = false; remember(); return; }
+      if (movedByReader()) { forgoIfUp(area.scrollTop < rememberedTop); remember(); return; }
       const sized = area.scrollHeight !== rememberedHeight || area.clientHeight !== rememberedRoom;
       // Following the end with nothing kept, a change that moves nothing and sizes nothing (a second ticking by) asks nothing.
       if (following && !anchor && !sized && !owed) return;
@@ -227,8 +230,8 @@ export function useThreadPosition(body: HTMLElement, host: HTMLElement | null, a
       }
       remember();
     };
-    const takeOver = () => {
-      pending = false; stayOnQuestion = false; owed = false;
+    const takeOver = (down = false) => {
+      pending = false; stayOnQuestion = false; forgoIfUp(!down);
       remember();
     };
     // A reply jump or scrollbar can choose a position before the browser delivers its scroll event.
@@ -271,13 +274,18 @@ export function useThreadPosition(body: HTMLElement, host: HTMLElement | null, a
       // Its own keeping (settle, end) has already remembered where it put the reading; the browser's hold is not a move.
       if (!movedByReader()) { if (held()) noteHeld(); return; }
       // A scrollbar moves no reading-move event: having left the question, the end follows growth again.
-      movedAt = performance.now(); owed = false;
+      movedAt = performance.now(); forgoIfUp(area.scrollTop < rememberedTop);
       stayOnQuestion = false;
       remember();
     };
-    const stopMove = onReadingMove(area, event => { if (event.type === 'wheel') movedAt = performance.now(); takeOver(); });
-    // Let go outside the window (or the window left), the hand is gone too.
-    const handEvents = [['pointerup', letGo], ['pointercancel', letGo], ['touchend', letGo], ['touchcancel', letGo], ['blur', letGo]] as const;
+    const stopMove = onReadingMove(area, event => {
+      if (event.type === 'wheel') movedAt = performance.now();
+      takeOver(event instanceof WheelEvent && event.deltaY > 0);
+    });
+    // Let go outside the window (or the window left), the hand is gone too; so is a press that opened the context menu,
+    // whose release never comes.
+    const handEvents = [['pointerup', letGo], ['pointercancel', letGo], ['touchend', letGo], ['touchcancel', letGo], ['blur', letGo],
+      ['contextmenu', letGo]] as const;
     area.addEventListener('pointerdown', hold, { capture: true, passive: true });
     area.addEventListener('touchstart', hold, { capture: true, passive: true });
     for (const [type, listener] of handEvents) view.addEventListener(type, listener, { capture: true, passive: true });
