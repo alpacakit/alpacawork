@@ -47,6 +47,15 @@ async function run(id, plan) {
     notify('item/completed', { item: { type: 'mcpToolCall', id: `d-${id}`, server: 'db', tool: 'tree', status: 'completed', arguments: {}, error: null,
       result: { content: [], structuredContent: deep } } });
   }
+  // `autoCompact`: [fill, compacted fill]. Codex's own compaction inside the turn tells the compacted fill before it ends.
+  if (plan.autoCompact) {
+    const fill = totalTokens => notify('thread/tokenUsage/updated', { tokenUsage: { modelContextWindow: 475_000,
+      total: { outputTokens: 0 }, last: { totalTokens } } });
+    fill(plan.autoCompact[0]);
+    notify('item/started', { item: { type: 'contextCompaction', id: `k-${id}` } });
+    fill(plan.autoCompact[1]);
+    notify('item/completed', { item: { type: 'contextCompaction', id: `k-${id}` } });
+  }
   notify('item/completed', { item: { type: 'agentMessage', id: `m-${id}`, text: `reply ${id}`, phase: 'final_answer' } });
   if (!plan.noUsage) for (const outputTokens of plan.outputTotals ?? [2])
     notify('thread/tokenUsage/updated', { tokenUsage: { total: { inputTokens: 10 * turns, cachedInputTokens: 4, cacheWriteInputTokens: 1, outputTokens, reasoningOutputTokens: 0 } } });

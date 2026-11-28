@@ -334,6 +334,16 @@ for (const failure of [null, 'synthetic compaction failure']) test(`a compaction
   assert.equal(b.events().filter(event => event.type === 'context.updated' && event.context?.compacted === true).length, failure ? 0 : 1);
 });
 
+test('Codex\'s own compaction inside a turn is told with the compacted fill, so the fill before it stays its before', async t => {
+  const h = setup(t), b = h.start([]);
+  b.send('one', JSON.stringify({ autoCompact: [450_659, 54_296] }));
+  await b.until(events => events.some(event => event.type === 'turn.completed'), 'turn completed');
+  b.child.stdin.end(); assert.equal(await b.exited, 0, b.stderr());
+  assert.deepEqual(b.events().filter(event => event.type === 'context.updated').map(event => event.context), [
+    { usedTokens: 450_659, compacted: false, windowTokens: 475_000 },
+    { usedTokens: 54_296, compacted: true, windowTokens: 475_000 }]);
+});
+
 test('a structured result past the outcome reader\'s line limit leaves the Run succeeded, its step read with what was left out said', async t => {
   const h = setup(t);
   const result = join(h.area, 'result.txt');
