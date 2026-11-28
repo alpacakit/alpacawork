@@ -71,6 +71,11 @@ export class CodexRuntime implements Runtime {
   private threadId = '';
   private turnId: string | null = null;
   private compaction: Compaction | null = null;
+  /**
+   * While Codex compacts (a turn of its own, or its automatic compaction inside a turn), the fill it tells is the
+   * compacted conversation's: it is held here and told with the compaction, so the fill read before stays its "before".
+   */
+  private compactedFill: { context: ContextUpdate | null } | null = null;
   private endedTurns = new Set<string>();
   private lastMessage = '';
   private usage: AgentUsage | null = null;
@@ -98,6 +103,7 @@ export class CodexRuntime implements Runtime {
   compact(): Promise<CompactionResult> {
     return new Promise(settle => {
       this.compaction = { settle, error: null };
+      this.compactedFill = { context: null };
       this.request('thread/compact/start', { threadId: this.threadId })
         .catch(error => this.settleCompaction({ compacted: false, message: error instanceof Error ? error.message : String(error) }));
     });
@@ -106,8 +112,15 @@ export class CodexRuntime implements Runtime {
     const compaction = this.compaction;
     this.compaction = null;
     // The compaction turn's own items are not the Run's; that it compacted is, once, as an automatic one says it.
-    if (compaction && result.compacted) this.io.emit({ type: 'context.updated', context: { usedTokens: null, compacted: true } });
+    if (compaction) this.endCompaction(result.compacted);
     compaction?.settle(result);
+  }
+  /** Tells the fill held during a compaction: as the compaction's result when it compacted, else as an ordinary fill. */
+  private endCompaction(compacted: boolean): void {
+    const held = this.compactedFill?.context ?? null;
+    this.compactedFill = null;
+    if (compacted) this.io.emit({ type: 'context.updated', context: { ...held, usedTokens: held?.usedTokens ?? null, compacted: true } });
+    else if (held) this.io.emit({ type: 'context.updated', context: held });
   }
 
   async start(): Promise<void> {
@@ -228,9 +241,10 @@ export class CodexRuntime implements Runtime {
         return;
       }
       if (message.method === 'item/completed' && item.type === 'agentMessage' && typeof item.text === 'string') this.lastMessage = item.text;
-      // A compaction leaves the fill unknown until the next model call says it.
-      if (message.method === 'item/completed' && item.type === 'contextCompaction')
-        this.io.emit({ type: 'context.updated', context: { usedTokens: null, compacted: true } });
+      if (item.type === 'contextCompaction') {
+        if (message.method === 'item/started') this.compactedFill = { context: null };
+        else this.endCompaction(true);
+      }
       this.io.emit({ type: message.method === 'item/started' ? 'item.started' : 'item.completed', item: boundaryItem(snake(String(item.type)), item) });
     } else if (message.method === 'thread/tokenUsage/updated') {
       this.usage = codexUsage(params.tokenUsage?.total);
@@ -242,10 +256,13 @@ export class CodexRuntime implements Runtime {
           this.io.emit({ type: 'model.output', tokens: total - previous });
       }
       const context = codexContext(params.tokenUsage);
-      if (context) this.io.emit({ type: 'context.updated', context });
+      if (context && this.compactedFill) this.compactedFill.context = context;
+      else if (context) this.io.emit({ type: 'context.updated', context });
     } else if (message.method === 'turn/completed') {
       const turn = params.turn ?? {};
       this.endedTurns.add(turn.id);
+      // A turn that ends inside its automatic compaction did not compact.
+      if (this.compactedFill) this.endCompaction(false);
       this.turnId = null;
       this.turnCount++;
       if (turn.status === 'completed') {
