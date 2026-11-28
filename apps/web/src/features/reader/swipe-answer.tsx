@@ -40,8 +40,15 @@ export function releaseSpeed(trail: readonly { x: number; t: number }[], at: num
 const reach = (width: number) => Math.min(88, width * 0.22);
 /** The card carried `dx` sideways: moved and tilted the way it goes, the same for a swipe that answers and one refused. */
 const carried = (dx: number) => `translateX(${dx}px) rotate(${dx / 45}deg)`;
-/** Where a refused card is drawn for a finger `dx` away: held back more the further it goes, never past `give`. */
-const heldBack = (dx: number, give: number) => Math.sign(dx) * give * (1 - Math.exp(-Math.abs(dx) / give));
+/**
+ * Where a refused card is drawn for a finger `dx` away from a `line`: with the finger, as an answer is, up to half the
+ * line, then held back more the further it goes, never past the line; `rate`: how much of the finger's speed it takes.
+ */
+const heldBack = (dx: number, line: number) => {
+  const free = line / 2, past = Math.max(0, Math.abs(dx) - free);
+  return Math.sign(dx) * (Math.min(Math.abs(dx), free) + free * (1 - Math.exp(-past / free)));
+};
+const heldBackRate = (dx: number, line: number) => Math.exp(-Math.max(0, Math.abs(dx) - line / 2) / (line / 2));
 
 /**
  * A press that starts where sideways movement already means something (a field, a wide code block, a slider), or on a
@@ -70,9 +77,9 @@ function ownsSideways(target: EventTarget | null, area: HTMLElement) {
  * moving outward answers. Coming back, it springs into place from where it was let go at the finger's speed (settle),
  * and a finger that catches it on the way carries it from where it is. One that answers leaves at the finger's speed
  * (departure.ts, given the speed in `data-carried`). The stamp of that side (SwipeStamp, `stamp`) shows with the
- * finger and is pressed in at the line. With no answer on the right (`refuse`), the card still follows the finger, held
- * back more the further it goes, with no stamp; let go past the line or flicked as it would answer, it comes back and
- * then says why. Let go short of the line, it only comes back.
+ * finger and is pressed in at the line. With no answer on the right (`refuse`), the card still follows the finger as an
+ * answer does up to half the line, then held back more the further it goes, with no stamp; let go past the line or
+ * flicked as it would answer, it springs back and says why as it settles. Let go short of the line, it only comes back.
  */
 export function useSwipeAnswer(card: RefObject<HTMLElement | null>, reading: RefObject<HTMLElement | null>,
   stamp: RefObject<HTMLElement | null>, on: boolean, actions: Actions, identity: string) {
@@ -155,8 +162,8 @@ export function useSwipeAnswer(card: RefObject<HTMLElement | null>, reading: Ref
       const line = reach(aside.offsetWidth);
       aside.style.transition = "none";
       if (refusing) {
-        // Held back: carried as an answer is, giving less the further the finger goes, never past half the line.
-        draw(from + heldBack(dx, line / 2));
+        // Carried as an answer is up to half the line, then held back, never past the line.
+        draw(from + heldBack(dx, line));
         const now = dx >= line;
         if (now !== armed) { armed = now; if (now) navigator.vibrate?.(8); }
         return;
@@ -175,9 +182,9 @@ export function useSwipeAnswer(card: RefObject<HTMLElement | null>, reading: Ref
       const go = outward && (armed && Math.abs(speed) > 0.1 || Math.abs(dx) > 24 && Math.abs(speed) > 0.35);
       if (refusing) {
         // Held back, the card moves slower than the finger by as much as it is held.
-        back(speed * Math.exp(-Math.abs(dx) / (reach(aside.offsetWidth) / 2)));
-        // Past the line (held there or not) or flicked, it says why once the card is nearly back, so little moves under it.
-        if (armed || go) { countUse('swipe.refused'); telling = window.setTimeout(() => latest.current.refuse?.(), duration("base")); }
+        back(speed * heldBackRate(dx, reach(aside.offsetWidth)));
+        // Past the line (held there or not) or flicked, it says why as the card settles.
+        if (armed || go) { countUse('swipe.refused'); telling = window.setTimeout(() => latest.current.refuse?.(), duration("fast")); }
         return;
       }
       hide();
