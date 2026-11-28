@@ -10,7 +10,7 @@ Você faz três coisas: pede, responde às perguntas e revisa o resultado. Tudo 
 
 ## O trabalho avança por tarefas, não por conversas
 
-A maioria das ferramentas para agentes de IA organiza o trabalho em torno da conversa com a IA. O alpacawork organiza em torno de tarefas e atribui a cada tarefa a IA de que ela precisa no momento.
+A maioria das ferramentas para agentes de IA organiza o trabalho em torno da conversa com a IA. O alpacawork organiza em torno de tarefas. Cada tarefa recebe IAs adequadas ao trabalho, e essas IAs podem ser trocadas no meio do caminho.
 
 Por isso, a tela mostra as tarefas que você pediu, não conversas com a IA. Você pede pelo campo de mensagem na parte de baixo da tela. A resposta do coordenador aparece acima do campo de mensagem; pressione-a para abrir a conversa.
 

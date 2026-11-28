@@ -69,11 +69,11 @@ to README.md#install): keep those headings, or change the links with them.
 
 ## What is alpacawork?
 
-alpacawork is an AI orchestration tool: it lets you run the AI coding agents already on your PC, such as Claude Code and Codex, from one chat.
+alpacawork is a task-based AI orchestration tool.
 
 - **One chat as your point of contact** — Write new requests, and additions or changes to work in progress, in the same chat box. An AI called the coordinator turns each request into a task and hands it to another AI.
-- **Your Claude Code and Codex, as they are** — Start right away with your current logins, in a repository folder you already use. You don't need an account or an API key for alpacawork, and `AGENTS.md`, `CLAUDE.md`, skills, MCP and hooks work unchanged. GitHub Copilot, Grok Build and pi work too, and local models run through pi ([AIs to use](https://github.com/alpacakit/alpacawork/blob/main/docs/projects.md#ais-to-use)).
 - **Tasks, not conversations** — The screen lists the tasks you asked for. Results and questions for you are grouped by task ([How it works](https://github.com/alpacakit/alpacawork/blob/main/docs/concept.md#work-moves-by-task-not-by-conversation)).
+- **Your Claude Code and Codex, as they are** — Start right away with your current logins, in a repository folder you already use. You don't need an account or an API key for alpacawork, and `AGENTS.md`, `CLAUDE.md`, skills, MCP and hooks work unchanged. GitHub Copilot, Grok Build and pi work too, and local models run through pi ([AIs to use](https://github.com/alpacakit/alpacawork/blob/main/docs/projects.md#ais-to-use)).
 - **Workflows in plain words** — Ask for something like "Make three proposals, each with a different model. Combine them into one and have another AI review it," and the AIs carry it out, handing work to one another. You can also have another AI work in parallel on a task that is already in progress.
 - **Switch AIs and pick up where the work left off** — When an AI stops on an error or a usage limit, or even mid-work, you can switch to a different AI, say from Claude Code to Codex, and it picks up from there. Choose fallback AIs in Settings, and one takes over when a usage limit stops the work.
 - **Context carried by the task's records** — When a conversation gets long, the AI compacts it or starts a fresh one. Instead of the old exchange, the AI in a fresh conversation, or the AI that took over, gets the task's records: where the work stands, with the request, what was decided and what remains. It continues from there.
@@ -115,7 +115,7 @@ In a terminal, `alpacawork open` also opens it.
 ## Good to know
 
 - **It is free (MIT License).** AI usage is billed under your existing Claude Code, Codex or other plan.
-- **It runs on your PC.** The AI runs on your PC, so keep the PC on and set it not to sleep while you use alpacawork.
+- **It runs on your PC.** Keep the PC on and set it not to sleep while you use alpacawork.
 - **It starts AI agents in the same no-approval mode as Claude Code's `bypassPermissions` and Codex's `danger-full-access`, so they don't stop to ask.** You can write what the AI should not do, or should ask you about first, in the [project policy](https://github.com/alpacakit/alpacawork/blob/main/docs/projects.md#project-policy).
 - **Tasks, conversations and result files are kept on your PC.** alpacawork does not send them to any outside server run by its developers. Your instructions to the AI, and what the AI reads, are sent to the AI's provider, just as when you use each AI agent directly ([more on how data is handled](https://github.com/alpacakit/alpacawork/blob/main/docs/manage.md#where-your-data-is-and-what-is-sent-out)).
 
