@@ -63,6 +63,7 @@ import { HeadingAgents, HeadingSpeedUnit, HeadingTokenSpeed, RowTokenSpeed, Spee
 import { isOpen, SECTION_START, sectionFold, sectionsOpen, storedWith } from "./section-fold";
 import { useOfflineShown } from "@/data/reach";
 import { useListEntrance } from "./list-entrance";
+import { ROW_CONTROLS } from "./row-press";
 
 
 /** The flat home list and its time strips. */
@@ -659,7 +660,10 @@ const TaskRow = memo(function TaskRow({ node, shared, visibleRows }: TaskRowProp
         {/* A press anywhere on the row's words that is not a control of its own opens the task, as its title does, so every
             part keeps its own tip under the pointer (the speed, the agents at work, a stopped AI's logo). On a phone the title's
             cover still makes the whole row one press, for its focus and its tap size. */}
-        <div ref={label} data-row-label onClick={(event) => { if (pressOutsideControls(event)) openDetail(task.id); }}
+        <div ref={label} data-row-label onClick={(event) => {
+          // The title takes the focus, as a press on it does, so the row's keys go on from it.
+          if (pressOutsideControls(event)) { title.current?.focus({ preventScroll: true }); openDetail(task.id); }
+        }}
           style={narrow ? frozen(shared) : { ...frozen(shared), height: h }}
           className={cn("sticky left-0 z-2 flex flex-none cursor-pointer items-stretch overflow-hidden", ground,
           columnEdge(shared), narrow && shared.selected === task.id && "ring-1 ring-muted ring-inset")}>
@@ -725,7 +729,7 @@ function openDetail(id: string, key?: string, returnTo?: HTMLElement) {
  */
 function pressOutsideControls(event: MouseEvent<HTMLElement>): boolean {
   const target = event.target as Element;
-  return event.currentTarget.contains(target) && !target.closest("button, a, [role=button]")
+  return event.currentTarget.contains(target) && !target.closest(ROW_CONTROLS)
     && window.getSelection()?.isCollapsed !== false;
 }
 

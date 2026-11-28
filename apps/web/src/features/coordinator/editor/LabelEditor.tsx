@@ -47,6 +47,7 @@ import { useProjects } from '@/data/queries';
 import { ProjectTile } from '@/components/ui/project-tile';
 import { CopyButton } from '@/components/ui/copy-button';
 import { CountMarks } from '@/features/chrome/ProjectMenu';
+import { pressOpensRow } from '@/features/tree/row-press';
 
 /** A label's own way out: the × on it, or its card's Remove. */
 const removeLabel = (editor: LabelProps['editor'], getPos: LabelProps['getPos']) => {
@@ -394,13 +395,13 @@ export function LabelEditor({ draft, catalog, onSend, disabled, attaching, tall,
   const frame = useRef<HTMLDivElement>(null), list = useRef<HTMLDivElement>(null);
   // The list is the input's own popup: a press outside it and the words takes the press for itself and closes it, the
   // words (its # or / too) staying as written. It ends here, not by whatever else rewrites the draft. A press that opens
-  // a Task in the panel is not away: the list follows the panel.
+  // a Task in the panel (a list row's, pressOpensRow) is not away: the list follows the panel.
   useEffect(() => {
     if (!menu) return;
     const away = (event: PointerEvent) => {
       // Its own window's nodes too (picture-in-picture), so no instanceof of this window's classes.
       const target = event.target as globalThis.Node | null;
-      const opens = (target as Partial<globalThis.Element> | null)?.closest?.('[data-read]');
+      const opens = !!(target as Partial<globalThis.Element> | null)?.closest && pressOpensRow(target as globalThis.Element);
       if (target && !opens && !list.current?.contains(target) && !frame.current?.contains(target)) closeMenu();
     };
     at.addEventListener('pointerdown', away, true);
