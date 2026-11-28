@@ -86,7 +86,7 @@ Ask the AI in that chat, called the coordinator. It checks how the work is going
 
 - Work moves by [task](https://github.com/alpacakit/alpacawork/blob/main/docs/concept.md#work-moves-by-task-not-by-conversation). Its history and results stay when you switch AIs or chats.
 - If an error or usage limit stops work, [switch AIs and pick up where it left off](https://github.com/alpacakit/alpacawork/blob/main/docs/guide.md#tasks-that-stopped).
-- As a chat goes on, [accuracy drops](https://arxiv.org/abs/2505.06120). The AI can compact it or start a fresh chat.
+- As a chat goes on, [accuracy drops](https://arxiv.org/abs/2505.06120). The AI decides whether to compact it or start a fresh chat.
 
 ### Review
 

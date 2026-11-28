@@ -54,7 +54,7 @@ Solo tienes que pedirle el trabajo a la IA que atiende el chat, la coordinadora.
 
 - Cada [tarea](docs/es/concept.md#el-trabajo-avanza-por-tareas-no-por-conversaciones) conserva su historial y sus resultados si cambias de IA o de chat.
 - Si un error o un límite de uso detiene el trabajo, [cambia de IA y continúa desde ahí](docs/es/guide.md#tareas-detenidas).
-- Con más turnos, [baja la precisión](https://arxiv.org/abs/2505.06120). La IA puede compactar el chat o abrir otro.
+- Con más turnos, [baja la precisión](https://arxiv.org/abs/2505.06120). La IA decide si compacta el chat o abre otro.
 
 ### Revisa
 

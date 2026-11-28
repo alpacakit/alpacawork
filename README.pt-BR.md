@@ -54,7 +54,7 @@ O alpacawork reúne várias IAs para fazer o trabalho avançar. É uma ferrament
 
 - A [tarefa](docs/pt-BR/concept.md#o-trabalho-avança-por-tarefas-não-por-conversas) guarda o histórico e os resultados, mesmo se você trocar de IA ou chat.
 - Se um erro ou limite de uso interromper o trabalho, [troque de IA e continue dali](docs/pt-BR/guide.md#tarefas-paradas).
-- Conforme a conversa avança, [a precisão cai](https://arxiv.org/abs/2505.06120). A IA pode compactá-la ou abrir uma nova.
+- Conforme a conversa avança, [a precisão cai](https://arxiv.org/abs/2505.06120). A IA decide se compacta a conversa ou abre outra.
 
 ### Confira
 
