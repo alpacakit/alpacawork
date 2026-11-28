@@ -36,6 +36,7 @@ import { useFrameSelector } from "@/data/workspace-store";
 import { useConversation } from "./coordinator";
 import { useConversationReading } from "./read-boundary";
 import { scrollThreadToEnd, useThreadPosition } from './thread-position';
+import { ToLatest } from './ToLatest';
 import { MentionMarks } from "./parts";
 import { TaskActionSlot, conversationTool, markTool, useRowWords, useTaskActionSlot } from "./task-action-slot";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
@@ -130,6 +131,7 @@ function ThreadEnd({ area, active }: { area: React.RefObject<HTMLDivElement | nu
   // One line in every state, at any width.
   return <div ref={row} data-coordinator-end className="flex items-center gap-2 whitespace-nowrap pt-1 pr-(--foot-inset) pb-(--foot-inset) pl-2 narrow:pt-0 narrow:pb-2 [&:not(:has(button))]:hidden">
     <ThreadQueue area={area} /><ReplyReturn /><ParkedReturn />
+    {active && <ToLatest area={area} />}
     <div ref={tools} className="ml-auto flex min-w-0 items-center justify-end gap-2">
       {active && <TaskActionSlot inThread />}
     </div>

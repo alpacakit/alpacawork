@@ -1,6 +1,6 @@
 import { activeCoordinatorRuns } from '@alpacawork/backend/test-dist/coordinator/requests.js';
 import { fixtureAgentSetting, installAgentStub } from '../tests/helpers/agent-stub.ts';
-import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { parse, stringify } from 'yaml';
 import { writeFixtureConfig } from './fixture-writes.ts';
@@ -263,4 +263,64 @@ test('an answer\'s work opens with the conversation moved only as far as its lis
   const opened = await place(2);
   expect(opened.end).toBeLessThanOrEqual(opened.room + 1);
   expect(opened.end, 'moved no further than its end').toBeGreaterThan(opened.room - 4);
+});
+
+test('a sent message goes to the end, under what was said; nothing moves under a held hand; a press goes back down', async ({ page, runtime }) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const agent = new URL('../tests/fixtures/fake-work-agent.mjs', import.meta.url).pathname;
+  const existing = parse(readFileSync(join(runtime.root, 'config.yaml'), 'utf8'));
+  installAgentStub(runtime.root, 'claude', [process.execPath, agent]);
+  const setting = fixtureAgentSetting('claude');
+  setting.params.model = ['opus']; setting.params.effort = ['medium'];
+  writeFixtureConfig(runtime.root, stringify({ ...existing, agents: { fake: setting, ...existing.agents } }));
+  const gate = (stage: string) => join(runtime.root, `work-${stage}`);
+  for (const stage of ['end', 'unknown', 'update', 'finish']) writeFileSync(gate(stage), '');
+  await open(page, runtime);
+  await writeCoordinator(page);
+  await readyCoordinator(page, runtime);
+  await page.keyboard.insertText('Answer at length');
+  await page.locator('[data-ask-send]').click();
+  await openCoordinator(page);
+  await expect(page.locator('[data-ask-answer]')).toHaveCount(1);
+  const panel = page.locator('[data-coordinator-panel]'), area = panel.locator('[data-card-scroll]');
+  const down = page.locator('[data-coordinator-to-latest]');
+  const end = () => area.evaluate(element => Math.round(element.scrollHeight - element.clientHeight - element.scrollTop));
+  // Read back, then sent: the conversation goes to its end, the sent words at its foot under the answer before them.
+  await wheel(page, area, -400);
+  await expect(down).toBeVisible();
+  rmSync(gate('finish'));
+  await readyCoordinator(page, runtime);
+  await page.locator('[data-one-input]').click();
+  await page.keyboard.insertText('Then briefly');
+  await page.locator('[data-ask-send]').click();
+  await expect(page.locator('[data-coordinator-turn=running] [data-working-steps]')).toBeVisible();
+  await settleMotion(page, panel, true);
+  expect(await end(), 'at the end').toBeLessThan(2);
+  const foot = await area.evaluate(element => {
+    const box = element.getBoundingClientRect(), said = [...element.querySelectorAll('[data-sent-message]')].at(-1)!.getBoundingClientRect();
+    const answer = [...element.querySelectorAll('[data-ask-answer]')].at(-1)!.getBoundingClientRect();
+    return { said: said.bottom <= box.bottom && said.top > box.top + box.height / 3, answerAbove: answer.bottom > box.top };
+  });
+  expect(foot, 'the sent words at the foot, the answer before them in sight').toEqual({ said: true, answerAbove: true });
+  await expect(down).toHaveCount(0);
+  // A hand held on the conversation: its answer comes in under it, and nothing moves until it is let go.
+  const box = (await area.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  // Where the sent words are drawn on the screen: what the hand is over.
+  const drawn = () => area.evaluate(element => Math.round([...element.querySelectorAll('[data-sent-message]')].at(-1)!.getBoundingClientRect().top));
+  const held = await drawn();
+  writeFileSync(gate('finish'), '');
+  await expect(page.locator('[data-ask-answer]')).toHaveCount(2);
+  await page.waitForTimeout(600);
+  expect(await drawn(), 'unmoved while held').toBe(held);
+  await page.mouse.up();
+  await expect.poll(end, { message: 'let go, the end is followed' }).toBeLessThan(2);
+  // Read back, the way down shows; pressed, the reading is at the end again and it goes.
+  await wheel(page, area, -600);
+  await expect(down).toBeVisible();
+  await down.click();
+  await expect.poll(end).toBeLessThan(2);
+  await expect(down).toHaveCount(0);
 });

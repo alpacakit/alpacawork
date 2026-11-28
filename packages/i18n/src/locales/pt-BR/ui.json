@@ -152,6 +152,7 @@
     "restore": "Restaurar o tamanho da conversa",
     "retry": "Enviar novamente",
     "returnFromReply": "Voltar à mensagem ({{time}})",
+    "toLatest": "Ir para o mais recente",
     "seconds_one": "{{count}} segundo",
     "seconds_many": "{{count}} segundos",
     "seconds_other": "{{count}} segundos",

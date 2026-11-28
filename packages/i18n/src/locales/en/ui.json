@@ -145,6 +145,7 @@
     "restore": "Restore the conversation size",
     "retry": "Send again",
     "returnFromReply": "Back to message at {{time}}",
+    "toLatest": "Go to latest",
     "seconds_one": "{{count}} second",
     "seconds_other": "{{count}} seconds",
     "send": "Send",

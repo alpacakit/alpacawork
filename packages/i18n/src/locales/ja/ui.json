@@ -138,6 +138,7 @@
     "restore": "会話を元の大きさに戻す",
     "retry": "送り直す",
     "returnFromReply": "{{time}} の発言へ戻る",
+    "toLatest": "最新へ",
     "seconds_other": "{{count}}秒",
     "send": "送る",
     "sendFailed": "送れませんでした。もう一度お試しください。",

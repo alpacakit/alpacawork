@@ -303,6 +303,8 @@ export const CoordinatorThread = memo(function CoordinatorThread({ turns: recent
   }, []);
   const asked = useConversation(state => state.asked);
   useReplyNavigationOwner(thread, scope, asked, id => {
+    // Words sent from here that serve has not taken yet are drawn already, at the end.
+    if (shown.tail.some(row => row.kind === 'local' && row.turn.id === id)) return 'here';
     // One not read yet is read first, a page at a time from the oldest here, until it is here or the first turn is.
     if (!work.some(turn => turn.id === id)) {
       if (earlier.reading) return 'later';
