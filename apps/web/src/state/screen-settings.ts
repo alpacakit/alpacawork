@@ -36,8 +36,8 @@ export const titleColumnWidth = (sheet: number) =>
  */
 export const SPEED_LANE = 92;
 const COMPACT_LANE = 40;
-/** The least the time strip is drawn at beside the titles and the speed column: now, the reports expected after it and a little before. */
-export const STRIP_FLOOR = 160;
+/** The time strip the speed column leaves beside the titles: now, the reports expected after it and a little before. */
+const STRIP_FLOOR = 160;
 /**
  * The title column and the speed column of a list `sheet` wide; the time strip has the rest. The speed column is the
  * widest that leaves the strip its floor: the strip gives up its room first, then the bars go, then the number.
