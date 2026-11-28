@@ -27,6 +27,8 @@ import { continuesDrawing, liveDrawing, sameDrawingSource, type DrawingSource } 
  */
 const BREAK_W = 32;
 export type Piece = { from: number; to: number; x0: number; x1: number; gap: boolean };
+/** How far a mark on the line reaches below it: its ring of 9, and 1 more where its focus ring is stroked. */
+export const MARK_REACH = 10;
 /** The line's geometry for a row: the row's height, where the base sits, one person's step, and the most it may rise. */
 export type Level = { height: number; base: number; unit: number; rise: number };
 type Wait = Exclude<Segment["kind"], "work" | "member" | "below">;

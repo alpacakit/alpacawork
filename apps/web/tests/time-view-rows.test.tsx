@@ -6,8 +6,8 @@ import { finishWords, type FinishWords } from "../src/domain/finish-words";
 import { i18n } from "@alpacawork/i18n";
 import { formatClock } from "../src/domain/time";
 import { projectTimeHistory, timeHistoryBase, type TaskHistory } from "../src/domain/time-history";
-import { TimeTree } from "../src/features/tree/TimeTree";
-import { compactMark, futureBandWidth, futureWords, Lane, laneMarks, lineOf } from "../src/features/tree/time-line";
+import { STRIP_LEVELS, TimeTree } from "../src/features/tree/TimeTree";
+import { compactMark, futureBandWidth, futureWords, Lane, laneMarks, lineOf, MARK_REACH } from "../src/features/tree/time-line";
 import { useViewStore } from "../src/state/view-store";
 import { queryClient } from "../src/data/query-client";
 import { indexKey, resources } from "../src/data/resources";
@@ -464,6 +464,14 @@ test("a phone keeps the first In progress row visible above ten open Not started
   } finally { narrow.restore(); }
 });
 
+test("on a phone and a computer, the line's top and the marks on its base stay inside the row", () => {
+  for (const level of Object.values(STRIP_LEVELS)) {
+    // The line's 1.5px stroke at its top.
+    expect(level.base - level.rise).toBeGreaterThanOrEqual(1);
+    expect(level.base + MARK_REACH).toBeLessThanOrEqual(level.height);
+  }
+});
+
 test("desktop time rows put the state icon, ID, title and child progress on one 32px line", () => {
   render(<TestWorkspace data={fixture({ parentResponsible: true })}><TimeTree /></TestWorkspace>);
   const parent = document.querySelector('[data-row="T1"]')!;
@@ -479,7 +487,7 @@ test("desktop time rows put the state icon, ID, title and child progress on one 
   expect(document.querySelector('[data-row="T2"] [data-read]')?.textContent).toContain("T2");
   const strip = parent.querySelector('svg[data-time-strip]')!;
   expect(strip.getAttribute("height")).toBe("32");
-  expect(strip.querySelector('g[data-pin] circle')?.getAttribute("cy")).toBe("22");
+  expect(Number(strip.querySelector('g[data-pin] circle')?.getAttribute("cy")) + MARK_REACH).toBeLessThanOrEqual(32);
   expect(parent.querySelector<HTMLElement>('[data-row-label]')!.style.height).toBe("32px");
   fireEvent.click(document.querySelector('[data-section="done"] button')!);
   expect(document.querySelector('[data-row="T5"] svg[data-time-strip]')?.getAttribute("height")).toBe("32");

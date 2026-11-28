@@ -46,7 +46,7 @@ import { BarRoom } from "@/features/chrome/Bar";
 import { cn } from "@/lib/utils";
 import { titleColumnWidth } from "@/state/screen-settings";
 import { useListWidth } from "@/lib/use-list-width";
-import { atOf, EDGE_HALO, EdgeLayer, buildAxis, futureBandWidth, futureWords, type FutureWords, Ground, StripGround, Lane, laneMarks, lineOf, lineReports, ProbeRule, shownScaleMs, stretchReport, stripAxis, stripKeys, TimeClock, clockHeight, textScale, rowTurn, TurnEdge, wordsW, type RowTurn, useStrip, useStripProbe, showZoom, StripPress, wholeIn, xOf, type Level, type MarkAt, type Piece, type Scale } from "./time-line";
+import { atOf, EDGE_HALO, EdgeLayer, buildAxis, futureBandWidth, futureWords, type FutureWords, Ground, StripGround, Lane, laneMarks, lineOf, lineReports, ProbeRule, shownScaleMs, stretchReport, stripAxis, stripKeys, TimeClock, clockHeight, textScale, rowTurn, TurnEdge, wordsW, type RowTurn, useStrip, useStripProbe, showZoom, MARK_REACH, StripPress, wholeIn, xOf, type Level, type MarkAt, type Piece, type Scale } from "./time-line";
 import { drawnTaskIds, useListNavigationSource } from "./list-navigation";
 import { ShelvedRow } from "./ShelvedRow";
 import { PageReadFailure, type PageRead, type ReadView } from "./PageReadFailure";
@@ -726,9 +726,11 @@ function RowStrip({ node, shared, height, title, enter }: { node: Node; shared: 
     scale={scale} pieces={pieces} now={now} seen={seen} show={show} />;
 }
 
-// The line stands low in the row, so the room above it shows how many work at once; its marks and words sit on it.
-const NARROW_STRIP_LEVEL: Readonly<Level> = { height: 22, base: 16, unit: 7, rise: 13 };
-const WIDE_STRIP_LEVEL: Readonly<Level> = { height: WIDE_ROW, base: 22, unit: 10, rise: 18 };
+// The line stands as low in the row as the marks on it allow, so the room above it shows how many work at once. A
+// computer's row keeps a pixel of air under the marks; a phone's short row has none to spare.
+const NARROW_STRIP_LEVEL: Readonly<Level> = { height: 22, base: 22 - MARK_REACH, unit: 6, rise: 10 };
+const WIDE_STRIP_LEVEL: Readonly<Level> = { height: WIDE_ROW, base: WIDE_ROW - MARK_REACH - 1, unit: 10, rise: 17 };
+export const STRIP_LEVELS = { narrow: NARROW_STRIP_LEVEL, wide: WIDE_STRIP_LEVEL };
 
 /** One row's line, drawn again only when its own history or the shared clock and scale change. */
 const Strip = memo(function Strip({ node, narrow, height, title, enter, history, scale, pieces, now, seen, show }: { node: Node; narrow: boolean; height: number;
