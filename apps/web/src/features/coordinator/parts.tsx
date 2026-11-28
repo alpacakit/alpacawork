@@ -59,7 +59,7 @@ function useSecondsSince(at: string | undefined): number | null {
 /** The seconds a turn has been at work, on their own: their tick draws them alone, not the work line they end. */
 const WorkSeconds = memo(function WorkSeconds({ at }: { at: string }) {
   const seconds = useSecondsSince(at);
-  return seconds === null ? null : <span data-work-seconds className="flex-none text-muted tabular-nums">{seconds}s</span>;
+  return seconds === null ? null : <span data-work-seconds className="flex-none cap-box text-muted tabular-nums">{seconds}s</span>;
 });
 const none: Pace = { key: null, label: null, version: 0 };
 /** Before the first index there is no workspace and nothing to pace. */
@@ -133,7 +133,7 @@ export function TurnWork({ turn }: { turn: Pick<CoordinatorTurn, 'id' | 'at' | '
       : <button type="button" data-turn-work-line data-working-steps={running ? '' : undefined} aria-expanded={open} onClick={toggle} className={running ? STEPS_BUTTON : ANSWERED_LINE}>
         {running ? <WorkLine data-ask-thinking step={mine?.steps.at(-1)} idle={t('coordinatorCard.thinking')} label={count === undefined ? undefined : p('now.step.count', { count })}
           className="min-w-0 flex-1 group-hover/steps:text-ink" end={<><WorkSeconds at={turn.at} /><Chevron open={open} /></>} />
-        : <><span className="min-w-0 truncate">{count === undefined ? p('now.step.answered') : p('now.step.answeredCount', { count })}</span>
+        : <><span className="min-w-0 cap-truncate">{count === undefined ? p('now.step.answered') : p('now.step.answeredCount', { count })}</span>
           <Icon name="right" className={cn("size-3 flex-none text-muted transition-transform duration-(--motion-base) group-hover/steps:text-ink", open && "rotate-90")} /></>}</button>}
     {worked && <StepList steps={steps} open={open} className={cn(CHAT_LOG, !running && ANSWERED_LOG)} />}
   </div></div>;
@@ -149,7 +149,7 @@ const STEPS_BUTTON = "group/steps flex w-full min-w-0 cursor-pointer items-cente
  * its press is a finger's height, overhanging the line by the room over and under it (ANSWERED_PLACE). Its focus ring
  * is the app's own (base.css: shown while the keyboard is in use), so nothing here turns the outline off.
  */
-const ANSWERED_LINE = "group/steps inline-flex max-w-full min-w-0 cursor-pointer items-center gap-1 rounded-sm -my-1 py-1 text-left text-muted hover:text-ink aria-expanded:text-ink narrow:-mt-(--press-up) narrow:-mb-(--press-down) narrow:pt-(--press-up) narrow:pb-(--press-down)";
+const ANSWERED_LINE = "group/steps box-content inline-flex min-h-lh max-w-full min-w-0 cursor-pointer items-center gap-1 rounded-sm -my-1 py-1 text-left text-muted hover:text-ink aria-expanded:text-ink narrow:-mt-(--press-up) narrow:-mb-(--press-down) narrow:pt-(--press-up) narrow:pb-(--press-down)";
 /**
  * The answered line's letters stand as far from the message over it as from the answer's letters under it: the room over
  * the line is the room under it and the answer's own half-leading, the white above the answer's letters in its line.

@@ -48,8 +48,8 @@ export function MessageDelivery({ turn, local, children, panel = false }: { turn
   // What the message is doing on its way, said once wherever its row is drawn.
   // On its way it shows the same mark as the work it goes to, in the same box, so only the words change from here on.
   const words = control === 'withdrawing' || control === 'handing' || control === 'requested'
-    ? <span role="status" title={control === 'requested' ? t('coordinatorCard.sendNowHint') : undefined} className="inline-flex items-center gap-1.5 text-muted">
-      <WorkMark />{control === 'withdrawing' ? t('coordinatorCard.withdrawing') : t('coordinatorCard.posting')}</span> : null;
+    ? <span role="status" title={control === 'requested' ? t('coordinatorCard.sendNowHint') : undefined} className="inline-flex min-h-lh items-center gap-1.5 text-muted">
+      <WorkMark /><span className="cap-box">{control === 'withdrawing' ? t('coordinatorCard.withdrawing') : t('coordinatorCard.posting')}</span></span> : null;
   const status = outcome && (!panel || ['unknown', 'refused', 'cancelled'].includes(outcome.stage))
     ? <LocalOutcome turn={outcome} cancellation={inlineCancellation ? 'inline' : 'external'} /> : null;
   // At work, what the work is doing and for how long is the turn's own work (TurnWork), drawn beside this line.
