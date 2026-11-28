@@ -88,7 +88,11 @@ export function startReadScheduler(client: QueryClient, host: Window = window): 
       for (const id of ids) { want(viewKey(id), 'next'); want(historyKey(id), 'next'); }
       void pump();
     },
-    pointed(id) { want(viewKey(id), 'pointed'); want(historyKey(id), 'pointed'); void pump(); },
+    pointed(id) {
+      // The pointer has moved on: what it rested on before and is still unread is no longer what is opened next.
+      for (const [at, queued] of wanted) if (queued.intent === 'pointed') wanted.delete(at);
+      want(viewKey(id), 'pointed'); want(historyKey(id), 'pointed'); void pump();
+    },
     stop() { stopped = true; wanted.clear(); },
   };
   // The home list can suggest reads only after navigation has chosen to show it. Reads requested by the

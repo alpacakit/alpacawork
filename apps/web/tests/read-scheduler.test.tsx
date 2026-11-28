@@ -72,6 +72,19 @@ test('what is opened is read first; what is ahead waits for it, then goes one at
   expect(s.asked.slice(3)).toEqual(['history T3', 'view T2', 'history T2']);
 });
 
+test('a pointer moving on leaves what it rested on before unread, and reads what it rests on now', async () => {
+  const s = screen();
+  s.hold(true);
+  s.scheduler.opened('T1', false);
+  s.scheduler.pointed('T2');
+  s.scheduler.pointed('T3');
+  await eventually(() => expect(s.asked).toEqual(['view T1']));
+  for (let at = 1; at <= 2; at++) { s.answerAll(); await eventually(() => expect(s.asked).toHaveLength(at + 1)); }
+  s.answerAll();
+  await new Promise(resolve => setTimeout(resolve, 10));
+  expect(s.asked).toEqual(['view T1', 'view T3', 'history T3']);
+});
+
 test('in a background tab nothing is read ahead until the tab is shown again', async () => {
   const s = screen();
   setVisible(false);

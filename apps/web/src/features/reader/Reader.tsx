@@ -282,12 +282,13 @@ export function Reader({ mode, overlapping = false, canDock = mode === "docked" 
 
 /**
  * Whether the reader shows `id` drawn: its head names it, and its pane shows what it reads, not the wait for it (an
- * empty column while a placeholder is still unseen, the placeholder, or held content hidden while it is read again).
+ * empty column while a placeholder is still unseen, a part still busy reading, or held content hidden while it is read
+ * again). Every wait a pane draws says it is busy (RegionSkeleton, a feed's first lines).
  */
 function readerDrawn(reader: HTMLElement | null, id: string | null) {
   if (!reader || !id || reader.querySelector("[data-reader-task-id]")?.textContent !== id) return false;
   const column = reader.querySelector("[data-reading-column]");
-  return !!column && column.childElementCount > 0 && !column.matches("[data-held-hidden]") && !column.querySelector('[data-skeleton="reports"]');
+  return !!column && column.childElementCount > 0 && !column.matches("[data-held-hidden]") && !column.querySelector('[aria-busy="true"]');
 }
 
 /**
