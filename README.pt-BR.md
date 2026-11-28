@@ -34,15 +34,22 @@
   </picture>
 </p>
 
-O alpacawork é uma ferramenta de orquestração de IA. Com ele, você controla a partir de um só chat os agentes de programação com IA que já tem no PC, como Claude Code e Codex. Escreva o que você quer, e o coordenador, a IA que é seu ponto de contato, transforma isso em tarefas, as atribui a outras IAs e acompanha o andamento. Você faz três coisas: pede, responde às perguntas e revisa os resultados. Pelo celular, você usa do mesmo jeito.
+## O que é o alpacawork
+
+O alpacawork é uma ferramenta de orquestração de IA baseada em tarefas.
+
+- **Um só chat como ponto de contato** — Os pedidos novos, e o que você quiser acrescentar ou mudar em um trabalho em andamento, vão no mesmo campo de mensagem. O coordenador, a IA que é seu ponto de contato, transforma cada solicitação em uma tarefa e a delega a outra IA.
+- **Tarefas, não conversas** — A tela mostra as tarefas que você pediu. Os resultados e as perguntas para você ficam reunidos por tarefa ([Como funciona](docs/pt-BR/concept.md#o-trabalho-avança-por-tarefas-não-por-conversas)).
+- **Seu Claude Code e seu Codex, como já estão** — Você começa na hora com os logins que já tem, na pasta de um repositório que já existe. Você não precisa de conta nem de chave de API do alpacawork, e o `AGENTS.md`, o `CLAUDE.md`, as skills, o MCP e os hooks continuam funcionando como estão. Também dá para usar o GitHub Copilot, o Grok Build e o pi, e modelos locais rodam pelo pi ([As IAs que você usa](docs/pt-BR/projects.md#as-ias-que-você-usa)).
+- **O processo, com suas palavras** — Peça algo como “Faça três propostas, cada uma com um modelo diferente. Junte as três em uma só e peça para outra IA revisar”, e as IAs executam isso, passando o trabalho umas para as outras. Você também pode pôr outra IA para trabalhar em paralelo em uma tarefa em andamento.
+- **Troque de IA e continue de onde o trabalho parou** — Quando uma IA para por erro ou por limite de uso, ou mesmo no meio do trabalho, você pode trocar para outra IA, por exemplo do Claude Code para o Codex, e ela continua de onde parou. Se você escolher IAs alternativas nas Configurações, uma delas assume quando o trabalho para por limite de uso.
+- **O contexto passa pelos registros da tarefa** — Quando uma conversa fica longa, a IA a compacta ou começa uma nova. No lugar da conversa anterior, a IA da conversa nova, ou a IA que assumiu, recebe os registros da tarefa, que resumem em que pé o trabalho está (o pedido, o que foi decidido, o que falta), e continua dali.
+- **Perguntas que você responde escolhendo uma opção** — O que a IA não consegue decidir chega como uma pergunta com opções e uma recomendação. Perguntas e relatórios chegam com imagens e vídeos.
+- **Dá para usar só pelo celular** — Você pede, responde às perguntas e revisa os resultados pelo celular. Para responder ou marcar um resultado como concluído, basta deslizar para a direita.
 
 <p align="center">
   <img src="docs/images/demo-dark-pt-BR.webp" alt="Um pedido digitado na caixa de chat do celular vira três tarefas que avançam em paralelo na lista do PC; um resultado é conferido e concluído com um deslize, e uma pergunta da IA é respondida escolhendo uma opção; no fim, o celular e o PC lado a lado" width="800">
 </p>
-
-## O trabalho avança por tarefas, não por conversas
-
-A maioria das ferramentas para agentes de IA organiza o trabalho em torno da conversa com a IA. No alpacawork, você pede em um só chat, e o trabalho pedido avança por tarefas. Por isso, a tela mostra as tarefas que você pediu, não conversas com a IA. Os resultados e as perguntas para você ficam reunidos por tarefa, e o histórico fica na tarefa mesmo que você comece uma conversa nova ou troque de IA. Os motivos estão em [Como funciona](docs/pt-BR/concept.md#o-trabalho-avança-por-tarefas-não-por-conversas).
 
 ## Instalar
 
@@ -72,23 +79,10 @@ Para abrir a tela no navegador, peça assim no Claude Code ou no Codex (`$alpaca
 
 No terminal, `alpacawork open` também abre a tela.
 
-## O que ele faz
-
-Veja o fluxo completo nas telas reais, do pedido à conclusão da tarefa (cerca de 100 segundos, sem som).
-
-https://github.com/user-attachments/assets/21326312-73ba-4cd7-86da-3d5e7192b6e9
-
-- **Peça tudo em um único campo de mensagem.** O coordenador transforma cada solicitação em uma tarefa e a delega a uma IA. Você não precisa trocar de chat nem de IA a cada trabalho.
-- **Uma IA gerencia várias IAs ao mesmo tempo.** Para acrescentar ou mudar algo em um trabalho em andamento, basta dizer ao coordenador. Escreva “Nas três tarefas em andamento, verifique também o layout no celular”, e o coordenador passa essa instrução a cada IA que trabalha nelas.
-- **Descreva o processo com suas palavras, e as IAs o executam juntas.** Mesmo um processo mais elaborado, como “Faça três propostas, cada uma com um modelo diferente. Junte as três em uma só, peça para outra IA revisar e corrija antes de relatar”, é executado como você descreveu: a IA gerencia as etapas, e as IAs passam o trabalho umas para as outras.
-- **As perguntas da IA vêm com opções e uma recomendação.** Perguntas e relatórios chegam com imagens e vídeos. Para responder, basta escolher uma opção.
-- **Uma tela pensada para o celular.** Para responder a uma pergunta ou marcar um resultado como concluído, basta deslizar para a direita. Você pode levar uma tarefa da solicitação à conclusão usando só o celular. A mesma tela também funciona no navegador do PC.
-- **Roda no seu ambiente de sempre.** O `AGENTS.md`, o `CLAUDE.md`, as skills, o MCP e os hooks continuam funcionando como estão. Você não precisa de conta nem de chave de API do alpacawork.
-
 ## Vale saber
 
 - **É gratuito (licença MIT).** O uso de IA é cobrado de acordo com o plano que você já tem do Claude Code, do Codex ou de outro agente.
-- **Roda no seu PC.** A IA roda no PC, então mantenha o PC ligado e configure-o para não entrar em suspensão enquanto você usa o alpacawork.
+- **Roda no seu PC.** Mantenha o PC ligado e configure-o para não entrar em suspensão enquanto você usa o alpacawork.
 - **O alpacawork inicia os agentes de IA no mesmo modo sem confirmações que o `bypassPermissions` do Claude Code e o `danger-full-access` do Codex, então eles não param para perguntar.** Você pode escrever na [política do projeto](docs/pt-BR/projects.md#política-do-projeto) o que a IA não deve fazer, ou o que deve perguntar a você antes.
 - **Tarefas, conversas e arquivos de resultado ficam no seu PC.** O alpacawork não os envia a nenhum servidor externo mantido pelos desenvolvedores. Suas instruções para a IA e o conteúdo que ela lê são enviados ao provedor da IA, como acontece quando você usa cada agente de IA diretamente ([mais sobre o tratamento dos dados](docs/pt-BR/manage.md#onde-ficam-os-dados-e-o-que-é-enviado-para-fora)).
 

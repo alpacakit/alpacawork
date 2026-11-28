@@ -42,6 +42,8 @@ A política é um combinado com a IA, não um mecanismo que a impede. Para limit
 
 Para escolher as IAs que vai usar, ative-as em “Configurações de cada agente”, em “Configurações (engrenagem) → IA”, e pressione “Salvar”. Para dividir o trabalho entre elas, escreva isso na política (“Implementação com o Codex, verificação com o Claude Code”).
 
+Com o pi, você também pode criar um agente que roda com um modelo local. Para adicionar um modelo ou um agente, peça no campo de mensagem, e o coordenador configura (“Adicione um modelo novo ao Codex”).
+
 As IAs usam os planos e as configurações que você já tem. A cobrança também segue os seus planos.
 
 ## Escolher o modelo

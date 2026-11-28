@@ -42,6 +42,8 @@ The policy is an agreement with the AI, not something a mechanism enforces. To l
 
 Turn on the AIs to use under "Settings for each agent" in "Settings (the gear) → AI", and press "Save". To split work between AIs, write it in the policy ("Codex for implementation, Claude Code for review").
 
+With pi, you can also create an agent that runs on a local model. To add a model or an agent, ask in the input box and the coordinator sets it up ("Add a new model to Codex").
+
 Your current AI plans and settings are used as they are. Usage is billed under those plans.
 
 ## Choose a model

@@ -10,7 +10,7 @@ Tú haces tres cosas: pedir, responder preguntas y revisar los resultados. Las t
 
 ## El trabajo avanza por tareas, no por conversaciones
 
-La mayoría de las herramientas para agentes de IA organizan el trabajo en torno a la conversación con la IA. alpacawork lo organiza en torno a tareas, y a cada tarea le asigna la IA que necesita en ese momento.
+La mayoría de las herramientas para agentes de IA organizan el trabajo en torno a la conversación con la IA. alpacawork lo organiza en torno a tareas. A cada tarea se le asignan IA adecuadas para ese trabajo, y se pueden cambiar sobre la marcha.
 
 Por eso la pantalla muestra las tareas que pediste, no conversaciones con la IA. Pides desde el cuadro de texto de la parte inferior de la pantalla. La respuesta del coordinador aparece encima del cuadro de texto; púlsala para abrir la conversación.
 

@@ -13,14 +13,14 @@ Other links outside the package open https://github.com/alpacakit/alpacawork/blo
 The setup guide an AI downloads uses a GitHub raw URL so the AI can read the Markdown directly.
 GitHub plays a video only from the URL it gives when the file is uploaded on github.com, written on
 a line of its own; it drops a <video> tag that points anywhere else. The packaged copy turns that
-line into an explicit link to the video. To change a demo video, attach the new file to a pull
-request comment (gh pr comment --attach) and write the URL GitHub gives it.
+line into an explicit link to the video. To add a video, attach the file to a pull request comment
+(gh pr comment --attach) and write the URL GitHub gives it.
 The name at the top is a picture (wordmark.png, wordmark-dark.png for dark pages) so that it shows
 larger than a heading can; its alt text carries the name.
-The pictures and videos show made-up data on the dark-theme screens. The demo under the introduction
+The pictures show made-up data on the dark-theme screens. The demo under the introduction
 is an animated WebP drawn as a rounded card with alpha, so it sits on light and dark pages alike
 (demo-dark.webp). Each README shows the screens in its own language: demo-dark-<lang>.webp in the
-translations, and each plays its own upload of the demo video.
+translations.
 The diagram at the top is drawn in each README's language (hero.gif, hero-dark.gif for this file;
 hero-<lang>.gif, hero-dark-<lang>.gif for the others) and switches with the page theme in a <picture>;
 its first and last frames are the finished picture.
@@ -67,15 +67,22 @@ to README.md#install): keep those headings, or change the links with them.
   </picture>
 </p>
 
-alpacawork is an AI orchestration tool. It lets you run the AI coding agents already on your PC, such as Claude Code and Codex, from one chat. Write what you want, and your point of contact, an AI called the coordinator, turns it into tasks, assigns them to other AIs, and keeps track of them. You do three things: ask, answer questions, and check the results. You can use it from your phone in the same way.
+## What is alpacawork?
+
+alpacawork is a task-based AI orchestration tool.
+
+- **One chat as your point of contact** — Write new requests, and additions or changes to work in progress, in the same chat box. An AI called the coordinator turns each request into a task and hands it to another AI.
+- **Tasks, not conversations** — The screen lists the tasks you asked for. Results and questions for you are grouped by task ([How it works](https://github.com/alpacakit/alpacawork/blob/main/docs/concept.md#work-moves-by-task-not-by-conversation)).
+- **Your Claude Code and Codex, as they are** — Start right away with your current logins, in a repository folder you already use. You don't need an account or an API key for alpacawork, and `AGENTS.md`, `CLAUDE.md`, skills, MCP and hooks work unchanged. GitHub Copilot, Grok Build and pi work too, and local models run through pi ([AIs to use](https://github.com/alpacakit/alpacawork/blob/main/docs/projects.md#ais-to-use)).
+- **Workflows in plain words** — Ask for something like "Make three proposals, each with a different model. Combine them into one and have another AI review it," and the AIs carry it out, handing work to one another. You can also have another AI work in parallel on a task that is already in progress.
+- **Switch AIs and pick up where the work left off** — When an AI stops on an error or a usage limit, or even mid-work, you can switch to a different AI, say from Claude Code to Codex, and it picks up from there. Choose fallback AIs in Settings, and one takes over when a usage limit stops the work.
+- **Context carried by the task's records** — When a conversation gets long, the AI compacts it or starts a fresh one. Instead of the old exchange, the AI in a fresh conversation, or the AI that took over, gets the task's records: where the work stands, with the request, what was decided and what remains. It continues from there.
+- **Questions you answer by picking an option** — What the AI can't decide reaches you as a question with options and a recommendation. Questions and reports come with images and videos.
+- **Usable from your phone alone** — Ask, answer questions and check results on your phone. Swipe right to answer or to mark a result done.
 
 <p align="center">
   <img src="docs/images/demo-dark.webp" alt="A request typed into the phone's chat box becomes three tasks that run in parallel in the PC's list; a result is checked and a swipe marks its task complete, and a question from the AI is answered by picking an option; then the phone and the PC side by side" width="800">
 </p>
-
-## Work moves by task, not by conversation
-
-Most tools for AI agents organize work around your conversation with the AI. In alpacawork, you ask from one chat, and the work you ask for proceeds as tasks. So the screen lists the tasks you asked for, not conversations with the AI. Results and questions for you are grouped by task, and the history stays with the task even when the conversation starts over or the AI is replaced. The reasons are in [How it works](https://github.com/alpacakit/alpacawork/blob/main/docs/concept.md#work-moves-by-task-not-by-conversation).
 
 ## Install
 
@@ -105,23 +112,10 @@ To open the screen in your browser, ask Claude Code or Codex like this (`$alpaca
 
 In a terminal, `alpacawork open` also opens it.
 
-## What it does
-
-See the whole flow on the real screens, from sending a request to marking a task complete (about 100 seconds, no sound).
-
-https://github.com/user-attachments/assets/ab940260-e8aa-4810-bab6-0495a5207611
-
-- **Write every request in one chat box.** The coordinator turns each request into a task and hands it to an AI. You never have to switch chats or AIs from one job to the next.
-- **AI manages several AIs at once.** To add to or change work in progress, you only tell the coordinator. Write "For all three tasks in progress, also check the phone layout," and the coordinator gives that instruction to each AI working on them.
-- **Describe a workflow in words, and the AIs carry it out together.** Even an involved one, such as "Make three proposals, each with a different model. Combine them into one, have another AI review it, and fix it before you report," is carried out as you described it: AI manages the steps, and the AIs hand work to one another.
-- **Questions from the AI come with options and a recommendation.** Questions and reports arrive with images and videos. Pick an option to answer.
-- **A screen built for phones.** Swipe right to answer a question or to mark a result done. You can take a task from request to done on your phone alone. The same screen also works in a browser on your PC.
-- **It runs in your usual setup.** `AGENTS.md`, `CLAUDE.md`, skills, MCP and hooks work unchanged. You don't need an account or an API key for alpacawork.
-
 ## Good to know
 
 - **It is free (MIT License).** AI usage is billed under your existing Claude Code, Codex or other plan.
-- **It runs on your PC.** The AI runs on your PC, so keep the PC on and set it not to sleep while you use alpacawork.
+- **It runs on your PC.** Keep the PC on and set it not to sleep while you use alpacawork.
 - **It starts AI agents in the same no-approval mode as Claude Code's `bypassPermissions` and Codex's `danger-full-access`, so they don't stop to ask.** You can write what the AI should not do, or should ask you about first, in the [project policy](https://github.com/alpacakit/alpacawork/blob/main/docs/projects.md#project-policy).
 - **Tasks, conversations and result files are kept on your PC.** alpacawork does not send them to any outside server run by its developers. Your instructions to the AI, and what the AI reads, are sent to the AI's provider, just as when you use each AI agent directly ([more on how data is handled](https://github.com/alpacakit/alpacawork/blob/main/docs/manage.md#where-your-data-is-and-what-is-sent-out)).
 

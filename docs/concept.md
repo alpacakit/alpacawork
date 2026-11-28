@@ -10,7 +10,7 @@ What you do comes down to three things: ask, answer questions, and check the res
 
 ## Work moves by task, not by conversation
 
-Most tools for AI agents organize work around your conversation with the AI. alpacawork organizes it around tasks, and gives each task the AI it needs at the time.
+Most tools for AI agents organize work around your conversation with the AI. alpacawork organizes it around tasks. Each task gets AIs suited to the work, and they can be changed along the way.
 
 So the screen lists the tasks you asked for, not conversations with the AI. You ask from the input box at the bottom of the screen. The coordinator's reply appears above the input box; press it to open the conversation.
 
