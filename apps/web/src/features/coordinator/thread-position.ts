@@ -61,7 +61,7 @@ export function useThreadPosition(body: HTMLElement, host: HTMLElement | null, a
     let pending = true, following = false, stayOnQuestion = false;
     let localIds = new Set(localNow.current.map(turn => turn.id));
     let rememberedTop = area.scrollTop;
-    let rememberedHeight = area.scrollHeight, rememberedRoom = area.clientHeight;
+    let rememberedHeight = area.scrollHeight, rememberedRoom = area.clientHeight, rememberedWidth = area.clientWidth;
     let anchor: { block: HTMLElement; offset: number; text?: { range: Range; offset: number } } | null = null;
     const oldAnchoring = area.style.overflowAnchor, oldPadding = body.style.paddingBottom;
     let bottomRoom = 0, unfoldRoom = 0;
@@ -105,7 +105,7 @@ export function useThreadPosition(body: HTMLElement, host: HTMLElement | null, a
     const held = () => { const end = area.scrollHeight - area.clientHeight; return rememberedTop > end + 0.5 && Math.abs(area.scrollTop - end) < 1; };
     const movedByReader = () => area.scrollTop !== rememberedTop && !held();
     // Held there, only where it stands is new; what is read and whether it follows are kept.
-    const noteHeld = () => { rememberedTop = area.scrollTop; rememberedHeight = area.scrollHeight; rememberedRoom = area.clientHeight; };
+    const noteHeld = () => { rememberedTop = area.scrollTop; rememberedHeight = area.scrollHeight; rememberedRoom = area.clientHeight; rememberedWidth = area.clientWidth; };
     // The last thing the person said: an opening puts it at the top, and following the end goes no further than that,
     // so an answer that comes in long is read from its start, under what it answers.
     const lastSaid = () => {
@@ -121,7 +121,7 @@ export function useThreadPosition(body: HTMLElement, host: HTMLElement | null, a
     const note = () => {
       takeBackRoom();
       rememberedTop = area.scrollTop;
-      rememberedHeight = area.scrollHeight; rememberedRoom = area.clientHeight;
+      rememberedHeight = area.scrollHeight; rememberedRoom = area.clientHeight; rememberedWidth = area.clientWidth;
       following = !stayOnQuestion && atEnd();
       const said = following ? lastSaid() : undefined;
       followed = said ? { said, top: topIn(said) } : null;
@@ -171,11 +171,15 @@ export function useThreadPosition(body: HTMLElement, host: HTMLElement | null, a
         // What came in above the followed words (older history read in, an image above taking its height) moved them
         // down: the reading goes down as far, so they stand where they were. Only what grew under them, or a new size of
         // the pane, is followed, and following only ever goes on toward the end, never back; what it follows comes into
-        // sight by gliding there, as far as it moved on screen.
+        // sight by gliding there, as far as it moved on screen. A new size of the pane (a hand on any of its edges, the
+        // pane gliding to its largest), and the words wrapping anew in a new width, come on every frame and are drawn as
+        // they go: they are followed at once, without a glide, since a glide started on each frame draws the words where
+        // they were and they shake under the edge.
         const from = area.scrollTop, said = lastSaid(), above = said && followed?.said === said ? topIn(said) - followed.top : 0;
-        const grown = area.scrollHeight - rememberedHeight - above > 0 || area.clientHeight !== rememberedRoom;
+        const resized = area.clientHeight !== rememberedRoom || area.clientWidth !== rememberedWidth;
+        const grown = area.scrollHeight - rememberedHeight - above > 0 || resized;
         area.scrollTop = grown ? Math.max(from + above, followTop()) : from + above;
-        glideReading(body, area.scrollTop - from - above);
+        if (!resized) glideReading(body, area.scrollTop - from - above);
       }
       else if (anchor && body.contains(anchor.block)) {
         const text = anchor.text;
