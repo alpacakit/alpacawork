@@ -44,7 +44,7 @@ import { useNarrow, useViewStore } from "@/state/view-store";
 import { ListScroll } from "@/features/shell/ListScroll";
 import { BarRoom } from "@/features/chrome/Bar";
 import { cn } from "@/lib/utils";
-import { STRIP_FLOOR, titleColumnWidth } from "@/state/screen-settings";
+import { listColumns, SPEED_LANE, STRIP_FLOOR } from "@/state/screen-settings";
 import { useListWidth } from "@/lib/use-list-width";
 import { atOf, EDGE_HALO, EdgeLayer, buildAxis, futureBandWidth, futureWords, type FutureWords, Ground, StripGround, Lane, laneMarks, lineOf, lineReports, ProbeRule, shownScaleMs, stretchReport, stripAxis, stripKeys, TimeClock, clockHeight, textScale, rowTurn, TurnEdge, wordsW, type RowTurn, useStrip, useStripProbe, showZoom, StripPress, wholeIn, xOf, type Level, type MarkAt, type Piece, type Scale } from "./time-line";
 import { drawnTaskIds, useListNavigationSource } from "./list-navigation";
@@ -59,7 +59,7 @@ import { useConnection } from "@/data/connection";
 import { PullMark, usePullToRefresh } from "./pull-refresh";
 import { ReadFailure, ReadNote } from "@/components/ui/loadable";
 import { useDeviceValue } from "@/lib/device-storage";
-import { HeadingAgents, HeadingSpeedUnit, HeadingTokenSpeed, RowTokenSpeed, SPEED_LANE, SpeedLane, speedLane } from "./token-speed";
+import { HeadingAgents, HeadingSpeedUnit, HeadingTokenSpeed, RowTokenSpeed, SpeedLane } from "./token-speed";
 import { isOpen, SECTION_START, sectionFold, sectionsOpen, storedWith } from "./section-fold";
 import { useOfflineShown } from "@/data/reach";
 import { useListEntrance } from "./list-entrance";
@@ -352,9 +352,9 @@ export function TimeTree({ entering = false }: { entering?: boolean }) {
   const startAt = (ms: number) => Math.min(earliest, now - ms) - 5 * MINUTE;
   const list = useListWidth(box, 1200), { width: sheet, zoomWidth } = list;
   // The title column: narrower when the sheet itself is narrow (the detail is open beside it), so the time keeps its room.
-  // Beside it, before the time, the column of the In progress rows' output speed (speedLane).
-  const lane = narrow || !strips ? 0 : speedLane(sheet);
-  const lead = narrow ? 0 : Math.min(titleColumnWidth(sheet) + lane, Math.max(0, sheet - STRIP_FLOOR));
+  // Beside it, before the time, the column of the In progress rows' output speed (listColumns).
+  const columns = listColumns(sheet), lane = narrow || !strips ? 0 : columns.lane;
+  const lead = narrow ? 0 : Math.min(columns.title + lane, Math.max(0, sheet - STRIP_FLOOR));
   // The width the zoom is for (useStrip): a reader past half the screen only hides the strip's oldest part.
   const laid = Math.max(sheet, zoomWidth) - lead;
   // Hidden strips need only the clock-width minimum, not each row's end prediction.

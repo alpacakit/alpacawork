@@ -30,14 +30,26 @@ export const TITLE_COLUMN_TIGHT = 330;
  */
 export const titleColumnWidth = (sheet: number) =>
   sheet < 900 ? TITLE_COLUMN_TIGHT : Math.min(480, Math.max(360, Math.round(sheet * 0.34)));
-/** The least the time strip is drawn at beside the titles and the speed column: now and a little before it. */
-export const STRIP_FLOOR = 120;
-/** The least of the time strip the list keeps beside its titles: now, the reports expected after it and a little before. */
-const LEAST_STRIP_WIDTH = 200;
-/** The list's insets around them: 24px at its left, 36px between it and the reader (Workbench). */
-const LEAST_LIST_WIDTH = 24 + TITLE_COLUMN_TIGHT + LEAST_STRIP_WIDTH + 36;
 /**
- * The list gives the reader its width until it is down to its titles and the least strip; a wider reader overlaps
+ * The In progress rows' speed column at the title column's end (token-speed): a number and the minute's bars, or the
+ * number alone. Its width is its number's slot, the gap and the bars, and the room before the time: nothing left over.
+ */
+export const SPEED_LANE = 92;
+const COMPACT_LANE = 40;
+/** The least the time strip is drawn at beside the titles and the speed column: now, the reports expected after it and a little before. */
+export const STRIP_FLOOR = 160;
+/**
+ * The title column and the speed column of a list `sheet` wide; the time strip has the rest. The speed column is the
+ * widest that leaves the strip its floor: the strip gives up its room first, then the bars go, then the number.
+ */
+export function listColumns(sheet: number) {
+  const title = titleColumnWidth(sheet);
+  return { title, lane: [SPEED_LANE, COMPACT_LANE].find((lane) => sheet - title - lane >= STRIP_FLOOR) ?? 0 };
+}
+/** The list's insets around them: 24px at its left, 36px between it and the reader (Workbench). */
+const LEAST_LIST_WIDTH = 24 + TITLE_COLUMN_TIGHT + SPEED_LANE + STRIP_FLOOR + 36;
+/**
+ * The list gives the reader its width until it is down to its titles, the speed's bars and the least strip; a wider reader overlaps
  * it. On a screen too narrow for that, the reader still has what the docking boundary leaves it beside the list.
  */
 export const readerListReservation = (width: number, viewport: number) =>
