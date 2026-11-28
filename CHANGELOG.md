@@ -26,6 +26,34 @@ GitHub Release text, and folds the full list of pull requests below it by itself
 - Do not edit a section after its version is released.
 -->
 
+## 0.1.10
+
+This version is about a steadier coordinator conversation and an easier list: the conversation stays still while you read, resize or scroll it, with a way back down to the latest, and a list row opens its task from any part of it.
+
+**Update:** Settings → Update, or `alpacawork deploy npm:alpacawork@0.1.10`. The database schema and Run execution format did not change from 0.1.9. From 0.1.0-beta.9 or earlier, follow the [older-beta update instructions](https://github.com/alpacakit/alpacawork/blob/v0.1.1/CHANGELOG.md#011), using `alpacawork@0.1.10` in step 4.
+
+### Highlights
+- **A way back down to the latest.** When you have scrolled up in the coordinator conversation, a round arrow over its bottom takes you down to the latest. While you hold or scroll the conversation, a reply coming in no longer moves what you are reading; it catches up once you let go. ([#203](https://github.com/alpacakit/alpacawork/pull/203))
+- **The conversation stays still while its pane is resized.** Dragging an edge of the coordinator conversation while it is at the latest message no longer makes its words shake. ([#202](https://github.com/alpacakit/alpacawork/pull/202))
+- **Open a task from anywhere on its row.** In the list, a press on the speed column or on a stopped row's AI logo now opens the task like the rest of the row, and on a computer the speed, the agents at work, the state icon and a stop's reason show their tips. ([#209](https://github.com/alpacakit/alpacawork/pull/209))
+- **Speed bars on narrower lists.** With a task open beside the list, In progress rows now keep their minute bars where they showed only a number, as the time strip gives up its spare room first. ([#207](https://github.com/alpacakit/alpacawork/pull/207))
+- **Lighter swipes on a phone.** A card swiped to answer is taken with less travel and a weaker flick, springs back from where you let go, and leaves at your finger's speed. ([#208](https://github.com/alpacakit/alpacawork/pull/208))
+
+### Screens
+- In the list's time strip, the line of agents at work stands at the height of the title's letters and rises higher as more work at once, so busy rows read more clearly. ([#206](https://github.com/alpacakit/alpacawork/pull/206))
+- Opening the coordinator's earlier messages makes the "N earlier messages" entrance go away and shows the history in its place, with the latest exchange staying where it was. The history no longer has a Collapse press; it folds again the next time you open the conversation. ([#198](https://github.com/alpacakit/alpacawork/pull/198))
+- Settings → Update shows each skill's folder name in the list of what an update replaces, and the update card's mark sits on the middle of its state. ([#199](https://github.com/alpacakit/alpacawork/pull/199))
+- Marks beside words in the conversation and a task's working rows (the work mark, a step's state, the waiting ring, the copy and reply presses) sit on the middle of the letters. ([#210](https://github.com/alpacakit/alpacawork/pull/210))
+
+### Fixes
+- When a Done press got no answer (for example, the connection dropped), Done no longer stays spinning and disabled; pressing it again checks the same operation, so it is not applied twice. ([#205](https://github.com/alpacakit/alpacawork/pull/205))
+- With the theme saved as light or dark, a reload starts the page in that theme instead of drawing the other one first, which could leave the installed app's window bar in the wrong colour. ([#197](https://github.com/alpacakit/alpacawork/pull/197))
+
+### Faster
+- Task files, coordinator attachments and answer files are cached by the browser, so opening them again does not download them again. ([#204](https://github.com/alpacakit/alpacawork/pull/204))
+
+If alpacawork helps you, a ⭐ on GitHub is welcome.
+
 ## 0.1.9
 
 This version is about seeing at a glance which AIs are working and whether they are moving: In progress shows each AI's logo with how many of it run and how fast they write, from the first moment, and the limits bar shows two agents' limits side by side, such as Claude's and Codex's.
