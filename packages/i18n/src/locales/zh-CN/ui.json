@@ -138,6 +138,7 @@
     "restore": "恢复对话大小",
     "retry": "重新发送",
     "returnFromReply": "返回 {{time}} 的消息",
+    "toLatest": "转到最新",
     "seconds_other": "{{count}} 秒",
     "send": "发送",
     "sendFailed": "发送失败，请重试。",
