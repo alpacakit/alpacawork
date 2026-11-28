@@ -82,6 +82,12 @@ test('the Working row opens and closes on the shared disclosure motion at PC and
     await expect(row.locator('[data-working-note]').first()).toContainText('調査をまとめました');
     await expect(row.locator('[data-work-line]')).toContainText('pnpm vitest run');
     await settleMotion(page, row, true);
+    const chevron = row.locator('[data-working-chevron] svg');
+    const headerFits = await chevron.evaluate(icon => {
+      const edge = icon.closest('[data-working-row]')!.getBoundingClientRect().right;
+      return icon.getBoundingClientRect().right <= Math.min(edge, document.documentElement.clientWidth);
+    });
+    expect(headerFits, `${width}px disclosure stays inside the working row`).toBe(true);
     expect(await page.evaluate(() => (window as unknown as { disclosureMoves: number }).disclosureMoves), 'nothing slides before a press').toBe(0);
     for (const opening of [true, false]) {
       const seen = await frames(row);

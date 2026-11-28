@@ -588,9 +588,6 @@ test("the working row heads the report column with the responsible person's time
   const words = people()[0]!.querySelector<HTMLElement>("[data-working-note]")!;
   expect(words.textContent).toBe(long);
   expect(words.className).toContain("line-clamp-2");
-  // Said in the colours of any History row not opened, its time as quiet as the rest of its head.
-  expect(words.className).toContain("text-row-words");
-  expect(row.querySelector("[data-rail-time]")?.className).toContain("text-soft");
   expect(people()[0]!.querySelector("[data-working-model]")?.textContent).toBe("opus(high)");
   expect(row.querySelector("[data-working-others]")?.textContent).toBe("+2 more");
   // Under the words, one work line says what the lead is at; tokens and stop are left to other places.
@@ -603,9 +600,6 @@ test("the working row heads the report column with the responsible person's time
   // Open: the words whole, and each other person's words and model; the count is no longer needed.
   expect(toggle.getAttribute("aria-expanded")).toBe("true");
   expect(words.className).not.toContain("line-clamp-2");
-  // Opened, it stands out as an opened record does.
-  expect(words.className).toContain("text-ink");
-  expect(words.className).not.toContain("text-row-words");
   expect(people().map(person => person.dataset.workingPerson)).toEqual(["P1", "P2", "P3"]);
   expect(people()[1]!.textContent).toContain("member words");
   expect(people()[1]!.querySelector("[data-working-model]")?.textContent).toBe("gpt-6.1-sol(high)");

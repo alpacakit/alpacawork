@@ -940,8 +940,7 @@ function WorkingRow({ task, onFollow }: { task: TaskDetail; onFollow: (id: strin
   const hidden = unfolded ? 0 : work.length - 1;
   const [first, ...more] = work;
   // The Tasks past the first unfold under it as every History disclosure does (DisclosureBody), not at once.
-  // Its rule starts on the words' line, as every record's and the questions bar's do.
-  return <li data-working-row data-motion-key="working" className="relative pl-(--gutter)"><div className="border-b border-rule py-1">
+  return <li data-working-row data-motion-key="working" className="relative pl-(--gutter)"><div className="-ml-2 rounded-lg bg-hover py-1 pl-2 pr-2.5">
     {runs[0] && <WorkingRuns key={runs[0].id} task={task} runs={runs} onFollow={onFollow} />}
     {first && <ul data-working-below={work.length} className="m-0 list-none p-0">
       <li><ChildWorkLine item={first} mark={!runs.length} onFollow={onFollow} /></li>
@@ -965,7 +964,7 @@ function WorkingRuns({ task, runs, onFollow }: { task: TaskDetail; runs: Control
   const toggle = (event: React.MouseEvent) => { if (!(event.target as Element).closest("button, a") && window.getSelection()?.isCollapsed !== false) setOpen(!open); };
   return <div role="button" tabIndex={0} aria-expanded={open} onClick={toggle} data-working-here
     onKeyDown={event => { if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); setOpen(!open); } }}
-    className="group/row flex cursor-pointer flex-col py-1.5 outline-none focus-visible:outline-2 focus-visible:outline-ring narrow:min-h-11">
+    className="group/row flex cursor-pointer flex-col py-1 outline-none focus-visible:outline-2 focus-visible:outline-ring narrow:min-h-11">
     <WorkingPerson run={lead} task={task} onFollow={onFollow} open={open} lead
       others={others > 0 && !open ? <span data-working-others>{t("reportFeed.working.others", { count: others })}</span> : null} />
     {others > 0 && <DisclosureBody open={open}><div className="flex flex-col gap-2 pt-2">
@@ -1008,40 +1007,42 @@ function WorkingPerson({ run, task, onFollow, open, lead, others }: { run: Contr
   // The Run it took the request over from, when the one before stopped on a limit.
   const before = people ? [...people.runsByTask.get(run.taskId) ?? []].find(each => each.supersededBy === run.id) : undefined;
   const beforeCause = before?.availability?.cause ?? before?.errorCause?.cause;
-  const cell = "col-start-2 min-w-0 narrow:col-span-2 narrow:col-start-1";
-  // These words can wrap: share their first baseline with the time, rather than centring it on all their lines.
-  return <div data-working-person={run.placementId} className={`${RECORD_HEAD} items-baseline !p-0`}>
-    <RailTime mark={lead ? WORKING_MARK : undefined} live>{duration(run.startedAt)}</RailTime>
-    <span className="col-start-2 row-start-1 flex min-w-0 items-baseline gap-x-2 text-xs text-soft group-hover/row:text-ink">
-    <span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-1.5">
-      <span className="font-medium">{t(`reportFeed.row.party.${member ? "member" : "self"}`)}</span>
-      <AgentLabel data-working-model label={model} mark={false} /><span>{t("reportFeed.row.working")}</span>{others && <>·{others}</>}
-      {before && <span data-working-took-over>· {t("reportFeed.working.tookOver", { agent: `${before.agent} ${modelLabel(runAgentLabel(before), names).short}`,
-        reason: beforeCause ? limitName(beforeCause, ui) : t("reportFeed.row.carriedOn.limit") })}</span>}
-      </span>
-      {/* Every working line ends its first line with the same meter, so the figures stand in one column. */}
-      {run.activity?.context && <CapCentred><ContextMeter context={run.activity.context} press conversations={task.conversations ?? undefined} /></CapCentred>}</span>
-    {!words ? null : !lead ? <div data-working-note dir="auto" className={`${cell} ${NOTE} text-sm block text-ink`}><MarkdownBody text={words} task={task} onFollow={onFollow} report variant="note" /></div>
-      : <LeadNote open={open} words={words} task={task} onFollow={onFollow} className={cell} />}
+  return <div data-working-person={run.placementId} className="flex min-w-0 flex-col">
+    <div className="flex min-w-0 items-baseline gap-2">
+      <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 gap-y-1">
+        <RailTime mark={lead ? WORKING_MARK : undefined} live>
+          <span className="text-sm font-semibold text-ink">{ui("state.doing")} · {duration(run.startedAt)}</span>
+        </RailTime>
+        <span className="inline-flex min-w-0 max-w-full items-baseline gap-1 text-xs text-soft">
+          <span className="shrink-0">{t(`reportFeed.row.party.${member ? "member" : "self"}`)}</span>
+          <AgentLabel data-working-model label={model} mark={false} />
+        </span>
+        {others && <span className="whitespace-nowrap text-xs text-soft">{others}</span>}
+      </div>
+      {run.activity?.context && <CapCentred><ContextMeter context={run.activity.context} press conversations={task.conversations ?? undefined} /></CapCentred>}
+      <CapCentred data-working-chevron className="w-3 justify-center text-xs">{lead && <DisclosureChevron open={open} />}</CapCentred>
+    </div>
+    {before && <span data-working-took-over className="mt-1 text-xs text-soft">{t("reportFeed.working.tookOver", { agent: `${before.agent} ${modelLabel(runAgentLabel(before), names).short}`,
+      reason: beforeCause ? limitName(beforeCause, ui) : t("reportFeed.row.carriedOn.limit") })}</span>}
+    {words && (lead ? <LeadNote open={open} words={words} task={task} onFollow={onFollow} />
+      : <div data-working-note dir="auto" className={`mt-1 ${NOTE}`}><MarkdownBody text={words} task={task} onFollow={onFollow} report variant="note" /></div>)}
     {worked ? <button type="button" data-working-steps aria-expanded={listed} onClick={event => { keepPressedRow(event.currentTarget); setListed(!listed); }}
-      className={`${cell} group/steps mt-1 flex cursor-pointer items-center gap-1.5 rounded-sm py-0.5 text-left text-xs outline-none focus-visible:outline-2 focus-visible:outline-ring narrow:min-h-11`}>
+      className="group/steps mt-1 flex min-h-6 min-w-0 cursor-pointer items-center gap-1.5 rounded-sm text-left text-xs outline-none focus-visible:outline-2 focus-visible:outline-ring">
       <WorkLine step={latest} idle={idle} label={listed && count !== undefined ? say("now.step.count", { count }) : undefined} className="min-w-0 flex-1 group-hover/steps:text-ink" />
       <Icon name="down" className={`size-3.5 flex-none self-center text-muted transition-transform duration-(--motion-base) group-hover/steps:text-ink ${listed ? "rotate-180" : ""}`} /></button>
-      : <WorkLine step={latest} idle={idle} className={`${cell} mt-1.5 text-xs`} />}
-    {worked && <div className={cell}><StepList steps={full} open={reading} className="mt-1" /></div>}
-    {/* As wide as a child line's → keeps past its end (press-end: 16px less a sixth), so every meter ends on one edge. */}
-    <span data-working-chevron className="col-start-3 row-start-1 flex w-[calc(var(--spacing)*4*20/24)] items-baseline justify-end text-xs">{lead && <CapCentred><DisclosureChevron open={open} /></CapCentred>}</span>
+      : <WorkLine step={latest} idle={idle} className="mt-1 min-h-6 text-xs" />}
+    {worked && <StepList steps={full} open={reading} className="mt-1" />}
   </div>;
 }
 
-const NOTE = "mt-0.5 min-w-0 [overflow-wrap:anywhere] [&>div]:text-inherit";
+const NOTE = "min-w-0 text-sm text-ink [overflow-wrap:anywhere] [&>div]:text-inherit";
 
 /**
  * The lead's words, one copy open or folded: folded, its DisclosureBody keeps their first whole lines shown (up to
  * two, as useLineClip draws them), and opening unfolds the rest under them over the same step and curve as every History
  * disclosure, so no line is drawn twice on the way. The "…" goes as it opens and comes back once it has folded.
  */
-function LeadNote({ open, words, task, onFollow, className }: { open: boolean; words: string; task: TaskDetail; onFollow: (id: string) => void; className: string }) {
+function LeadNote({ open, words, task, onFollow }: { open: boolean; words: string; task: TaskDetail; onFollow: (id: string) => void }) {
   const [shut, setShut] = useState(!open);
   if (open && shut) setShut(false);
   useEffect(() => {
@@ -1056,16 +1057,16 @@ function LeadNote({ open, words, task, onFollow, className }: { open: boolean; w
   useLayoutEffect(() => {
     const box = clip.current, content = box?.firstElementChild;
     if (!box || !content) return;
-    const measure = () => setLeast(wholeLinesHeight(box) + Number.parseFloat(getComputedStyle(box).marginTop));
+    const measure = () => setLeast(wholeLinesHeight(box));
     measure();
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
     observer?.observe(content);
     return () => observer?.disconnect();
   }, [clip, words]);
-  return <div className={className}><DisclosureBody open={open} least={least}>
-    <div ref={clip} data-working-note dir="auto" className={`${NOTE} text-sm ${shut ? `line-clamp-2 ${ROW_WORDS}` : "block text-ink"}`}>
+  return <DisclosureBody open={open} least={least} className="mt-1">
+    <div ref={clip} data-working-note dir="auto" className={`${NOTE} ${shut ? "line-clamp-2" : "block"}`}>
       <MarkdownBody text={words} task={task} onFollow={onFollow} report variant="note" /></div>
-  </DisclosureBody></div>;
+  </DisclosureBody>;
 }
 
 /**
