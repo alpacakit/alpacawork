@@ -38,7 +38,8 @@ function useDoneAction(task: Task) {
  * (TaskActions), or inline in an ancestor's report of the submission.
  * On its way it turns its mark; accepted, it turns green until the finished task takes it away. Neither takes a second
  * press, nor does a press while the answered reader is leaving (it would land on the next task). A refusal is told where
- * every report's failure is (the recovery notices), and Done can be pressed again.
+ * every report's failure is (the recovery notices), and Done can be pressed again. So can a Done whose result is not
+ * known: it is not on its way, so it does not turn, and a press asks again (useTaskReport's complete).
  * A short wait (the task read again, serve reached again) does not dim it (useSteadyControl); a press in one goes once
  * the wait ends, unless the task shown has changed under it.
  */
@@ -47,11 +48,11 @@ export function ReviewApprove({ task, look }: { task: Task; look: ActionLook | '
   const { people, ready: doneReady } = useDoneAction(task);
   const card = useReaderCard();
   const report = useTaskReport(task, people, card);
-  const ready = report.ready && doneReady;
+  const ready = report.completeReady && doneReady;
   const steady = useSteadyControl(!ready, useShownTaskVersion(task.id));
   const tool = useRowTool();
   const inThread = useTaskActionSlot(state => state.inThread);
-  const sending = report.completion === 'pending' || report.completion === 'unconfirmed';
+  const sending = report.completion === 'pending';
   const accepted = report.completion === 'confirmed';
   const className = look === 'inline'
     ? cn("relative inline-flex h-9 flex-none items-center gap-1.5 rounded-full border border-lit-line bg-raised px-3 text-sm text-muted shadow-float hover:bg-hover hover:text-ink disabled:opacity-38 pointer-coarse:min-h-11",

@@ -8,8 +8,9 @@ import { awaitsReview } from '../src/features/reader/TaskDone';
 import { TaskActionSlot } from '../src/features/coordinator/task-action-slot';
 import { useDirectWriteRecovery } from '../src/features/reader/recovery';
 import { useToasts } from '../src/lib/notify';
+import { useWriteIntentStore } from '../src/data/write-intent';
 import { closeInput } from '../src/state/open-input';
-import { TestWorkspace, at, dto, logEntry, screenData, taskFixture, tree, userBall } from './fixtures';
+import { TestWorkspace, at, dto, headOf, logEntry, screenData, taskFixture, tree, userBall } from './fixtures';
 
 beforeAll(async () => { startI18n(); await i18n.changeLanguage('en'); });
 afterEach(() => { cleanup(); closeInput(); vi.restoreAllMocks(); });
@@ -54,4 +55,21 @@ test('the server unfinished-child reason appears in the existing recovery notice
     toast.kind === 'error' && String(toast.detail).includes('T3'))).toBe(true));
   expect(await screen.findByText(/T3/)).toBeTruthy();
   expect((screen.getByRole('button', { name: 'Mark this task done' }) as HTMLButtonElement).disabled).toBe(false);
+});
+
+test('a Done whose result is unknown does not spin, and pressing it again asks with the same operation', async () => {
+  const data = sample(), task = data.tasks[0]!;
+  const fetcher = vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new TypeError('Failed to fetch'))
+    .mockResolvedValue(new Response(JSON.stringify({ task: headOf(dto({ state: 'done' })), outcome: { kind: 'recorded' } })));
+  render(<TestWorkspace data={data}><Recovery /><TaskActionSlot /><TaskActions task={task} phone={false} /><Toaster /></TestWorkspace>);
+  const done = () => screen.getByRole('button', { name: 'Mark this task done' }) as HTMLButtonElement;
+  fireEvent.click(done());
+  await waitFor(() => expect(fetcher).toHaveBeenCalledOnce());
+  await waitFor(() => expect(done().disabled).toBe(false));
+  expect(done().getAttribute('aria-busy')).toBeNull();
+  fireEvent.click(done());
+  await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2));
+  const opId = (call: number) => new Headers(fetcher.mock.calls[call]![1]!.headers).get('X-Alpacawork-Op-Id');
+  expect(opId(1)).toBe(opId(0));
+  await waitFor(() => expect(Object.values(useWriteIntentStore.getState().entries).map(entry => entry.status)).toEqual(['confirmed']));
 });
