@@ -130,7 +130,7 @@ test('an upload whose caller stops being one while its bytes came writes nothing
   assert.equal(existsSync(join(root, 'tasks', task.id, 'late.txt')), false);
 });
 
-test('managed text files share gzip compression and safe response types without changing saved bytes', async t => {
+test('managed text files keep safe response types and strong ETags for the original bytes', async t => {
   const { root, task, folder, start } = await fixture(t);
   const text = '<h1>Untrusted text</h1><script>globalThis.fileScriptRan = true</script>\n'.repeat(80);
   const server = await start();
@@ -144,12 +144,49 @@ test('managed text files share gzip compression and safe response types without 
     const response = await fetch(fileUrl(server.url, task.id, name), { headers: { 'Accept-Encoding': 'gzip' } });
     assert.equal(response.status, 200, name);
     assert.equal(response.headers.get('content-type'), type === 'application/octet-stream' ? type : `${type}; charset=utf-8`, name);
-    assert.equal(response.headers.get('content-encoding'), type === 'application/octet-stream' ? null : 'gzip', name);
+    assert.equal(response.headers.get('content-encoding'), null, name);
+    assert.match(response.headers.get('etag')!, /^"[^"]+"$/, name);
     assert.equal(response.headers.get('x-content-type-options'), 'nosniff', name);
     assert.equal(response.headers.get('content-security-policy'), "sandbox; default-src 'none'", name);
-    assert.equal(response.headers.get('cache-control'), 'no-store', name);
+    assert.equal(response.headers.get('cache-control'), 'private, no-cache, no-transform', name);
     assert.equal(await response.text(), text, name);
     assert.equal(readFileSync(join(folder, name), 'utf8'), text, name);
+  }
+});
+
+test('Task file URLs use the listing revision to cache originals and revalidate only that version', async t => {
+  const { task, folder, start } = await fixture(t);
+  const original = 'original bytes', changed = 'modified bytes';
+  for (const name of ['note.txt', 'clip.mp4']) writeFileSync(join(folder, name), original);
+  const server = await start();
+  const view = await fetch(new URL(`/api/task/view?task=${task.id}`, server.url));
+  assert.equal(view.status, 200);
+  const { task: { files } } = await view.json() as { task: { files: Array<{ name: string; revision: string }> } };
+  assert.deepEqual(files.map(file => file.name), ['clip.mp4', 'note.txt']);
+  for (const { name, revision } of files) {
+    const url = fileUrl(server.url, task.id, name);
+    url.searchParams.set('v', revision);
+    for (const download of [false, true]) {
+      if (download) url.searchParams.set('download', '1');
+      const response = await fetch(url);
+      assert.equal(response.status, 200, name);
+      assert.equal(response.headers.get('etag'), `"${revision}"`, name);
+      assert.equal(response.headers.get('cache-control'), 'private, max-age=31536000, immutable, no-transform', name);
+      assert.equal(await response.text(), original, name);
+
+      const unchanged = await fetch(url, { headers: { 'If-None-Match': `"${revision}"` } });
+      assert.equal(unchanged.status, 304, name);
+      assert.equal(await unchanged.text(), '', name);
+      assert.equal(unchanged.headers.get('etag'), `"${revision}"`, name);
+      assert.equal(unchanged.headers.get('cache-control'), response.headers.get('cache-control'), name);
+    }
+    url.searchParams.delete('download');
+    writeFileSync(join(folder, name), changed);
+    const current = await fetch(url, { headers: { 'If-None-Match': `"${revision}"` } });
+    assert.equal(current.status, 200, name);
+    assert.notEqual(current.headers.get('etag'), `"${revision}"`, name);
+    assert.equal(current.headers.get('cache-control'), 'private, no-cache, no-transform', name);
+    assert.equal(await current.text(), changed, name);
   }
 });
 
@@ -163,6 +200,8 @@ test('a file route takes only its own query: an old ?project= is refused, never 
   writeFileSync(join(root, 'tasks', task.id, 'a.diff'), '# alpacawork-diff 1\n# source {}\ndiff --git a/x b/x\n');
   const head = await fetch(new URL(`/api/tasks/${task.id}/file?path=a.diff&part=head`, server.url));
   assert.deepEqual([head.status, await head.text()], [200, '# alpacawork-diff 1\n# source {}\n']);
+  assert.equal(head.headers.get('cache-control'), 'no-store');
+  assert.equal(head.headers.get('etag'), null);
   for (const query of ['&part=head', '&part=rows']) assert.equal((await fetch(file(query))).status, 400, query);
   const refused = await fetch(file('&project=web'));
   assert.equal(refused.status, 400);

@@ -1,11 +1,13 @@
 /** Coordinator HTTP mutation admission starts after bounded input parsing. */
 import type { Hono } from 'hono';
 import { coordinatorConversationInputSchema, coordinatorMessageInputSchema, coordinatorReadInputSchema, coordinatorResetInputSchema, coordinatorTurnsInputSchema } from '@alpacawork/contract/coordinator';
-import { fileBytesResponse } from './file-response.js';
+import { MAX_FILE_BYTES } from '@alpacawork/contract';
+import { fileOpenedResponse, fileRequestOptions } from './file-response.js';
+import type { OpenedFile } from '../raw/storage.js';
 import type { Mutate } from './lifecycle.js';
 import { parseInput, Problem, PROBLEM_CODE } from '@alpacawork/core';
 import { CoordinatorConversation } from '../coordinator/conversation.js';
-import { readCoordinatorAttachment, saveCoordinatorAttachment, removeCoordinatorAttachment, moveCoordinatorAttachments } from '../coordinator/files.js';
+import { withCoordinatorFile, saveCoordinatorAttachment, removeCoordinatorAttachment, moveCoordinatorAttachments } from '../coordinator/files.js';
 import { attachmentLimit } from '../agents-settings.js';
 import { boundedBytes, requiredOpId } from './file-routes.js';
 
@@ -83,14 +85,17 @@ export function installCoordinatorRoutes(api: Hono, root: string, generation: st
       open => moveCoordinatorAttachments(root, open, from, to, requiredOpId(c.req.raw)))));
   });
   api.get('/api/coordinator/file', async c => {
-    authorize(c.req.raw); const id = c.req.query('requestId') ?? '', name = c.req.query('name') ?? '';
-    const area = c.req.query('area');
-    if (area !== undefined && area !== 'answers') throw new Problem(PROBLEM_CODE.invalidInput, 'Invalid coordinator file area', undefined, { reason: { kind: 'invalid_coordinator_file_area' } });
-    const download = c.req.query('download');
-    if (download !== undefined && download !== '1') throw new Problem(PROBLEM_CODE.invalidInput, 'download=1 reads the original file');
-    const bytes = area === 'answers'
-      ? conversation.readAnswerFile(id, name, open => readCoordinatorAttachment(root, open, id, name, 'answers'))
-      : conversation.readAttachment(id, open => readCoordinatorAttachment(root, open, id, name));
-    return fileBytesResponse(name, bytes, c.req.header('range'), download === '1');
+    authorize(c.req.raw);
+    const query = new URL(c.req.url).searchParams;
+    const id = query.get('requestId') ?? '', name = query.get('name') ?? '';
+    const area = query.get('area');
+    if (area !== null && area !== 'answers') throw new Problem(PROBLEM_CODE.invalidInput, 'Invalid coordinator file area', undefined, { reason: { kind: 'invalid_coordinator_file_area' } });
+    const download = query.get('download');
+    if (download !== null && download !== '1') throw new Problem(PROBLEM_CODE.invalidInput, 'download=1 reads the original file');
+    const options = fileRequestOptions(c.req.raw, query);
+    const respond = (file: OpenedFile) => fileOpenedResponse(name, file, MAX_FILE_BYTES, options);
+    return area === 'answers'
+      ? conversation.readAnswerFile(id, name, open => withCoordinatorFile(root, open, id, name, area, respond))
+      : conversation.readAttachment(id, open => withCoordinatorFile(root, open, id, name, 'attachments', respond));
   });
 }

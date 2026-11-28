@@ -14,9 +14,13 @@ import { initializeControlFixture } from './helpers/control-fixture.ts';
  * A Task whose project registers a code location on this PC: a git repository (its `.git` folder made by hand, as git
  * lays it out: no git runs here or in the server) with one worktree elsewhere, beside a place it does not register.
  */
-async function fixture(t: { after: (fn: () => void) => void }, prepare: (places: { base: string; repo: string; outside: string }) => string = places => places.repo) {
+async function fixture(t: { after: (fn: () => Promise<void>) => void }, prepare: (places: { base: string; repo: string; outside: string }) => string = places => places.repo) {
   const base = realpathSync(mkdtempSync(join(tmpdir(), 'alpacawork-code-files-')));
-  t.after(() => rmSync(base, { recursive: true, force: true }));
+  let server: Awaited<ReturnType<typeof startServer>> | undefined;
+  t.after(async () => {
+    try { await server?.close(); }
+    finally { rmSync(base, { recursive: true, force: true }); }
+  });
   const root = join(base, 'workspace'), repo = join(base, 'repo'), worktree = join(base, 'worktree'), outside = join(base, 'outside');
   for (const folder of [root, join(repo, 'src'), join(repo, '.git', 'worktrees', 'wt'), join(worktree, 'src'), outside]) mkdirSync(folder, { recursive: true });
   writeFileSync(join(repo, 'src', 'a.ts'), 'export const a = 1;\n');
@@ -35,15 +39,14 @@ async function fixture(t: { after: (fn: () => void) => void }, prepare: (places:
   try { project = initializeControlFixture(root); } finally { writer.close(); }
   writeFileSync(join(root, 'config.yaml'), `agents: {}\nprojects:\n  ${project}:\n    cwd: ${prepare({ base, repo, outside })}\n`);
   const task = (await new ControlTaskCommands(root, { kind: 'human' }).create({ parentId: project, userRequested: null, tasks: [{ title: 'Code' }] })).tasks[0]!;
-  const server = await startServer(root, 0);
-  t.after(() => server.close());
+  const active = server = await startServer(root, 0);
   const read = async (path: string) => {
-    const response = await fetch(new URL(`/api/tasks/${task.id}/code?path=${encodeURIComponent(path)}`, server.url));
+    const response = await fetch(new URL(`/api/tasks/${task.id}/code?path=${encodeURIComponent(path)}`, active.url));
     return response.ok ? { status: response.status, text: await response.text() }
       : { status: response.status, reason: ((await response.json()) as { error: { reason?: { kind: string } } }).error.reason?.kind };
   };
-  const roots = async () => ((await (await fetch(new URL(`/api/tasks/${task.id}/code-roots`, server.url))).json()) as { roots: string[] }).roots.sort();
-  return { base, root, repo, worktree, outside, server, task, read, roots };
+  const roots = async () => ((await (await fetch(new URL(`/api/tasks/${task.id}/code-roots`, active.url))).json()) as { roots: string[] }).roots.sort();
+  return { base, root, repo, worktree, outside, server: active, task, read, roots };
 }
 
 test('a Task reads files of its code location and its worktrees, and nothing past them, git\'s own folder, a large file or a binary one', async t => {
@@ -76,6 +79,8 @@ test('a code file saved with download=1 is its stored bytes under its own name, 
   const save = (path: string) => fetch(new URL(`/api/tasks/${task.id}/code?path=${encodeURIComponent(path)}&download=1`, server.url));
   const saved = await save(join(repo, 'src', 'bom.ts'));
   assert.equal(saved.status, 200);
+  assert.equal(saved.headers.get('cache-control'), 'no-store');
+  assert.equal(saved.headers.get('etag'), null);
   assert.deepEqual(Buffer.from(await saved.arrayBuffer()), stored);
   assert.match(saved.headers.get('content-disposition') ?? '', /^attachment; filename="bom\.ts"/);
   const reason = async (path: string) => { const response = await save(path);

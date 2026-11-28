@@ -106,13 +106,13 @@ test('formal reports accept small and large GIFs and reject forgery, incomplete 
 test('managed file responses keep safe names and headers for audio ranges, unknown binary and inert markup', async () => {
   const { fileBytesResponse, fileResponsePlan } = await import('@alpacawork/backend/test-dist/receiver/file-response.js');
   const bytes = Buffer.from('RIFF0000WAVEdata');
-  const response = fileBytesResponse('folder/音声 "試聴".wav', bytes, 'bytes=0-3');
+  const response = fileBytesResponse('folder/音声 "試聴".wav', bytes, { range: 'bytes=0-3' });
   assert.equal(response.status, 206);
   assert.equal(await response.text(), 'RIFF');
   assert.equal(response.headers.get('content-type'), 'audio/wav');
   assert.match(response.headers.get('content-disposition')!, /filename\*=UTF-8''%E9%9F%B3/);
   for (const range of ['bytes=99-', 'bytes=-0', 'bytes=0-1,4-5']) {
-    const refused = fileResponsePlan('voice.opus', bytes.length, range);
+    const refused = fileResponsePlan('voice.opus', bytes.length, { range });
     assert.equal(refused.status, 416);
     assert.equal(refused.headers['X-Content-Type-Options'], 'nosniff');
     assert.equal(refused.headers['Cache-Control'], 'no-store');
@@ -124,6 +124,42 @@ test('managed file responses keep safe names and headers for audio ranges, unkno
   const svg = fileBytesResponse('drawing.svg', Buffer.from('<svg onload="alert(1)"/>'));
   assert.equal(svg.headers.get('content-type'), 'text/plain; charset=utf-8');
   assert.equal(svg.headers.get('content-security-policy'), "sandbox; default-src 'none'");
+});
+
+test('managed file validators select cache freshness and take precedence over byte ranges', async () => {
+  const { fileBytesResponse } = await import('@alpacawork/backend/test-dist/receiver/file-response.js');
+  const bytes = Buffer.from('synthetic video bytes');
+  const revision = '15-123-456', etag = `"${revision}"`;
+  const respond = (options: { requestedRevision?: string; ifNoneMatch?: string; ifRange?: string; range?: string } = {}) =>
+    fileBytesResponse('clip.mp4', bytes, { ...options, revision });
+
+  assert.equal(respond({ requestedRevision: revision }).headers.get('cache-control'),
+    'private, max-age=31536000, immutable, no-transform');
+  for (const requestedRevision of [undefined, 'old']) {
+    const response = respond({ requestedRevision });
+    assert.equal(response.headers.get('cache-control'), 'private, no-cache, no-transform');
+    assert.equal(response.headers.get('etag'), etag);
+  }
+
+  for (const ifNoneMatch of [etag, `"other", W/${etag}`, '*']) {
+    const unchanged = respond({ ifNoneMatch, range: 'bytes=0-3' });
+    assert.equal(unchanged.status, 304);
+    assert.equal(unchanged.body, null);
+    assert.equal(unchanged.headers.get('etag'), etag);
+    assert.equal(unchanged.headers.get('cache-control'), 'private, no-cache, no-transform');
+    assert.equal(unchanged.headers.get('content-range'), null);
+  }
+
+  const partial = respond({ ifRange: etag, range: 'bytes=0-3' });
+  assert.equal(partial.status, 206);
+  assert.equal(await partial.text(), 'synt');
+
+  for (const ifRange of ['"old"', `W/${etag}`]) {
+    const changed = respond({ ifRange, range: 'bytes=0-3' });
+    assert.equal(changed.status, 200);
+    assert.equal(changed.headers.get('content-range'), null);
+    assert.deepEqual(Buffer.from(await changed.arrayBuffer()), bytes);
+  }
 });
 
 const fetch = commandFetchWith(fetchBuffered);

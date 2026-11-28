@@ -182,6 +182,13 @@ test('coordinator media share Task byte ranges, keep sent bytes immutable, and r
     assert.equal(clamped.status, 206); assert.deepEqual(Buffer.from(await clamped.arrayBuffer()), bytes.subarray(4));
     const whole = await fetch(file);
     assert.equal(whole.status, 200); assert.deepEqual(Buffer.from(await whole.arrayBuffer()), bytes);
+    const etag = whole.headers.get('etag')!;
+    assert.match(etag, /^"[^"]+"$/);
+    assert.equal(whole.headers.get('cache-control'), 'private, no-cache, no-transform');
+    assert.equal(first.headers.get('etag'), etag);
+    const unchanged = await fetch(file, { headers: { 'If-None-Match': etag } });
+    assert.equal(unchanged.status, 304);
+    assert.equal(unchanged.headers.get('etag'), etag);
     for (const range of [`bytes=${bytes.length}-`, 'bytes=3-2', 'bytes=0-1,3-4', 'bytes=-0', 'bytes=-', 'invalid']) {
       const rejected = await fetch(file, { headers: { range } });
       assert.equal(rejected.status, 416, range); assert.equal(rejected.headers.get('content-range'), `bytes */${bytes.length}`);
@@ -233,7 +240,11 @@ test('answer links publish bounded owned snapshots, survive source removal and r
   });
   if (image.state !== 'ready' || note.state !== 'ready') throw new Error('Expected snapshots');
   const fileUrl = (name: string) => new URL(`/api/coordinator/file?requestId=${id}&name=${encodeURIComponent(name)}&area=answers`, h.url());
-  assert.deepEqual(Buffer.from(await (await fetch(fileUrl(image.name))).arrayBuffer()), png);
+  const imageFile = await fetch(fileUrl(image.name));
+  assert.deepEqual(Buffer.from(await imageFile.arrayBuffer()), png);
+  assert.match(imageFile.headers.get('etag')!, /^"[^"]+"$/);
+  assert.equal(imageFile.headers.get('cache-control'), 'private, no-cache, no-transform');
+  assert.equal((await fetch(fileUrl(image.name), { headers: { 'If-None-Match': imageFile.headers.get('etag')! } })).status, 304);
   for (const { file, expected } of linkedNotes) assert.equal(await (await fetch(fileUrl(file.name))).text(), expected);
   assert.equal(await httpStatus(fileUrl('not-in-manifest.txt')), 404);
   assert.equal(await httpStatus(new URL(`/api/coordinator/file?requestId=${id}&name=${image.name}`, h.url())), 404);

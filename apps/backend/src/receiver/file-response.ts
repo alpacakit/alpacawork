@@ -1,7 +1,8 @@
 /** Byte responses share media types, sandboxing, cache policy and ranges across managed file owners. */
 import { fileInline, fileMediaType, fileStreams } from '@alpacawork/contract';
+import { assertFileRevision, checkFileSize, readOpenedFile, type OpenedFile } from '../raw/storage.js';
 
-/** Every managed file's bytes, whatever their sandbox: never cached, never sniffed. */
+/** Unversioned byte responses stay out of the cache. */
 export const BYTE_HEADERS = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } as const;
 export const SANDBOX = "sandbox; default-src 'none'";
 
@@ -14,16 +15,56 @@ export function fileDisposition(name: string, download = false): string {
   return `${download || !fileInline(name) ? 'attachment' : 'inline'}; filename="${fallback}"; filename*=UTF-8''${encoded}`;
 }
 
-const responseHeaders = (name: string, download = false) => ({ 'Content-Type': fileMediaType(name), 'Content-Disposition': fileDisposition(name, download),
-  ...BYTE_HEADERS, 'Content-Security-Policy': SANDBOX });
+type FileResponseOptions = {
+  download?: boolean;
+  supportsRanges?: boolean;
+  revision?: string;
+  requestedRevision?: string | null;
+  ifNoneMatch?: string | null;
+  ifRange?: string | null;
+  range?: string | null;
+};
 
-/** One HTTP byte-range contract for streamed Task files and coordinator media, after each route authorizes its read. */
-export function fileResponsePlan(name: string, size: number, range: string | undefined, download = false): {
-  start: number; end: number; status: 200 | 206 | 416; hasBody: boolean; headers: Record<string, string>;
-} {
+export function fileRequestOptions(request: Request, query: URLSearchParams): FileResponseOptions {
+  return {
+    download: query.get('download') === '1',
+    requestedRevision: query.get('v'),
+    ifNoneMatch: request.headers.get('If-None-Match'),
+    ifRange: request.headers.get('If-Range'),
+    range: request.headers.get('Range'),
+  };
+}
+
+type FileResponsePlan = {
+  start: number; end: number; status: 200 | 206 | 304 | 416; hasBody: boolean; headers: Record<string, string>;
+};
+
+/** The HTTP policy for original bytes, applied only after the caller has authorized the read. */
+export function fileResponsePlan(name: string, size: number, options: FileResponseOptions = {}): FileResponsePlan {
+  const { download, supportsRanges = fileStreams(name), revision, requestedRevision, ifNoneMatch, ifRange } = options;
+  const headers: Record<string, string> = {
+    ...BYTE_HEADERS,
+    'Content-Type': fileMediaType(name),
+    'Content-Disposition': fileDisposition(name, download),
+    'Content-Security-Policy': SANDBOX,
+  };
+  const etag = revision === undefined ? undefined : `"${revision}"`;
+  if (etag !== undefined) {
+    headers.ETag = etag;
+    // A strong ETag and byte offsets must describe the same representation, including its content coding.
+    headers['Cache-Control'] = revision === requestedRevision
+      ? 'private, max-age=31536000, immutable, no-transform'
+      : 'private, no-cache, no-transform';
+    // A private cache must also distinguish different caller claims on the same URL.
+    headers.Vary = 'Authorization, X-Alpacawork-Provider, X-Alpacawork-Conversation';
+    if (ifNoneMatch?.trim() === '*' || ifNoneMatch?.split(',').some(tag => tag.trim().replace(/^W\//, '') === etag))
+      return { start: 0, end: -1, status: 304, hasBody: false, headers };
+  }
+  if (supportsRanges) headers['Accept-Ranges'] = 'bytes';
+  const range = supportsRanges && (ifRange == null || ifRange.trim() === etag) ? options.range ?? undefined : undefined;
   let start = 0, end = size - 1;
-  const invalid = () => ({ start: 0, end: -1, status: 416 as const, hasBody: false,
-    headers: { ...responseHeaders(name, download), 'Content-Range': `bytes */${size}`, 'Accept-Ranges': 'bytes' } });
+  const invalid = (): FileResponsePlan => ({ start: 0, end: -1, status: 416, hasBody: false,
+    headers: { ...headers, 'Content-Range': `bytes */${size}` } });
   if (range !== undefined) {
     const match = /^bytes=(\d*)-(\d*)$/i.exec(range);
     if (!match || !match[1] && !match[2]) return invalid();
@@ -33,17 +74,25 @@ export function fileResponsePlan(name: string, size: number, range: string | und
       !match[1] && Number(match[2]) === 0) return invalid();
     end = Math.min(end, size - 1);
   }
-  return { start, end, status: range === undefined ? 200 : 206, hasBody: size > 0, headers: {
-    ...responseHeaders(name, download), 'Content-Length': String(end - start + 1), 'Accept-Ranges': 'bytes',
-    ...(range === undefined ? {} : { 'Content-Range': `bytes ${start}-${end}/${size}` }),
-  } };
+  if (range !== undefined) headers['Content-Range'] = `bytes ${start}-${end}/${size}`;
+  if (supportsRanges || etag !== undefined) headers['Content-Length'] = String(end - start + 1);
+  return { start, end, status: range === undefined ? 200 : 206, hasBody: size > 0, headers };
 }
 
-/** `download`: the original saved under its name (`download=1`), whatever a tab could show of it. */
-export function fileBytesResponse(name: string, bytes: Buffer, range?: string, download = false): Response {
-  if (fileStreams(name)) {
-    const { start, end, status, hasBody, headers } = fileResponsePlan(name, bytes.length, range, download);
-    return new Response(hasBody ? new Uint8Array(bytes.subarray(start, end + 1)) : null, { status, headers });
-  }
-  return new Response(new Uint8Array(bytes), { status: 200, headers: responseHeaders(name, download) });
+function bufferedResponse(plan: FileResponsePlan, bytes: () => Buffer): Response {
+  const { start, end, status, hasBody, headers } = plan;
+  return new Response(hasBody ? new Uint8Array(bytes().subarray(start, end + 1)) : null, { status, headers });
+}
+
+export function fileOpenedResponse(name: string, file: OpenedFile, max: number, options: FileResponseOptions): Response {
+  checkFileSize(file.size, max);
+  return bufferedResponse(fileResponsePlan(name, file.size, { ...options, revision: file.revision }), () => {
+    const bytes = readOpenedFile(file.fd, file.size, max);
+    assertFileRevision(file);
+    return bytes;
+  });
+}
+
+export function fileBytesResponse(name: string, bytes: Buffer, options: FileResponseOptions = {}): Response {
+  return bufferedResponse(fileResponsePlan(name, bytes.length, options), () => bytes);
 }
