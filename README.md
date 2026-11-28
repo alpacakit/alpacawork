@@ -76,41 +76,23 @@ Ask the AI in that chat, called the coordinator. It checks how the work is going
   <img src="docs/images/demo-dark.gif" alt="A diagram beside the app shows a single request becoming three options that Claude and Codex work on in parallel. Changes go through the same chat. When an AI hits its usage limit, another picks up from the task record. A long conversation is compacted or restarted. You answer by picking an option, then review the result on your phone and swipe right to finish." width="800">
 </p>
 
-### No need to switch chats
+### Ask
 
-Use the same chat box for new requests, additions, and changes to work in progress. The coordinator turns each request into a task and delegates it. It can direct work across several [projects](https://github.com/alpacakit/alpacawork/blob/main/docs/projects.md#add-projects).
+- Use one chat box for requests and changes, even across [multiple projects](https://github.com/alpacakit/alpacawork/blob/main/docs/projects.md#add-projects).
+- [Say how the work should run](https://github.com/alpacakit/alpacawork/blob/main/docs/concept.md#say-how-to-work-in-words), for example, “Make three proposals with different models.”
+- Use your existing login, `CLAUDE.md`, skills, and MCP. [Copilot and pi work too](https://github.com/alpacakit/alpacawork/blob/main/docs/projects.md#ais-to-use).
 
-### Use the Claude Code and Codex you already have
+### Progress
 
-Start in your usual repository with your current logins. alpacawork needs no separate account or API key. `AGENTS.md`, `CLAUDE.md`, skills, MCP, and hooks work as usual. GitHub Copilot, Grok Build, and pi for local models are also supported ([AIs to use](https://github.com/alpacakit/alpacawork/blob/main/docs/projects.md#ais-to-use)).
+- Work moves by [task](https://github.com/alpacakit/alpacawork/blob/main/docs/concept.md#work-moves-by-task-not-by-conversation). Its history and results stay when you switch AIs or chats.
+- If an error or usage limit stops work, [switch AIs and pick up where it left off](https://github.com/alpacakit/alpacawork/blob/main/docs/guide.md#tasks-that-stopped).
+- As a chat goes on, [accuracy drops](https://arxiv.org/abs/2505.06120). The AI can compact it or start a fresh chat.
 
-### Runs on your PC
+### Review
 
-Like Claude Code and Codex, alpacawork runs on your PC. It stores tasks, conversations, and deliverable files there and does not send them to its own external servers ([How your data is handled](https://github.com/alpacakit/alpacawork/blob/main/docs/manage.md#where-your-data-is-and-what-is-sent-out)).
-
-### Switch AIs and pick up where work left off
-
-If an error or usage limit stops an AI, switch to another, for example from Claude Code to Codex, and continue from where it left off ([Tasks that stopped](https://github.com/alpacakit/alpacawork/blob/main/docs/guide.md#tasks-that-stopped)). If you've chosen a [fallback AI](https://github.com/alpacakit/alpacawork/blob/main/docs/projects.md#choose-a-model), it starts automatically when a usage limit stops the work.
-
-### The AI starts fresh when a conversation gets long
-
-Research shows that as conversations get longer, AIs are more likely to overlook instructions or make wrong assumptions ([Li et al. 2024](https://arxiv.org/abs/2402.10962), [Laban et al. 2025](https://arxiv.org/abs/2505.06120)). In alpacawork, the AI decides when to compact the conversation or start a new one from the key points in the task record.
-
-### Describe the workflow in your own words
-
-Give instructions in chat. There's no complicated setup. For example, “Make three proposals, each with a different model. Combine them and have another AI review the result.” You can choose which models to use and how several AIs should work together ([Say how to work in words](https://github.com/alpacakit/alpacawork/blob/main/docs/concept.md#say-how-to-work-in-words)).
-
-### Keep work moving from your phone
-
-Make requests, answer questions, and check results from your phone. Swipe to act on what comes in ([Use it from your phone](https://github.com/alpacakit/alpacawork/blob/main/docs/remote.md#use-it-from-your-phone)).
-
-### Answer questions by picking an option
-
-When the AI needs your decision, it sends a question with options and a recommendation. It can attach screenshots of the updated screen or a recording of how it works so you can decide.
-
-### Tasks, not conversations
-
-Your screen lists the tasks you asked for. Information is organized by task automatically, making it easier for you and the AIs to keep the work moving ([How it works](https://github.com/alpacakit/alpacawork/blob/main/docs/concept.md#work-moves-by-task-not-by-conversation)).
+- When the AI needs your decision, it [asks with options and a recommendation](https://github.com/alpacakit/alpacawork/blob/main/docs/guide.md#answer-a-question).
+- Questions and [reports](https://github.com/alpacakit/alpacawork/blob/main/docs/guide.md#check-a-report) can include screenshots or recordings to help you decide.
+- Ask, answer questions, and check results from your [phone](https://github.com/alpacakit/alpacawork/blob/main/docs/remote.md#use-it-from-your-phone). [Swipe](https://github.com/alpacakit/alpacawork/blob/main/docs/guide.md#on-a-phone) to answer or finish reviewing.
 
 ## Install
 
