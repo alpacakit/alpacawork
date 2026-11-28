@@ -34,22 +34,51 @@
   </picture>
 </p>
 
-## O que é o alpacawork
+## O que é o alpacawork?
 
-O alpacawork é uma ferramenta de orquestração de IA baseada em tarefas.
+O alpacawork é uma ferramenta de orquestração de IA baseada em tarefas. Você coordena o Claude Code e o Codex que já usa em um único campo de chat.
 
-- **Um só chat como ponto de contato** — Os pedidos novos, e o que você quiser acrescentar ou mudar em um trabalho em andamento, vão no mesmo campo de mensagem. O coordenador, a IA que é seu ponto de contato, transforma cada solicitação em uma tarefa e a delega a outra IA.
-- **Tarefas, não conversas** — A tela mostra as tarefas que você pediu. Os resultados e as perguntas para você ficam reunidos por tarefa ([Como funciona](docs/pt-BR/concept.md#o-trabalho-avança-por-tarefas-não-por-conversas)).
-- **Seu Claude Code e seu Codex, como já estão** — Você começa na hora com os logins que já tem, na pasta de um repositório que já existe. Você não precisa de conta nem de chave de API do alpacawork, e o `AGENTS.md`, o `CLAUDE.md`, as skills, o MCP e os hooks continuam funcionando como estão. Também dá para usar o GitHub Copilot, o Grok Build e o pi, e modelos locais rodam pelo pi ([As IAs que você usa](docs/pt-BR/projects.md#as-ias-que-você-usa)).
-- **O processo, com suas palavras** — Peça algo como “Faça três propostas, cada uma com um modelo diferente. Junte as três em uma só e peça para outra IA revisar”, e as IAs executam isso, passando o trabalho umas para as outras. Você também pode pôr outra IA para trabalhar em paralelo em uma tarefa em andamento.
-- **Troque de IA e continue de onde o trabalho parou** — Quando uma IA para por erro ou por limite de uso, ou mesmo no meio do trabalho, você pode trocar para outra IA, por exemplo do Claude Code para o Codex, e ela continua de onde parou. Se você escolher IAs alternativas nas Configurações, uma delas assume quando o trabalho para por limite de uso.
-- **O contexto passa pelos registros da tarefa** — Quando uma conversa fica longa, a IA a compacta ou começa uma nova. No lugar da conversa anterior, a IA da conversa nova, ou a IA que assumiu, recebe os registros da tarefa, que resumem em que pé o trabalho está (o pedido, o que foi decidido, o que falta), e continua dali.
-- **Perguntas que você responde escolhendo uma opção** — O que a IA não consegue decidir chega como uma pergunta com opções e uma recomendação. Perguntas e relatórios chegam com imagens e vídeos.
-- **Dá para usar só pelo celular** — Você pede, responde às perguntas e revisa os resultados pelo celular. Para responder ou marcar um resultado como concluído, basta deslizar para a direita.
+É só fazer o pedido à IA que atende nesse chat, a coordenadora. Ela acompanha o andamento e repassa instruções às IAs que fazem o trabalho. Assim, você pode delegar tanto a divisão das tarefas quanto as instruções detalhadas.
 
 <p align="center">
-  <img src="docs/images/demo-dark-pt-BR.webp" alt="Um pedido digitado na caixa de chat do celular vira três tarefas que avançam em paralelo na lista do PC; um resultado é conferido e concluído com um deslize, e uma pergunta da IA é respondida escolhendo uma opção; no fim, o celular e o PC lado a lado" width="800">
+  <img src="docs/images/demo-dark-pt-BR.gif" alt="Um diagrama ao lado do aplicativo mostra um pedido virar três propostas que Claude e Codex preparam em paralelo. As mudanças passam pelo mesmo chat. Se uma IA atinge o limite de uso, outra retoma a partir do registro da tarefa. Conversas longas são compactadas ou reiniciadas. Você escolhe uma opção para responder, confere o resultado no celular e desliza para a direita para concluir." width="800">
 </p>
+
+### Sem trocar de chat
+
+Use o mesmo campo de chat para fazer novos pedidos, acrescentar informações ou pedir mudanças no trabalho em andamento. A coordenadora transforma cada pedido em uma tarefa e a delega. Ela pode coordenar o trabalho em vários [projetos](docs/pt-BR/projects.md#criar-mais-projetos).
+
+### Use o Claude Code e o Codex que você já tem
+
+Comece no seu repositório habitual com os logins que você já usa. O alpacawork dispensa conta própria e chave de API. `AGENTS.md`, `CLAUDE.md`, skills, MCP e hooks funcionam como de costume. Também há suporte para GitHub Copilot, Grok Build e pi para modelos locais ([As IAs que você usa](docs/pt-BR/projects.md#as-ias-que-você-usa)).
+
+### Roda no seu PC
+
+Assim como o Claude Code e o Codex, o alpacawork roda no seu PC. As tarefas, as conversas e os arquivos de resultado ficam nele. O alpacawork não os envia a servidores externos de seus desenvolvedores ([Onde ficam os dados](docs/pt-BR/manage.md#onde-ficam-os-dados-e-o-que-é-enviado-para-fora)).
+
+### Troque de IA e continue de onde parou
+
+Se uma IA parar por erro ou limite de uso, você pode trocar para outra, por exemplo do Claude Code para o Codex, e continuar de onde o trabalho parou ([Tarefas paradas](docs/pt-BR/guide.md#tarefas-paradas)). Se você escolher uma [IA alternativa](docs/pt-BR/projects.md#escolher-o-modelo), ela assume automaticamente quando um limite de uso interrompe o trabalho.
+
+### Quando a conversa fica longa, a IA abre uma nova
+
+Estudos mostram que, quanto mais longa a conversa, maior a chance de a IA deixar passar instruções ou fazer suposições erradas ([Li et al. 2024](https://arxiv.org/abs/2402.10962), [Laban et al. 2025](https://arxiv.org/abs/2505.06120)). No alpacawork, a IA decide quando compactar a conversa ou abrir outra com os pontos principais do registro da tarefa.
+
+### Descreva como trabalhar com suas palavras
+
+Dê as instruções pelo chat, sem configuração complicada. Por exemplo: “Faça três propostas, cada uma com um modelo diferente. Junte as propostas e peça para outra IA revisar o resultado.” Você pode escolher os modelos e dizer como as IAs devem trabalhar juntas ([Diga como prosseguir com palavras](docs/pt-BR/concept.md#diga-como-prosseguir-com-palavras)).
+
+### Faça o trabalho avançar pelo celular
+
+Faça pedidos, responda a perguntas e confira os resultados pelo celular. Basta deslizar para agir sobre o que chegar ([Usar pelo celular](docs/pt-BR/remote.md#usar-pelo-celular)).
+
+### Responda às perguntas escolhendo uma opção
+
+Quando precisa de uma decisão sua, a IA envia uma pergunta com opções e uma recomendação. Ela pode anexar imagens da tela atualizada ou um vídeo de como funciona para facilitar a decisão.
+
+### Tarefas, não conversas
+
+Na tela ficam as tarefas que você pediu. As informações são organizadas por tarefa automaticamente, o que facilita o andamento do trabalho para você e para as IAs ([Como funciona](docs/pt-BR/concept.md#o-trabalho-avança-por-tarefas-não-por-conversas)).
 
 ## Instalar
 
