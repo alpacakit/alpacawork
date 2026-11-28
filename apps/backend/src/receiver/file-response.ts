@@ -1,8 +1,9 @@
 /** Byte responses share media types, sandboxing, cache policy and ranges across managed file owners. */
 import { fileInline, fileMediaType, fileStreams } from '@alpacawork/contract';
-import { assertFileRevision, checkFileSize, readOpenedFile, type OpenedFile } from '../raw/storage.js';
+import { checkFileSize, readOpenedFile, type OpenedFile } from '../raw/storage.js';
+import { acceptsApiCompression, canCompressApiResponse } from './api-compression.js';
 
-/** Unversioned byte responses stay out of the cache. */
+/** Transformed previews and code files have no revision and stay out of the cache. */
 export const BYTE_HEADERS = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } as const;
 export const SANDBOX = "sandbox; default-src 'none'";
 
@@ -20,6 +21,7 @@ type FileResponseOptions = {
   supportsRanges?: boolean;
   revision?: string;
   requestedRevision?: string | null;
+  acceptEncoding?: string | null;
   ifNoneMatch?: string | null;
   ifRange?: string | null;
   range?: string | null;
@@ -29,6 +31,7 @@ export function fileRequestOptions(request: Request, query: URLSearchParams): Fi
   return {
     download: query.get('download') === '1',
     requestedRevision: query.get('v'),
+    acceptEncoding: request.headers.get('Accept-Encoding'),
     ifNoneMatch: request.headers.get('If-None-Match'),
     ifRange: request.headers.get('If-Range'),
     range: request.headers.get('Range'),
@@ -42,24 +45,25 @@ type FileResponsePlan = {
 /** The HTTP policy for original bytes, applied only after the caller has authorized the read. */
 export function fileResponsePlan(name: string, size: number, options: FileResponseOptions = {}): FileResponsePlan {
   const { download, supportsRanges = fileStreams(name), revision, requestedRevision, ifNoneMatch, ifRange } = options;
-  const headers: Record<string, string> = {
-    ...BYTE_HEADERS,
-    'Content-Type': fileMediaType(name),
-    'Content-Disposition': fileDisposition(name, download),
-    'Content-Security-Policy': SANDBOX,
-  };
+  const contentType = fileMediaType(name);
+  const headers: Record<string, string> = { ...BYTE_HEADERS };
   const etag = revision === undefined ? undefined : `"${revision}"`;
   if (etag !== undefined) {
     headers.ETag = etag;
-    // A strong ETag and byte offsets must describe the same representation, including its content coding.
-    headers['Cache-Control'] = revision === requestedRevision
-      ? 'private, max-age=31536000, immutable, no-transform'
-      : 'private, no-cache, no-transform';
+    headers['Cache-Control'] = revision === requestedRevision ? 'private, max-age=31536000, immutable' : 'private, no-cache';
     // A private cache must also distinguish different caller claims on the same URL.
     headers.Vary = 'Authorization, X-Alpacawork-Provider, X-Alpacawork-Conversation';
-    if (ifNoneMatch?.trim() === '*' || ifNoneMatch?.split(',').some(tag => tag.trim().replace(/^W\//, '') === etag))
+    const compressible = canCompressApiResponse(contentType, size);
+    if (compressible) headers.Vary += ', Accept-Encoding';
+    if (ifNoneMatch?.trim() === '*' || ifNoneMatch?.split(',').some(tag => tag.trim().replace(/^W\//, '') === etag)) {
+      // Hono weakens the ETag when it compresses a body. Mirror it for a bodyless 304.
+      if (compressible && acceptsApiCompression(options.acceptEncoding)) headers.ETag = `W/${etag}`;
       return { start: 0, end: -1, status: 304, hasBody: false, headers };
+    }
   }
+  headers['Content-Type'] = contentType;
+  headers['Content-Disposition'] = fileDisposition(name, download);
+  headers['Content-Security-Policy'] = SANDBOX;
   if (supportsRanges) headers['Accept-Ranges'] = 'bytes';
   const range = supportsRanges && (ifRange == null || ifRange.trim() === etag) ? options.range ?? undefined : undefined;
   let start = 0, end = size - 1;
@@ -75,24 +79,27 @@ export function fileResponsePlan(name: string, size: number, options: FileRespon
     end = Math.min(end, size - 1);
   }
   if (range !== undefined) headers['Content-Range'] = `bytes ${start}-${end}/${size}`;
-  if (supportsRanges || etag !== undefined) headers['Content-Length'] = String(end - start + 1);
+  headers['Content-Length'] = String(end - start + 1);
   return { start, end, status: range === undefined ? 200 : 206, hasBody: size > 0, headers };
 }
 
-function bufferedResponse(plan: FileResponsePlan, bytes: () => Buffer): Response {
-  const { start, end, status, hasBody, headers } = plan;
-  return new Response(hasBody ? new Uint8Array(bytes().subarray(start, end + 1)) : null, { status, headers });
+function bufferedResponse(plan: FileResponsePlan, bytes: Buffer | null): Response {
+  const { start, end, status, headers } = plan;
+  return new Response(bytes && plan.hasBody ? new Uint8Array(bytes.subarray(start, end + 1)) : null, { status, headers });
 }
 
 export function fileOpenedResponse(name: string, file: OpenedFile, max: number, options: FileResponseOptions): Response {
-  checkFileSize(file.size, max);
-  return bufferedResponse(fileResponsePlan(name, file.size, { ...options, revision: file.revision }), () => {
-    const bytes = readOpenedFile(file.fd, file.size, max);
-    assertFileRevision(file);
-    return bytes;
-  });
+  const request = { ...options, revision: file.revision };
+  const plan = fileResponsePlan(name, file.size, request);
+  if (!plan.hasBody) {
+    checkFileSize(file.size, max);
+    return bufferedResponse(plan, null);
+  }
+  const bytes = readOpenedFile(file.fd, file.size, max);
+  // An in-place write can change the length while we read. The revision still comes from the open.
+  return bufferedResponse(bytes.length === file.size ? plan : fileResponsePlan(name, bytes.length, request), bytes);
 }
 
 export function fileBytesResponse(name: string, bytes: Buffer, options: FileResponseOptions = {}): Response {
-  return bufferedResponse(fileResponsePlan(name, bytes.length, options), () => bytes);
+  return bufferedResponse(fileResponsePlan(name, bytes.length, options), bytes);
 }

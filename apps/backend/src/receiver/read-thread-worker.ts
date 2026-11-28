@@ -7,7 +7,7 @@ import { parentPort, workerData } from 'node:worker_threads';
 import { collectHttpRoutes } from '@alpacakit/channels/http';
 import { getRequestListener } from '@hono/node-server';
 import { Hono } from 'hono';
-import { compress } from 'hono/compress';
+import { compressApiResponses } from './api-compression.js';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { errorBody, failure } from '@alpacawork/core';
 import { ControlStore, markControlFileSound } from '@alpacawork/db';
@@ -34,7 +34,7 @@ type AcceptedRead = { caller: Caller; input: Record<string, unknown> };
 const judged = new WeakMap<object, AcceptedRead>();
 
 const api = new Hono();
-api.use('/api/*', compress({ encoding: 'gzip' }));
+api.use('/api/*', compressApiResponses);
 api.use('/api/*', clientContract());
 collectHttpRoutes(serverCommandTree.tree).forEach(route => {
   const path = '/api' + route.path, read = readsByPath.get(path);

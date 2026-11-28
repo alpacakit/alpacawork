@@ -184,7 +184,7 @@ test('coordinator media share Task byte ranges, keep sent bytes immutable, and r
     assert.equal(whole.status, 200); assert.deepEqual(Buffer.from(await whole.arrayBuffer()), bytes);
     const etag = whole.headers.get('etag')!;
     assert.match(etag, /^"[^"]+"$/);
-    assert.equal(whole.headers.get('cache-control'), 'private, no-cache, no-transform');
+    assert.equal(whole.headers.get('cache-control'), 'private, no-cache');
     assert.equal(first.headers.get('etag'), etag);
     const unchanged = await fetch(file, { headers: { 'If-None-Match': etag } });
     assert.equal(unchanged.status, 304);
@@ -243,7 +243,7 @@ test('answer links publish bounded owned snapshots, survive source removal and r
   const imageFile = await fetch(fileUrl(image.name));
   assert.deepEqual(Buffer.from(await imageFile.arrayBuffer()), png);
   assert.match(imageFile.headers.get('etag')!, /^"[^"]+"$/);
-  assert.equal(imageFile.headers.get('cache-control'), 'private, no-cache, no-transform');
+  assert.equal(imageFile.headers.get('cache-control'), 'private, no-cache');
   assert.equal((await fetch(fileUrl(image.name), { headers: { 'If-None-Match': imageFile.headers.get('etag')! } })).status, 304);
   for (const { file, expected } of linkedNotes) assert.equal(await (await fetch(fileUrl(file.name))).text(), expected);
   assert.equal(await httpStatus(fileUrl('not-in-manifest.txt')), 404);

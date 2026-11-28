@@ -17,7 +17,7 @@ import { requirePublished, FileJournal, fileDigest, type WriteGrant } from '../c
 import { attachmentLimit, fileTooLarge } from '../agents-settings.js';
 import { codeRoots, readCodeBytes, readCodeFile } from '../control/code-files.js';
 import { openTaskFile, saveTaskAttachment } from '../control/task-files.js';
-import { assertFileRevision, readOpenedFile } from '../raw/storage.js';
+import { readOpenedFile } from '../raw/storage.js';
 
 export async function boundedBytes(request: Request, limit: number): Promise<Buffer> {
   const declared=Number(request.headers.get('content-length'));
@@ -88,8 +88,7 @@ export function installTaskFileRoutes(api: Hono, root: string, options: FileRout
     const request = fileRequestOptions(c.req.raw, query);
     // Media and explicit original downloads stream at any size; the attachment limit bounds documents read whole.
     if (fileStreams(name) || download === '1') {
-      const file = await openTaskFile(root, task, name);
-      const { fd, size, revision } = file;
+      const { fd, size, revision } = await openTaskFile(root, task, name);
       const { start, end, status, hasBody, headers } = fileResponsePlan(name, size, { ...request, revision, supportsRanges: true });
       if (!hasBody) { closeSync(fd); return c.body(null, status, headers); }
       let position = start, closed = false;
@@ -101,8 +100,6 @@ export function installTaskFileRoutes(api: Hono, root: string, options: FileRout
             const count = readSync(fd, bytes, 0, bytes.length, position);
             position += count;
             const finished = !count || position > end;
-            // Check before sending the last bytes so a changed file cannot complete under the old ETag.
-            if (finished) assertFileRevision(file);
             if (count) controller.enqueue(bytes.subarray(0, count));
             if (finished) { close(); controller.close(); }
           } catch (error) { close(); controller.error(error); }

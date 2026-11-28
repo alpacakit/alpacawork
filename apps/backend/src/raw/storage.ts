@@ -31,11 +31,6 @@ export function fileRevision(stat: Pick<Stats, 'size' | 'mtimeMs' | 'ctimeMs'>):
 
 export type OpenedFile = { fd: number; size: number; revision: string };
 
-export function assertFileRevision(file: OpenedFile): void {
-  if (fileRevision(fstatSync(file.fd)) !== file.revision)
-    throw new Problem(PROBLEM_CODE.conflict, 'File changed; reload before retrying', undefined, { reason: { kind: 'file_changed_reload_before_retrying' } });
-}
-
 function openFile(parent: string, name: string): number | null {
   try { return openSync(join(parent, name), constants.O_RDONLY | constants.O_NONBLOCK); }
   catch (error) { if (hasCode(error, 'ENOENT')) return null; throw error; }

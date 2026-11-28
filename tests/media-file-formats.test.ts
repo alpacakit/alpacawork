@@ -134,10 +134,10 @@ test('managed file validators select cache freshness and take precedence over by
     fileBytesResponse('clip.mp4', bytes, { ...options, revision });
 
   assert.equal(respond({ requestedRevision: revision }).headers.get('cache-control'),
-    'private, max-age=31536000, immutable, no-transform');
+    'private, max-age=31536000, immutable');
   for (const requestedRevision of [undefined, 'old']) {
     const response = respond({ requestedRevision });
-    assert.equal(response.headers.get('cache-control'), 'private, no-cache, no-transform');
+    assert.equal(response.headers.get('cache-control'), 'private, no-cache');
     assert.equal(response.headers.get('etag'), etag);
   }
 
@@ -146,7 +146,7 @@ test('managed file validators select cache freshness and take precedence over by
     assert.equal(unchanged.status, 304);
     assert.equal(unchanged.body, null);
     assert.equal(unchanged.headers.get('etag'), etag);
-    assert.equal(unchanged.headers.get('cache-control'), 'private, no-cache, no-transform');
+    assert.equal(unchanged.headers.get('cache-control'), 'private, no-cache');
     assert.equal(unchanged.headers.get('content-range'), null);
   }
 
