@@ -640,6 +640,20 @@ const heightMoving = (at: Element) => new Set((at.getAnimations?.({ subtree: tru
   && ("transitionProperty" in each ? each.transitionProperty === "height" : sizing([each])))
   .map(each => (each.effect as KeyframeEffect | null)?.target).filter((box): box is Element => !!box));
 
+/**
+ * Where each of a list's arriving items starts, drawn off its place by, added to `shift` (the glides'): that of the item
+ * before it (in order, so items arriving together come in as one), so it neither covers that one nor moves against it;
+ * with nothing moving before it, `rise` above.
+ */
+export function arrivalShifts<Item extends { contains(other: Item): boolean }>(items: readonly Item[],
+  arriving: readonly Item[], shift: Map<Item, number>, rise: number) {
+  for (const item of arriving) {
+    const before = items.slice(0, items.indexOf(item)).reverse().find(each => !each.contains(item));
+    shift.set(item, before && shift.get(before) || -rise);
+  }
+  return shift;
+}
+
 /** Where an item stands, from the list's top, and how tall it is; stuck when it is held to the top (sticky). */
 type Spot = { top: number; height: number; stuck: boolean };
 /** A list's change, as its `news` reads it: whether the list has settled, and the items that were there before it. */
@@ -648,7 +662,9 @@ type ListChange = { settled: boolean; stayed: HTMLElement[] };
 /**
  * A list whose items change places (a task moving to another group, a report arriving above the others): each item
  * marked `data-motion-key` inside `box` glides from where it was to where it now is, and an item that was not there
- * settles from a little above into where it lands as it fades in; a later change takes over where it is drawn, and the
+ * fades in as it comes in with the item before it, from where that one is drawn off by (a row coming up from under the
+ * list's foot as the rows above close up), so it neither covers that one nor moves against it; with nothing moving
+ * before it, it settles from a little above into where it lands. A later change takes over where it is drawn, and the
  * fade runs to its end. An item that is taller than it was drawn (one arriving grew from nothing) shows its new part
  * only where the first item under it that was there has gone by, on the glides' step and curve, so no new words are
  * drawn over old ones however many items arrive or grow at once. A change is each change of `deps`, and each change
@@ -760,13 +776,13 @@ export function useListMotion(box: RefObject<HTMLElement | null>, deps: Dependen
     const rise = distance("shift");
     const timing: KeyframeAnimationOptions = { duration: duration("base"), delay: wait, easing: easing("out"), fill: "backwards" };
     if (glide) for (const [item, by] of glides) move(moves, item, by, [{ transform: `translateY(${by}px)` }, { transform: "none" }], timing);
+    // Where each moving item starts, drawn off its place by.
+    const shift = glide ? arrivalShifts(items, arriving, new Map(glides), rise) : new Map(arriving.map(item => [item, -rise]));
     // A new part shows only where the item under it has gone by: the first item below it that was there before (what
     // could be drawn over it) is where its foot is cut, on the glides' own step and curve. With nothing below that was
     // there, nothing can be drawn over it. Only its foot is clipped: what stands out of its sides or top (a mark on the
     // rail) stays drawn.
     if (glide) {
-      const shift = new Map<HTMLElement, number>(glides);
-      for (const item of arriving) shift.set(item, -rise);
       const stayed = new Set(change.stayed);
       for (const [item, grown, key] of grows) {
         const under = items.slice(items.indexOf(item) + 1).find(each => stayed.has(each) && !item.contains(each));
@@ -778,11 +794,12 @@ export function useListMotion(box: RefObject<HTMLElement | null>, deps: Dependen
         for (const each of keysOf(item)) reveals.set(each, item);
       }
     }
-    // Arriving is two facts: it appears, which runs to its end whatever comes next, and it settles from a little above
-    // into its place, a move like the glides that a later change takes over from where it is drawn.
+    // Arriving is two facts: it appears, which runs to its end whatever comes next, and it comes into its place, a move
+    // like the glides that a later change takes over from where it is drawn.
     for (const item of arriving) {
       item.animate([{ opacity: 0 }, { opacity: 1 }], timing);
-      if (rise) move(moves, item, -rise, [{ transform: `translateY(${-rise}px)` }, { transform: "none" }], timing);
+      const by = shift.get(item)!;
+      if (by) move(moves, item, by, [{ transform: `translateY(${by}px)` }, { transform: "none" }], timing);
     }
   };
   useLayoutEffect(() => {
