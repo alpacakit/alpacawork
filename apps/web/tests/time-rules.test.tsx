@@ -84,7 +84,7 @@ test("a person's step stays the same whether a short overlap is evened away or n
   // Two people at once for 8 min: wider than 6px at 1px a minute, evened into one person at half that.
   const hands = [hand(-60, -22), hand(-30, -10)];
   const half = { ...scale, x: (at: number) => scale.x(at) / 2 };
-  const level = { base: 16, unit: 6, rise: 9 };
+  const level = { height: 32, base: 16, unit: 6, rise: 9 };
   const steps = [scale, half].map((each) => heightOf(shapeOf(now - 60 * minute, now, hands, [], each, false), level)(1));
   expect(steps[0]).toBe(steps[1]);
 });

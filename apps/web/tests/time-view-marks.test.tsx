@@ -470,7 +470,7 @@ test("the line takes the turn's colour from when the turn began to now, a questi
   const scale = { x: (at: number) => 200 + (at - now) / minute * 3, from: now - 60 * minute, to: now, width: 200 };
   for (const wait of [null, "review"] as const) {
     const { container } = render(<svg><Lane turnFrom={turn.at} line={{ stretches: [{ from: now - 60 * minute, to: now, count: 0, wait, peak: 0, merged: 0 }], hands: [], waits: [], drops: false }}
-      marks={[]} scale={scale} level={{ base: 20, unit: 8, rise: 14 }} now={now} finish={null} onPick={() => {}} /></svg>);
+      marks={[]} scale={scale} level={{ height: 40, base: 20, unit: 8, rise: 14 }} now={now} finish={null} onPick={() => {}} /></svg>);
     const turnLines = [...container.querySelectorAll("line.text-turn-line")];
     expect(turnLines.map(line => [Number(line.getAttribute("x1")), Number(line.getAttribute("x2"))])).toEqual([[scale.x(turn.at), scale.x(now)]]);
     expect(container.querySelector("line:not(.text-turn-line)")?.getAttribute("x2")).toBe(String(scale.x(turn.at)));
@@ -486,7 +486,7 @@ test("a turn tag sits on the time it was reported, even just before now, and may
   const tagAt = (at: number) => {
     const container = render(<svg><Lane turnFrom={null} line={{ stretches: [], hands: [], waits: [], drops: false }}
       marks={[{ event: { ...event, at, source: { ...event.source, yours: true } },
-        display: "pin" }]} scale={scale} level={{ base: 20, unit: 8, rise: 14 }} now={now}
+        display: "pin" }]} scale={scale} level={{ height: 40, base: 20, unit: 8, rise: 14 }} now={now}
       finish={null} onPick={() => {}} /></svg>).container;
     const rect = container.querySelector("[data-pin] rect")!;
     cleanup();

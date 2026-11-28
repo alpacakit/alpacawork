@@ -622,7 +622,7 @@ const TaskRow = memo(function TaskRow({ node, shared, visibleRows }: TaskRowProp
   const look = useTaskLook(task);
   const stateWord = look.word;
   // The title column and strip have the same height; a wide row is always WIDE_ROW.
-  const h = narrow ? 22 : WIDE_ROW;
+  const h = narrow ? NARROW_STRIP_LEVEL.height : WIDE_STRIP_LEVEL.height;
   // A home row's summary is the server's: its children finished of all. A row without a home summary uses the index's child
   // counts.
   const summary = node.row?.summary ?? null;
@@ -726,9 +726,9 @@ function RowStrip({ node, shared, height, title, enter }: { node: Node; shared: 
     scale={scale} pieces={pieces} now={now} seen={seen} show={show} />;
 }
 
-// The line stands on the row's middle and rises at most to a third of the way up, so marks and words share one centre.
-const NARROW_STRIP_LEVEL: Readonly<Level> = { base: 11, unit: 5, rise: 7 };
-const WIDE_STRIP_LEVEL: Readonly<Level> = { base: WIDE_ROW / 2, unit: 6, rise: 9 };
+// The line stands low in the row, so the room above it shows how many work at once; its marks and words sit on it.
+const NARROW_STRIP_LEVEL: Readonly<Level> = { height: 22, base: 16, unit: 7, rise: 13 };
+const WIDE_STRIP_LEVEL: Readonly<Level> = { height: WIDE_ROW, base: 22, unit: 10, rise: 18 };
 
 /** One row's line, drawn again only when its own history or the shared clock and scale change. */
 const Strip = memo(function Strip({ node, narrow, height, title, enter, history, scale, pieces, now, seen, show }: { node: Node; narrow: boolean; height: number;

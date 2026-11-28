@@ -27,8 +27,8 @@ import { continuesDrawing, liveDrawing, sameDrawingSource, type DrawingSource } 
  */
 const BREAK_W = 32;
 export type Piece = { from: number; to: number; x0: number; x1: number; gap: boolean };
-/** The line's geometry for a row: where its base sits, one person's step, and the most it may rise. */
-export type Level = { base: number; unit: number; rise: number };
+/** The line's geometry for a row: the row's height, where the base sits, one person's step, and the most it may rise. */
+export type Level = { height: number; base: number; unit: number; rise: number };
 type Wait = Exclude<Segment["kind"], "work" | "member" | "below">;
 export type Scale = { x: (at: number) => number; from: number; to: number; width: number };
 
@@ -903,7 +903,7 @@ export function Lane({ line, marks, scale, level, now, finish, turnFrom, onPick,
       <g clipPath={`url(#${overId})`}><Wave stretches={line.stretches} scale={scale} level={level} drops={line.drops} turnFrom={null} late /></g>
     </g>}
     <Marks marks={marks} scale={scale} y={level.base} onPick={onPick} probe={probe} />
-    {label && <FutureLabel words={label} long={finish!.long} x={labelX} y={level.base} over={passed !== null} />}
+    {label && <FutureLabel words={label} long={finish!.long} x={labelX} y={level.base} height={level.height} over={passed !== null} />}
   </g>;
 }
 
@@ -913,12 +913,11 @@ export function Lane({ line, marks, scale, level, now, finish, turnFrom, onPick,
  * its words, so a press need not land on a glyph, and its focus ring stays inside a phone's short strip. It keeps the
  * page's pointer rule: while another tip is open, a press on it only closes that tip, as on the row's other times.
  */
-function FutureLabel({ words, long, x, y, over }: { words: FutureWords; long: string; x: number; y: number; over: boolean }) {
+function FutureLabel({ words, long, x, y, height, over }: { words: FutureWords; long: string; x: number; y: number; height: number; over: boolean }) {
   const { t } = useTranslation("tree");
   const heading = t("status.tip.report");
   const k = textScale();
   const width = wordsW(words.text, k) + (words.days === 0 ? 0 : dayMarkW(words.days, k));
-  const half = Math.min(12, y - 1);
   return <TimeTipPopover heading={heading} body={<p>{long}</p>}>
     <g data-future-tip role="button" tabIndex={0} aria-label={`${heading}: ${long}`}
       className="group/future cursor-pointer outline-none"
@@ -928,7 +927,7 @@ function FutureLabel({ words, long, x, y, over }: { words: FutureWords; long: st
         event.preventDefault(); event.stopPropagation();
         event.currentTarget.dispatchEvent(new MouseEvent("click", { bubbles: true }));
       }}>
-      <rect x={x - 4} y={y - half} width={width + 8} height={2 * half} rx={3} fill="transparent"
+      <rect x={x - 4} y={1} width={width + 8} height={height - 2} rx={3} fill="transparent"
         className="group-focus-visible/future:stroke-ink/40" strokeWidth={2} />
       <text data-future-label x={x} y={y + 4} textAnchor="start"
         className={cn("text-xs tabular-nums decoration-dotted group-hover/future:underline group-data-[state=open]/future:underline",
