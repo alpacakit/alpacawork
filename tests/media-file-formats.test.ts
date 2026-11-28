@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, closeSync, fstatSync, mkdtempSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { FILE_FORMATS, fileFormat, fileKind, fileMediaType, fileStreams } from '@alpacawork/contract';
@@ -148,6 +148,7 @@ test('managed file validators select cache freshness and take precedence over by
     assert.equal(unchanged.headers.get('etag'), etag);
     assert.equal(unchanged.headers.get('cache-control'), 'private, no-cache');
     assert.equal(unchanged.headers.get('content-range'), null);
+    assert.match(unchanged.headers.get('vary')!, /\bAccept-Encoding\b/i);
   }
 
   const partial = respond({ ifRange: etag, range: 'bytes=0-3' });
@@ -159,6 +160,27 @@ test('managed file validators select cache freshness and take precedence over by
     assert.equal(changed.status, 200);
     assert.equal(changed.headers.get('content-range'), null);
     assert.deepEqual(Buffer.from(await changed.arrayBuffer()), bytes);
+  }
+});
+
+test('a file that grows after opening is served at its actual body length', async t => {
+  const { fileOpenedResponse } = await import('@alpacawork/backend/test-dist/receiver/file-response.js');
+  const { fileRevision } = await import('@alpacawork/backend/test-dist/raw/storage.js');
+  const directory = mkdtempSync(join(tmpdir(), 'alpacawork-opened-file-'));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const path = join(directory, 'run.log');
+  writeFileSync(path, 'started\n');
+  const fd = openSync(path, 'r');
+  try {
+    const stat = fstatSync(fd);
+    appendFileSync(path, 'finished\n');
+    const response = fileOpenedResponse('run.log', { fd, size: stat.size, revision: fileRevision(stat) }, 1024, {});
+    assert.equal(response.status, 200);
+    const body = await response.text();
+    assert.equal(body, 'started\nfinished\n');
+    assert.equal(response.headers.get('content-length'), String(Buffer.byteLength(body)));
+  } finally {
+    closeSync(fd);
   }
 });
 

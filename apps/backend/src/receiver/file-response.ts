@@ -1,7 +1,6 @@
 /** Byte responses share media types, sandboxing, cache policy and ranges across managed file owners. */
 import { fileInline, fileMediaType, fileStreams } from '@alpacawork/contract';
 import { checkFileSize, readOpenedFile, type OpenedFile } from '../raw/storage.js';
-import { acceptsApiCompression, canCompressApiResponse } from './api-compression.js';
 
 /** Transformed previews and code files have no revision and stay out of the cache. */
 export const BYTE_HEADERS = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } as const;
@@ -21,7 +20,6 @@ type FileResponseOptions = {
   supportsRanges?: boolean;
   revision?: string;
   requestedRevision?: string | null;
-  acceptEncoding?: string | null;
   ifNoneMatch?: string | null;
   ifRange?: string | null;
   range?: string | null;
@@ -31,7 +29,6 @@ export function fileRequestOptions(request: Request, query: URLSearchParams): Fi
   return {
     download: query.get('download') === '1',
     requestedRevision: query.get('v'),
-    acceptEncoding: request.headers.get('Accept-Encoding'),
     ifNoneMatch: request.headers.get('If-None-Match'),
     ifRange: request.headers.get('If-Range'),
     range: request.headers.get('Range'),
@@ -45,23 +42,17 @@ type FileResponsePlan = {
 /** The HTTP policy for original bytes, applied only after the caller has authorized the read. */
 export function fileResponsePlan(name: string, size: number, options: FileResponseOptions = {}): FileResponsePlan {
   const { download, supportsRanges = fileStreams(name), revision, requestedRevision, ifNoneMatch, ifRange } = options;
-  const contentType = fileMediaType(name);
   const headers: Record<string, string> = { ...BYTE_HEADERS };
   const etag = revision === undefined ? undefined : `"${revision}"`;
   if (etag !== undefined) {
     headers.ETag = etag;
     headers['Cache-Control'] = revision === requestedRevision ? 'private, max-age=31536000, immutable' : 'private, no-cache';
-    // A private cache must also distinguish different caller claims on the same URL.
-    headers.Vary = 'Authorization, X-Alpacawork-Provider, X-Alpacawork-Conversation';
-    const compressible = canCompressApiResponse(contentType, size);
-    if (compressible) headers.Vary += ', Accept-Encoding';
-    if (ifNoneMatch?.trim() === '*' || ifNoneMatch?.split(',').some(tag => tag.trim().replace(/^W\//, '') === etag)) {
-      // Hono weakens the ETag when it compresses a body. Mirror it for a bodyless 304.
-      if (compressible && acceptsApiCompression(options.acceptEncoding)) headers.ETag = `W/${etag}`;
+    // A private cache must distinguish caller claims and content codings on the same URL.
+    headers.Vary = 'Authorization, X-Alpacawork-Provider, X-Alpacawork-Conversation, Accept-Encoding';
+    if (ifNoneMatch?.trim() === '*' || ifNoneMatch?.split(',').some(tag => tag.trim().replace(/^W\//, '') === etag))
       return { start: 0, end: -1, status: 304, hasBody: false, headers };
-    }
   }
-  headers['Content-Type'] = contentType;
+  headers['Content-Type'] = fileMediaType(name);
   headers['Content-Disposition'] = fileDisposition(name, download);
   headers['Content-Security-Policy'] = SANDBOX;
   if (supportsRanges) headers['Accept-Ranges'] = 'bytes';

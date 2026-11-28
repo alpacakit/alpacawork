@@ -43,7 +43,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { type ContentfulStatusCode } from 'hono/utils/http-status';
 import { getRequestListener } from '@hono/node-server';
-import { compressApiResponses } from './api-compression.js';
+import { compress } from 'hono/compress';
 import { collectHttpRoutes, type HttpRegistration } from '@alpacakit/channels/http';
 import { defaultSettings } from '@alpacawork/contract';
 import { ControlStore, keepControlChanges, keepControlTables, holdControlWriter, restoreControlWal } from '@alpacawork/db';
@@ -585,7 +585,7 @@ export async function startServer(root: string, port: number, options: ServerOpt
     authorizeUpload: (claim, task) => { authorizeRead(identify(root, claim), { name: 'file.write' }, task); },
   });
   // JSON answers are compressed when the browser accepts it; the index is mostly repeated keys.
-  api.use('/api/*', compressApiResponses);
+  api.use('/api/*', compress({ encoding: 'gzip' }));
   const commandRoutes = collectHttpRoutes(serverCommandTree.tree);
   const screenRoutes = collectHttpRoutes(screenTree);
   const routeActs = new Map<string, Action | null | undefined>();

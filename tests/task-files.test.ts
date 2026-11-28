@@ -169,7 +169,7 @@ test('managed text files share gzip compression and keep safe response types and
 
   const unchanged = await fetch(log, { headers: { 'Accept-Encoding': 'gzip', 'If-None-Match': `W/${etag}` } });
   assert.equal(unchanged.status, 304);
-  assert.equal(unchanged.headers.get('etag'), compressed.headers.get('etag'));
+  assert.equal(unchanged.headers.get('etag'), etag);
   assert.equal(unchanged.headers.get('vary'), vary);
 
   log.searchParams.set('download', '1');
