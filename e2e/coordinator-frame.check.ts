@@ -1,8 +1,9 @@
 
 import type { Page } from '@playwright/test';
 import { test, expect, open, openCoordinator, settleMotion } from './fixtures.ts';
-import { createHash } from 'node:crypto';
-import { coordinatorMessageDigest } from '@alpacawork/contract/coordinator';
+import { writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { commandFetch as fetch } from '../tests/helpers/command-fetch.ts';
 import { configureCoordinator } from './coordinator-fixture.ts';
 
 // On a computer the coordinator (its input and the conversation over it) is moved and sized as one, open or
@@ -35,20 +36,14 @@ test('by the keys alone: the grip moves it, Alt sizes it and opens the conversat
   expect(await kept(page)).toBeNull();
 });
 
-// Following the end of a conversation of short exchanges, a hand sizing it keeps the latest words where the pane draws
-// them: each frame's new size is followed at once. A glide started on every frame drew the words where they had been,
-// and they shook under the edge.
-test('sized by its far edge while following the end, the conversation does not glide on every frame', async ({ page, runtime }) => {
-  const turn = (i: number) => ({ id: `turn-${i}`, at: new Date(Date.UTC(2026, 9, 1) + i * 60_000).toISOString(), ask: `Request ${i}`,
-    inputDigest: coordinatorMessageDigest({ conversationId: 'short', id: `turn-${i}`, text: `Request ${i}`, attachments: [] }),
-    attachments: [], status: 'succeeded', waiting: false, seen: true, error: null, result: null,
-    answer: `Answer ${i}.\n\n- One point`, answeredAt: new Date(Date.UTC(2026, 9, 1) + i * 60_000 + 30_000).toISOString() });
-  const conversation = { id: 'short', nextLaunch: { agent: 'claude', values: {} }, busy: false, resets: [], context: null,
-    autoReset: { tokens: 200_000, percent: 50 }, earlier: null, turns: Array.from({ length: 12 }, (_, n) => turn(n)) };
-  await page.route('**/api/coordinator', async route => {
-    const reply = await route.fetch();
-    await route.fulfill({ response: reply, json: { ...await reply.json(), conversation, revision: createHash('sha256').update(JSON.stringify(conversation)).digest('hex') } });
-  });
+// Following the end of a conversation of short exchanges, a hand sizing it (its height, or its width, which wraps the
+// words anew) keeps the latest words where the pane draws them: each frame's new size is followed at once. A glide
+// started on every frame drew the words where they had been, and they shook under the edge.
+test('sized by its edges while following the end, the conversation does not glide on every frame', async ({ page, runtime }) => {
+  configureCoordinator(runtime.root);
+  const answers = { long: join(runtime.root, 'long-answer.md'), short: join(runtime.root, 'short-answer.md') };
+  writeFileSync(answers.long, Array.from({ length: 40 }, (_, at) => `- ${at + 1}: one line of a long answer.`).join('\n'));
+  writeFileSync(answers.short, 'T2 is waiting for its review; the invoices were compared with the ledger and two gaps are left to check.');
   await page.addInitScript(() => {
     const animate = Element.prototype.animate;
     (window as any).glides = 0;
@@ -58,23 +53,32 @@ test('sized by its far edge while following the end, the conversation does not g
     };
   });
   await open(page, runtime, '?agent=1');
+  const { id } = (await (await fetch(`${runtime.origin}/api/coordinator`)).json()).conversation;
+  const answered = async () => (await (await fetch(`${runtime.origin}/api/coordinator`)).json()).conversation.turns
+    .filter((turn: { answeredAt: string | null }) => !!turn.answeredAt).length;
+  const send = async (file: string, count: number) => {
+    expect((await fetch(`${runtime.origin}/api/coordinator/messages`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ conversationId: id, id: crypto.randomUUID(), text: `answer-from:${file}`, attachments: [] }) })).ok).toBe(true);
+    await expect.poll(answered, { timeout: 20_000 }).toBe(count);
+  };
+  await send(answers.long, 1);
+  await open(page, runtime, '?agent=1');
   await openCoordinator(page); await settleMotion(page, undefined, true);
-  // Read down to the end by the wheel, so it follows the end.
+  // Short exchanges come in under it as it is read; read down to their end, it follows the end.
+  for (let count = 2; count <= 5; count++) await send(answers.short, count);
   const area = panel(page).locator('[data-card-scroll]');
-  const inside = (await area.boundingBox())!;
-  await page.mouse.move(inside.x + inside.width / 2, inside.y + inside.height / 2);
-  await page.mouse.wheel(0, 2000);
-  await expect.poll(() => area.evaluate(el => el.scrollHeight - el.clientHeight - el.scrollTop)).toBeLessThan(1);
+  await expect(area.locator('[data-coordinator-message]')).toHaveCount(5);
+  await area.evaluate(el => el.scrollTo({ top: el.scrollHeight }));
   await settleMotion(page);
-  await page.evaluate(() => { (window as any).glides = 0; });
-  const at = await box(page, '[data-frame-edge="far"]'), x = at.x + at.width / 2, y = at.y + at.height / 2;
-  await page.mouse.move(x, y); await page.mouse.down();
-  for (let by = 6; by <= 120; by += 6) { await page.mouse.move(x, y + by); await page.waitForTimeout(16); }
-  await page.mouse.up();
-  await settleMotion(page);
-  expect(await page.evaluate(() => (window as any).glides)).toBe(0);
-  // Still at the end: the latest answer stands over the input.
-  expect(await area.evaluate(el => el.scrollHeight - el.clientHeight - el.scrollTop)).toBeLessThan(1);
+  for (const [edge, dx, dy] of [['far', 0, 6], ['right', -8, 0]] as const) {
+    await page.evaluate(() => { (window as any).glides = 0; });
+    const at = await box(page, `[data-frame-edge="${edge}"]`), x = at.x + at.width / 2, y = at.y + at.height / 2;
+    await page.mouse.move(x, y); await page.mouse.down();
+    for (let step = 1; step <= 20; step++) { await page.mouse.move(x + dx * step, y + dy * step); await page.waitForTimeout(16); }
+    await page.mouse.up();
+    await settleMotion(page);
+    expect(await page.evaluate(() => (window as any).glides), edge).toBe(0);
+  }
 });
 
 // The room the page keeps under the coordinator (--coordinator-dock, on the page's root) is that of the height it
