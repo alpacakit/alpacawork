@@ -30,7 +30,8 @@ if (typeof window !== "undefined") {
   // Ended, it says so as a browser's does: `onfinish` runs (unless it was cancelled first) and no element holds it.
   Element.prototype.animate = () => {
     let cancelled = false;
-    const animation = { finished: Promise.resolve(), cancel() { cancelled = true; }, onfinish: null as ((event: Event) => void) | null };
+    const animation = { finished: Promise.resolve(), playState: "finished", cancel() { cancelled = true; }, pause() {}, play() {},
+      onfinish: null as ((event: Event) => void) | null };
     queueMicrotask(() => { if (!cancelled) animation.onfinish?.(new Event("finish")); });
     return animation as unknown as Animation;
   };

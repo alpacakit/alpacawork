@@ -334,8 +334,12 @@ const settling = new WeakMap<Element, Animation>();
  * from it what makes it the surface (what finds it, what names it), keeping its look, and what of it should not be
  * seen; `find` gives the copy's own of what a selector finds in the surface (the copy keeps few of the attributes that
  * find things).
+ * `drawn` (when given) says whether the surface shows what it turned to yet, its reads perhaps still on the way: until
+ * it does, for at most `within` ms, the copy stands still over it, so what was shown hands over to what is shown, not to
+ * a surface still filling in; past that wait it hands over to the surface as it stands.
  */
-export function crossfade(surface: HTMLElement | null, { content, ready }: { content: string; ready: (copy: HTMLElement, find: (selector: string) => HTMLElement | null) => void }) {
+export function crossfade(surface: HTMLElement | null, { content, ready, drawn }: { content: string;
+  ready: (copy: HTMLElement, find: (selector: string) => HTMLElement | null) => void; drawn?: { done: () => boolean; within: number } }) {
   if (!canAnimate(surface)) return;
   const timing = { duration: duration("base"), easing: easing("in-out"), fill: "forwards" } as const;
   const opacity = getComputedStyle(surface).opacity || 1, shift = distance("shift");
@@ -353,12 +357,14 @@ export function crossfade(surface: HTMLElement | null, { content, ready }: { con
   fading.set(surface, copies);
   // From as much of it as shows (a reader still coming in shows less).
   const fade = copy.animate([{ opacity }, { opacity: 0 }], timing);
+  const moves = [fade];
   const left = find(content), live = surface.querySelector<HTMLElement>(content);
   if (shift && left && live) {
     // The copy's from where it was seen (a move it was still making is held in it), the live one afresh: one move each.
-    left.animate([{ translate: left.style.translate || "0 0" }, { translate: `0 ${shift}px` }], timing);
+    moves.push(left.animate([{ translate: left.style.translate || "0 0" }, { translate: `0 ${shift}px` }], timing));
     settling.get(live)?.cancel();
     const settle = live.animate([{ translate: `0 ${shift}px` }, { translate: "0 0" }], { ...timing, fill: "none" });
+    moves.push(settle);
     settling.set(live, settle);
     void settle.finished.then(() => { if (settling.get(live) === settle) settling.delete(live); }, () => {});
   }
@@ -368,6 +374,16 @@ export function crossfade(surface: HTMLElement | null, { content, ready }: { con
     if (left.length) fading.set(surface, left); else fading.delete(surface);
   };
   void fade.finished.then(gone, gone);
+  if (!drawn || drawn.done()) return;
+  // The hand-over waits as one: the copy's fade and both moves start on the same frame.
+  for (const each of moves) each.pause();
+  const since = performance.now();
+  const look = () => {
+    if (fade.playState !== "paused") return;
+    if (drawn.done() || performance.now() - since >= drawn.within) for (const each of moves) each.play();
+    else requestAnimationFrame(look);
+  };
+  requestAnimationFrame(look);
 }
 
 /**

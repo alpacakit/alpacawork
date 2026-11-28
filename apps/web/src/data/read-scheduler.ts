@@ -19,7 +19,7 @@ export type ReadScheduler = {
   opened(id: string, history: boolean): void;
   /** The cards that come next (the list's next row, the next questions): read ahead, after what is open. */
   next(ids: readonly string[]): void;
-  /** A pointer rests on (or a key or finger chose) a Task's link: its view is read ahead first. */
+  /** A pointer rests on (or a key or finger chose) a Task's link: what opening it shows, its view and History, is read ahead first. */
   pointed(id: string): void;
   stop(): void;
 };
@@ -88,7 +88,7 @@ export function startReadScheduler(client: QueryClient, host: Window = window): 
       for (const id of ids) { want(viewKey(id), 'next'); want(historyKey(id), 'next'); }
       void pump();
     },
-    pointed(id) { want(viewKey(id), 'pointed'); void pump(); },
+    pointed(id) { want(viewKey(id), 'pointed'); want(historyKey(id), 'pointed'); void pump(); },
     stop() { stopped = true; wanted.clear(); },
   };
   // The home list can suggest reads only after navigation has chosen to show it. Reads requested by the

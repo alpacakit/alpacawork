@@ -66,14 +66,16 @@ test("the Deliverables field lists the files its Context drawing links, named as
   }
 });
 
-test("work files alone show the tab without a number and lead to them; no file shows no tab", () => {
+test("work files alone show the tab without a number and lead to them; no file keeps the tab, numberless, saying so", () => {
   sheet(["work/log.txt"]);
   expect(tab()!.getAttribute("aria-label")).toBeNull();
   expect(screen.getByText(i18n.t("reader:files.onlyWork"))).toBeTruthy();
   expect(screen.getByRole("button", { name: /^Work files\s*1$/ })).toBeTruthy();
   cleanup();
+  // Every task has the same tabs, so the row does not change as its reads arrive.
   sheet([]);
-  expect(tab()).toBeNull();
+  expect(tab()!.getAttribute("aria-label")).toBeNull();
+  expect(screen.getByText(i18n.t("reader:files.empty"))).toBeTruthy();
 });
 
 test("pictures in no set are named as the others of their folder, only beside a set", () => {

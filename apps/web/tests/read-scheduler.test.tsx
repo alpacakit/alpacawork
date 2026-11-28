@@ -67,7 +67,9 @@ test('what is opened is read first; what is ahead waits for it, then goes one at
   s.answerAll();
   await eventually(() => expect(s.asked).toHaveLength(4)); s.answerAll();
   await eventually(() => expect(s.asked).toHaveLength(5)); s.answerAll();
-  expect(s.asked.slice(3)).toEqual(['view T2', 'history T2']);
+  await eventually(() => expect(s.asked).toHaveLength(6)); s.answerAll();
+  // A pointer reads what opening its task shows: its History with its view.
+  expect(s.asked.slice(3)).toEqual(['history T3', 'view T2', 'history T2']);
 });
 
 test('in a background tab nothing is read ahead until the tab is shown again', async () => {
@@ -96,9 +98,10 @@ test('a held view is read again ahead only when its required version rises, and 
 test('a read already current is not read ahead', async () => {
   const s = screen();
   await s.client.prefetchQuery(resources.taskView('/fixture', 'T1'));
+  await s.client.prefetchQuery(resources.history('/fixture', 'T1'));
   s.scheduler.pointed('T1');
   await new Promise(resolve => setTimeout(resolve, 10));
-  expect(s.asked).toEqual(['view T1']);
+  expect(s.asked).toEqual(['view T1', 'history T1']);
 });
 
 test("the user's turn rows nothing is held of are read ahead, after what is opened; working rows are not", async () => {

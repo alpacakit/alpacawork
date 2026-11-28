@@ -45,7 +45,7 @@ import { useReaderHeaderAway } from "./reader-header-away";
 import { useWheelBack } from "./wheel-back";
 import { useReaderReportPosition } from "./reading-position";
 import { useReaderRestoration } from "./reading-restoration";
-import { RegionSkeleton } from "@/components/ui/skeleton";
+import { PLACEHOLDER_WAIT_MS, RegionSkeleton } from "@/components/ui/skeleton";
 import { ReadingLine } from "@/features/chrome/ProgressLine";
 import { TurnReason } from "./TurnReason";
 import { ReaderPanel, ReaderPanelSlot } from "./ReaderPanel";
@@ -148,11 +148,13 @@ export function Reader({ mode, overlapping = false, canDock = mode === "docked" 
   // (crossfade). Another pane of the same task (a tab chosen) is the same turn under the head: the title and its tabs
   // stay, the tab's grey sliding along them (TabMarker), and what was read under them dissolves into the pane chosen on
   // the same time, so the ground arrives as the new pane settles. It is seen as the store turns, before React draws the
-  // other task or pane. While an answered card's stamped copy is over it (held, then flying away: departure.ts), the
+  // other task or pane. Another task dissolves in once it is drawn (readerDrawn): its reads may still be on the way, and
+  // what was shown stays until then, for as long as a placeholder would wait. While an answered card's stamped copy is over it (held, then flying away: departure.ts), the
   // card has already been shown leaving: nothing more goes.
   useEffect(() => useViewStore.subscribe((view, before) => {
     if (!view.reader.open || !before.reader.open || cardFlying()) return;
-    if (view.selected !== before.selected) crossfade(box.current, { content: "[data-reader-content]", ready: unnameReader });
+    if (view.selected !== before.selected) crossfade(box.current, { content: "[data-reader-content]", ready: unnameReader,
+      drawn: { done: () => readerDrawn(box.current, view.selected), within: PLACEHOLDER_WAIT_MS } });
     else if (view.reader.pane !== before.reader.pane) crossfade(box.current, { content: "[data-reading-column]", ready: (copy, find) => {
       // Only what was read is drawn, on the reader's own ground over all of the pane chosen; it is cut where the live
       // title and tabs stand once that pane is drawn at its own place (scrolled back up, they come down into view), so
@@ -276,6 +278,16 @@ export function Reader({ mode, overlapping = false, canDock = mode === "docked" 
     {family}
     {sitting}
   </>;
+}
+
+/**
+ * Whether the reader shows `id` drawn: its head names it, and its pane shows what it reads, not the wait for it (an
+ * empty column while a placeholder is still unseen, the placeholder, or held content hidden while it is read again).
+ */
+function readerDrawn(reader: HTMLElement | null, id: string | null) {
+  if (!reader || !id || reader.querySelector("[data-reader-task-id]")?.textContent !== id) return false;
+  const column = reader.querySelector("[data-reading-column]");
+  return !!column && column.childElementCount > 0 && !column.matches("[data-held-hidden]") && !column.querySelector('[data-skeleton="reports"]');
 }
 
 /**
