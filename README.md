@@ -17,10 +17,9 @@ line into an explicit link to the video. To add a video, attach the file to a pu
 (gh pr comment --attach) and write the URL GitHub gives it.
 The name at the top is a picture (wordmark.png, wordmark-dark.png for dark pages) so that it shows
 larger than a heading can; its alt text carries the name.
-The pictures show made-up data on the dark-theme screens. The demo under the introduction
-is an animated WebP drawn as a rounded card with alpha, so it sits on light and dark pages alike
-(demo-dark.webp). Each README shows the screens in its own language: demo-dark-<lang>.webp in the
-translations.
+The demo in the introduction uses synthetic data in the real app. It is an animated GIF with
+transparent rounded corners (demo-dark.gif). The translated READMEs use demo-dark-<lang>.gif
+with localized captions, diagrams, and closing cards.
 The diagram at the top is drawn in each README's language (hero.gif, hero-dark.gif for this file;
 hero-<lang>.gif, hero-dark-<lang>.gif for the others) and switches with the page theme in a <picture>;
 its first and last frames are the finished picture.
@@ -69,20 +68,31 @@ to README.md#install): keep those headings, or change the links with them.
 
 ## What is alpacawork?
 
-alpacawork is a task-based AI orchestration tool.
+alpacawork brings AIs together to get work done. It's a task-based AI orchestration tool that lets you direct the Claude Code and Codex you already use from one chat box.
 
-- **One chat as your point of contact** — Write new requests, and additions or changes to work in progress, in the same chat box. An AI called the coordinator turns each request into a task and hands it to another AI.
-- **Tasks, not conversations** — The screen lists the tasks you asked for. Results and questions for you are grouped by task ([How it works](https://github.com/alpacakit/alpacawork/blob/main/docs/concept.md#work-moves-by-task-not-by-conversation)).
-- **Your Claude Code and Codex, as they are** — Start right away with your current logins, in a repository folder you already use. You don't need an account or an API key for alpacawork, and `AGENTS.md`, `CLAUDE.md`, skills, MCP and hooks work unchanged. GitHub Copilot, Grok Build and pi work too, and local models run through pi ([AIs to use](https://github.com/alpacakit/alpacawork/blob/main/docs/projects.md#ais-to-use)).
-- **Workflows in plain words** — Ask for something like "Make three proposals, each with a different model. Combine them into one and have another AI review it," and the AIs carry it out, handing work to one another. You can also have another AI work in parallel on a task that is already in progress.
-- **Switch AIs and pick up where the work left off** — When an AI stops on an error or a usage limit, or even mid-work, you can switch to a different AI, say from Claude Code to Codex, and it picks up from there. Choose fallback AIs in Settings, and one takes over when a usage limit stops the work.
-- **Context carried by the task's records** — When a conversation gets long, the AI compacts it or starts a fresh one. Instead of the old exchange, the AI in a fresh conversation, or the AI that took over, gets the task's records: where the work stands, with the request, what was decided and what remains. It continues from there.
-- **Questions you answer by picking an option** — What the AI can't decide reaches you as a question with options and a recommendation. Questions and reports come with images and videos.
-- **Usable from your phone alone** — Ask, answer questions and check results on your phone. Swipe right to answer or to mark a result done.
+Ask the AI in that chat, called the coordinator. It checks how the work is going and passes instructions to the AIs doing it. You can leave the work of splitting up tasks and writing detailed instructions to the coordinator.
 
 <p align="center">
-  <img src="docs/images/demo-dark.webp" alt="A request typed into the phone's chat box becomes three tasks that run in parallel in the PC's list; a result is checked and a swipe marks its task complete, and a question from the AI is answered by picking an option; then the phone and the PC side by side" width="800">
+  <img src="docs/images/demo-dark.gif" alt="A diagram beside the app shows a single request becoming three options that Claude and Codex work on in parallel. Changes go through the same chat. When an AI hits its usage limit, another picks up from the task record. A long conversation is compacted or restarted. You answer by picking an option, then review the result on your phone and swipe right to finish." width="800">
 </p>
+
+### Ask
+
+- Use one chat box for requests and changes, even across [multiple projects](https://github.com/alpacakit/alpacawork/blob/main/docs/projects.md#add-projects).
+- [Say how the work should run](https://github.com/alpacakit/alpacawork/blob/main/docs/concept.md#say-how-to-work-in-words), for example, “Make three proposals with different models.”
+- Use your existing login, `CLAUDE.md`, skills, and MCP. [Copilot and pi work too](https://github.com/alpacakit/alpacawork/blob/main/docs/projects.md#ais-to-use).
+
+### Progress
+
+- Work moves by [task](https://github.com/alpacakit/alpacawork/blob/main/docs/concept.md#work-moves-by-task-not-by-conversation). Its history and results stay when you switch AIs or chats.
+- If an error or usage limit stops work, [switch AIs and pick up where it left off](https://github.com/alpacakit/alpacawork/blob/main/docs/guide.md#tasks-that-stopped).
+- As a chat goes on, [accuracy drops](https://arxiv.org/abs/2505.06120). The AI decides whether to compact it or start a fresh chat.
+
+### Review
+
+- When the AI needs your decision, it [asks with options and a recommendation](https://github.com/alpacakit/alpacawork/blob/main/docs/guide.md#answer-a-question).
+- Questions and [reports](https://github.com/alpacakit/alpacawork/blob/main/docs/guide.md#check-a-report) can include screenshots or recordings to help you decide.
+- Ask, answer questions, and check results from your [phone](https://github.com/alpacakit/alpacawork/blob/main/docs/remote.md#use-it-from-your-phone). [Swipe](https://github.com/alpacakit/alpacawork/blob/main/docs/guide.md#on-a-phone) to answer or finish reviewing.
 
 ## Install
 
