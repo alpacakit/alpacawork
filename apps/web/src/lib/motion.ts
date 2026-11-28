@@ -649,7 +649,7 @@ export function arrivalShifts<Item extends { contains(other: Item): boolean }>(i
   arriving: readonly Item[], shift: Map<Item, number>, rise: number) {
   for (const item of arriving) {
     const before = items.slice(0, items.indexOf(item)).reverse().find(each => !each.contains(item));
-    shift.set(item, before && shift.get(before) || -rise);
+    shift.set(item, (before && shift.get(before)) || -rise);
   }
   return shift;
 }
