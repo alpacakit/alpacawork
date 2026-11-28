@@ -6,5 +6,8 @@ import { Icon } from '@/components/ui/icon';
  * message only waits its turn; the moving mark comes once it is on its way or at work, so a message's words stay where
  * they stood from soon to waiting to working, and only the mark and the words change. */
 export function WaitingStatus({ children }: { children: ReactNode }) {
-  return <span role="status" className="inline-flex items-center gap-1.5 text-muted"><Icon name="todo" data-waiting-mark className="size-3.5 flex-none" />{children}</span>;
+  // The words, and a press said in words after them, are boxed to their capitals as the other states' words are, so the
+  // ring centres on the letters.
+  return <span role="status" className="inline-flex min-h-lh items-center gap-1.5 text-muted"><Icon name="todo" data-waiting-mark className="size-3.5 flex-none" />
+    <span className="cap-box">{children}</span></span>;
 }

@@ -951,8 +951,8 @@ function WorkingRow({ task, onFollow }: { task: TaskDetail; onFollow: (id: strin
     </ul>}
     {more.length > 0 && <button type="button" data-working-more aria-expanded={unfolded} onClick={() => unfold(!unfolded)}
       className="ml-[calc(4.6ch+--spacing(2))] flex items-center gap-1 py-1.5 text-xs text-soft hover:text-ink focus-visible:outline-2 focus-visible:outline-ink narrow:ml-0 narrow:min-h-11">
-      {unfolded ? t("reportFeed.childWorking.fold") : t("reportFeed.childWorking.others", { count: hidden })}
-      <Icon name="down" className={`size-3.5 transition-transform duration-(--motion-base) ${unfolded ? "rotate-180" : ""}`} /></button>}
+      <span className="flex min-h-lh items-center gap-1"><span className="cap-box">{unfolded ? t("reportFeed.childWorking.fold") : t("reportFeed.childWorking.others", { count: hidden })}</span>
+      <Icon name="down" className={`size-3.5 transition-transform duration-(--motion-base) ${unfolded ? "rotate-180" : ""}`} /></span></button>}
   </div></li>;
 }
 

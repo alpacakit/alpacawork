@@ -40,8 +40,8 @@ export function MessageFiles({ turn, open, all = false }: {
 }) {
   const { t } = useTranslation("ui");
   // Removed by the cleaning of old conversation files: said once in their place, with nothing to open.
-  if (turn.filesExpired) return <p data-coordinator-files-expired className="m-0 inline-flex items-center gap-1 text-xs text-muted">
-    <Icon name="file" className="size-3.5 flex-none" />{t("coordinatorCard.filesExpired", { count: turn.attachments.length })}</p>;
+  if (turn.filesExpired) return <p data-coordinator-files-expired className="m-0 inline-flex min-h-lh items-center gap-1 text-xs text-muted">
+    <Icon name="file" className="size-3.5 flex-none" /><span className="cap-box">{t("coordinatorCard.filesExpired", { count: turn.attachments.length })}</span></p>;
   const media = messageMedia(turn);
   const visible = !all && media.length > 4 ? media.slice(0, 3) : media;
   const rest = media.length - visible.length;
@@ -59,7 +59,7 @@ export function MessageFiles({ turn, open, all = false }: {
       <span className="relative text-xs font-semibold tabular-nums">+{rest}</span>
     </button>}
     {fileNames.map(({ name, href }) => <a key={name} href={href} target="_blank" rel="noreferrer"
-      className="inline-flex min-h-7 min-w-0 items-center gap-1 rounded-sm border border-line px-1.5 text-xs text-muted [overflow-wrap:anywhere] narrow:min-h-11">
-      <Icon name="file" className="size-3.5 flex-none" />{name}</a>)}
+      className="inline-flex min-h-7 min-w-0 items-center gap-1 rounded-sm border border-line px-1.5 py-1 text-xs text-muted [overflow-wrap:anywhere] narrow:min-h-11">
+      <Icon name="file" className="size-3.5 flex-none" /><span className="min-w-0 cap-box">{name}</span></a>)}
   </div>;
 }

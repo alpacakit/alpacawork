@@ -91,9 +91,9 @@ function Answer({ turn, retry }: { turn: CoordinatorTurn; retry: (turn: Coordina
     return <div>
       <AnswerBody turn={turn} />
       <div data-coordinator-answer-meta className="mt-type-close flex flex-wrap items-center gap-x-1.5 text-xs text-muted">
-        <span className="font-medium text-ink">{t("coordinatorCard.title")}</span>
-        {turn.answeredAt && <><time dateTime={turn.answeredAt} className="tabular-nums">{messageTime(turn.answeredAt, i18n.language)}</time>
-          <span>· {seconds < 60 ? t("coordinatorCard.seconds", { count: seconds }) : t("coordinatorCard.minutes", { count: Math.round(seconds / 60) })}</span></>}
+        <span className="cap-box font-medium text-ink">{t("coordinatorCard.title")}</span>
+        {turn.answeredAt && <><time dateTime={turn.answeredAt} className="cap-box tabular-nums">{messageTime(turn.answeredAt, i18n.language)}</time>
+          <span className="cap-box">· {seconds < 60 ? t("coordinatorCard.seconds", { count: seconds }) : t("coordinatorCard.minutes", { count: Math.round(seconds / 60) })}</span></>}
         <span className="inline-flex gap-0">
           <CopyButton clip={() => textClip(turn.answer!)} label={t("coordinatorCard.copyAnswer")} className="-my-1 h-8 w-7 narrow:-my-2 narrow:h-10 narrow:w-9" />
           <Button type="button" variant="quiet" size="icon" disabled={disabled} data-reply-answer={turn.id}
@@ -126,11 +126,11 @@ function FoldedMessage({ turn, skills }: { turn: SentTurn; skills: readonly { na
 /** What one exchange came to, for its folded line: its answer's first sentence, or that it is at work, failed or stopped. */
 function Outcome({ turn }: { turn: CoordinatorTurn }) {
   const { t } = useTranslation("ui");
-  if (turn.status === "queued") return <span role="status" className="text-muted motion-safe:animate-pulse">{t("coordinatorCard.posting")}</span>;
+  if (turn.status === "queued") return <span role="status" className="cap-box text-muted motion-safe:animate-pulse">{t("coordinatorCard.posting")}</span>;
   if (turn.status === "running") return <Thinking turn={turn} />;
   const [text, tone] = turn.status === "succeeded" ? [turn.answer ? firstSentence(turn.answer) : "", "text-ink"]
     : [t("coordinatorCard.failed", { reason: coordinatorErrorReason(turn) }), "text-error"];
-  return <span className={cn("min-w-0 flex-1 truncate", tone)}>{text}</span>;
+  return <span className={cn("min-w-0 flex-1 cap-truncate", tone)}>{text}</span>;
 }
 
 /* Hallmark · component: one exchange of the conversation (a message, what joined it, and its answer) · states: open (all of
@@ -250,7 +250,7 @@ const ThreadRow = memo(function ThreadRow({ served, local, waiting, open, joined
           {button}
         </>} />
         {turn.ask && <FoldedMessage turn={turn} skills={skills} />}
-        <div data-exchange-outcome className="mt-type-close flex min-w-0 items-center gap-1.5">
+        <div data-exchange-outcome className="mt-type-close flex min-h-lh min-w-0 items-center gap-1.5">
           <Icon name="right" className="size-3 flex-none text-muted" /><Outcome turn={turn} />
         </div>
       </div>}

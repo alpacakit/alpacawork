@@ -26,10 +26,12 @@ export function LocalOutcome({ turn, cancellation = 'inline' }: { turn: LocalTur
   const inlineCancellation = cancellation === 'inline';
   // Its words whole or not at all where the row is narrow: a line too short for them wraps them out of sight, and Undo,
   // first on the line (order), stays beside the ring.
+  // Its words and Undo are boxed to their capitals inside line-high boxes, so the ring centres on the letters and Undo
+  // keeps a line's height to press.
   if (turn.stage === 'waiting') return <div role="status" className="flex min-w-0 items-center gap-1.5 text-muted"><SoonRing until={turn.due} />
-    <span className="flex h-[1lh] min-w-0 flex-row-reverse flex-wrap justify-end overflow-hidden"><span className="flex-none">{t('coordinatorCard.soon')}</span>
-    {inlineCancellation && <button type="button" data-coordinator-cancel-unsent className={cn(LINE_ACTION, 'order-first flex-none focus-visible:outline-offset-[-2px]')}
-      onClick={() => { try { if (cancelUnsent(root, turn.id) === 'cancelled') { takeBack(root, turn.id, destination); focusCoordinator(); } } catch (error) { notify.failure(error, { about: 'cancel unsent message', from: 'coordinator' }); } }}>{i18n.t('undo.toast.undo')}</button>}</span></div>;
+    <span className="flex h-[1lh] min-w-0 flex-row-reverse flex-wrap content-start justify-end overflow-hidden"><span className="flex h-lh flex-none items-center"><span className="cap-box">{t('coordinatorCard.soon')}</span></span>
+    {inlineCancellation && <button type="button" data-coordinator-cancel-unsent className={cn(LINE_ACTION, 'order-first flex h-lh flex-none items-center focus-visible:outline-offset-[-2px]')}
+      onClick={() => { try { if (cancelUnsent(root, turn.id) === 'cancelled') { takeBack(root, turn.id, destination); focusCoordinator(); } } catch (error) { notify.failure(error, { about: 'cancel unsent message', from: 'coordinator' }); } }}><span className="cap-box">{i18n.t('undo.toast.undo')}</span></button>}</span></div>;
   const text = localDeliveryText(turn, t);
   const withdraw = async () => {
     try { await useConversation.getState().messageAction('withdraw', turn.id); }

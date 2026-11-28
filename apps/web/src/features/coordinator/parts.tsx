@@ -68,7 +68,7 @@ const noStore = () => () => {};
 
 /** A mark while waiting for an answer: a quiet pulse of opacity alone. */
 function Pulse({ children }: { children: string }) {
-  return <span data-ask-thinking className="text-muted tabular-nums motion-safe:animate-pulse">{children}</span>;
+  return <span data-ask-thinking className="cap-box text-muted tabular-nums motion-safe:animate-pulse">{children}</span>;
 }
 /** The running turn on one line where the work is not shown: its recent work's rounded name and the seconds (useWorkingWords). */
 export function Thinking({ turn }: { turn: { id: string; at: string } }) {
