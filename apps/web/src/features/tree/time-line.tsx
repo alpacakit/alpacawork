@@ -787,6 +787,12 @@ function useMarkWords() {
 
 /** An edge note's ground around its text: wide enough to meet across the gaps between its characters, so the line stops at the note. */
 export const EDGE_HALO = 8;
+/**
+ * The row's ground under an edge note's icon and words, from `from` to `to`: the line runs at the row's base, under the
+ * words' middle, and stops clear of them rather than being nicked by each glyph's halo.
+ */
+export const EdgeGround = ({ from, to, y }: { from: number; to: number; y: number }) =>
+  <rect x={from} y={y - 8} width={Math.max(0, to - from)} height={16} rx={8} className="fill-[var(--row-ground,var(--bg))]" />;
 
 /**
  * What every pressable glyph on a strip that opens History (a mark, an edge note) is: one button; the band's expected
@@ -875,7 +881,7 @@ export function TurnEdge({ turn, x, y, words, heard, onPick, probe }: { turn: Ro
   return <EdgeLayer><StripPress onPress={onPick} point={turn} probe={probe} ring={{ x, y, tone: "turn", pointed: 8 }}
     attributes={{ "data-mark": turn.key, "data-edge": "turn" }} className="group/edge">
     <title>{heard}</title>
-    <circle cx={x} cy={y} r={7.5} className="fill-[var(--row-ground,var(--bg))]" />
+    <EdgeGround from={x - 16} to={x + 8 + (words ? 2 + wordsW(words, textScale()) + 4 : 0)} y={y} />
     <Icon name={turn.why} x={x - 6} y={y - 6} width={12} height={12} className={cn("size-3", TONE.turn)} />
     {words && <text x={x + 10} y={y + 4} strokeWidth={EDGE_HALO} paintOrder="stroke" strokeLinejoin="round"
       className="fill-trail stroke-[var(--row-ground,var(--bg))] text-xs tabular-nums group-hover/edge:fill-ink group-focus-visible/edge:fill-ink">{words}</text>}

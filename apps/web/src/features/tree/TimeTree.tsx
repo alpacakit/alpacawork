@@ -46,7 +46,7 @@ import { BarRoom } from "@/features/chrome/Bar";
 import { cn } from "@/lib/utils";
 import { listColumns, SPEED_LANE } from "@/state/screen-settings";
 import { useListWidth } from "@/lib/use-list-width";
-import { atOf, EDGE_HALO, EdgeLayer, buildAxis, futureBandWidth, futureWords, type FutureWords, Ground, StripGround, Lane, laneMarks, lineOf, lineReports, ProbeRule, shownScaleMs, stretchReport, stripAxis, stripKeys, TimeClock, clockHeight, textScale, rowTurn, TurnEdge, wordsW, type RowTurn, useStrip, useStripProbe, showZoom, StripPress, wholeIn, xOf, type Level, type MarkAt, type Piece, type Scale } from "./time-line";
+import { atOf, EDGE_HALO, EdgeGround, EdgeLayer, buildAxis, futureBandWidth, futureWords, type FutureWords, Ground, StripGround, Lane, laneMarks, lineOf, lineReports, ProbeRule, shownScaleMs, stretchReport, stripAxis, stripKeys, TimeClock, clockHeight, textScale, rowTurn, TurnEdge, wordsW, type RowTurn, useStrip, useStripProbe, showZoom, StripPress, wholeIn, xOf, type Level, type MarkAt, type Piece, type Scale } from "./time-line";
 import { drawnTaskIds, useListNavigationSource } from "./list-navigation";
 import { ShelvedRow } from "./ShelvedRow";
 import { PageReadFailure, type PageRead, type ReadView } from "./PageReadFailure";
@@ -830,10 +830,11 @@ function EdgeNote({ edge, x, y, clock, onGo }: { edge: Exclude<Edge, { kind: "tu
   const words = edge.kind === "todo" ? since : state ? label : heard;
   const text = left ? (state ? words : `‹ ${words}`) : `${words} ›`;
   const textX = left && state ? x + 15 : x;
+  const textW = wordsW(text, textScale());
   return <EdgeLayer><StripPress onPress={onGo} attributes={{ "data-edge": edge.kind }} className="group/edge">
     <title>{t("timeView.edge.go", { note: heard })}</title>
+    <EdgeGround from={left ? x - 8 : textX - textW - 4} to={left ? textX + textW + 4 : x + 8} y={y} />
     {state && <>
-      <circle cx={x + 6} cy={y} r={7.5} className="fill-[var(--row-ground,var(--bg))]" />
       <StateIcon state={state} x={x} y={y - 6} width={12} height={12} />
     </>}
     <text x={textX} y={y + 3.5} textAnchor={left ? "start" : "end"} strokeWidth={EDGE_HALO} paintOrder="stroke" strokeLinejoin="round"

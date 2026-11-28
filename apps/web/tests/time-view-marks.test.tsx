@@ -314,7 +314,7 @@ test("an edge note rides with the strip while it scrolls or is held, and stands 
   const onScreen = () => {
     const edge = document.querySelector<SVGGElement>('[data-row="T3"] [data-edge="todo"]')!;
     const shift = Number(/translateX\((-?[\d.e]+)px\)/.exec(edge.closest<HTMLElement>("[data-edge-layer]")!.style.transform)?.[1] ?? 0);
-    return Number(edge.querySelector("circle")!.getAttribute("cx")) - 6 + shift - sheet.scrollLeft;
+    return Number(edge.querySelector("[data-icon]")!.getAttribute("x")) + shift - sheet.scrollLeft;
   };
   const scrollTo = (left: number) => { sheet.scrollLeft = left; fireEvent.scroll(sheet); act(() => { vi.advanceTimersByTime(16); }); };
   scrollTo(end());
