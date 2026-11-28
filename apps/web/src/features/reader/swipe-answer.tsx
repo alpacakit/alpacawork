@@ -36,7 +36,7 @@ export function releaseSpeed(trail: readonly { x: number; t: number }[], at: num
   return (last.x - before.x) / gap;
 }
 
-/** How far the card goes before letting go answers: a fifth of its width, at most 88px. */
+/** How far the card goes before letting go answers: 22% of its width, at most 88px. */
 const reach = (width: number) => Math.min(88, width * 0.22);
 /** The card carried `dx` sideways: moved and tilted the way it goes, the same for a swipe that answers and one refused. */
 const carried = (dx: number) => `translateX(${dx}px) rotate(${dx / 45}deg)`;
@@ -145,7 +145,9 @@ export function useSwipeAnswer(card: RefObject<HTMLElement | null>, reading: Ref
       if (!start || event.pointerId !== start.id) return;
       const mx = event.clientX - start.x, my = event.clientY - start.y;
       if (!sideways) {
-        if (Math.hypot(mx, my) < 6) return;
+        // Taken at 6px when it goes plainly sideways; a start that leans up or down waits for 12px, as a scroll's arc may.
+        const way = Math.hypot(mx, my);
+        if (way < 6 || way < 12 && Math.abs(mx) < Math.abs(my) * 2.5) return;
         // Only a clearly sideways start is taken; a slanted one is the report's scrolling.
         const actions = latest.current;
         action = mx > 0 ? actions.answer : actions.hold;

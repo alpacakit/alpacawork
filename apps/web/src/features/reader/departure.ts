@@ -179,7 +179,7 @@ export function flyAway(answer: Answer, stamp: string, letGo?: number): Flight |
         : [{ transform, opacity: from }, { opacity: from, offset: 0.5 }, { transform: `translate(${awayX}px, ${awayY}px) rotate(${turn}deg)`, opacity: 0 }],
         { duration: reduced ? cross : time, easing: easing(reduced ? "out" : "fling"), fill: "forwards" }));
       if (forward && !reduced && card.isConnected) card.animate([{ transform: "translateY(10px) scale(.965)", opacity: 0.85 }, { transform: "none", opacity: 1 }],
-        { duration: cross, easing: easing("out"), fill: "backwards" });
+        { duration: time, easing: easing("out"), fill: "backwards" });
     },
 
   };

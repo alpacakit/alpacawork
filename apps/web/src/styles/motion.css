@@ -16,10 +16,10 @@
            little speed, so the hold ends on the push and not on a creep, and it is seen crossing rather than vanishing;
            it fades over the second half of the way. The next card comes forward over the same --motion-fling, ease-out.
            A card a finger let go is already moving: it is flung at once, its stamp pressed on as it goes, starting at
-           the finger's speed (the fling then takes from --motion-fast/2 to --motion-fling).
+           the finger's speed (the fling then takes from --motion-fast/2 to --motion-base), and the next card comes forward as long.
    Swipe    a card follows the finger as it is. Let go without answering, it springs back from where it is at the
-           finger's speed, as a spring of 22 rad/s damped 0.75 (lib/motion.ts settle): it eases in and out, goes a
-           few px past its place and settles in about 0.3s; a finger that catches it on the way carries it from there.
+           finger's speed, as a spring of 30 rad/s damped 0.8 (lib/motion.ts settle): it eases in and out, goes a
+           px or two past its place and settles in about 0.25s; a finger that catches it on the way carries it from there.
    Curve   ease-out     arrives and settles (every enter and move)
            ease-move    a panel moving across the screen from one rest to another: eases off, then settles long
            ease-in      leaves (a toast going)
