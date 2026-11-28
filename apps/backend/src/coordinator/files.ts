@@ -11,7 +11,7 @@ import { hasCode, Problem, PROBLEM_CODE } from '@alpacawork/core';
 import { requirePublished, FileJournal, fileDigest } from '../control/file-journal.js';
 import { attachmentFileName } from '../control/task-files.js';
 import { attachmentLimit, fileTooLarge } from '../agents-settings.js';
-import { FileWriter } from '../raw/storage.js';
+import { FileWriter, type OpenedFile } from '../raw/storage.js';
 
 const FOLDER = '.alpacawork/coordinator';
 export const coordinatorRequestId = (id: string) => {
@@ -36,8 +36,8 @@ export function coordinatorAttachmentFile(root: string, conversation: string, id
   new FileJournal(root).readManagedFile(file);
   return join(root, file);
 }
-export function readCoordinatorAttachment(root: string, conversation: string, id: string, name: string, area: Area = 'attachments') {
-  return new FileJournal(root).readManagedFile(coordinatorFilePath(conversation, id, name, area));
+export function withCoordinatorFile<T>(root: string, conversation: string, id: string, name: string, area: Area, read: (file: OpenedFile) => T): T {
+  return new FileJournal(root).withManagedFile(coordinatorFilePath(conversation, id, name, area), read);
 }
 /** Names and sizes only: bytes are read where a caller compares them, and only for files of the same size. */
 function files(root: string, conversation: string, id: string) {

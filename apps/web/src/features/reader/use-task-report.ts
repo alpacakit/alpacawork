@@ -113,5 +113,15 @@ export function useTaskReportTarget(opening: ReportOpening, card: ReaderCard | n
     return { admission, operationId, result };
   };
   const unproven = status === 'unconfirmed' && !!entry && !!writeCheckFailure(root, entry.operationId);
-  return { ready, selectable, status, unproven, completion, key, complete: () => submit('approve'), submit, check: () => checkDirectIntent(client, key) };
+  // Done whose result is unknown is not on its way: pressed again, it asks with the same operation (the notice's Check),
+  // so the press needs no notice that may have been closed. Any other unknown write on the task still holds Done.
+  const recheck = completion === 'unconfirmed' && !unproven && !disabled && !unavailable && !busy;
+  const completeReady = (selectable || recheck) && sameReadSession(client, boundary) && canSendWrites(basis);
+  const complete = (): ReportSubmission => {
+    if (!recheck) return submit('approve');
+    const result = checkDirectIntent(client, key) as Promise<TaskWriteResult>;
+    void result.catch(() => {});
+    return { admission: 'retained', operationId: entry!.operationId, result };
+  };
+  return { ready, completeReady, selectable, status, unproven, completion, key, complete, submit, check: () => checkDirectIntent(client, key) };
 }

@@ -13,7 +13,7 @@ import { Problem, PROBLEM_CODE, hasCode } from '@alpacawork/core';
 import { MAX_FILE_BYTES, problemSchema, valuesText } from '@alpacawork/contract';
 import { validTaskFileName } from '@alpacawork/contract/inputs';
 import { CONFIG_FILE, MAX_DOCUMENT, type FieldValue, type TaskActor } from '@alpacawork/raw';
-import { FileWriter } from '../raw/storage.js';
+import { FileWriter, readOpenedFile, type OpenedFile } from '../raw/storage.js';
 import type { AuthorizedWriter } from './authorize.js';
 import { taskFolder } from './task-store.js';
 
@@ -137,12 +137,23 @@ export class FileJournal {
   }
   /** A non-Task managed file uses the same reservation, stage and receipt protocol. */
   readManagedFile(path: string): Buffer {
+    return this.withManagedFile(path, file => readOpenedFile(file.fd, file.size, MAX_FILE_BYTES));
+  }
+  withManagedFile<T>(path: string, read: (file: OpenedFile) => T): T {
+    return this.withOpenedFile(path, () => new Problem(PROBLEM_CODE.notFound, 'File does not exist', undefined,
+      { reason: { kind: 'file_does_not_exist' } }), read);
+  }
+  private withOpenedFile<T>(path: string, notFound: () => Problem, read: (file: OpenedFile) => T): T {
     return this.withAvailablePath(path, () => {
       const writer = new FileWriter(this.root);
       try {
-        const bytes = this.bytes(writer, path);
-        if (bytes === null) throw new Problem(PROBLEM_CODE.notFound, 'File does not exist', undefined, { reason: { kind: 'file_does_not_exist' } });
-        return bytes;
+        let file: OpenedFile | null;
+        try {
+          const { directory, name } = this.parent(writer, path);
+          file = writer.openVersionedAt(directory, name);
+        } catch (error) { if (hasCode(error, 'ENOENT')) throw notFound(); throw error; }
+        if (file === null) throw notFound();
+        try { return read(file); } finally { closeSync(file.fd); }
       } finally { writer.close(); }
     });
   }
@@ -550,13 +561,12 @@ export class FileJournal {
         catch (error) { if (!hasCode(error,'ENOENT')) throw error; } }
       finally { writer.close(); } }
   }
-  readTaskFile(task: string,name: string,max=MAX_FILE_BYTES): Buffer {
-    const path=this.taskPath(task,name);
-    return this.withAvailablePath(path, () => {
-      const writer=new FileWriter(this.root);
-      try { const bytes=this.bytes(writer,path,max); if (bytes===null) throw new Problem(PROBLEM_CODE.notFound, 'Task file does not exist', undefined, { reason: { kind: 'task_file_does_not_exist' } }); return bytes; }
-      finally { writer.close(); }
-    });
+  readTaskFile(task: string, name: string, max = MAX_FILE_BYTES): Buffer {
+    return this.withTaskFile(task, name, file => readOpenedFile(file.fd, file.size, max));
+  }
+  withTaskFile<T>(task: string, name: string, read: (file: OpenedFile) => T): T {
+    return this.withOpenedFile(this.taskPath(task, name), () => new Problem(PROBLEM_CODE.notFound, 'Task file does not exist', undefined,
+      { reason: { kind: 'task_file_does_not_exist' } }), read);
   }
   operationGet(opId: string) {
     const store=this.store();

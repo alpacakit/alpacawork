@@ -24,6 +24,43 @@ function resolvedRoot(root: string): string {
     { reason: { kind: 'filesystem_root_cannot_task_root' } });
   return absolute;
 }
+/** The same file attributes name the version in a Task listing and in a byte response. */
+export function fileRevision(stat: Pick<Stats, 'size' | 'mtimeMs' | 'ctimeMs'>): string {
+  return `${stat.size.toString(16)}-${Math.round(stat.mtimeMs * 1000).toString(16)}-${Math.round(stat.ctimeMs * 1000).toString(16)}`;
+}
+
+export type OpenedFile = { fd: number; size: number; revision: string };
+
+function openFile(parent: string, name: string): number | null {
+  try { return openSync(join(parent, name), constants.O_RDONLY | constants.O_NONBLOCK); }
+  catch (error) { if (hasCode(error, 'ENOENT')) return null; throw error; }
+}
+
+export function checkFileSize(size: number, max: number): void {
+  if (size > max) throw new Problem(PROBLEM_CODE.tooLarge, 'File exceeds size limit', undefined, { reason: { kind: 'file_exceeds_size_limit' } });
+}
+
+/** Read at most the limit, even if the opened file grows after its stat. */
+export function readOpenedFile(fd: number, size: number, max: number): Buffer {
+  checkFileSize(size, max);
+  const limit = max + 1;
+  let data = Buffer.allocUnsafe(Math.min(limit, size + 1));
+  let n = 0;
+  for (;;) {
+    if (n === data.length) {
+      if (data.length === limit) break;
+      const expanded = Buffer.allocUnsafe(limit);
+      data.copy(expanded, 0, 0, n);
+      data = expanded;
+    }
+    const count = readSync(fd, data, n, data.length - n, null);
+    if (!count) break;
+    n += count;
+  }
+  checkFileSize(n, max);
+  return data.subarray(0, n);
+}
+
 export class FileWriter {
   readonly root: string;
   readonly meta: string;
@@ -63,6 +100,19 @@ export class FileWriter {
     return readdirSync(directory, { withFileTypes: true }).map(entry => ({ name: entry.name,
       type: entry.isDirectory() ? 4 : entry.isFile() ? 8 : entry.isSymbolicLink() ? 10 : 0 }));
   }
+  /** The caller owns the descriptor. Its stat describes the same file from which it reads. */
+  openVersionedAt(parent: string, name: string): OpenedFile | null {
+    const fd = openFile(parent, name);
+    if (fd === null) return null;
+    try {
+      this.checkpoint('after_open');
+      const stat = fstatSync(fd);
+      this.regular(fd, stat);
+      if (!Number.isSafeInteger(stat.size) || stat.size < 0)
+        throw new Problem(PROBLEM_CODE.tooLarge, 'File size cannot be represented safely', undefined, { reason: { kind: 'file_size_cannot_represented_safely' } });
+      return { fd, size: stat.size, revision: fileRevision(stat) };
+    } catch (error) { closeSync(fd); throw error; }
+  }
   readAt(parent: string, name: string, max = MAX_DOCUMENT): Buffer | null {
     return this.readStampedAt(parent, name, max)?.data ?? null;
   }
@@ -72,39 +122,15 @@ export class FileWriter {
    * not read and `data` is null. Writers publish by rename, so a new version is a new inode.
    */
   readStampedAt(parent: string, name: string, max = MAX_DOCUMENT, known?: string): { stamp: string; data: Buffer | null } | null {
-    let fd: number;
-    try {
-      fd = openSync(join(parent, name), constants.O_RDONLY | constants.O_NONBLOCK);
-    } catch (error) {
-      if (hasCode(error, 'ENOENT')) return null;
-      throw error;
-    }
+    const fd = openFile(parent, name);
+    if (fd === null) return null;
     try {
       this.checkpoint('after_open');
       const info = fstatSync(fd, { bigint: true });
       this.regular(fd, info);
       const stamp = `${info.dev}:${info.ino}:${info.size}:${info.mtimeNs}:${info.ctimeNs}`;
       if (stamp === known) return { stamp, data: null };
-      const size = Number(info.size);
-      if (size > max) throw new Problem(PROBLEM_CODE.tooLarge, 'File exceeds size limit', undefined, { reason: { kind: 'file_exceeds_size_limit' } });
-      // Allocate for the observed size first, then grow up to the limit
-      // if the opened file grows during this read.
-      const limit = max + 1;
-      let data = Buffer.allocUnsafe(Math.min(limit, size + 1));
-      let n = 0;
-      for (;;) {
-        if (n === data.length) {
-          if (data.length === limit) break;
-          const expanded = Buffer.allocUnsafe(limit);
-          data.copy(expanded, 0, 0, n);
-          data = expanded;
-        }
-        const count = readSync(fd, data, n, data.length - n, null);
-        if (!count) break;
-        n += count;
-      }
-      if (n > max) throw new Problem(PROBLEM_CODE.tooLarge, 'File exceeds size limit', undefined, { reason: { kind: 'file_exceeds_size_limit' } });
-      return { stamp, data: data.subarray(0, n) };
+      return { stamp, data: readOpenedFile(fd, Number(info.size), max) };
     } finally {
       closeSync(fd);
     }

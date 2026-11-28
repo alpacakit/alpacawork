@@ -4,7 +4,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import { Problem, PROBLEM_CODE, hasCode } from '@alpacawork/core';
 import { validTaskFileName } from '@alpacawork/contract/inputs';
 import { taskFileRoute } from '@alpacawork/contract/task-file-route';
-import { FileWriter } from '../raw/storage.js';
+import { FileWriter, fileRevision, type OpenedFile } from '../raw/storage.js';
 import { requirePublished, FileJournal, fileDigest, isReserved, reservedPaths, type WriteGrant } from './file-journal.js';
 import { attachmentLimit, fileTooLarge } from '../agents-settings.js';
 
@@ -129,7 +129,7 @@ export function visitTaskFiles(writer: FileWriter, folders: readonly string[], s
             const name = childPath.slice(owner.length + 1);
             if (selection.include?.(owner, name) === false) continue;
             onFile(owner, { name, size: stat.size, at: stat.mtime.toISOString(),
-              revision: `${stat.size.toString(16)}-${Math.round(stat.mtimeMs * 1000).toString(16)}-${Math.round(stat.ctimeMs * 1000).toString(16)}` }, directory, entry.name);
+              revision: fileRevision(stat) }, directory, entry.name);
           }
         }
       } catch (error) {
@@ -175,21 +175,11 @@ export async function readTaskFile(root: string, id: string, name: string): Prom
 }
 
 /** The caller owns the descriptor and closes it after the HTTP response finishes or is cancelled. */
-export async function openTaskFile(root: string, id: string, name: string): Promise<{ fd: number; size: number }> {
+export async function openTaskFile(root: string, id: string, name: string): Promise<OpenedFile> {
   return withTaskFile(root, id, name, (writer, directory, basename) => {
-    let fd: number;
-    try { fd = openSync(join(directory, basename), constants.O_RDONLY | constants.O_NONBLOCK); }
-    catch (error) {
-      if (hasCode(error, 'ENOENT')) throw new Problem(PROBLEM_CODE.notFound, 'Task file does not exist', undefined, { reason: { kind: 'task_file_does_not_exist' } });
-      throw error;
-    }
-    try {
-      const stat = fstatSync(fd);
-      writer.regular(fd, stat);
-      if (!Number.isSafeInteger(stat.size) || stat.size < 0)
-        throw new Problem(PROBLEM_CODE.tooLarge, 'File size cannot be represented safely', undefined, { reason: { kind: 'file_size_cannot_represented_safely' } });
-      return { fd, size: stat.size };
-    } catch (error) { closeSync(fd); throw error; }
+    const file = writer.openVersionedAt(directory, basename);
+    if (file === null) throw new Problem(PROBLEM_CODE.notFound, 'Task file does not exist', undefined, { reason: { kind: 'task_file_does_not_exist' } });
+    return file;
   });
 }
 

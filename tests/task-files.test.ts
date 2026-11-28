@@ -4,7 +4,7 @@ import { initializeControlFixture } from './helpers/control-fixture.ts';
 import { test } from 'node:test';
 import { get as httpGet } from 'node:http';
 import assert from 'node:assert/strict';
-import { chmodSync, closeSync, existsSync, linkSync, mkdtempSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync, symlinkSync } from 'node:fs';
+import { chmodSync, closeSync, existsSync, linkSync, mkdtempSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync, symlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { FileWriter } from '@alpacawork/backend/test-dist/raw/storage.js';
@@ -130,8 +130,8 @@ test('an upload whose caller stops being one while its bytes came writes nothing
   assert.equal(existsSync(join(root, 'tasks', task.id, 'late.txt')), false);
 });
 
-test('managed text files share gzip compression and safe response types without changing saved bytes', async t => {
-  const { root, task, folder, start } = await fixture(t);
+test('managed text files share gzip compression and keep safe response types and cache validators', async t => {
+  const { task, folder, start } = await fixture(t);
   const text = '<h1>Untrusted text</h1><script>globalThis.fileScriptRan = true</script>\n'.repeat(80);
   const server = await start();
   for (const [name, type] of [
@@ -141,16 +141,118 @@ test('managed text files share gzip compression and safe response types without 
     ['page.HTML', 'text/plain'], ['image.svg', 'text/plain'], ['unknown.bin', 'application/octet-stream'],
   ]) {
     writeFileSync(join(folder, name), text);
-    const response = await fetch(fileUrl(server.url, task.id, name), { headers: { 'Accept-Encoding': 'gzip' } });
+    const binary = type === 'application/octet-stream';
+    const url = fileUrl(server.url, task.id, name);
+    const response = await fetch(url, { headers: { 'Accept-Encoding': 'gzip' } });
     assert.equal(response.status, 200, name);
-    assert.equal(response.headers.get('content-type'), type === 'application/octet-stream' ? type : `${type}; charset=utf-8`, name);
-    assert.equal(response.headers.get('content-encoding'), type === 'application/octet-stream' ? null : 'gzip', name);
+    assert.equal(response.headers.get('content-type'), binary ? type : `${type}; charset=utf-8`, name);
+    assert.equal(response.headers.get('content-encoding'), binary ? null : 'gzip', name);
+    assert.match(response.headers.get('etag')!, binary ? /^"[^"]+"$/ : /^W\/"[^"]+"$/, name);
     assert.equal(response.headers.get('x-content-type-options'), 'nosniff', name);
     assert.equal(response.headers.get('content-security-policy'), "sandbox; default-src 'none'", name);
-    assert.equal(response.headers.get('cache-control'), 'no-store', name);
+    assert.equal(response.headers.get('cache-control'), 'private, no-cache', name);
     assert.equal(await response.text(), text, name);
     assert.equal(readFileSync(join(folder, name), 'utf8'), text, name);
   }
+
+  const log = fileUrl(server.url, task.id, 'output.log');
+  const identity = await fetch(log, { headers: { 'Accept-Encoding': 'identity' } });
+  const compressed = await fetch(log, { headers: { 'Accept-Encoding': 'gzip' } });
+  const etag = identity.headers.get('etag');
+  assert.match(etag!, /^"[^"]+"$/);
+  assert.equal(identity.headers.get('content-length'), String(Buffer.byteLength(text)));
+  assert.equal(compressed.headers.get('etag'), `W/${etag}`);
+  const vary = compressed.headers.get('vary')!;
+  assert.deepEqual(vary.toLowerCase().split(/,\s*/).sort(), [
+    'accept-encoding', 'authorization', 'x-alpacawork-conversation', 'x-alpacawork-provider',
+  ]);
+
+  const unchanged = await fetch(log, { headers: { 'Accept-Encoding': 'gzip', 'If-None-Match': `W/${etag}` } });
+  assert.equal(unchanged.status, 304);
+  assert.equal(unchanged.headers.get('etag'), etag);
+  assert.equal(unchanged.headers.get('vary'), vary);
+
+  log.searchParams.set('download', '1');
+  const partial = await fetch(log, { headers: { 'Accept-Encoding': 'gzip', Range: 'bytes=0-2047', 'If-Range': etag! } });
+  assert.equal(partial.status, 206);
+  assert.equal(partial.headers.get('content-encoding'), null);
+  assert.equal(partial.headers.get('etag'), etag);
+  assert.equal(await partial.text(), text.slice(0, 2048));
+});
+
+test('Task file URLs use the listing revision to cache originals and revalidate only that version', async t => {
+  const { task, folder, start } = await fixture(t);
+  const original = 'original bytes', changed = 'modified bytes';
+  for (const name of ['note.txt', 'clip.mp4']) writeFileSync(join(folder, name), original);
+  const server = await start();
+  const view = await fetch(new URL(`/api/task/view?task=${task.id}`, server.url));
+  assert.equal(view.status, 200);
+  const { task: { files } } = await view.json() as { task: { files: Array<{ name: string; revision: string }> } };
+  assert.deepEqual(files.map(file => file.name), ['clip.mp4', 'note.txt']);
+  for (const { name, revision } of files) {
+    const url = fileUrl(server.url, task.id, name);
+    url.searchParams.set('v', revision);
+    for (const download of [false, true]) {
+      if (download) url.searchParams.set('download', '1');
+      const response = await fetch(url);
+      assert.equal(response.status, 200, name);
+      assert.equal(response.headers.get('etag'), `"${revision}"`, name);
+      assert.equal(response.headers.get('cache-control'), 'private, max-age=31536000, immutable', name);
+      assert.equal(await response.text(), original, name);
+
+      const unchanged = await fetch(url, { headers: { 'If-None-Match': `"${revision}"` } });
+      assert.equal(unchanged.status, 304, name);
+      assert.equal(await unchanged.text(), '', name);
+      assert.equal(unchanged.headers.get('etag'), `"${revision}"`, name);
+      assert.equal(unchanged.headers.get('cache-control'), response.headers.get('cache-control'), name);
+      for (const header of ['content-type', 'content-disposition', 'content-security-policy', 'content-length'])
+        assert.equal(unchanged.headers.get(header), null, `${name} ${header}`);
+    }
+    url.searchParams.delete('download');
+    writeFileSync(join(folder, name), changed);
+    const current = await fetch(url, { headers: { 'If-None-Match': `"${revision}"` } });
+    assert.equal(current.status, 200, name);
+    assert.notEqual(current.headers.get('etag'), `"${revision}"`, name);
+    assert.equal(current.headers.get('cache-control'), 'private, no-cache', name);
+    assert.equal(await current.text(), changed, name);
+  }
+});
+
+test('streaming a Task video finishes the opened file after its path is replaced', async t => {
+  const { root, task, folder, start } = await fixture(t);
+  const path = join(folder, 'clip.mp4'), replacement = join(folder, 'replacement.mp4');
+  // Keep the file larger than the socket buffers so replacement happens before the last read.
+  const original = Buffer.alloc(8 * MiB, 0x61);
+  writeFileSync(path, original);
+  writeFileSync(replacement, 'replacement');
+  const revision = (await filesOf(root, task)).find(file => file.name === 'clip.mp4')!.revision;
+  const server = await start();
+  const url = fileUrl(server.url, task.id, 'clip.mp4');
+  url.searchParams.set('v', revision);
+
+  const response = await globalThis.fetch(url, { signal: AbortSignal.timeout(10_000) });
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('etag'), `"${revision}"`);
+  const reader = response.body!.getReader();
+  const chunks: Uint8Array[] = [];
+  try {
+    const first = await reader.read();
+    assert.ok(first.value?.length);
+    chunks.push(first.value);
+    renameSync(replacement, path);
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  assert.deepEqual(Buffer.concat(chunks), original);
+
+  const next = await fetch(url);
+  assert.notEqual(next.headers.get('etag'), `"${revision}"`);
+  assert.equal(await next.text(), 'replacement');
 });
 
 test('a file route takes only its own query: an old ?project= is refused, never read past', async t => {
@@ -163,6 +265,8 @@ test('a file route takes only its own query: an old ?project= is refused, never 
   writeFileSync(join(root, 'tasks', task.id, 'a.diff'), '# alpacawork-diff 1\n# source {}\ndiff --git a/x b/x\n');
   const head = await fetch(new URL(`/api/tasks/${task.id}/file?path=a.diff&part=head`, server.url));
   assert.deepEqual([head.status, await head.text()], [200, '# alpacawork-diff 1\n# source {}\n']);
+  assert.equal(head.headers.get('cache-control'), 'no-store');
+  assert.equal(head.headers.get('etag'), null);
   for (const query of ['&part=head', '&part=rows']) assert.equal((await fetch(file(query))).status, 400, query);
   const refused = await fetch(file('&project=web'));
   assert.equal(refused.status, 400);
