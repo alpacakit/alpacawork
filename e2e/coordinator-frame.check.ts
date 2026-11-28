@@ -1,6 +1,8 @@
 
 import type { Page } from '@playwright/test';
 import { test, expect, open, openCoordinator, settleMotion } from './fixtures.ts';
+import { createHash } from 'node:crypto';
+import { coordinatorMessageDigest } from '@alpacawork/contract/coordinator';
 import { configureCoordinator } from './coordinator-fixture.ts';
 
 // On a computer the coordinator (its input and the conversation over it) is moved and sized as one, open or
@@ -31,6 +33,48 @@ test('by the keys alone: the grip moves it, Alt sizes it and opens the conversat
   await expect(page.locator('[data-coordinator-card] > [data-frame-grip]')).toBeFocused();
   await page.keyboard.press('Home');
   expect(await kept(page)).toBeNull();
+});
+
+// Following the end of a conversation of short exchanges, a hand sizing it keeps the latest words where the pane draws
+// them: each frame's new size is followed at once. A glide started on every frame drew the words where they had been,
+// and they shook under the edge.
+test('sized by its far edge while following the end, the conversation does not glide on every frame', async ({ page, runtime }) => {
+  const turn = (i: number) => ({ id: `turn-${i}`, at: new Date(Date.UTC(2026, 9, 1) + i * 60_000).toISOString(), ask: `Request ${i}`,
+    inputDigest: coordinatorMessageDigest({ conversationId: 'short', id: `turn-${i}`, text: `Request ${i}`, attachments: [] }),
+    attachments: [], status: 'succeeded', waiting: false, seen: true, error: null, result: null,
+    answer: `Answer ${i}.\n\n- One point`, answeredAt: new Date(Date.UTC(2026, 9, 1) + i * 60_000 + 30_000).toISOString() });
+  const conversation = { id: 'short', nextLaunch: { agent: 'claude', values: {} }, busy: false, resets: [], context: null,
+    autoReset: { tokens: 200_000, percent: 50 }, earlier: null, turns: Array.from({ length: 12 }, (_, n) => turn(n)) };
+  await page.route('**/api/coordinator', async route => {
+    const reply = await route.fetch();
+    await route.fulfill({ response: reply, json: { ...await reply.json(), conversation, revision: createHash('sha256').update(JSON.stringify(conversation)).digest('hex') } });
+  });
+  await page.addInitScript(() => {
+    const animate = Element.prototype.animate;
+    (window as any).glides = 0;
+    Element.prototype.animate = function (...args: Parameters<typeof animate>) {
+      if ((args[1] as KeyframeAnimationOptions | undefined)?.id === 'reading-glide') (window as any).glides++;
+      return animate.apply(this, args);
+    };
+  });
+  await open(page, runtime, '?agent=1');
+  await openCoordinator(page); await settleMotion(page, undefined, true);
+  // Read down to the end by the wheel, so it follows the end.
+  const area = panel(page).locator('[data-card-scroll]');
+  const inside = (await area.boundingBox())!;
+  await page.mouse.move(inside.x + inside.width / 2, inside.y + inside.height / 2);
+  await page.mouse.wheel(0, 2000);
+  await expect.poll(() => area.evaluate(el => el.scrollHeight - el.clientHeight - el.scrollTop)).toBeLessThan(1);
+  await settleMotion(page);
+  await page.evaluate(() => { (window as any).glides = 0; });
+  const at = await box(page, '[data-frame-edge="far"]'), x = at.x + at.width / 2, y = at.y + at.height / 2;
+  await page.mouse.move(x, y); await page.mouse.down();
+  for (let by = 6; by <= 120; by += 6) { await page.mouse.move(x, y + by); await page.waitForTimeout(16); }
+  await page.mouse.up();
+  await settleMotion(page);
+  expect(await page.evaluate(() => (window as any).glides)).toBe(0);
+  // Still at the end: the latest answer stands over the input.
+  expect(await area.evaluate(el => el.scrollHeight - el.clientHeight - el.scrollTop)).toBeLessThan(1);
 });
 
 // The room the page keeps under the coordinator (--coordinator-dock, on the page's root) is that of the height it

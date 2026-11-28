@@ -171,11 +171,14 @@ export function useThreadPosition(body: HTMLElement, host: HTMLElement | null, a
         // What came in above the followed words (older history read in, an image above taking its height) moved them
         // down: the reading goes down as far, so they stand where they were. Only what grew under them, or a new size of
         // the pane, is followed, and following only ever goes on toward the end, never back; what it follows comes into
-        // sight by gliding there, as far as it moved on screen.
+        // sight by gliding there, as far as it moved on screen. A new size of the pane (a hand on its edge, the pane
+        // gliding to its largest) comes on every frame and is drawn as it goes: it is followed at once, without a glide,
+        // since a glide started on each frame draws the words where they were and they shake under the edge.
         const from = area.scrollTop, said = lastSaid(), above = said && followed?.said === said ? topIn(said) - followed.top : 0;
-        const grown = area.scrollHeight - rememberedHeight - above > 0 || area.clientHeight !== rememberedRoom;
+        const resized = area.clientHeight !== rememberedRoom;
+        const grown = area.scrollHeight - rememberedHeight - above > 0 || resized;
         area.scrollTop = grown ? Math.max(from + above, followTop()) : from + above;
-        glideReading(body, area.scrollTop - from - above);
+        if (!resized) glideReading(body, area.scrollTop - from - above);
       }
       else if (anchor && body.contains(anchor.block)) {
         const text = anchor.text;
