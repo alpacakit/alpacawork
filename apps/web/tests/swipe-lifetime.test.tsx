@@ -101,6 +101,18 @@ test('hiding a flight removes it once and a hidden receipt creates no copy', () 
   card.remove();
 });
 
+test('a card caught on its way back goes on from where it is, and only the finger\'s own way decides', () => {
+  vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(390); // the line at 117px
+  render(<Swipe />);
+  pointer('pointerdown', 50); pointer('pointermove', 210); pointer('pointercancel', 210);
+  // Caught at once, it is still where it was let go (the stand-in animation has not moved it).
+  pointer('pointerdown', 100); pointer('pointermove', 125);
+  expect(document.querySelector('aside')!.style.transform).toContain('translateX(185px)');
+  // 30px of the finger, flicked or not, is short of answering, though the card is drawn past the line.
+  pointer('pointermove', 130); pointer('pointerup', 130);
+  expect(run).not.toHaveBeenCalled();
+});
+
 test('a card let go springs back from where it is, at the speed it was let go, and comes to rest in place', () => {
   const still = settle(150), thrown = settle(150, 1);
   expect(still[0]).toBe(150);

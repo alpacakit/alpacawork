@@ -82,7 +82,8 @@ export function useSwipeAnswer(card: RefObject<HTMLElement | null>, reading: Ref
     const area = reading.current, aside = card.current, mark = stamp.current;
     if (!on || !area || !aside || !mark) return;
     let start: { x: number; y: number; id: number } | null = null;
-    // `from`: where the card was when the finger took it (0, or on its way back); `drawn`: where it is drawn now.
+    // `dx`: how far the finger has gone, which alone decides what letting go does; `from`: where the card was when the
+    // finger took it (0, or on its way back), which it is drawn off by; `drawn`: where it is drawn now.
     let sideways = false, dx = 0, from = 0, drawn = 0, armed = false, refusing = false;
     // A refusal's reason waits for the card to come back; a new press, or the card gone, takes it back.
     let telling: number | undefined;
@@ -129,7 +130,7 @@ export function useSwipeAnswer(card: RefObject<HTMLElement | null>, reading: Ref
       sideways = false; armed = false; refusing = false; action = null;
       clearTimeout(telling);
       // A card still coming back stays where the finger caught it.
-      from = dx = catchUp();
+      dx = 0; from = catchUp();
       if (from) draw(from); else drawn = 0;
       trail = [{ x: event.clientX, t: event.timeStamp }];
     };
@@ -149,19 +150,19 @@ export function useSwipeAnswer(card: RefObject<HTMLElement | null>, reading: Ref
         if (!refusing) { carry(true); mark.dataset.swipe = mx > 0 ? "right" : "left"; }
       }
       event.preventDefault();
-      dx = from + mx;
+      dx = mx;
       trail = [...trail.slice(-1), { x: event.clientX, t: event.timeStamp }];
       const line = reach(aside.offsetWidth);
       aside.style.transition = "none";
       if (refusing) {
         // Held back: carried as an answer is, giving less the further the finger goes, never past half the line.
-        draw(heldBack(dx, line / 2));
+        draw(from + heldBack(dx, line / 2));
         const now = dx >= line;
         if (now !== armed) { armed = now; if (now) navigator.vibrate?.(8); }
         return;
       }
       // The card follows the finger as it is: no curve while it is held.
-      draw(dx);
+      draw(from + dx);
       mark.style.setProperty("--swipe", String(Math.min(1, Math.abs(dx) / line)));
       const now = Math.abs(dx) >= line;
       if (now !== armed) { armed = now; mark.toggleAttribute("data-armed", now); if (now) navigator.vibrate?.(8); }
@@ -175,7 +176,7 @@ export function useSwipeAnswer(card: RefObject<HTMLElement | null>, reading: Ref
       if (refusing) {
         // Held back, the card moves slower than the finger by as much as it is held.
         back(speed * Math.exp(-Math.abs(dx) / (reach(aside.offsetWidth) / 2)));
-        // Past the line (held there or not) or flicked, it says why once the card is back, so nothing moves under it.
+        // Past the line (held there or not) or flicked, it says why once the card is nearly back, so little moves under it.
         if (armed || go) { countUse('swipe.refused'); telling = window.setTimeout(() => latest.current.refuse?.(), duration("base")); }
         return;
       }
