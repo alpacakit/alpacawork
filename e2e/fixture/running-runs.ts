@@ -70,7 +70,7 @@ export async function runningRuns() {
   /** A member on `on`, asked by its owner, with a Run of its own. */
   const member = async (on: Owned, go = true) => {
     const expectedResponsibleRevision = store.write(tx => tx.getPlacement(on.placementId)!.revision);
-    const placement = (await new PlacementCommands(root).placeMember({ taskId: on.id, profileKey: 'fake', expectedTaskHash: (await current(on.id)).hash, expectedResponsibleRevision },
+    const placement = (await new PlacementCommands(root).placeMember({ taskId: on.id, profileKey: 'fake', placedAs: 'default', expectedTaskHash: (await current(on.id)).hash, expectedResponsibleRevision },
       { kind: 'placement', placementId: on.placementId })).placement;
     const runId = accepted(await requests.request({ task: on.id, agent: placement.id, body: 'Help', opId: randomUUID(),
       expectedTaskHash: (await current(on.id)).hash, expectedPlacementRevision: placement.revision }, { kind: 'placement', placementId: on.placementId }, on.run));
