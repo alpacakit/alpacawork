@@ -50,15 +50,15 @@ alpacawork は、AI を連携させて仕事を進めるツール（タスクベ
 
 ### いまの Claude Code や Codex をそのまま使える
 
-いまのログインで、いつものリポジトリからすぐ始められます。専用のアカウントや API キーは不要。`AGENTS.md`、`CLAUDE.md`、スキル、MCP、Hooks もそのまま使えます。GitHub Copilot、Grok Build、pi（ローカルモデル） にも対応（[使う AI](docs/ja/projects.md#使う-ai)）。
+いまのログインで、いつものリポジトリからすぐ始められます。専用のアカウントや API キーは不要。`AGENTS.md`、`CLAUDE.md`、スキル、MCP、Hooks もそのまま使えます。GitHub Copilot、Grok Build、pi（ローカルモデル）にも対応（[使う AI](docs/ja/projects.md#使う-ai)）。
 
 ### あなたの PC で動く
 
-Claude Code や Codex と同じく、あなたの PC で動きます。タスクや会話、成果のファイルは PC に保存され、外部のサーバーに送信されることはありません。（[データの扱い](docs/ja/manage.md#データの置き場と外へ送られるもの)）。
+Claude Code や Codex と同じく、あなたの PC で動きます。タスクや会話、成果のファイルは PC に保存され、外部のサーバーに送信されることはありません（[データの扱い](docs/ja/manage.md#データの置き場と外へ送られるもの)）。
 
 ### AI を替えても続きから再開
 
-エラーや利用上限で止まっても、別の AI（Claude Code → Codex など）に替えて続きから再開できます（[止まったタスク](docs/ja/guide.md#止まったタスク)）。[予備の AI](docs/ja/projects.md#モデルを選ぶ) を選んでおけば、上限で止まったときにも別の AI が自動で立ち上がり作業の続きを行います。
+エラーや利用上限で止まっても、別の AI（Claude Code → Codex など）に替えて続きから再開できます（[止まったタスク](docs/ja/guide.md#止まったタスク)）。[予備の AI](docs/ja/projects.md#モデルを選ぶ) を選んでおけば、上限で止まったときにも別の AI が自動で立ち上がり、作業を続けます。
 
 ### 会話が長くなったら、AI が自分で仕切り直す
 
