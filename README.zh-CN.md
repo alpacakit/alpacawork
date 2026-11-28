@@ -39,7 +39,7 @@
 alpacawork 是一个 AI 编排工具，让你在一个聊天里统一调动电脑上已有的 Claude Code、Codex 等 AI 编程智能体。
 
 - **入口只有一个聊天** — 新的委托，以及对进行中工作的补充或更改，都写在同一个输入框里。与你对接的 AI（协调员）把委托变成任务，交给负责处理的 AI。
-- **沿用现有的 Claude Code 和 Codex** — 用现有的登录状态，在已有的代码仓库文件夹里就能马上开始。不需要 alpacawork 专用的账户或 API 密钥，`AGENTS.md`、`CLAUDE.md`、技能、MCP 和 hooks 也都照常生效。
+- **沿用现有的 Claude Code 和 Codex** — 用现有的登录状态，在已有的代码仓库文件夹里就能马上开始。不需要 alpacawork 专用的账户或 API 密钥，`AGENTS.md`、`CLAUDE.md`、技能、MCP 和 hooks 也都照常生效。也可以使用 GitHub Copilot、Grok Build 和 pi，本地模型可通过 pi 使用（[要使用的 AI](docs/zh-CN/projects.md#要使用的-ai)）。
 - **以任务为单位，而不是对话** — 界面上列出的是你委托的任务。结果和需要你回答的提问都按任务汇总（[设计理念](docs/zh-CN/concept.md#工作以任务为单位推进而不是以对话为单位)）。
 - **用文字描述流程** — 写一句“用三个不同的模型各做一个方案。合并成一个后，让另一个 AI 检查”，各个 AI 就会互相交接着完成。也可以让其他 AI 并行处理进行中的任务。
 - **换了 AI 也能接着做** — AI 因出错或用量上限而停止时，或者工作进行到一半时，都可以换成别的 AI（比如从 Claude Code 换成 Codex）接着做。在设置中选好备选 AI 后，因用量上限而停止时会由备选 AI 接手。

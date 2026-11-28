@@ -42,6 +42,8 @@ La política es algo que la IA se compromete a cumplir, no un mecanismo que la f
 
 Activa las IA que vas a usar en “Ajustes de cada agente” de “Configuración (el engranaje) → IA” y pulsa “Guardar”. Si quieres repartirlas según el trabajo, escríbelo en la política (“Implementación con Codex, revisión con Claude Code”).
 
+Con pi también puedes crear un agente que funcione con un modelo local. Para añadir un modelo o un agente, pídelo en el cuadro de texto y el coordinador lo configura (“Añade un modelo nuevo a Codex”).
+
 Se usan tus suscripciones y configuraciones actuales de las IA tal como están. El coste también es el de tu plan.
 
 ## Elegir el modelo
