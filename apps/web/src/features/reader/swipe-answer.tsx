@@ -36,8 +36,8 @@ export function releaseSpeed(trail: readonly { x: number; t: number }[], at: num
   return (last.x - before.x) / gap;
 }
 
-/** How far the card goes before letting go answers: a third of its width, at most 120px. */
-const reach = (width: number) => Math.min(120, width * 0.3);
+/** How far the card goes before letting go answers: a fifth of its width, at most 88px. */
+const reach = (width: number) => Math.min(88, width * 0.22);
 /** The card carried `dx` sideways: moved and tilted the way it goes, the same for a swipe that answers and one refused. */
 const carried = (dx: number) => `translateX(${dx}px) rotate(${dx / 45}deg)`;
 /** Where a refused card is drawn for a finger `dx` away: held back more the further it goes, never past `give`. */
@@ -138,7 +138,7 @@ export function useSwipeAnswer(card: RefObject<HTMLElement | null>, reading: Ref
       if (!start || event.pointerId !== start.id) return;
       const mx = event.clientX - start.x, my = event.clientY - start.y;
       if (!sideways) {
-        if (Math.hypot(mx, my) < 12) return;
+        if (Math.hypot(mx, my) < 6) return;
         // Only a clearly sideways start is taken; a slanted one is the report's scrolling.
         const actions = latest.current;
         action = mx > 0 ? actions.answer : actions.hold;
@@ -172,7 +172,7 @@ export function useSwipeAnswer(card: RefObject<HTMLElement | null>, reading: Ref
       if (!sideways) return back();
       const speed = releaseSpeed(trail, event.timeStamp);
       const outward = Math.sign(speed) === Math.sign(dx);
-      const go = outward && (armed && Math.abs(speed) > 0.1 || Math.abs(dx) > 40 && Math.abs(speed) > 0.6);
+      const go = outward && (armed && Math.abs(speed) > 0.1 || Math.abs(dx) > 24 && Math.abs(speed) > 0.35);
       if (refusing) {
         // Held back, the card moves slower than the finger by as much as it is held.
         back(speed * Math.exp(-Math.abs(dx) / (reach(aside.offsetWidth) / 2)));

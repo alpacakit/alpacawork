@@ -23,7 +23,7 @@ export const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)"
 export const scrollMotion = (): ScrollBehavior => reducedMotion() ? "auto" : "smooth";
 
 /** The settling spring (styles/motion.css, Swipe): its stiffness as an angular frequency per ms, and its damping ratio. */
-const SPRING = { frequency: 0.022, damping: 0.75 };
+const SPRING = { frequency: 0.03, damping: 0.8 };
 const FRAME = 1000 / 60;
 /**
  * Where something let go `from` px away from its place, moving at `velocity` px/ms, is at each 60th of a second as it

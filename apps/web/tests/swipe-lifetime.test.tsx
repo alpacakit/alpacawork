@@ -114,7 +114,7 @@ test('a card caught on its way back goes on from where it is, and only the finge
 });
 
 test('a card let go springs back from where it is, at the speed it was let go, and comes to rest in place', () => {
-  const still = settle(150), thrown = settle(150, 1);
+  const still = settle(150), thrown = settle(150, 2);
   expect(still[0]).toBe(150);
   expect(still.at(-1)).toBe(0);
   // It starts moving the way the finger did, eases into place and passes it by only a few px.

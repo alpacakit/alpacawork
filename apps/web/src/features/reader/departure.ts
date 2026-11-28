@@ -172,9 +172,9 @@ export function flyAway(answer: Answer, stamp: string, letGo?: number): Flight |
     leave(forward: boolean) {
       if (removed || gone) return;
       const from = shown();
-      // Let go by a finger, it starts at the finger's speed (the fling curve starts at its mean speed), within fast/2..fling.
+      // Let go by a finger, it starts at the finger's speed (the fling curve starts at its mean speed), within fast/2..base.
       const way = Math.abs(awayX - (matrix?.m41 ?? 0));
-      const time = letGo && awayX ? Math.min(cross, Math.max(duration("fast") / 2, way / Math.abs(letGo))) : cross;
+      const time = letGo && awayX ? Math.min(duration("base"), Math.max(duration("fast") / 2, way / Math.abs(letGo))) : cross;
       end(ghost.animate(reduced ? [{ opacity: from }, { opacity: 0 }]
         : [{ transform, opacity: from }, { opacity: from, offset: 0.5 }, { transform: `translate(${awayX}px, ${awayY}px) rotate(${turn}deg)`, opacity: 0 }],
         { duration: reduced ? cross : time, easing: easing(reduced ? "out" : "fling"), fill: "forwards" }));
