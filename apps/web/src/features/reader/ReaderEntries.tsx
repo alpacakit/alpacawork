@@ -12,9 +12,9 @@ import { useReaderIndex } from "@/data/queries";
 
 /**
  * The task's one row of tabs, under its title on every pane, so the title and the way between panes never leave.
- * Drawn as every row of tabs (tabs.tsx). Left, the reader's panes: History (the reports), Context, and Files when the
- * task has any or they are shown, numbered by its deliverables, and Analysis (its causes and timeline); the one shown
- * is marked.
+ * Drawn as every row of tabs (tabs.tsx). Left, the reader's panes: History (the reports), Context, Files, numbered by
+ * its deliverables once its view says them, and Analysis (its causes and timeline); the one shown is marked. Every task
+ * has the same panes: the row is drawn whole from the list's row, so nothing joins it as the task's reads arrive.
  * After a gap, the related lists that open beside what is shown (Task tree, Dependencies), when the task has them; one
  * open is inked, its panel standing under the row.
  * The panes come first so History and Context keep their places from task to task. The row never wraps: where it does
@@ -56,7 +56,7 @@ export function ReaderEntries({ task, detail, pane }: { task: Task; detail: Task
     {/* The page the task's premises are written on. Upright, it stands narrower in its grid than the other marks,
         so it gives that room back to keep the same space beside its word. */}
     <PaneEntry pane="about" shown={pane} icon="file" iconClassName="-mx-0.5" label={t("entries.context")} />
-    {(!!detail?.files.length || pane === "files") && <PaneEntry pane="files" shown={pane} icon="folder" label={t("entries.files")} count={deliverables ? t("entries.count", { count: deliverables }) : undefined} />}
+    <PaneEntry pane="files" shown={pane} icon="folder" label={t("entries.files")} count={deliverables ? t("entries.count", { count: deliverables }) : undefined} />
     <PaneEntry pane="analysis" shown={pane} icon="activity" label={t("entries.analysis")} />
     <RelatedEntries task={task} />
   </div>;
