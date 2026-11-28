@@ -30,6 +30,8 @@ export const TITLE_COLUMN_TIGHT = 330;
  */
 export const titleColumnWidth = (sheet: number) =>
   sheet < 900 ? TITLE_COLUMN_TIGHT : Math.min(480, Math.max(360, Math.round(sheet * 0.34)));
+/** The least the time strip is drawn at beside the titles and the speed column: now and a little before it. */
+export const STRIP_FLOOR = 120;
 /** The least of the time strip the list keeps beside its titles: now, the reports expected after it and a little before. */
 const LEAST_STRIP_WIDTH = 200;
 /** The list's insets around them: 24px at its left, 36px between it and the reader (Workbench). */

@@ -44,7 +44,7 @@ import { useNarrow, useViewStore } from "@/state/view-store";
 import { ListScroll } from "@/features/shell/ListScroll";
 import { BarRoom } from "@/features/chrome/Bar";
 import { cn } from "@/lib/utils";
-import { titleColumnWidth } from "@/state/screen-settings";
+import { STRIP_FLOOR, titleColumnWidth } from "@/state/screen-settings";
 import { useListWidth } from "@/lib/use-list-width";
 import { atOf, EDGE_HALO, EdgeLayer, buildAxis, futureBandWidth, futureWords, type FutureWords, Ground, StripGround, Lane, laneMarks, lineOf, lineReports, ProbeRule, shownScaleMs, stretchReport, stripAxis, stripKeys, TimeClock, clockHeight, textScale, rowTurn, TurnEdge, wordsW, type RowTurn, useStrip, useStripProbe, showZoom, StripPress, wholeIn, xOf, type Level, type MarkAt, type Piece, type Scale } from "./time-line";
 import { drawnTaskIds, useListNavigationSource } from "./list-navigation";
@@ -353,8 +353,8 @@ export function TimeTree({ entering = false }: { entering?: boolean }) {
   const list = useListWidth(box, 1200), { width: sheet, zoomWidth } = list;
   // The title column: narrower when the sheet itself is narrow (the detail is open beside it), so the time keeps its room.
   // Beside it, before the time, the column of the In progress rows' output speed (speedLane).
-  const lane = narrow || !strips || sheet < 600 ? 0 : speedLane(sheet);
-  const lead = narrow ? 0 : Math.min(titleColumnWidth(sheet) + lane, Math.max(0, sheet - 120));
+  const lane = narrow || !strips ? 0 : speedLane(sheet);
+  const lead = narrow ? 0 : Math.min(titleColumnWidth(sheet) + lane, Math.max(0, sheet - STRIP_FLOOR));
   // The width the zoom is for (useStrip): a reader past half the screen only hides the strip's oldest part.
   const laid = Math.max(sheet, zoomWidth) - lead;
   // Hidden strips need only the clock-width minimum, not each row's end prediction.
@@ -365,11 +365,11 @@ export function TimeTree({ entering = false }: { entering?: boolean }) {
   });
   const futureWidth = futureBandWidth(futureLabels);
   // All of time is drawn from the zoom that shows the history; the strip zooms out from it until all of it is in sight.
-  const viewMs = chosen === "all" ? showZoom(earliest, now, Math.max(120, sheet - lead), Math.max(120, laid), futureWidth).viewMs
+  const viewMs = chosen === "all" ? showZoom(earliest, now, Math.max(STRIP_FLOOR, sheet - lead), Math.max(STRIP_FLOOR, laid), futureWidth).viewMs
     : chosen ?? 24 * 3_600_000;
   const from = startAt(viewMs);
   // A fitted axis can enlarge linear time after long quiet gaps fold. Use its scale near now as well as the zoom scale.
-  const fitted = buildAxis(from, now, now, axisBusy, Math.max(120, sheet - lead), viewMs);
+  const fitted = buildAxis(from, now, now, axisBusy, Math.max(STRIP_FLOOR, sheet - lead), viewMs);
   const tail = fitted.at(-1);
   const fittedPerMs = tail && tail.to > tail.from ? (tail.x1 - tail.x0) / (tail.to - tail.from) : 0;
   // Keep 2px of rounding room so the last pixel stays inside the future band.

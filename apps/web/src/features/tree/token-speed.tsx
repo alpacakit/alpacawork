@@ -19,6 +19,7 @@ import type { Task } from "@/data/types";
 import { useWorkspaceSelector, useWorkspaceStore, type WorkspaceData } from "@/data/workspace-store";
 import { runningRunsSaid } from "@/domain/row-status";
 import { cn } from "@/lib/utils";
+import { STRIP_FLOOR, titleColumnWidth } from "@/state/screen-settings";
 
 /** The one second clock the speed cells share, in Unix seconds as the ledgers count; it runs only while a cell shows. */
 let second = Math.floor(Date.now() / 1000);
@@ -150,15 +151,20 @@ function rowTip(t: (key: string, options?: Record<string, unknown>) => string, r
 }
 
 /**
- * The speed column at the title column's end, before the row's time: a number and the minute's bars, or the number alone
- * beside a narrow list. Its width is its number's slot, the gap and the bars, and the room before the time (pr-2; a
- * step more, pr-3, beside a narrow list, where no bars stand between): nothing left over on either side.
+ * The speed column at the title column's end, before the row's time: a number and the minute's bars, or the number alone.
+ * Its width is its number's slot, the gap and the bars, and the room before the time (pr-2; a step more, pr-3, with the
+ * number alone, where no bars stand between): nothing left over on either side.
  */
 export const SPEED_LANE = 92;
 const COMPACT_LANE = 40;
-/** A list narrower than this (the detail open beside it) keeps its time strip's room with the number alone; under 600px there is no column. */
-const FULL_LANE_SHEET = 900;
-export const speedLane = (sheet: number) => sheet < FULL_LANE_SHEET ? COMPACT_LANE : SPEED_LANE;
+/**
+ * The widest speed column that leaves the time strip its floor beside the titles: the strip gives up its room first,
+ * then the bars go, then the number; 0 when not even the number fits.
+ */
+export function speedLane(sheet: number) {
+  const strip = sheet - titleColumnWidth(sheet);
+  return [SPEED_LANE, COMPACT_LANE].find((lane) => strip - lane >= STRIP_FLOOR) ?? 0;
+}
 
 /** One cell of the speed column, in every row and heading alike, so the numbers stand in one column. */
 export function SpeedLane({ width, className, children }: { width: number; className?: string; children?: ReactNode }) {
