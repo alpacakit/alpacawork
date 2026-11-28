@@ -11,8 +11,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { RunStore } from '@alpacawork/runs';
 import { CoordinatorConversation } from '@alpacawork/backend/test-dist/coordinator/conversation.js';
-import { saveCoordinatorAttachment, readCoordinatorAttachment, coordinatorFilePath } from '@alpacawork/backend/test-dist/coordinator/files.js';
+import { saveCoordinatorAttachment, coordinatorFilePath } from '@alpacawork/backend/test-dist/coordinator/files.js';
 import { reserveAttempt } from '@alpacawork/backend/test-dist/runs/execution-control.js';
+import { FileJournal } from '@alpacawork/backend/test-dist/control/file-journal.js';
 import { startServer } from '@alpacawork/backend/test-dist/receiver/server.js';
 import { initializeControlFixture } from './helpers/control-fixture.ts';
 const config = stringify({ agents: { "fake": fixtureAgentSetting('codex') } });
@@ -89,7 +90,7 @@ for (const accepted of [false, true]) test(`${accepted ? 'queued' : 'unreceived'
     assert.throws(()=>f.conversation.attachments(f.cid,[id],()=>assert.fail('sent files are owned')),reason('sent_attachments_cannot_changed'));
   }
   f.conversation.withdraw(f.cid, id); f.conversation.sweepAttachments();
-  assert.equal(f.conversation.readAttachment(id, cid => readCoordinatorAttachment(f.root, cid, id, name)).toString(), 'keep');
+  assert.equal(f.conversation.readAttachment(id, cid => new FileJournal(f.root).readManagedFile(coordinatorFilePath(cid, id, name))).toString(), 'keep');
   assert.equal(f.conversation.attachments(f.cid,[id],()=> 'draft-owned'),'draft-owned','withdrawal returns attachment ownership to the draft');
   assert.equal(f.conversation.attachments(f.cid,[randomUUID(),id],()=> 'movable'),'movable');
   f.conversation.clear(f.cid); f.conversation.sweepAttachments();
