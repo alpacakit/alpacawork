@@ -263,6 +263,12 @@ test("a home child owns a row of its own; the title opens the detail", () => {
   expect(useViewStore.getState()).toMatchObject({ selected: "T1", reader: { open: true } });
 });
 
+test("a press on the row's words outside the title and its controls opens the detail too", () => {
+  const { container } = list();
+  fireEvent.click(head(container, "T11").querySelector("[data-row-end]")!);
+  expect(useViewStore.getState()).toMatchObject({ selected: "T11", reader: { open: true } });
+});
+
 test("Not started stays open and lists only the rows the server lists, a parent with the count of its children", async () => {
   await act(async () => { await i18n.changeLanguage("en"); });
   const { container } = render(<TestWorkspace data={screenData(tree({ tasks: [dto({ state: "todo" }),
