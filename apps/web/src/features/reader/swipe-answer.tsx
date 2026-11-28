@@ -4,7 +4,7 @@ import { useReaderTurnHeld, useReaderCard, type ReaderAdmission } from "./next-q
 import { useLayoutEffect, useRef, type RefObject } from "react";
 import { Icon } from "@/components/ui/icon";
 import type { IconName } from "@/components/ui/icon";
-import { duration, easing } from "@/lib/motion";
+import { duration, reducedMotion, settle, settleTime } from "@/lib/motion";
 import { fingerMark, offerWhileFree, playSteps, SHOW_STEPS } from "@/lib/show-how";
 import { stampInk, stampPaper, stampWords } from "./stamp";
 import { cn } from "@/lib/utils";
@@ -40,6 +40,8 @@ export function releaseSpeed(trail: readonly { x: number; t: number }[], at: num
 const reach = (width: number) => Math.min(120, width * 0.3);
 /** The card carried `dx` sideways: moved and tilted the way it goes, the same for a swipe that answers and one refused. */
 const carried = (dx: number) => `translateX(${dx}px) rotate(${dx / 45}deg)`;
+/** Where a refused card is drawn for a finger `dx` away: held back more the further it goes, never past `give`. */
+const heldBack = (dx: number, give: number) => Math.sign(dx) * give * (1 - Math.exp(-Math.abs(dx) / give));
 
 /**
  * A press that starts where sideways movement already means something (a field, a wide code block, a slider), or on a
@@ -63,8 +65,11 @@ function ownsSideways(target: EventTarget | null, area: HTMLElement) {
  * and reports alike): right confirms a review by direct report, or
  * sends a question's answer through the coordinator's input. Left holds by direct report through useHoldAction.
  * Up and down stay the report's scrolling: a press is only taken once it clearly goes sideways (the reader's content
- * leaves the browser only up and down and pinching while its card can be swiped: Reader, `swipeable`). A card let go short of the line comes back, and so does one held still before letting go, even past
- * the line: only a finger still moving outward answers. The stamp of that side (SwipeStamp, `stamp`) shows with the
+ * leaves the browser only up and down and pinching while its card can be swiped: Reader, `swipeable`). A card let go
+ * short of the line comes back, and so does one held still before letting go, even past the line: only a finger still
+ * moving outward answers. Coming back, it springs into place from where it was let go at the finger's speed (settle),
+ * and a finger that catches it on the way carries it from where it is. One that answers leaves at the finger's speed
+ * (departure.ts, given the speed in `data-carried`). The stamp of that side (SwipeStamp, `stamp`) shows with the
  * finger and is pressed in at the line. With no answer on the right (`refuse`), the card still follows the finger, held
  * back more the further it goes, with no stamp; let go past the line or flicked as it would answer, it comes back and
  * then says why. Let go short of the line, it only comes back.
@@ -77,33 +82,55 @@ export function useSwipeAnswer(card: RefObject<HTMLElement | null>, reading: Ref
     const area = reading.current, aside = card.current, mark = stamp.current;
     if (!on || !area || !aside || !mark) return;
     let start: { x: number; y: number; id: number } | null = null;
-    let sideways = false, dx = 0, armed = false, refusing = false;
+    // `from`: where the card was when the finger took it (0, or on its way back); `drawn`: where it is drawn now.
+    let sideways = false, dx = 0, from = 0, drawn = 0, armed = false, refusing = false;
     // A refusal's reason waits for the card to come back; a new press, or the card gone, takes it back.
     let telling: number | undefined;
     let trail: { x: number; t: number }[] = [];
     let action: SwipeAction | null = null;
+    // The card on its way back, and where it is on that way at a time on the page's clock.
+    let settling: { animation: Animation; path: number[] } | null = null;
     const hide = () => { delete mark.dataset.swipe; delete mark.dataset.armed; mark.style.removeProperty("--swipe"); };
     // The card is carried by the finger: let go, it goes on at once (departure.ts), its words shown with the finger.
     const carry = (on: boolean) => aside.toggleAttribute("data-carried", on);
+    const draw = (x: number) => { drawn = x; aside.style.transform = carried(x); };
+    /** Where a card on its way back is now; it stops there. */
+    const catchUp = () => {
+      if (!settling) return 0;
+      const { animation, path } = settling;
+      const frame = Math.min(path.length - 1, Math.max(0, Number(animation.currentTime ?? 0)) / settleTime(path) * (path.length - 1));
+      const below = Math.floor(frame), x = path[below]! + (path[Math.ceil(frame)]! - path[below]!) * (frame - below);
+      animation.cancel(); settling = null;
+      return x;
+    };
     const reset = () => {
       const pointer = start?.id;
       start = null; sideways = false;
       clearTimeout(telling);
       if (pointer !== undefined && area.hasPointerCapture?.(pointer)) area.releasePointerCapture(pointer);
+      settling?.animation.cancel(); settling = null;
       aside.style.removeProperty('transform');
       aside.style.removeProperty('transition');
       carry(false); hide();
     };
-    const back = () => {
-      reset();
-      // A card let go comes back to its place (a move within its place: base duration, out easing).
-      aside.style.transition = `transform ${duration("base")}ms ${easing("out")}`;
+    /** Let go: the card springs back into place from where it is drawn, moving at `speed` (px/ms) as it starts. */
+    const back = (speed = 0) => {
+      const x = drawn;
+      reset(); drawn = 0;
+      if (Math.abs(x) < 0.5 || reducedMotion() || typeof aside.animate !== "function") return;
+      const path = settle(x, speed);
+      const animation = aside.animate(path.map(each => ({ transform: carried(each) })), { duration: settleTime(path), easing: "linear" });
+      settling = { animation, path };
+      void animation.finished.then(() => { if (settling?.animation === animation) settling = null; }, () => {});
     };
     const down = (event: PointerEvent) => {
       if (event.pointerType !== "touch" || !event.isPrimary || ownsSideways(event.target, area)) return;
       start = { x: event.clientX, y: event.clientY, id: event.pointerId };
-      sideways = false; dx = 0; armed = false; refusing = false; action = null;
+      sideways = false; armed = false; refusing = false; action = null;
       clearTimeout(telling);
+      // A card still coming back stays where the finger caught it.
+      from = dx = catchUp();
+      if (from) draw(from); else drawn = 0;
       trail = [{ x: event.clientX, t: event.timeStamp }];
     };
     const move = (event: PointerEvent) => {
@@ -115,52 +142,54 @@ export function useSwipeAnswer(card: RefObject<HTMLElement | null>, reading: Ref
         const actions = latest.current;
         action = mx > 0 ? actions.answer : actions.hold;
         refusing = !action && mx > 0 && !!actions.refuse;
-        if (Math.abs(mx) < Math.abs(my) * 1.5 || !action && !refusing || getSelection()?.toString()) { start = null; return; }
+        if (Math.abs(mx) < Math.abs(my) * 1.5 || !action && !refusing || getSelection()?.toString()) { back(); return; }
         sideways = true;
         area.setPointerCapture(event.pointerId);
         // A refused card is not carried off (departure.ts) and shows no stamp.
         if (!refusing) { carry(true); mark.dataset.swipe = mx > 0 ? "right" : "left"; }
       }
       event.preventDefault();
-      dx = mx;
+      dx = from + mx;
       trail = [...trail.slice(-1), { x: event.clientX, t: event.timeStamp }];
       const line = reach(aside.offsetWidth);
       aside.style.transition = "none";
       if (refusing) {
         // Held back: carried as an answer is, giving less the further the finger goes, never past half the line.
-        const give = line / 2;
-        aside.style.transform = carried(Math.sign(dx) * give * (1 - Math.exp(-Math.abs(dx) / give)));
+        draw(heldBack(dx, line / 2));
         const now = dx >= line;
         if (now !== armed) { armed = now; if (now) navigator.vibrate?.(8); }
         return;
       }
       // The card follows the finger as it is: no curve while it is held.
-      aside.style.transform = carried(dx);
+      draw(dx);
       mark.style.setProperty("--swipe", String(Math.min(1, Math.abs(dx) / line)));
       const now = Math.abs(dx) >= line;
       if (now !== armed) { armed = now; mark.toggleAttribute("data-armed", now); if (now) navigator.vibrate?.(8); }
     };
     const up = (event: PointerEvent) => {
       if (!start || event.pointerId !== start.id) return;
-      if (!sideways) return reset();
+      if (!sideways) return back();
       const speed = releaseSpeed(trail, event.timeStamp);
       const outward = Math.sign(speed) === Math.sign(dx);
       const go = outward && (armed && Math.abs(speed) > 0.1 || Math.abs(dx) > 40 && Math.abs(speed) > 0.6);
       if (refusing) {
-        back();
+        // Held back, the card moves slower than the finger by as much as it is held.
+        back(speed * Math.exp(-Math.abs(dx) / (reach(aside.offsetWidth) / 2)));
         // Past the line (held there or not) or flicked, it says why once the card is back, so nothing moves under it.
         if (armed || go) { countUse('swipe.refused'); telling = window.setTimeout(() => latest.current.refuse?.(), duration("base")); }
         return;
       }
       hide();
-      if (!go || !action) return back();
+      if (!go || !action) return back(speed);
       // Eligibility may have changed while the finger was down (recording, upload, sending, task update).
       const current = dx > 0 ? latest.current.answer : latest.current.hold;
-      if (!current || current.kind !== action.kind) return back();
+      if (!current || current.kind !== action.kind) return back(speed);
       // The gesture owns the live transform only while the finger is down. Sending owns its eventual admission;
       // a copy already made by a synchronous retirement keeps its own geometry independently of this cleanup.
+      // The copy leaves at the finger's speed, read from here when it is made.
+      aside.dataset.carried = String(speed);
       let admission: ReaderAdmission = 'rejected';
-      try { admission = current.run(); } finally { if (admission === 'retired') reset(); else back(); }
+      try { admission = current.run(); } finally { if (admission === 'retired') { reset(); drawn = 0; } else back(speed); }
       // As the button and Enter count, only a swipe that was taken; one refused is swipe.refused's.
       if (admission !== 'rejected') countUse(SWIPE_USE[current.kind]);
     };

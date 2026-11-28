@@ -18,7 +18,7 @@ let holding: Flight | null = null;
  * real reader under it already shows the next card, which comes forward from the deck as the copy goes (styles.css,
  * Stamp). Every way of answering leaves through here, so the words are always shown for the same time and in the same
  * rhythm; nothing waits on delivery. The submission was saved locally before this copy was made. A
- * card whose stamp was previewed with the finger goes on at once from that release pose. With reduced motion the stamp fades in, holds the same, and the copy fades. The copy
+ * card whose stamp was previewed with the finger goes on at once from that release pose, at the finger's speed. With reduced motion the stamp fades in, holds the same, and the copy fades. The copy
  * is decoration: it takes no input and removes itself; while it holds, it keeps presses from reaching the next card it
  * covers: a second click of the same button does nothing, and a press after the stamp has landed, or a key outside a
  * field, sends the copy off at once.
@@ -28,10 +28,18 @@ let flights = 0;
 /** Whether an answered card's copy is on the page now, held or flying: the reader has already shown it leaving. */
 export const cardFlying = () => flights > 0;
 
-/** Captured when submission starts, before the gesture releases the live panel's pose. */
-export const departurePreviewed = () => !!document.querySelector('aside[data-reader-mode][data-carried]');
+/**
+ * The finger's speed (px/ms) as it let go of the card it carries, or undefined when no finger carries it (swipe-answer
+ * writes it in `data-carried`). Captured when submission starts, before the gesture releases the live panel's pose.
+ */
+export const departureRelease = () => {
+  const speed = document.querySelector('aside[data-reader-mode][data-carried]')?.getAttribute('data-carried');
+  return speed == null ? undefined : Number(speed) || 0;
+};
 
-export function flyAway(answer: Answer, stamp: string, previewed = false): Flight | null {
+/** `letGo`: the finger's speed as it let go of a card it carried (departureRelease); a card let go is not held. */
+export function flyAway(answer: Answer, stamp: string, letGo?: number): Flight | null {
+  const previewed = letGo !== undefined;
   const card = document.querySelector<HTMLElement>("aside[data-reader-mode]");
   if (!card) return null;
   holding?.leave(false);
@@ -164,9 +172,12 @@ export function flyAway(answer: Answer, stamp: string, previewed = false): Fligh
     leave(forward: boolean) {
       if (removed || gone) return;
       const from = shown();
+      // Let go by a finger, it starts at the finger's speed (the fling curve starts at its mean speed), within fast/2..fling.
+      const way = Math.abs(awayX - (matrix?.m41 ?? 0));
+      const time = letGo && awayX ? Math.min(cross, Math.max(duration("fast") / 2, way / Math.abs(letGo))) : cross;
       end(ghost.animate(reduced ? [{ opacity: from }, { opacity: 0 }]
         : [{ transform, opacity: from }, { opacity: from, offset: 0.5 }, { transform: `translate(${awayX}px, ${awayY}px) rotate(${turn}deg)`, opacity: 0 }],
-        { duration: cross, easing: easing(reduced ? "out" : "fling"), fill: "forwards" }));
+        { duration: reduced ? cross : time, easing: easing(reduced ? "out" : "fling"), fill: "forwards" }));
       if (forward && !reduced && card.isConnected) card.animate([{ transform: "translateY(10px) scale(.965)", opacity: 0.85 }, { transform: "none", opacity: 1 }],
         { duration: cross, easing: easing("out"), fill: "backwards" });
     },

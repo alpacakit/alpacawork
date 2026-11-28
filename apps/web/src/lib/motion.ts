@@ -22,6 +22,26 @@ export const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)"
 /** How a jump scrolls: glides, or goes at once under reduced motion (a script's smooth scroll ignores the CSS rule). */
 export const scrollMotion = (): ScrollBehavior => reducedMotion() ? "auto" : "smooth";
 
+/** The settling spring (styles/motion.css, Swipe): its stiffness as an angular frequency per ms, and its damping ratio. */
+const SPRING = { frequency: 0.022, damping: 0.75 };
+const FRAME = 1000 / 60;
+/**
+ * Where something let go `from` px away from its place, moving at `velocity` px/ms, is at each 60th of a second as it
+ * springs back: from `from` to 0, one value per frame, the last one 0. Still at its place, it has nowhere to go ([0]).
+ */
+export function settle(from: number, velocity = 0) {
+  const { frequency: w, damping: z } = SPRING;
+  const wd = w * Math.sqrt(1 - z * z), b = (velocity + z * w * from) / wd;
+  const at = (t: number) => Math.exp(-z * w * t) * (from * Math.cos(wd * t) + b * Math.sin(wd * t));
+  const path = [];
+  // Done once it stays within half a pixel: the bound of the spring's swing from here on.
+  for (let t = 0; Math.exp(-z * w * t) * Math.hypot(from, b) >= 0.5; t += FRAME) path.push(at(t));
+  path.push(0);
+  return path;
+}
+/** How long a settle() path takes, in ms. */
+export const settleTime = (path: readonly number[]) => (path.length - 1) * FRAME;
+
 const canAnimate = (element: Element | null): element is HTMLElement | SVGElement =>
   !!element && typeof element.animate === "function" && !element.ownerDocument.hidden;
 

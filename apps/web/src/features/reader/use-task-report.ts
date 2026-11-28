@@ -16,7 +16,7 @@ import type { StateChoice } from '@/domain/tasks';
 import type { PeopleIndex } from '@/domain/people';
 import { acceptedInReader, onScreen, useReaderTurnHeld, type ReaderCard, type ReaderAdmission } from './next-question';
 import { readerTurn } from './submission';
-import { departurePreviewed, readerActionsHeld } from './departure';
+import { departureRelease, readerActionsHeld } from './departure';
 import { notify } from '@/lib/notify';
 import { rememberSent } from '@/features/coordinator/sent-here';
 
@@ -102,7 +102,7 @@ export function useTaskReportTarget(opening: ReportOpening, card: ReaderCard | n
             return held?.operationId === record.operationId ? held.status === 'waiting' ? 'pending' : held.status === 'cancelled' ? 'refused' : held.status : 'refused' as const;
           };
           if (acceptedInReader(card, task.id, task.ball, { id: record.operationId, turn: record.reader!.turn,
-            answer, previewed: departurePreviewed(), admitted: () => current() === 'confirmed', status: current })) admission = 'retired';
+            answer, release: departureRelease(), admitted: () => current() === 'confirmed', status: current })) admission = 'retired';
         },
       }); } catch (error) {
       return reject(error instanceof ApiError ? error : new ApiError(String(error), 'invalid_input', 'fix'));
