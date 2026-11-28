@@ -48,8 +48,8 @@ export function MessageDelivery({ turn, local, children, panel = false }: { turn
   // What the message is doing on its way, said once wherever its row is drawn.
   // On its way it shows the same mark as the work it goes to, in the same box, so only the words change from here on.
   const words = control === 'withdrawing' || control === 'handing' || control === 'requested'
-    ? <span role="status" title={control === 'requested' ? t('coordinatorCard.sendNowHint') : undefined} className="inline-flex items-center gap-1.5 text-muted">
-      <WorkMark />{control === 'withdrawing' ? t('coordinatorCard.withdrawing') : t('coordinatorCard.posting')}</span> : null;
+    ? <span role="status" title={control === 'requested' ? t('coordinatorCard.sendNowHint') : undefined} className="inline-flex min-h-lh items-center gap-1.5 text-muted">
+      <WorkMark /><span className="cap-box">{control === 'withdrawing' ? t('coordinatorCard.withdrawing') : t('coordinatorCard.posting')}</span></span> : null;
   const status = outcome && (!panel || ['unknown', 'refused', 'cancelled'].includes(outcome.stage))
     ? <LocalOutcome turn={outcome} cancellation={inlineCancellation ? 'inline' : 'external'} /> : null;
   // At work, what the work is doing and for how long is the turn's own work (TurnWork), drawn beside this line.
@@ -70,7 +70,7 @@ export function MessageDelivery({ turn, local, children, panel = false }: { turn
       {panel && words && <span className="px-1.5">{words}</span>}
       {control === 'send-now' && <button type="button" data-coordinator-send-now data-action-focus-target="send-now" disabled={disabled} title={t("coordinatorCard.sendNowHint")}
           onClick={() => void act("send-now")} className={cn("group/send-now inline-flex h-7 items-center gap-1 rounded-sm px-1.5 hover:bg-hover disabled:opacity-40 narrow:h-11", !panel && "text-muted hover:text-ink")}>
-          <Icon name="up" className="size-3.5" /><span className={cn(!panel && "underline decoration-line underline-offset-3 group-hover/send-now:decoration-ink group-disabled/send-now:no-underline")}>{t("coordinatorCard.sendNow")}</span></button>}
+          <Icon name="up" className="size-3.5" /><span className={cn("cap-box", !panel && "underline decoration-line underline-offset-3 group-hover/send-now:decoration-ink group-disabled/send-now:no-underline")}>{t("coordinatorCard.sendNow")}</span></button>}
       {withdrawHere && <button type="button" data-coordinator-withdraw data-action-focus-target="withdraw" aria-label={t("coordinatorCard.withdraw")} title={t("coordinatorCard.withdraw")}
         disabled={mode === 'server' && disabled} onClick={() => void act("withdraw")}
         className="grid size-7 place-items-center rounded-sm text-muted hover:bg-hover hover:text-ink disabled:opacity-40 narrow:size-11">

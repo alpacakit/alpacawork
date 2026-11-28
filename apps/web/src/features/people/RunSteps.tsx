@@ -22,14 +22,18 @@ const ITEM_NAMES: Record<string, string> = { command_execution: "Bash", file_cha
 const toolName = (tool: string) => ITEM_NAMES[tool] ?? tool;
 /** A file's name is at the end of its path: cut short, these lose their start. */
 const atEnd = (kind: string) => kind === "file" || kind === "edit";
-/** What was run, on one line as written: its spaces kept, cut at the end. */
-const ONE_LINE = "min-w-0 overflow-hidden text-ellipsis whitespace-pre font-mono";
+/** What was run, on one line as written: its spaces kept, cut at the end, boxed to its capitals (cut across only). */
+const ONE_LINE = "cap-box min-w-0 overflow-x-clip text-ellipsis whitespace-pre font-mono";
 /** What it ran keeps at least a few letters in sight on one line, however long the tool's name and the agent's words. */
 const TARGET = "flex-1 min-w-[8ch]";
-/** A step's one line: as high with a command's monospace as with the agent's words, its parts centred on it. */
-const LINE = "flex min-w-0 items-center gap-1.5";
+/**
+ * A step's one line, a line high whatever it holds. Its words are boxed to their capitals (cap-box, cap-truncate), so
+ * centring its parts centres the letters as drawn: the agent's words, a command's monospace, the marks and the chevron
+ * beside them stand on one middle, whichever fonts draw them and whatever their size.
+ */
+const LINE = "flex min-h-lh min-w-0 items-center gap-1.5";
 /** A tool's name gives way before what it ran: it never takes more than this of the line. */
-const TOOL = "max-w-[40%] flex-none truncate text-muted";
+const TOOL = "max-w-[40%] flex-none cap-truncate text-muted";
 
 /**
  * An agent at work: three dots go once round, gather into one and part again. It says only that the agent is going,
@@ -60,14 +64,14 @@ const sameLine = (a: { line: Line }, b: { line: Line }) => a.line.tool === b.lin
  */
 const LineWords = memo(function LineWords({ line }: { line: Line }) {
   const { t } = useTranslation("people");
-  if (line.about) return <span dir="auto" className="min-w-0 flex-1 truncate">{line.about}</span>;
+  if (line.about) return <span dir="auto" className="min-w-0 flex-1 cap-truncate">{line.about}</span>;
   const command = line.kind === "command";
   return <>
-    {command ? <span aria-hidden className="flex-none font-mono text-muted">$</span> : <span className={TOOL}>{toolName(line.tool)}</span>}
+    {command ? <span aria-hidden className="flex-none cap-box font-mono text-muted">$</span> : <span className={TOOL}>{toolName(line.tool)}</span>}
     {atEnd(line.kind)
       ? <span dir="rtl" className={cn(ONE_LINE, TARGET, "text-left")}><bdi>{line.text}</bdi></span>
       : <span dir="auto" className={cn(ONE_LINE, TARGET)}>{line.text}</span>}
-    {line.more > 0 && <span className="flex-none text-muted">{t("now.step.moreLines", { count: line.more })}</span>}
+    {line.more > 0 && <span className="flex-none cap-box text-muted">{t("now.step.moreLines", { count: line.more })}</span>}
   </>;
 }, sameLine);
 
@@ -80,11 +84,11 @@ export function WorkLine({ step, idle, label, end, className, ...data }: { step:
   [data: `data-${string}`]: true | undefined }) {
   if (!step && !idle && !label) return null;
   // Centred, not on one baseline: words and a command's monospace sit on different baselines, which would make a line
-  // with a command a pixel taller than one without (LINE).
+  // with a command a pixel taller than one without; their capitals centre instead (LINE).
   return <div data-work-line {...data} className={cn(LINE, "text-soft", className)}>
     <WorkMark />
-    {label !== undefined ? <span className="min-w-0 flex-1 truncate">{label}</span>
-      : step ? <LineWords line={step} /> : <span className="min-w-0 flex-1 truncate">{idle}</span>}
+    {label !== undefined ? <span className="min-w-0 flex-1 cap-truncate">{label}</span>
+      : step ? <LineWords line={step} /> : <span className="min-w-0 flex-1 cap-truncate">{idle}</span>}
     {end}
   </div>;
 }
@@ -268,9 +272,11 @@ const StepRow = memo(function StepRow({ run, step, generation, open, toggle, aga
   }, [shown]);
   return <li ref={item} data-run-step={step.state} className="min-w-0">
     <button type="button" aria-expanded={open} onClick={event => toggle(step, event.currentTarget)}
-      className="flex w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-sm py-0.5 text-left text-soft outline-none hover:text-ink focus-visible:outline-2 focus-visible:outline-ring narrow:py-1.5">
-      <span data-run-step-mark className={cn("w-2.5 flex-none text-center font-sans", step.state === "failed" ? "text-error" : step.state === "running" ? "text-working motion-safe:animate-pulse" : "text-muted")}>
-        <span aria-hidden>{step.state === "running" ? "●" : step.state === "failed" ? "✗" : step.state === "unknown" ? "?" : "✓"}</span>
+      className="box-content flex min-h-lh w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-sm py-0.5 text-left text-soft outline-none hover:text-ink focus-visible:outline-2 focus-visible:outline-ring narrow:py-1.5">
+      <span data-run-step-mark className={cn("w-2.5 flex-none cap-box text-center font-sans", step.state === "failed" ? "text-error" : step.state === "running" ? "text-working motion-safe:animate-pulse" : "text-muted")}>
+        {/* The running step's dot is drawn, not a character: a ● sits where its font puts it, the row centres a box. */}
+        {step.state === "running" ? <span aria-hidden className="mx-auto block size-1.25 rounded-full bg-current" />
+          : <span aria-hidden>{step.state === "failed" ? "✗" : step.state === "unknown" ? "?" : "✓"}</span>}
         <span className="sr-only">{step.state === "running" ? t("now.step.state.running") : step.state === "failed" ? t("now.step.state.failed")
           : step.state === "unknown" ? t("now.step.state.unknown") : t("now.step.state.done")}</span></span>
       <LineWords line={step} />
