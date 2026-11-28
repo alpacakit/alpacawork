@@ -46,7 +46,7 @@ import { BarRoom } from "@/features/chrome/Bar";
 import { cn } from "@/lib/utils";
 import { listColumns, SPEED_LANE } from "@/state/screen-settings";
 import { useListWidth } from "@/lib/use-list-width";
-import { atOf, EDGE_HALO, EdgeLayer, buildAxis, futureBandWidth, futureWords, type FutureWords, Ground, StripGround, Lane, laneMarks, lineOf, lineReports, ProbeRule, shownScaleMs, stretchReport, stripAxis, stripKeys, TimeClock, clockHeight, textScale, rowTurn, TurnEdge, wordsW, type RowTurn, useStrip, useStripProbe, showZoom, MARK_REACH, StripPress, wholeIn, xOf, type Level, type MarkAt, type Piece, type Scale } from "./time-line";
+import { atOf, EDGE_HALO, EdgeLayer, buildAxis, futureBandWidth, futureWords, type FutureWords, Ground, StripGround, Lane, laneMarks, lineOf, lineReports, ProbeRule, shownScaleMs, stretchReport, stripAxis, stripKeys, TimeClock, clockHeight, textScale, rowTurn, TurnEdge, wordsW, type RowTurn, useStrip, useStripProbe, showZoom, StripPress, wholeIn, xOf, type Level, type MarkAt, type Piece, type Scale } from "./time-line";
 import { drawnTaskIds, useListNavigationSource } from "./list-navigation";
 import { ShelvedRow } from "./ShelvedRow";
 import { PageReadFailure, type PageRead, type ReadView } from "./PageReadFailure";
@@ -728,10 +728,10 @@ function RowStrip({ node, shared, height, title, enter }: { node: Node; shared: 
     scale={scale} pieces={pieces} now={now} seen={seen} show={show} />;
 }
 
-// The line stands as low in the row as the marks on it allow, so the room above it shows how many work at once. A
-// computer's row keeps a pixel of air under the marks; a phone's short row has none to spare.
-const NARROW_STRIP_LEVEL: Readonly<Level> = { height: 22, base: 22 - MARK_REACH, unit: 6, rise: 10 };
-const WIDE_STRIP_LEVEL: Readonly<Level> = { height: WIDE_ROW, base: WIDE_ROW - MARK_REACH - 1, unit: 10, rise: 17 };
+// One at work is a band about the row's middle, standing where the title's letters stand; more at once rise over it
+// toward the row's top. The row's marks and words keep the row's middle, beside the title, whatever the line does.
+const NARROW_STRIP_LEVEL: Readonly<Level> = { height: 22, base: 17, unit: 8, rise: 13 };
+const WIDE_STRIP_LEVEL: Readonly<Level> = { height: WIDE_ROW, base: 21, unit: 10, rise: 17 };
 export const STRIP_LEVELS = { narrow: NARROW_STRIP_LEVEL, wide: WIDE_STRIP_LEVEL };
 
 /** One row's line, drawn again only when its own history or the shared clock and scale change. */
@@ -771,10 +771,10 @@ const Strip = memo(function Strip({ node, narrow, height, title, enter, history,
     {narrow && <StripGround pieces={pieces} width={scale.width} height={height} now={now} />}
     {history && <Lane line={line} marks={marks} scale={scale} level={level} now={now} turnFrom={turn?.at ?? null}
       finish={finish} onPick={(key) => { probe.mark.hide(); open(key); }} probe={probe.mark} />}
-    {edge && seen && (edge.kind === "turn" ? <TurnEdge turn={edge.turn} x={scale.x(seen.from) + 14} y={level.base}
+    {edge && seen && (edge.kind === "turn" ? <TurnEdge turn={edge.turn} x={scale.x(seen.from) + 14} y={height / 2}
       onPick={() => { probe.mark.hide(); open(edge.turn.key); }} probe={probe.mark} words={turnNote(edge.turn.at)}
       heard={t("timeView.edge.turn", { kind: edge.turn.why === "question" ? t("ui:turn.question") : t("ui:state.waitingReview"), time: clock(edge.turn.at) })} />
-      : <EdgeNote edge={edge} x={edge.side === "left" ? scale.x(seen.from) + 6 : scale.x(seen.to) - 6} y={level.base} clock={clock}
+      : <EdgeNote edge={edge} x={edge.side === "left" ? scale.x(seen.from) + 6 : scale.x(seen.to) - 6} y={height / 2} clock={clock}
         onGo={() => show(edge.go[0], edge.go[1])} />)}
   </svg>;
 });

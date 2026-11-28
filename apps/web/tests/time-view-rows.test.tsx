@@ -464,11 +464,12 @@ test("a phone keeps the first In progress row visible above ten open Not started
   } finally { narrow.restore(); }
 });
 
-test("on a phone and a computer, the line's top and the marks on its base stay inside the row", () => {
+test("on a phone and a computer, the line and the marks at the row's middle stay inside the row", () => {
   for (const level of Object.values(STRIP_LEVELS)) {
-    // The line's 1.5px stroke at its top.
+    // The line's 1.5px stroke at its top and on its base.
     expect(level.base - level.rise).toBeGreaterThanOrEqual(1);
-    expect(level.base + MARK_REACH).toBeLessThanOrEqual(level.height);
+    expect(level.base).toBeLessThanOrEqual(level.height - 1);
+    expect(level.height / 2).toBeGreaterThanOrEqual(MARK_REACH);
   }
 });
 
@@ -487,7 +488,7 @@ test("desktop time rows put the state icon, ID, title and child progress on one 
   expect(document.querySelector('[data-row="T2"] [data-read]')?.textContent).toContain("T2");
   const strip = parent.querySelector('svg[data-time-strip]')!;
   expect(strip.getAttribute("height")).toBe("32");
-  expect(Number(strip.querySelector('g[data-pin] circle')?.getAttribute("cy")) + MARK_REACH).toBeLessThanOrEqual(32);
+  expect(strip.querySelector('g[data-pin] circle')?.getAttribute("cy")).toBe("16");
   expect(parent.querySelector<HTMLElement>('[data-row-label]')!.style.height).toBe("32px");
   fireEvent.click(document.querySelector('[data-section="done"] button')!);
   expect(document.querySelector('[data-row="T5"] svg[data-time-strip]')?.getAttribute("height")).toBe("32");

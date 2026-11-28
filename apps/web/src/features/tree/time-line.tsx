@@ -27,9 +27,12 @@ import { continuesDrawing, liveDrawing, sameDrawingSource, type DrawingSource } 
  */
 const BREAK_W = 32;
 export type Piece = { from: number; to: number; x0: number; x1: number; gap: boolean };
-/** How far a mark on the line reaches below it: its ring of 9, and 1 more where its focus ring is stroked. */
+/** How far a mark reaches above and below its centre: its ring of 9, and 1 more where its focus ring is stroked. */
 export const MARK_REACH = 10;
-/** The line's geometry for a row: the row's height, where the base sits, one person's step, and the most it may rise. */
+/**
+ * The line's geometry for a row: the row's height, where the base sits, one person's step, and the most it may rise.
+ * The marks and words of a row keep the row's middle, as its title does, whatever the line's base is.
+ */
 export type Level = { height: number; base: number; unit: number; rise: number };
 type Wait = Exclude<Segment["kind"], "work" | "member" | "below">;
 export type Scale = { x: (at: number) => number; from: number; to: number; width: number };
@@ -665,7 +668,9 @@ export function lineOf(own: TaskHistory | null, now: number, scale: Scale) {
 }
 
 /**
- * How high the line stands with `count` at work: a step a person, smaller when the most at once would rise past `rise`.
+ * How high the line stands with `count` at work: a step a person while the most at once fits under `rise`. A row that
+ * has had more at once grows as the square root of the count, up to `rise` at its most, so one at work still stands
+ * clear of the base there and each one more is a smaller step.
  * The most at once is each stretch's `peak`, not its evened `count`: whether a short overlap is evened away depends on
  * the zoom, and the axis moves a little with every update, so the step would change with it and every run on the row
  * would rise and fall.
@@ -673,8 +678,7 @@ export function lineOf(own: TaskHistory | null, now: number, scale: Scale) {
 export function heightOf(stretches: Stretch[], level: Level) {
   let maximum = 1;
   for (const each of stretches) maximum = Math.max(maximum, each.peak);
-  const step = Math.min(level.unit, level.rise / maximum);
-  return (count: number) => level.base - count * step;
+  return (count: number) => level.base - Math.min(count * level.unit, level.rise * Math.sqrt(count / maximum));
 }
 
 const WAIT_LINE = { held: ["text-lit-line", 1, "2 3"], review: ["text-lit-line", 1, undefined], stuck: [TONE.error, 1.5, undefined] } as const;
@@ -904,8 +908,8 @@ export function Lane({ line, marks, scale, level, now, finish, turnFrom, onPick,
       <clipPath id={overId}><rect x={overFrom} y={0} width={Math.max(0, overTo - overFrom)} height={level.base + 4} /></clipPath>
       <g clipPath={`url(#${overId})`}><Wave stretches={line.stretches} scale={scale} level={level} drops={line.drops} turnFrom={null} late /></g>
     </g>}
-    <Marks marks={marks} scale={scale} y={level.base} onPick={onPick} probe={probe} />
-    {label && <FutureLabel words={label} long={finish!.long} x={labelX} y={level.base} height={level.height} over={passed !== null} />}
+    <Marks marks={marks} scale={scale} y={level.height / 2} onPick={onPick} probe={probe} />
+    {label && <FutureLabel words={label} long={finish!.long} x={labelX} y={level.height / 2} height={level.height} over={passed !== null} />}
   </g>;
 }
 
