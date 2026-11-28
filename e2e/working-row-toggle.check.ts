@@ -82,6 +82,10 @@ test('the Working row opens and closes on the shared disclosure motion at PC and
     await expect(row.locator('[data-working-note]').first()).toContainText('調査をまとめました');
     await expect(row.locator('[data-work-line]')).toContainText('pnpm vitest run');
     await settleMotion(page, row, true);
+    if (width === 390) {
+      const steps = row.locator('[data-working-steps]');
+      expect((await steps.boundingBox())!.height, 'the phone keeps a full touch target for steps').toBeGreaterThanOrEqual(44);
+    }
     const chevron = row.locator('[data-working-chevron] svg');
     const headerFits = await chevron.evaluate(icon => {
       const edge = icon.closest('[data-working-row]')!.getBoundingClientRect().right;

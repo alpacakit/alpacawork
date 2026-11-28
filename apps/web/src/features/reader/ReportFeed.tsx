@@ -964,7 +964,7 @@ function WorkingRuns({ task, runs, onFollow }: { task: TaskDetail; runs: Control
   const toggle = (event: React.MouseEvent) => { if (!(event.target as Element).closest("button, a") && window.getSelection()?.isCollapsed !== false) setOpen(!open); };
   return <div role="button" tabIndex={0} aria-expanded={open} onClick={toggle} data-working-here
     onKeyDown={event => { if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); setOpen(!open); } }}
-    className="group/row flex cursor-pointer flex-col py-1 outline-none focus-visible:outline-2 focus-visible:outline-ring narrow:min-h-11">
+    className="group/row flex cursor-pointer flex-col py-1 outline-none focus-visible:outline-2 focus-visible:outline-ring narrow:min-h-11 narrow:pb-0">
     <WorkingPerson run={lead} task={task} onFollow={onFollow} open={open} lead
       others={others > 0 && !open ? <span data-working-others>{t("reportFeed.working.others", { count: others })}</span> : null} />
     {others > 0 && <DisclosureBody open={open}><div className="flex flex-col gap-2 pt-2">
@@ -1027,7 +1027,7 @@ function WorkingPerson({ run, task, onFollow, open, lead, others }: { run: Contr
     {words && (lead ? <LeadNote open={open} words={words} task={task} onFollow={onFollow} />
       : <div data-working-note dir="auto" className={`mt-1 ${NOTE}`}><MarkdownBody text={words} task={task} onFollow={onFollow} report variant="note" /></div>)}
     {worked ? <button type="button" data-working-steps aria-expanded={listed} onClick={event => { keepPressedRow(event.currentTarget); setListed(!listed); }}
-      className="group/steps mt-1 flex min-h-6 min-w-0 cursor-pointer items-center gap-1.5 rounded-sm text-left text-xs outline-none focus-visible:outline-2 focus-visible:outline-ring">
+      className="group/steps mt-1 flex min-h-6 min-w-0 cursor-pointer items-center gap-1.5 rounded-sm text-left text-xs outline-none focus-visible:outline-2 focus-visible:outline-ring narrow:mt-0 narrow:min-h-11 narrow:pb-2">
       <WorkLine step={latest} idle={idle} label={listed && count !== undefined ? say("now.step.count", { count }) : undefined} className="min-w-0 flex-1 group-hover/steps:text-ink" />
       <Icon name="down" className={`size-3.5 flex-none self-center text-muted transition-transform duration-(--motion-base) group-hover/steps:text-ink ${listed ? "rotate-180" : ""}`} /></button>
       : <WorkLine step={latest} idle={idle} className="mt-1 min-h-6 text-xs" />}
