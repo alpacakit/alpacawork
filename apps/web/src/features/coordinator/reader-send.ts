@@ -14,7 +14,7 @@ import { acceptedInReader, projectDepartures, onScreen, useSitting, useReaderTur
 import { filterDocument, answeredQuestions, taskReferencesIn, answersIn, givenIn, saysFor, wordsAfter, type Document } from './editor/document';
 import { readerOutcome, readerResult, readerSubmissionKey, readerTurn, type ReaderSubmission } from '@/features/reader/submission';
 import { outgoing, restoreReaderDraft, returnReaderSubmission, useOutbox, type Fixed } from './editor/outbox';
-import { departurePreviewed, readerActionsHeld } from '@/features/reader/departure';
+import { departureRelease, readerActionsHeld } from '@/features/reader/departure';
 import { useViewStore } from '@/state/view-store';
 import { isOtherAnswer, type Question } from '@/domain/questions';
 
@@ -49,7 +49,7 @@ type Status = "pending" | "confirmed" | "unconfirmed" | "refused" | "cancelled" 
  * for words and answer references, or the explicit operation's expected record. `admitted` records serve holding the submission.
  */
 type Receipt = SendScope & {
-  readonly previewed: boolean; id: string; card: ReaderCard | null; task: Pick<Task, 'id' | 'title'>; binding: ReaderSubmission; status: Status; admitted: boolean; retry?: () => void;
+  readonly release?: number; id: string; card: ReaderCard | null; task: Pick<Task, 'id' | 'title'>; binding: ReaderSubmission; status: Status; admitted: boolean; retry?: () => void;
   departure?: Departure; resultKnown?: boolean };
 const allReceipts = () => useReaderSend.getState().receipts;
 const receiptKey = (id: string, scope: SendScope & { task?: Pick<Task, 'id'>; binding?: ReaderSubmission }) => JSON.stringify([scope.root, scope.conversationId, id, scope.task?.id, scope.binding?.turn]);
@@ -93,7 +93,7 @@ const reopen = (receipt: Receipt) => () => {
 function retire(receipt: Receipt, answer: Answer, ball: Task['ball']) {
   const turn = userTurn(ball);
   if (!turn) return false;
-  const departure: Departure = { answer, id: receipt.id, previewed: receipt.previewed, turn: turn.key, admitted: () => receipt.admitted, status: () => statusOf(receipt) };
+  const departure: Departure = { answer, id: receipt.id, release: receipt.release, turn: turn.key, admitted: () => receipt.admitted, status: () => statusOf(receipt) };
   const accepted = acceptedInReader(receipt.card, receipt.task.id, ball, departure);
   if (useSitting.getState().departures[receipt.task.id] === departure) receipt.departure = departure;
   return accepted;
@@ -168,7 +168,7 @@ export function captureReaderSubmission(fixed: Pick<Fixed, 'intent' | 'answers'>
   const snapshots = submissionFacts(fixed, doc, tasks).map(({ task, binding }) => {
     const visual = userTurn(task.ball)?.key === binding.turn && (binding.kind === 'intent' || !!answeringTurn(task));
     const shown = visual && onScreen(card, task.id);
-    return { task, binding, visual, card: shown ? card : null, previewed: shown && departurePreviewed() };
+    return { task, binding, visual, card: shown ? card : null, release: shown ? departureRelease() : undefined };
   });
   const accept = () => {
     let retired = false;
@@ -304,7 +304,7 @@ function restoreReaderReceipts(scope: SendScope) {
       const task = { id: binding.taskId, title: binding.title }, key = receiptKey(item.requestId, { ...scope, task, binding });
       if (allReceipts().has(key)) continue;
       const retry = () => { void useOutbox.getState().resend?.(item.requestId); };
-      allReceipts().set(key, { ...scope, id: item.requestId, task, binding, card: null, previewed: false,
+      allReceipts().set(key, { ...scope, id: item.requestId, task, binding, card: null,
         status: 'pending', admitted: item.stage === 'accepted', retry });
       ownRecovery(task.id, key);
     }

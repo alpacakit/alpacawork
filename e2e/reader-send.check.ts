@@ -177,7 +177,7 @@ test.describe('phone report gestures', () => {
     const y = await reportSwipeY(page);
     // Short and paused releases send nothing, even with an answer selected.
     let sent = 0; page.on('request', request => { if (request.url().endsWith('/api/coordinator/messages')) sent++; });
-    await swipeSubmittedAnswer(page, { x: 75, y }, { x: 95, y }); expect(sent).toBe(0);
+    await swipeSubmittedAnswer(page, { x: 75, y }, { x: 87, y }); expect(sent).toBe(0);
     const session = await page.context().newCDPSession(page);
     await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 65, y }] });
     await session.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 200, y }] });

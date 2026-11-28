@@ -3,6 +3,7 @@ import { act, cleanup, render } from '@testing-library/react';
 import { useRef } from 'react';
 import { useSwipeAnswer } from '../src/features/reader/swipe-answer';
 import { cardFlying, flyAway } from '../src/features/reader/departure';
+import { settle, settleTime } from '../src/lib/motion';
 
 const run = vi.fn(() => 'retired' as 'retained' | 'retired' | 'rejected');
 function Swipe({ on = true, identity = 'one' }: { on?: boolean; identity?: string }) {
@@ -47,6 +48,7 @@ for (const admission of ['retained', 'retired', 'rejected'] as const)
 test(`local ${admission} submission captures the release pose then cleans the live panel immediately`, () => {
   let pose = '';
   run.mockImplementationOnce(() => { pose = document.querySelector('aside')!.style.transform; return admission; });
+  const back = vi.spyOn(Element.prototype, 'animate');
   render(<Swipe />);
   pointer('pointerdown', 50); pointer('pointermove', 210); pointer('pointerup', 210);
   expect(run).toHaveBeenCalledOnce();
@@ -54,7 +56,8 @@ test(`local ${admission} submission captures the release pose then cleans the li
   const card = document.querySelector('aside')!;
   expect(card.style.transform).toBe('');
   expect(card.hasAttribute('data-carried')).toBe(false);
-  expect(card.style.transition === '').toBe(admission === 'retired');
+  // A card still on screen springs back from the release pose; a retired one has its copy leave instead.
+  expect(back.mock.calls.length > 0).toBe(admission !== 'retired');
 });
 
 test('transferring implicit capture from a choice to the content keeps the gesture', () => {
@@ -96,4 +99,27 @@ test('hiding a flight removes it once and a hidden receipt creates no copy', () 
   expect(flyAway('send', 'Sent')).toBeNull();
   expect(document.body.children).toHaveLength(1);
   card.remove();
+});
+
+test('a card caught on its way back goes on from where it is, and only the finger\'s own way decides', () => {
+  vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(390); // the line at 86px
+  render(<Swipe />);
+  pointer('pointerdown', 50); pointer('pointermove', 210); pointer('pointercancel', 210);
+  // Caught at once, it is still where it was let go (the stand-in animation has not moved it).
+  pointer('pointerdown', 100); pointer('pointermove', 115);
+  expect(document.querySelector('aside')!.style.transform).toContain('translateX(175px)');
+  // 20px of the finger, flicked or not, is short of answering, though the card is drawn past the line.
+  pointer('pointermove', 120); pointer('pointerup', 120);
+  expect(run).not.toHaveBeenCalled();
+});
+
+test('a card let go springs back from where it is, at the speed it was let go, and comes to rest in place', () => {
+  const still = settle(150), thrown = settle(150, 2);
+  expect(still[0]).toBe(150);
+  expect(still.at(-1)).toBe(0);
+  // It starts moving the way the finger did, eases into place and passes it by only a few px.
+  expect(thrown[1]!).toBeGreaterThan(150);
+  expect(Math.min(...still)).toBeGreaterThan(-150 * 0.05);
+  expect(settleTime(still)).toBeLessThan(450);
+  expect(settle(0)).toEqual([0]);
 });

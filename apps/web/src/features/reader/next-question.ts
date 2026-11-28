@@ -53,7 +53,7 @@ function useShelfTasks(shelf: Shelf): Task[] {
   return tasks;
 }
 
-export type Departure = { readonly previewed?: boolean; answer: Answer; id: string | null; turn: string; admitted: () => boolean; status: () => "pending" | "confirmed" | "unconfirmed" | "conflict" | "refused" };
+export type Departure = { readonly release?: number; answer: Answer; id: string | null; turn: string; admitted: () => boolean; status: () => "pending" | "confirmed" | "unconfirmed" | "conflict" | "refused" };
 
 type Sitting = {
   departures: Record<string, Departure>;
@@ -184,7 +184,7 @@ export function acceptedInReader(card: ReaderCard | null, taskId: string, ball: 
   if (!userTurn(ball ?? null) || !shown && !state.order.includes(taskId) || consumed || previous?.id === departure.id) return false;
   if (!shown && !useViewStore.getState().reader.open) return false;
   if (!shown) { useSitting.setState(state => ({ departures: { ...state.departures, [taskId]: departure } })); return false; }
-  const flight = flyAway(departure.answer, ({ send: i18n.t("reader:nextQuestion.sent"), done: i18n.t("reader:nextQuestion.done"), stop: i18n.t("reader:nextQuestion.stopped"), hold: i18n.t("reader:nextQuestion.held") })[departure.answer], departure.previewed);
+  const flight = flyAway(departure.answer, ({ send: i18n.t("reader:nextQuestion.sent"), done: i18n.t("reader:nextQuestion.done"), stop: i18n.t("reader:nextQuestion.stopped"), hold: i18n.t("reader:nextQuestion.held") })[departure.answer], departure.release);
   stamped = flight && { departure, flight };
   useSitting.setState(state => ({ departures: { ...state.departures, [taskId]: departure }, sent: { card, answer: departure.answer, order: state.order } }));
   projectDepartures();
